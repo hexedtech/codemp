@@ -5,16 +5,18 @@ edition = "2021"
 
 [[bin]] # Bin to run the CodeMP gRPC server
 name = "codemp-server"
-path = "src/server.rs"
+path = "src/server/main.rs"
 
 [[bin]] # Bin to run the CodeMP gRPC client
 name = "codemp-client"
-path = "src/client.rs"
+path = "src/client/main.rs"
 
 [dependencies]
 tonic = "0.7"
 prost = "0.10"
-tokio = { version = "1.0", features = ["macros", "rt-multi-thread"] }
+tokio = { version = "1.0", features = ["macros", "rt-multi-thread", "sync", "full"] }
+rmpv = "1"
+nvim-rs = { version = "0.4", features = ["use_tokio"] }  # TODO put this behind a conditional feature
 
 [build-dependencies]
 tonic-build = "0.7"

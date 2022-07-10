@@ -1,11 +1,12 @@
 use tonic::{transport::Server, Request, Response, Status};
 
-use proto_core::session_server::{Session, SessionServer};
-use proto_core::{SessionRequest, SessionResponse};
-
 pub mod proto_core {
 	tonic::include_proto!("core");
 }
+
+use proto_core::session_server::{Session, SessionServer};
+use proto_core::{SessionRequest, SessionResponse};
+
 
 #[derive(Debug, Default)]
 pub struct TestSession {}
@@ -38,3 +39,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	Ok(())
 }
+
+/*
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let mut client = GreeterClient::connect("http://[::1]:50051").await?;
+
+    let request = tonic::Request::new(HelloRequest {
+        name: "Tonic".into(),
+    });
+
+    let response = client.say_hello(request).await?;
+
+    println!("RESPONSE={:?}", response);
+
+    Ok(())
+}
+
+*/
