@@ -25,11 +25,16 @@ impl ConnectionManager {
 	}
 
 	pub async fn process_packets(&mut self) {
+		{
+			let request = tonic::Request::new(SessionRequest {session_id: -1});
+			let response = self.client.create(request).await.unwrap();
+			eprintln!("RESPONSE={:?}", response);
+		}
 		loop {
 			if let Some(i) = self.rx.recv().await {
 				let request = tonic::Request::new(SessionRequest {session_id: i});
 				let response = self.client.create(request).await.unwrap();
-				println!("RESPONSE={:?}", response);
+				eprintln!("RESPONSE={:?}", response);
 			} else {
 				break
 			}

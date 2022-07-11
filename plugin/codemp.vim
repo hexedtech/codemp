@@ -12,7 +12,7 @@ endif
 
 let s:bin = "/home/alemi/projects/codemp/target/debug/codemp-client"
 
-function! codemp#init()
+function codemp#init()
 	let result = s:StartJob()
 
 	if 0 == result
@@ -21,11 +21,12 @@ function! codemp#init()
 		echoerr "codeMP: rpc process is not executable"
 	else
 		let s:jobid = result
+		let g:codemp_jobid = result
 		call s:ConfigureJob(result)
 	endif
 endfunction
 
-function! s:StartJob()
+function s:StartJob()
 	if 0 == s:jobid
 		let id = jobstart([s:bin], { 'rpc': v:true, 'on_stderr': function('s:OnStderr') })
 		return id
@@ -34,7 +35,7 @@ function! s:StartJob()
 	endif
 endfunction
 
-function! s:StopJob()
+function s:StopJob()
 	if 0 < s:jobid
 		augroup codeMp
 			autocmd!		" clear all previous autocommands
@@ -53,7 +54,7 @@ function! s:StopJob()
 	endif
 endfunction
 
-function! s:ConfigureJob(jobid)
+function s:ConfigureJob(jobid)
 	augroup codeMp
 		" clear all previous autocommands
 		autocmd!
@@ -66,22 +67,28 @@ function! s:ConfigureJob(jobid)
 	augroup END
 endfunction
 
-function! s:NotifyInsertEnter()
-	let [ bufnum, lnum, column, off ] = getpos('.')
-	call rpcnotify(s:jobid, 'insert-enter', v:insertmode, lnum, column)
+function s:NotifyInsertEnter()
+	" let [ bufnum, lnum, column, off ] = getpos('.')
+	call rpcnotify(s:jobid, 'insert', 1)
 endfunction
 
-function! s:NotifyInsertLeave()
+function s:NotifyInsertLeave()
+	call rpcnotify(s:jobid, 'insert', 0)
 endfunction
 
-function! codemp#ping()
-	call rpcnotify(s:jobid, "ping")
+function codemp#buffer()
+	call rpcrequest(s:jobid, "buffer")
 endfunction
 
-function! codemp#test()
-	call rpcnotify(s:jobid, "rpc")
+function codemp#ping()
+	call rpcrequest(s:jobid, "ping")
 endfunction
 
-function! s:OnStderr(id, data, event) dict
-	echom 'codemp: stderr: ' . join(a:data, "\n")
+function codemp#test()
+	call rpcrequest(s:jobid, "rpc")
+endfunction
+
+function s:OnStderr(id, data, event) dict
+	let g:msg = 'codemp: stderr: ' . join(a:data, "\n")
+	echo g:msg
 endfunction
