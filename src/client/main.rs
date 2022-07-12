@@ -2,7 +2,7 @@ pub mod manager;
 mod nvim;
 
 use tokio::sync::mpsc;
-use nvim_rs::{create::tokio::new_parent};
+use nvim_rs::create::tokio::new_parent;
 
 use manager::ConnectionManager;
 use nvim::NeovimHandler;
@@ -11,6 +11,7 @@ use nvim::NeovimHandler;
 async fn main() -> Result<(), Box<(dyn std::error::Error + 'static)>> {
 	let (tx, rx) = mpsc::channel(32);
 
+	//nvim stuff
 	let handler: NeovimHandler = NeovimHandler::new(tx).await?;
 	let (_nvim, io_handler) = new_parent(handler).await;
 
