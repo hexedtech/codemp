@@ -1,0 +1,21 @@
+syntax = "proto3";
+package workspace;
+
+service Workspace {
+	rpc Create (SessionRequest) returns (SessionResponse);
+	rpc Join   (SessionRequest) returns (SessionResponse);
+	rpc Sync   (SessionRequest) returns (SessionResponse);
+	rpc Leave  (SessionRequest) returns (SessionResponse);
+}
+
+message SessionRequest {
+	string sessionKey = 1;
+	optional string content = 2;
+}
+
+message SessionResponse {
+	string sessionKey = 1;
+	bool accepted = 2;
+	optional string hash = 3;
+	optional string content = 4;
+}
