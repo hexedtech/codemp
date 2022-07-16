@@ -88,6 +88,18 @@ function codemp#test()
 	call rpcrequest(s:jobid, "rpc")
 endfunction
 
+function codemp#create(k)
+	call rpcrequest(s:jobid, "create", a:k)
+endfunction
+
+function codemp#sync(k)
+	call rpcrequest(s:jobid, "sync", a:k)
+endfunction
+
+function codemp#leave(k)
+	call rpcrequest(s:jobid, "leave", a:k)
+endfunction
+
 function s:OnStderr(id, data, event) dict
 	let g:msg = 'codemp: stderr: ' . join(a:data, "\n")
 	echo g:msg
