@@ -3,6 +3,10 @@ name = "codemp"
 version = "0.1.0"
 edition = "2021"
 
+[features]
+default = ["nvim"]
+nvim = []
+
 [[bin]] # Bin to run the CodeMP gRPC server
 name = "codemp-server"
 path = "src/server/main.rs"
