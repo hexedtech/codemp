@@ -1,20 +1,21 @@
 use rmpv::Value;
 
 use tokio::io::Stdout;
-use tokio::sync::mpsc;
 
 use nvim_rs::{compat::tokio::Compat, Handler, Neovim};
+use nvim_rs::create::tokio::new_parent;
+use tonic::transport::Channel;
 
-use crate::manager::Command;
+use crate::proto::{SessionRequest, workspace_client::WorkspaceClient};
 
 #[derive(Clone)]
 pub struct NeovimHandler {
-	tx: mpsc::Sender<Command>,
+	client: WorkspaceClient<Channel>,
 }
 
 impl NeovimHandler {
-	pub async fn new(tx: mpsc::Sender<Command>) -> Result<Self, tonic::transport::Error> {
-		Ok(NeovimHandler { tx })
+	pub fn new(client: WorkspaceClient<Channel>) -> Self {
+		NeovimHandler { client }
 	}
 }
 
@@ -25,23 +26,65 @@ impl Handler for NeovimHandler {
 	async fn handle_request(
 		&self,
 		name: String,
-		_args: Vec<Value>,
-		_neovim: Neovim<Compat<Stdout>>,
+		args: Vec<Value>,
+		neovim: Neovim<Compat<Stdout>>,
 	) -> Result<Value, Value> {
 		match name.as_ref() {
 			"ping" => Ok(Value::from("pong")),
-			"rpc" => {
-				let (cmd, rx) = Command::create_session_cmd("asd".to_string()); 
-				self.tx.send(cmd).await.unwrap();
-				let resp = rx.await.unwrap();
-				Ok(Value::from(format!("{:?}", resp)))
+			"create" => {
+				if args.len() < 1 {
+					return Err(Value::from("[!] no session key"));
+				}
+				let buf = neovim.get_current_buf().await.unwrap();
+				let content = buf.get_lines(0, buf.line_count().await.unwrap(), false).await.unwrap().join("\n");
+				let request = tonic::Request::new(SessionRequest {
+					session_key: args[0].to_string(), content: Some(content),
+				});
+				let mut c = self.client.clone();
+				let resp = c.create(request).await.unwrap().into_inner();
+				if resp.accepted {
+					Ok(Value::from(resp.session_key))
+				} else {
+					Err(Value::from("[!] rejected"))
+				}
 			},
-			"buffer" => {
-				let buf = _neovim.create_buf(true, false).await.unwrap();
-				buf.set_lines(0, 1, false, vec!["codeMP".to_string()]).await.unwrap();
-				_neovim.set_current_buf(&buf).await.unwrap();
-				Ok(Value::from("ok"))
-			}
+			"sync" => {
+				if args.len() < 1 {
+					return Err(Value::from("[!] no session key"));
+				}
+				let buf = neovim.get_current_buf().await.unwrap();
+				let request = tonic::Request::new(SessionRequest {
+					session_key: args[0].to_string(), content: None,
+				});
+				let mut c = self.client.clone();
+				let resp = c.sync(request).await.unwrap().into_inner();
+				if let Some(content) = resp.content {
+					buf.set_lines(
+						0,
+						buf.line_count().await.unwrap(),
+						false,
+						content.split("\n").map(|s| s.to_string()).collect()
+					).await.unwrap();
+					Ok(Value::from(""))
+				} else {
+					Err(Value::from("[!] no content"))
+				}
+			},
+			"leave" => {
+				if args.len() < 1 {
+					return Err(Value::from("[!] no session key"));
+				}
+				let request = tonic::Request::new(SessionRequest {
+					session_key: args[0].to_string(), content: None,
+				});
+				let mut c = self.client.clone();
+				let resp = c.leave(request).await.unwrap().into_inner();
+				if resp.accepted {
+					Ok(Value::from(format!("closed session #{}", resp.session_key)))
+				} else {
+					Err(Value::from("[!] could not close session"))
+				}
+			},
 			_ => {
 				eprintln!("[!] unexpected call");
 				Ok(Value::from(""))
@@ -61,4 +104,18 @@ impl Handler for NeovimHandler {
 			_ => eprintln!("[!] unexpected notify",)
 		}
 	}
+}
+
+pub async fn run_nvim_client(c: WorkspaceClient<Channel>) -> Result<(), Box<dyn std::error::Error + 'static>> {
+	let handler: NeovimHandler = NeovimHandler::new(c);
+	let (_nvim, io_handler) = new_parent(handler).await;
+
+	// Any error should probably be logged, as stderr is not visible to users.
+	match io_handler.await {
+		Err(err) => eprintln!("Error joining IO loop: {:?}", err),
+		Ok(Err(err)) => eprintln!("Process ended with error: {:?}", err),
+		Ok(Ok(())) => eprintln!("Finished"),
+	}
+
+	Ok(())
 }
