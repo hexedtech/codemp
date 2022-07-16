@@ -1,8 +1,6 @@
 use std::{collections::HashMap, sync::Arc};
 
-use state::{StateManager, AlterState};
-use tonic::Streaming;
-use tonic::codegen::futures_core::Stream;
+use state::AlterState;
 use tonic::{transport::Server, Request, Response, Status};
 
 pub mod proto {
