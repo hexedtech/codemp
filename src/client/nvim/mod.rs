@@ -10,12 +10,19 @@ use crate::proto::{SessionRequest, workspace_client::WorkspaceClient};
 
 #[derive(Clone)]
 pub struct NeovimHandler {
+	go: bool,
 	client: WorkspaceClient<Channel>,
 }
 
 impl NeovimHandler {
 	pub fn new(client: WorkspaceClient<Channel>) -> Self {
-		NeovimHandler { client }
+		NeovimHandler { go: true, client }
+	}
+
+	async fn live_edit_worker(&self) {
+		while self.go {
+
+		}
 	}
 }
 

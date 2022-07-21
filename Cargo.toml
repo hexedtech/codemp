@@ -18,8 +18,11 @@ path = "src/client/main.rs"
 [dependencies]
 tonic = "0.7"
 prost = "0.10"
+futures = "0.3"
 tokio = { version = "1.0", features = ["macros", "rt-multi-thread", "sync", "full"] }
+tokio-stream = "0.1"
 rmpv = "1"
+operational-transform = "0.6"
 nvim-rs = { version = "0.4", features = ["use_tokio"] }  # TODO put this behind a conditional feature
 
 [build-dependencies]
