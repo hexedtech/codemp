@@ -1,0 +1,17 @@
+syntax = "proto3";
+package session;
+
+service Session {
+	rpc Create (SessionRequest) returns (SessionResponse);
+	rpc Join   (SessionRequest) returns (SessionResponse);
+	rpc Leave  (SessionRequest) returns (SessionResponse);
+}
+
+message SessionRequest {
+	optional string sessionKey = 1;
+}
+
+message SessionResponse {
+	string sessionKey = 1;
+	bool accepted = 2;
+}
