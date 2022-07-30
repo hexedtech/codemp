@@ -1,6 +1,7 @@
 
 use std::{collections::HashMap, sync::Arc};
 use tokio::sync::{mpsc, watch};
+use tracing::error;
 
 use crate::workspace::Workspace;
 
@@ -13,49 +14,52 @@ pub enum AlterState {
 	REMOVE { key: String },
 }
 
+#[derive(Debug)]
 pub struct StateManager {
-	store: HashMap<String, Arc<Workspace>>,
-	rx:  mpsc::Receiver<AlterState>,
-	tx: watch::Sender<HashMap<String, Arc<Workspace>>>
+	pub workspaces: watch::Receiver<HashMap<String, Arc<Workspace>>>,
+	pub op_tx: mpsc::Sender<AlterState>, // TODO make method for this
+	run: watch::Sender<bool>,
+}
+
+impl Drop for StateManager {
+	fn drop(&mut self) {
+		self.run.send(false).unwrap_or_else(|e| {
+			error!("Could not stop StateManager worker: {:?}", e);
+		})
+	}
 }
 
 impl StateManager {
-	pub fn new(rx: mpsc::Receiver<AlterState>, tx: watch::Sender<HashMap<String, Arc<Workspace>>>) -> StateManager {
-		StateManager { 
-			store: HashMap::new(),
-			rx,
-			tx
-		}
-	}
+	pub fn new() -> Self {
+		let (tx, mut rx) = mpsc::channel(32); // TODO quantify backpressure
+		let (watch_tx, watch_rx) = watch::channel(HashMap::new());
+		let (stop_tx, stop_rx) = watch::channel(true);
 
-	pub async fn run(mut self) {
-		loop {
-			if let Some(event) = self.rx.recv().await {
-				match event {
-					AlterState::ADD { key, w } => {
-						self.store.insert(key, Arc::new(w)); // TODO put in hashmap
-					},
-					AlterState::REMOVE { key } => {
-						self.store.remove(&key);
-					},
+		let s = StateManager { 
+			workspaces: watch_rx,
+			op_tx: tx,
+			run: stop_tx,
+		};
+
+		tokio::spawn(async move {
+			let mut store = HashMap::new();
+			while stop_rx.borrow().to_owned() {
+				if let Some(event) = rx.recv().await {
+					match event {
+						AlterState::ADD { key, w } => {
+							store.insert(key, Arc::new(w)); // TODO put in hashmap
+						},
+						AlterState::REMOVE { key } => {
+							store.remove(&key);
+						},
+					}
+					watch_tx.send(store.clone()).unwrap();
+				} else {
+					break
 				}
-				self.tx.send(self.store.clone()).unwrap();
-			} else {
-				break
 			}
-		}
+		});
+
+		return s;
 	}
-}
-
-
-pub fn run_state_manager() -> (mpsc::Sender<AlterState>, watch::Receiver<HashMap<String, Arc<Workspace>>>) {
-	let (tx, rx) = mpsc::channel(32); // TODO quantify backpressure
-	let (watch_tx, watch_rx) = watch::channel(HashMap::new());
-	let state = StateManager::new(rx, watch_tx);
-
-	let _task = tokio::spawn(async move {
-		state.run().await;
-	});
-
-	return (tx, watch_rx);
 }
