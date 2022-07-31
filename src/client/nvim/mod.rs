@@ -6,7 +6,7 @@ use nvim_rs::{compat::tokio::Compat, Handler, Neovim};
 use nvim_rs::create::tokio::new_parent;
 use tonic::transport::Channel;
 
-use crate::proto::{SessionRequest, workspace_client::WorkspaceClient};
+use crate::proto::{WorkspaceRequest, workspace_client::WorkspaceClient};
 
 #[derive(Clone)]
 pub struct NeovimHandler {
@@ -44,53 +44,56 @@ impl Handler for NeovimHandler {
 				}
 				let buf = neovim.get_current_buf().await.unwrap();
 				let content = buf.get_lines(0, buf.line_count().await.unwrap(), false).await.unwrap().join("\n");
-				let request = tonic::Request::new(SessionRequest {
-					session_key: args[0].to_string(), content: Some(content),
+				let request = tonic::Request::new(WorkspaceRequest {
+					session_key: args[0].to_string(),
 				});
 				let mut c = self.client.clone();
-				let resp = c.create(request).await.unwrap().into_inner();
-				if resp.accepted {
-					Ok(Value::from(resp.session_key))
-				} else {
-					Err(Value::from("[!] rejected"))
-				}
+				Err(Value::from("[!] Unimplemented"))
+				// let resp = c.create(request).await.unwrap().into_inner();
+				// if resp.accepted {
+				// 	Ok(Value::from(resp.session_key))
+				// } else {
+				// 	Err(Value::from("[!] rejected"))
+				// }
 			},
 			"sync" => {
 				if args.len() < 1 {
 					return Err(Value::from("[!] no session key"));
 				}
 				let buf = neovim.get_current_buf().await.unwrap();
-				let request = tonic::Request::new(SessionRequest {
-					session_key: args[0].to_string(), content: None,
+				let request = tonic::Request::new(WorkspaceRequest {
+					session_key: args[0].to_string(),
 				});
 				let mut c = self.client.clone();
-				let resp = c.sync(request).await.unwrap().into_inner();
-				if let Some(content) = resp.content {
-					buf.set_lines(
-						0,
-						buf.line_count().await.unwrap(),
-						false,
-						content.split("\n").map(|s| s.to_string()).collect()
-					).await.unwrap();
-					Ok(Value::from(""))
-				} else {
-					Err(Value::from("[!] no content"))
-				}
+				Err(Value::from("[!] Unimplemented"))
+				// let resp = c.sync(request).await.unwrap().into_inner();
+				// if let Some(content) = resp.content {
+				// 	buf.set_lines(
+				// 		0,
+				// 		buf.line_count().await.unwrap(),
+				// 		false,
+				// 		content.split("\n").map(|s| s.to_string()).collect()
+				// 	).await.unwrap();
+				// 	Ok(Value::from(""))
+				// } else {
+				// 	Err(Value::from("[!] no content"))
+				// }
 			},
 			"leave" => {
 				if args.len() < 1 {
 					return Err(Value::from("[!] no session key"));
 				}
-				let request = tonic::Request::new(SessionRequest {
-					session_key: args[0].to_string(), content: None,
+				let request = tonic::Request::new(WorkspaceRequest {
+					session_key: args[0].to_string(),
 				});
 				let mut c = self.client.clone();
-				let resp = c.leave(request).await.unwrap().into_inner();
-				if resp.accepted {
-					Ok(Value::from(format!("closed session #{}", resp.session_key)))
-				} else {
-					Err(Value::from("[!] could not close session"))
-				}
+				Err(Value::from("[!] Unimplemented"))
+				// let resp = c.leave(request).await.unwrap().into_inner();
+				// if resp.accepted {
+				// 	Ok(Value::from(format!("closed session #{}", resp.session_key)))
+				// } else {
+				// 	Err(Value::from("[!] could not close session"))
+				// }
 			},
 			_ => {
 				eprintln!("[!] unexpected call");
