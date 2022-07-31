@@ -3,7 +3,7 @@ use std::{collections::HashMap, sync::Arc};
 use tokio::sync::{mpsc, watch};
 use tracing::error;
 
-use crate::workspace::Workspace;
+use crate::actor::workspace::Workspace;
 
 #[derive(Debug)]
 pub enum AlterState {
