@@ -3,6 +3,8 @@ package buffer;
 
 service Buffer {
 	rpc Attach (stream Operation) returns (stream Operation);
+	rpc Push   (BufferPayload)    returns (BufferResponse);
+	rpc Pull   (BufferPayload)    returns (BufferPayload);
 }
 
 message Operation {
@@ -19,4 +21,16 @@ message Operation {
 	int32 column = 4;
 
 	optional string text = 5;
+}
+
+message BufferPayload {
+	string sessionKey = 1;
+	string path = 2;
+	optional string content = 3;
+}
+
+message BufferResponse {
+	string sessionKey = 1;
+	string path = 2;
+	bool accepted = 3;
 }

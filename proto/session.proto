@@ -8,7 +8,7 @@ service Session {
 }
 
 message SessionRequest {
-	optional string sessionKey = 1;
+	string sessionKey = 1;
 }
 
 message SessionResponse {

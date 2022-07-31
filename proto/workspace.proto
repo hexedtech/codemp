@@ -2,26 +2,20 @@ syntax = "proto3";
 package workspace;
 
 service Workspace {
-	rpc Buffers (WorkspaceRequest) returns (BufferList);
-	rpc Push    (BufferPayload) returns (WorkspaceResponse);
-	rpc Pull    (BufferPayload) returns (BufferPayload);
+	rpc Subscribe (WorkspaceRequest) returns (stream Event);
+	rpc Buffers   (WorkspaceRequest) returns (BufferList);
+}
+
+message Event {
+	int32 id = 1;
+	optional string body = 2;
 }
 
 message WorkspaceRequest {
 	string sessionKey = 1;
 }
 
-message WorkspaceResponse {
-	string sessionKey = 1;
-	bool accepted = 2;
-}
-
 message BufferList {
 	repeated string path = 1;
 }
 
-message BufferPayload {
-	string sessionKey = 1;
-	string path = 2;
-	optional string content = 3;
-}
