@@ -37,7 +37,20 @@ impl Workspace for WorkspaceService {
 		&self,
 		req: Request<WorkspaceRequest>,
 	) -> Result<Response<BufferList>, Status> {
-		todo!()
+		let r = req.into_inner();
+		match self.state.workspaces.borrow().get(&r.session_key) {
+			Some(w) => {
+				let out = Vec::new();
+				for (_k, v) in w.buffers_ref().iter() {
+					out.push(v.name.clone());
+				}
+				Ok(Response::new(BufferList { path: out }))
+			}
+			None => Err(Status::not_found(format!(
+				"No active workspace with session_key '{}'",
+				r.session_key
+			))),
+		}
 	}
 }
 

@@ -1,45 +1,64 @@
 use std::collections::HashMap;
 
 use operational_transform::OperationSeq;
-use tokio::sync::{broadcast, mpsc, watch};
+use tokio::sync::{broadcast, mpsc, watch::{self, Ref}};
 
-use super::buffer::{BufferView, Buffer};
+use super::{buffer::{BufferView, Buffer}, state::User};
+
+type Event = (String, OperationSeq); // TODO jank!
+
+pub enum UserAction {
+	ADD {},
+	REMOVE {},
+}
 
 pub struct WorkspaceView {
-	pub rx: broadcast::Receiver<OperationSeq>,
-	pub tx: mpsc::Sender<OperationSeq>,
+	pub rx: broadcast::Receiver<Event>,
+	pub tx: mpsc::Sender<BufferAction>,
+	pub users: watch::Receiver<HashMap<String, User>>,
+	pub buffers: watch::Receiver<HashMap<String, BufferView>>,
 }
 
 // Must be clonable, containing references to the actual state maybe? Or maybe give everyone an Arc, idk
 #[derive(Debug)]
 pub struct Workspace {
 	pub name: String,
-	pub buffers: watch::Receiver<HashMap<String, BufferView>>,
-	pub bus: broadcast::Sender<(String, OperationSeq)>,
-	op_tx: mpsc::Sender<BufferAction>,
+
+	buffers: watch::Receiver<HashMap<String, BufferView>>,
+	users: watch::Receiver<HashMap<String, User>>,
+
+	pub bus: broadcast::Sender<Event>,
+
+	buf_tx: mpsc::Sender<BufferAction>,
+	usr_tx: mpsc::Sender<UserAction>,
+
 	run: watch::Sender<bool>,
 }
 
 impl Workspace {
 	pub fn new(name: String) -> Self {
-		let (op_tx, mut op_rx) = mpsc::channel(32);
+		let (buf_tx, mut buf_rx) = mpsc::channel(32);
+		let (usr_tx, mut usr_rx) = mpsc::channel(32);
 		let (stop_tx, stop_rx) = watch::channel(true);
-		let (buf_tx, buf_rx) = watch::channel(HashMap::new());
+		let (buffer_tx, buffer_rx) = watch::channel(HashMap::new());
 		let (broadcast_tx, broadcast_rx) = broadcast::channel(32);
+		let (users_tx, users_rx) = watch::channel(HashMap::new());
 
 		let w = Workspace {
 			name,
 			run: stop_tx,
-			op_tx,
-			buffers: buf_rx,
+			buf_tx,
+			usr_tx,
+			buffers: buffer_rx,
 			bus: broadcast_tx,
+			users: users_rx,
 		};
 
 		tokio::spawn(async move {
 			let mut buffers = HashMap::new();
 			while stop_rx.borrow().to_owned() {
 				// TODO handle these errors!!
-				let action = op_rx.recv().await.unwrap();
+				let action = buf_rx.recv().await.unwrap();
 				match action {
 					BufferAction::ADD { buffer } => {
 						buffers.insert(buffer.view().name.clone(), buffer);
@@ -48,7 +67,7 @@ impl Workspace {
 						buffers.remove(&name);
 					}
 				}
-				buf_tx.send(
+				buffer_tx.send(
 					buffers.iter()
 						.map(|(k, v)| (k.clone(), v.view()))
 						.collect()
@@ -57,6 +76,23 @@ impl Workspace {
 		});
 
 		return w;
+	}
+
+	pub fn buffers_ref(&self) -> Ref<HashMap<String, BufferView>> {
+		self.buffers.borrow()
+	}
+
+	pub fn users_ref(&self) -> Ref<HashMap<String, User>> {
+		self.users.borrow()
+	}
+
+	pub fn view(&self) -> WorkspaceView {
+		WorkspaceView {
+			rx: self.bus.subscribe(),
+			tx: self.buf_tx.clone(),
+			users: self.users.clone(),
+			buffers: self.buffers.clone(),
+		}
 	}
 }
 

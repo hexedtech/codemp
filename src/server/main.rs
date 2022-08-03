@@ -3,13 +3,13 @@ pub mod service;
 
 use std::sync::Arc;
 
-use tracing::{debug, error, info, warn};
+use tracing::info;
 
 use tonic::transport::Server;
 
 use crate::{
 	actor::state::StateManager,
-	service::{buffer::BufferService, session::SessionService, workspace::WorkspaceService},
+	service::{buffer::BufferService, workspace::WorkspaceService},
 };
 
 #[tokio::main]
@@ -27,6 +27,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 		.add_service(BufferService::server(state.clone()))
 		.serve(addr)
 		.await?;
+
 
 	Ok(())
 }

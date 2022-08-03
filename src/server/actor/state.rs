@@ -5,13 +5,28 @@ use tracing::error;
 
 use crate::actor::workspace::Workspace;
 
+#[derive(Debug, Clone)]
+pub struct UserCursor{
+	buffer: i64,
+	x: i32,
+	y: i32
+}
+
+#[derive(Debug, Clone)]
+pub struct User {
+	name: String,
+	cursor: UserCursor,
+}
+
 #[derive(Debug)]
 pub enum AlterState {
 	ADD {
 		key: String,
 		w: Workspace
 	},
-	REMOVE { key: String },
+	REMOVE {
+		key: String
+	},
 }
 
 #[derive(Debug)]
@@ -32,28 +47,31 @@ impl Drop for StateManager {
 impl StateManager {
 	pub fn new() -> Self {
 		let (tx, mut rx) = mpsc::channel(32); // TODO quantify backpressure
-		let (watch_tx, watch_rx) = watch::channel(HashMap::new());
+		let (workspaces_tx, workspaces_rx) = watch::channel(HashMap::new());
 		let (stop_tx, stop_rx) = watch::channel(true);
 
 		let s = StateManager { 
-			workspaces: watch_rx,
+			workspaces: workspaces_rx,
 			op_tx: tx,
 			run: stop_tx,
 		};
 
 		tokio::spawn(async move {
 			let mut store = HashMap::new();
+			let mut users = HashMap::<String, User>::new();
+
 			while stop_rx.borrow().to_owned() {
 				if let Some(event) = rx.recv().await {
 					match event {
 						AlterState::ADD { key, w } => {
 							store.insert(key, Arc::new(w)); // TODO put in hashmap
+							workspaces_tx.send(store.clone()).unwrap();
 						},
 						AlterState::REMOVE { key } => {
 							store.remove(&key);
 						},
 					}
-					watch_tx.send(store.clone()).unwrap();
+					workspaces_tx.send(store.clone()).unwrap();
 				} else {
 					break
 				}
