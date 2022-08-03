@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use operational_transform::OperationSeq;
 use tokio::sync::{broadcast, mpsc, watch::{self, Ref}};
+use tracing::warn;
 
 use super::{buffer::{BufferView, Buffer}, state::User};
 
@@ -30,19 +31,25 @@ pub struct Workspace {
 	pub bus: broadcast::Sender<Event>,
 
 	buf_tx: mpsc::Sender<BufferAction>,
-	usr_tx: mpsc::Sender<UserAction>,
+	pub usr_tx: mpsc::Sender<UserAction>,
 
 	run: watch::Sender<bool>,
+}
+
+impl Drop for Workspace {
+	fn drop(&mut self) {
+		self.run.send(false).unwrap_or_else(|e| warn!("could not stop workspace worker: {:?}", e));
+	}
 }
 
 impl Workspace {
 	pub fn new(name: String) -> Self {
 		let (buf_tx, mut buf_rx) = mpsc::channel(32);
-		let (usr_tx, mut usr_rx) = mpsc::channel(32);
+		let (usr_tx, mut _usr_rx) = mpsc::channel(32);
 		let (stop_tx, stop_rx) = watch::channel(true);
 		let (buffer_tx, buffer_rx) = watch::channel(HashMap::new());
-		let (broadcast_tx, broadcast_rx) = broadcast::channel(32);
-		let (users_tx, users_rx) = watch::channel(HashMap::new());
+		let (broadcast_tx, _broadcast_rx) = broadcast::channel(32);
+		let (_users_tx, users_rx) = watch::channel(HashMap::new());
 
 		let w = Workspace {
 			name,

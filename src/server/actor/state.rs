@@ -1,21 +1,21 @@
 
 use std::{collections::HashMap, sync::Arc};
-use tokio::sync::{mpsc, watch};
+use tokio::sync::{mpsc, watch::{self, Ref}};
 use tracing::error;
 
 use crate::actor::workspace::Workspace;
 
 #[derive(Debug, Clone)]
 pub struct UserCursor{
-	buffer: i64,
-	x: i32,
-	y: i32
+	// buffer: i64,
+	// x: i32,
+	// y: i32
 }
 
 #[derive(Debug, Clone)]
 pub struct User {
-	name: String,
-	cursor: UserCursor,
+	// name: String,
+	// cursor: UserCursor,
 }
 
 #[derive(Debug)]
@@ -31,8 +31,8 @@ pub enum AlterState {
 
 #[derive(Debug)]
 pub struct StateManager {
-	pub workspaces: watch::Receiver<HashMap<String, Arc<Workspace>>>,
-	pub op_tx: mpsc::Sender<AlterState>, // TODO make method for this
+	op_tx: mpsc::Sender<AlterState>, // TODO make method for this
+	workspaces: watch::Receiver<HashMap<String, Arc<Workspace>>>,
 	run: watch::Sender<bool>,
 }
 
@@ -58,7 +58,7 @@ impl StateManager {
 
 		tokio::spawn(async move {
 			let mut store = HashMap::new();
-			let mut users = HashMap::<String, User>::new();
+			let mut _users = HashMap::<String, User>::new();
 
 			while stop_rx.borrow().to_owned() {
 				if let Some(event) = rx.recv().await {
@@ -79,5 +79,14 @@ impl StateManager {
 		});
 
 		return s;
+	}
+
+	pub fn workspaces_ref(&self) -> Ref<HashMap<String, Arc<Workspace>>> {
+		self.workspaces.borrow()
+	}
+
+	// TODO wrap result of this func?
+	pub async fn op(&self, op: AlterState) -> Result<(), mpsc::error::SendError<AlterState>> {
+		self.op_tx.send(op).await
 	}
 }

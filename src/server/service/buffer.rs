@@ -2,10 +2,10 @@ use std::collections::VecDeque;
 use std::{pin::Pin, sync::Arc};
 
 use tokio_stream::wrappers::ReceiverStream;
-use tracing::{debug, error, info, warn};
+use tracing::error;
 
 use operational_transform::OperationSeq;
-use tonic::{transport::Server, Request, Response, Status};
+use tonic::{Request, Response, Status};
 
 pub mod proto {
 	tonic::include_proto!("session");
@@ -17,14 +17,12 @@ use tokio::sync::{broadcast, mpsc};
 use tokio_stream::{Stream, StreamExt}; // TODO example used this?
 
 use proto::buffer_server::{Buffer, BufferServer};
-use proto::session_server::{Session, SessionServer};
-use proto::workspace_server::{Workspace, WorkspaceServer};
-use proto::{BufferList, Event, Operation, SessionRequest, SessionResponse, WorkspaceRequest};
+use proto::Operation;
 
 use tonic::Streaming;
 //use futures::{Stream, StreamExt};
 
-use crate::actor::{buffer::BufferView, state::{AlterState, StateManager}, workspace::Workspace as WorkspaceInstance};
+use crate::actor::{buffer::BufferView, state::StateManager};
 
 use self::proto::{BufferPayload, BufferResponse}; // TODO fuck x2!
 
@@ -34,10 +32,10 @@ pub struct BufferService {
 	state: Arc<StateManager>,
 }
 
-fn op_seq(o: &Operation) -> OperationSeq {
+fn op_seq(_o: &Operation) -> OperationSeq {
 	todo!()
 }
-fn op_net(o: &OperationSeq) -> Operation {
+fn op_net(_o: &OperationSeq) -> Operation {
 	todo!()
 }
 
@@ -113,11 +111,11 @@ impl Buffer for BufferService {
 		}
 		// TODO make these above nicer? more concise? idk
 
-		if let Some(workspace) = self.state.workspaces.borrow().get(&session_id) {
+		if let Some(workspace) = self.state.workspaces_ref().get(&session_id) {
 			let in_stream = req.into_inner();
 			let (tx_og, rx) = mpsc::channel::<Result<Operation, Status>>(128);
 
-			let b: BufferView = workspace.buffers.borrow().get(&path).unwrap().clone();
+			let b: BufferView = workspace.buffers_ref().get(&path).unwrap().clone();
 			let w = workspace.clone();
 			tokio::spawn(async move {
 				buffer_worker(b, in_stream, tx_og, w.bus.subscribe()).await;
@@ -135,11 +133,11 @@ impl Buffer for BufferService {
 		}
 	}
 
-	async fn push(&self, req:Request<BufferPayload>) -> Result<Response<BufferResponse>, Status> {
+	async fn push(&self, _req:Request<BufferPayload>) -> Result<Response<BufferResponse>, Status> {
 		todo!()
 	}
 	
-	async fn pull(&self, req:Request<BufferPayload>) -> Result<Response<BufferPayload>, Status> {
+	async fn pull(&self, _req:Request<BufferPayload>) -> Result<Response<BufferPayload>, Status> {
 		todo!()
 	}
 	

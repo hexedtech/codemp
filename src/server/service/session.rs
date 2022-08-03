@@ -4,17 +4,14 @@ pub mod proto {
 
 use std::sync::Arc;
 
-use tracing::{debug, error, info, warn};
+use tracing::debug;
 
-use tokio_stream::{Stream, StreamExt}; // TODO example used this?
+use tonic::{Request, Response, Status};
 
-use tonic::{transport::Server, Request, Response, Status};
-
-use proto::session_server::{Session, SessionServer};
+use proto::session_server::Session;
 use proto::{SessionRequest, SessionResponse};
 
 use crate::actor::{
-	buffer::BufferView,
 	state::{AlterState, StateManager},
 	workspace::Workspace as WorkspaceInstance, // TODO fuck x2!
 };
@@ -33,7 +30,7 @@ impl Session for SessionService {
 		debug!("create request: {:?}", request);
 		let r = request.into_inner();
 
-		let w = WorkspaceInstance::new(r.session_key.clone());
+		let _w = WorkspaceInstance::new(r.session_key.clone());
 
 		let reply = proto::SessionResponse {
 			session_key: r.session_key.clone(),
@@ -67,10 +64,9 @@ impl Session for SessionService {
 		let r = request.into_inner();
 		let mut removed = false;
 
-		if self.state.workspaces.borrow().get(&r.session_key).is_some() {
+		if self.state.workspaces_ref().get(&r.session_key).is_some() {
 			self.state
-				.op_tx
-				.send(AlterState::REMOVE {
+				.op(AlterState::REMOVE {
 					key: r.session_key.clone(),
 				})
 				.await

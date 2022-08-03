@@ -28,7 +28,7 @@ impl Workspace for WorkspaceService {
 
 	async fn subscribe(
 		&self,
-		req: Request<WorkspaceRequest>,
+		_req: Request<WorkspaceRequest>,
 	) -> Result<tonic::Response<EventStream>, Status> {
 		todo!()
 	}
@@ -38,9 +38,9 @@ impl Workspace for WorkspaceService {
 		req: Request<WorkspaceRequest>,
 	) -> Result<Response<BufferList>, Status> {
 		let r = req.into_inner();
-		match self.state.workspaces.borrow().get(&r.session_key) {
+		match self.state.workspaces_ref().get(&r.session_key) {
 			Some(w) => {
-				let out = Vec::new();
+				let mut out = Vec::new();
 				for (_k, v) in w.buffers_ref().iter() {
 					out.push(v.name.clone());
 				}
