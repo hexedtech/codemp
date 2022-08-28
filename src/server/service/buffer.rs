@@ -23,6 +23,7 @@ use tonic::Streaming;
 //use futures::{Stream, StreamExt};
 
 use crate::actor::{buffer::BufferView, state::StateManager};
+use crate::events::Event;
 
 use self::proto::{BufferPayload, BufferResponse}; // TODO fuck x2!
 
@@ -44,7 +45,7 @@ async fn buffer_worker(
 	bv: BufferView,
 	mut client_rx: Streaming<Operation>,
 	tx_client: mpsc::Sender<Result<Operation, Status>>,
-	mut rx_core: broadcast::Receiver<(String, OperationSeq)>,
+	mut rx_core: broadcast::Receiver<Event>,
 ) {
 	let mut queue: VecDeque<Operation> = VecDeque::new();
 	loop {
@@ -77,7 +78,7 @@ async fn buffer_worker(
 						}
 					}
 					if send_op {
-						tx_client.send(Ok(op_net(&oop.1))).await.unwrap();
+						// tx_client.send(Ok(op_net(&oop.1))).await.unwrap();
 					}
 				}
 			}
@@ -115,7 +116,7 @@ impl Buffer for BufferService {
 			let in_stream = req.into_inner();
 			let (tx_og, rx) = mpsc::channel::<Result<Operation, Status>>(128);
 
-			let b: BufferView = workspace.buffers_ref().get(&path).unwrap().clone();
+			let b: BufferView = workspace.buffers.borrow().get(&path).unwrap().clone();
 			let w = workspace.clone();
 			tokio::spawn(async move {
 				buffer_worker(b, in_stream, tx_og, w.bus.subscribe()).await;

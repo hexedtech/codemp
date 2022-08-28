@@ -7,22 +7,22 @@ use crate::actor::workspace::Workspace;
 
 #[derive(Debug, Clone)]
 pub struct UserCursor{
-	// buffer: i64,
-	// x: i32,
-	// y: i32
+	pub buffer: i64,
+	pub x: i32,
+	pub y: i32
 }
 
 #[derive(Debug, Clone)]
 pub struct User {
-	// name: String,
-	// cursor: UserCursor,
+	pub name: String,
+	pub cursor: UserCursor,
 }
 
 #[derive(Debug)]
 pub enum AlterState {
 	ADD {
 		key: String,
-		w: Workspace
+		// w: Workspace
 	},
 	REMOVE {
 		key: String
@@ -63,9 +63,9 @@ impl StateManager {
 			while stop_rx.borrow().to_owned() {
 				if let Some(event) = rx.recv().await {
 					match event {
-						AlterState::ADD { key, w } => {
-							store.insert(key, Arc::new(w)); // TODO put in hashmap
-							workspaces_tx.send(store.clone()).unwrap();
+						AlterState::ADD { key/*, w */} => {
+							// store.insert(key, Arc::new(w)); // TODO put in hashmap
+							// workspaces_tx.send(store.clone()).unwrap();
 						},
 						AlterState::REMOVE { key } => {
 							store.remove(&key);

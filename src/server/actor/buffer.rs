@@ -2,7 +2,10 @@ use operational_transform::OperationSeq;
 use tokio::sync::{broadcast, mpsc, watch};
 use tracing::error;
 
+use crate::events::Event;
+
 #[derive(Debug, Clone)]
+/// A view of a buffer, with references to access value and send operations
 pub struct BufferView {
 	pub name: String,
 	pub content: watch::Receiver<String>,
@@ -30,7 +33,7 @@ impl Drop for Buffer {
 }
 
 impl Buffer {
-	pub fn new(name: String, bus: broadcast::Sender<(String, OperationSeq)>) -> Self {
+	pub fn new(name: String, bus: broadcast::Sender<Event>) -> Self {
 		let (op_tx, mut op_rx) = mpsc::channel(32);
 		let (stop_tx, stop_rx) = watch::channel(true);
 		let (content_tx, content_rx) = watch::channel(String::new());
@@ -50,7 +53,7 @@ impl Buffer {
 				// TODO handle these errors!!
 				let op = op_rx.recv().await.unwrap();
 				content = op.apply(content.as_str()).unwrap();
-				bus.send((name.clone(), op)).unwrap(); // TODO fails when there are no receivers subscribed
+				// bus.send((name.clone(), op)).unwrap(); // TODO fails when there are no receivers subscribed
 				content_tx.send(content.clone()).unwrap();
 			}
 		});
