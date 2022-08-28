@@ -2,9 +2,8 @@ syntax = "proto3";
 package session;
 
 service Session {
-	rpc Create (SessionRequest) returns (SessionResponse);
-	rpc Join   (SessionRequest) returns (SessionResponse);
-	rpc Leave  (SessionRequest) returns (SessionResponse);
+	rpc Authenticate(SessionRequest) returns (SessionResponse);
+	rpc ListWorkspaces(SessionRequest) returns (WorkspaceList);
 }
 
 message SessionRequest {
@@ -14,4 +13,8 @@ message SessionRequest {
 message SessionResponse {
 	string sessionKey = 1;
 	bool accepted = 2;
+}
+
+message WorkspaceList {
+	repeated string name = 1; // TODO add more fields
 }
