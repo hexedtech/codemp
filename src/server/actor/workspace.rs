@@ -117,10 +117,13 @@ impl Workspace {
 				let action = rx.recv().await.unwrap();
 				match action {
 					BufferAction::ADD { buffer } => {
-						buffers.insert(buffer.view().name.clone(), buffer);
+						let view = buffer.view();
+						buffers.insert(view.name.clone(), buffer);
+						bus.send(Event::BufferNew { path: view.name }).unwrap();
 					}
 					BufferAction::REMOVE { path } => {
 						buffers.remove(&path);
+						bus.send(Event::BufferDelete { path: path }).unwrap();
 					}
 				}
 				tx.send(
@@ -177,7 +180,7 @@ impl Workspace {
 }
 
 #[derive(Debug)]
-pub enum UserAction {
+enum UserAction {
 	ADD {
 		user: User,
 	},
@@ -191,7 +194,7 @@ pub enum UserAction {
 }
 
 #[derive(Debug)]
-pub enum BufferAction {
+enum BufferAction {
 	ADD {
 		buffer: Buffer,
 	},
