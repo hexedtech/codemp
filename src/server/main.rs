@@ -1,4 +1,11 @@
+//! # codemp Server
+//!
+//! The codemp server itself, in charge of handling the global state, merging operations from
+//!  all clients and synching everyone's cursor.
+//!
+
 pub mod actor;
+pub mod events;
 pub mod service;
 
 use std::sync::Arc;
@@ -27,7 +34,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 		.add_service(BufferService::server(state.clone()))
 		.serve(addr)
 		.await?;
-
 
 	Ok(())
 }
