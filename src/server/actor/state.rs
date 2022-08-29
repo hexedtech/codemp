@@ -1,6 +1,6 @@
 
 use std::{collections::HashMap, sync::Arc};
-use tokio::sync::{mpsc, watch::{self, Ref}};
+use tokio::sync::{mpsc, watch};
 use tracing::error;
 
 use crate::actor::workspace::Workspace;
@@ -19,26 +19,46 @@ pub struct User {
 }
 
 #[derive(Debug)]
-pub enum AlterState {
+enum WorkspaceAction {
 	ADD {
 		key: String,
-		// w: Workspace
+		w: Box<Workspace>,
 	},
 	REMOVE {
 		key: String
 	},
 }
 
+#[derive(Debug, Clone)]
+pub struct WorkspacesView {
+	watch: watch::Receiver<HashMap<String, Arc<Workspace>>>,
+	op: mpsc::Sender<WorkspaceAction>,
+}
+
+impl WorkspacesView {
+	pub fn borrow(&self) -> watch::Ref<HashMap<String, Arc<Workspace>>> {
+		self.watch.borrow()
+	}
+
+	pub async fn add(&mut self, w: Workspace) {
+		self.op.send(WorkspaceAction::ADD { key: w.name.clone(), w: Box::new(w) }).await.unwrap();
+	}
+
+	pub async fn remove(&mut self, key: String) {
+		self.op.send(WorkspaceAction::REMOVE { key }).await.unwrap();
+	}
+}
+
 #[derive(Debug)]
 pub struct StateManager {
-	op_tx: mpsc::Sender<AlterState>, // TODO make method for this
-	workspaces: watch::Receiver<HashMap<String, Arc<Workspace>>>,
-	run: watch::Sender<bool>,
+	pub workspaces: WorkspacesView,
+	run_tx: watch::Sender<bool>,
+	run_rx: watch::Receiver<bool>,
 }
 
 impl Drop for StateManager {
 	fn drop(&mut self) {
-		self.run.send(false).unwrap_or_else(|e| {
+		self.run_tx.send(false).unwrap_or_else(|e| {
 			error!("Could not stop StateManager worker: {:?}", e);
 		})
 	}
@@ -46,47 +66,52 @@ impl Drop for StateManager {
 
 impl StateManager {
 	pub fn new() -> Self {
-		let (tx, mut rx) = mpsc::channel(32); // TODO quantify backpressure
+		let (tx, rx) = mpsc::channel(32); // TODO quantify backpressure
 		let (workspaces_tx, workspaces_rx) = watch::channel(HashMap::new());
-		let (stop_tx, stop_rx) = watch::channel(true);
+		let (run_tx, run_rx) = watch::channel(true);
 
 		let s = StateManager { 
-			workspaces: workspaces_rx,
-			op_tx: tx,
-			run: stop_tx,
+			workspaces: WorkspacesView { watch: workspaces_rx, op: tx },
+			run_tx, run_rx,
 		};
 
+		s.workspaces_worker(rx, workspaces_tx);
+
+		return s;
+	}
+
+	fn workspaces_worker(&self, mut rx: mpsc::Receiver<WorkspaceAction>, tx: watch::Sender<HashMap<String, Arc<Workspace>>>) {
+		let run = self.run_rx.clone();
 		tokio::spawn(async move {
 			let mut store = HashMap::new();
-			let mut _users = HashMap::<String, User>::new();
 
-			while stop_rx.borrow().to_owned() {
+			while run.borrow().to_owned() {
 				if let Some(event) = rx.recv().await {
 					match event {
-						AlterState::ADD { key/*, w */} => {
-							// store.insert(key, Arc::new(w)); // TODO put in hashmap
-							// workspaces_tx.send(store.clone()).unwrap();
+						WorkspaceAction::ADD { key, w } => {
+							store.insert(key, Arc::new(*w)); // TODO put in hashmap
 						},
-						AlterState::REMOVE { key } => {
+						WorkspaceAction::REMOVE { key } => {
 							store.remove(&key);
 						},
 					}
-					workspaces_tx.send(store.clone()).unwrap();
+					tx.send(store.clone()).unwrap();
 				} else {
 					break
 				}
 			}
 		});
-
-		return s;
 	}
 
-	pub fn workspaces_ref(&self) -> Ref<HashMap<String, Arc<Workspace>>> {
-		self.workspaces.borrow()
+	pub fn view(&self) -> WorkspacesView {
+		return self.workspaces.clone();
 	}
 
-	// TODO wrap result of this func?
-	pub async fn op(&self, op: AlterState) -> Result<(), mpsc::error::SendError<AlterState>> {
-		self.op_tx.send(op).await
+	/// get a workspace Arc directly, without passing by the WorkspacesView
+	pub fn get(&self, key: &String) -> Option<Arc<Workspace>> {
+		if let Some(w) = self.workspaces.borrow().get(key) {
+			return Some(w.clone());
+		}
+		return None;
 	}
 }

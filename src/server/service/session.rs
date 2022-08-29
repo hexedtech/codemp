@@ -12,7 +12,7 @@ use proto::session_server::Session;
 use proto::{SessionRequest, SessionResponse};
 
 use crate::actor::{
-	state::{AlterState, StateManager},
+	state::StateManager,
 	workspace::Workspace as WorkspaceInstance, // TODO fuck x2!
 };
 

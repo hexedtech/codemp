@@ -112,7 +112,7 @@ impl Buffer for BufferService {
 		}
 		// TODO make these above nicer? more concise? idk
 
-		if let Some(workspace) = self.state.workspaces_ref().get(&session_id) {
+		if let Some(workspace) = self.state.workspaces.borrow().get(&session_id) {
 			let in_stream = req.into_inner();
 			let (tx_og, rx) = mpsc::channel::<Result<Operation, Status>>(128);
 

@@ -15,7 +15,7 @@ use tokio_stream::Stream; // TODO example used this?
 use proto::workspace_server::{Workspace, WorkspaceServer};
 use proto::{BufferList, Event, WorkspaceRequest, WorkspaceResponse, UsersList, BufferRequest};
 
-use crate::actor::{buffer::Buffer, state::StateManager, workspace::{BufferAction, UserAction, Workspace as WorkspaceInstance}}; // TODO fuck x2!
+use crate::actor::{buffer::Buffer, state::StateManager, workspace::{Workspace as WorkspaceInstance}}; // TODO fuck x2!
 
 type EventStream = Pin<Box<dyn Stream<Item = Result<Event, Status>> + Send>>;
 
@@ -52,7 +52,7 @@ impl Workspace for WorkspaceService {
 		req: Request<WorkspaceRequest>,
 	) -> Result<tonic::Response<EventStream>, Status> {
 		let r = req.into_inner();
-		match self.state.workspaces_ref().get(&r.session_key) {
+		match self.state.get(&r.session_key) {
 			Some(w) => {
 				let bus_clone = w.bus.clone();
 				let (_stop_tx, stop_rx) = watch::channel(true);
@@ -79,7 +79,7 @@ impl Workspace for WorkspaceService {
 		req: Request<WorkspaceRequest>,
 	) -> Result<Response<BufferList>, Status> {
 		let r = req.into_inner();
-		match self.state.workspaces_ref().get(&r.session_key) {
+		match self.state.get(&r.session_key) {
 			Some(w) => {
 				let mut out = Vec::new();
 				for (_k, v) in w.buffers.borrow().iter() {
@@ -99,10 +99,10 @@ impl Workspace for WorkspaceService {
 		req: Request<BufferRequest>,
 	) -> Result<Response<WorkspaceResponse>, Status> {
 		let r = req.into_inner();
-		if let Some(w) = self.state.workspaces_ref().get(&r.session_key) {
+		if let Some(w) = self.state.get(&r.session_key) {
 			let mut view = w.view();
 			let buf = Buffer::new(r.path, w.bus.clone());
-			view.buffers.add(buf);
+			view.buffers.add(buf).await;
 
 			Ok(Response::new(WorkspaceResponse { accepted: true }))
 		} else {
@@ -118,7 +118,7 @@ impl Workspace for WorkspaceService {
 		req: Request<BufferRequest>,
 	) -> Result<Response<WorkspaceResponse>, Status> {
 		let r = req.into_inner();
-		match self.state.workspaces_ref().get(&r.session_key) {
+		match self.state.get(&r.session_key) {
 			Some(w) => {
 				let mut out = Vec::new();
 				for (_k, v) in w.buffers.borrow().iter() {
