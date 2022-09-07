@@ -43,11 +43,11 @@ impl Handler for NeovimHandler {
 					return Err(Value::from("[!] no session key"));
 				}
 				let buf = neovim.get_current_buf().await.unwrap();
-				let content = buf.get_lines(0, buf.line_count().await.unwrap(), false).await.unwrap().join("\n");
-				let request = tonic::Request::new(WorkspaceRequest {
+				let _content = buf.get_lines(0, buf.line_count().await.unwrap(), false).await.unwrap().join("\n");
+				let _request = tonic::Request::new(WorkspaceRequest {
 					session_key: args[0].to_string(),
 				});
-				let mut c = self.client.clone();
+				let mut _c = self.client.clone();
 				Err(Value::from("[!] Unimplemented"))
 				// let resp = c.create(request).await.unwrap().into_inner();
 				// if resp.accepted {
@@ -60,11 +60,11 @@ impl Handler for NeovimHandler {
 				if args.len() < 1 {
 					return Err(Value::from("[!] no session key"));
 				}
-				let buf = neovim.get_current_buf().await.unwrap();
-				let request = tonic::Request::new(WorkspaceRequest {
+				let _buf = neovim.get_current_buf().await.unwrap();
+				let _request = tonic::Request::new(WorkspaceRequest {
 					session_key: args[0].to_string(),
 				});
-				let mut c = self.client.clone();
+				let mut _c = self.client.clone();
 				Err(Value::from("[!] Unimplemented"))
 				// let resp = c.sync(request).await.unwrap().into_inner();
 				// if let Some(content) = resp.content {
@@ -83,10 +83,10 @@ impl Handler for NeovimHandler {
 				if args.len() < 1 {
 					return Err(Value::from("[!] no session key"));
 				}
-				let request = tonic::Request::new(WorkspaceRequest {
+				let _request = tonic::Request::new(WorkspaceRequest {
 					session_key: args[0].to_string(),
 				});
-				let mut c = self.client.clone();
+				let mut _c = self.client.clone();
 				Err(Value::from("[!] Unimplemented"))
 				// let resp = c.leave(request).await.unwrap().into_inner();
 				// if resp.accepted {
@@ -95,6 +95,10 @@ impl Handler for NeovimHandler {
 				// 	Err(Value::from("[!] could not close session"))
 				// }
 			},
+			"go" => {
+				self.live_edit_worker().await;
+				Ok(Value::from(""))
+			}
 			_ => {
 				eprintln!("[!] unexpected call");
 				Ok(Value::from(""))
