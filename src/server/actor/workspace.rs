@@ -84,8 +84,8 @@ impl Drop for Workspace {
 
 impl Workspace {
 	pub fn new(name: String) -> Self {
-		let (op_buf_tx, mut op_buf_rx) = mpsc::channel::<BufferAction>(32);
-		let (op_usr_tx, mut op_usr_rx) = mpsc::channel::<UserAction>(32);
+		let (op_buf_tx, op_buf_rx) = mpsc::channel::<BufferAction>(32);
+		let (op_usr_tx, op_usr_rx) = mpsc::channel::<UserAction>(32);
 		let (run_tx, run_rx) = watch::channel::<bool>(true);
 		let (buffer_tx, buffer_rx) = watch::channel::<HashMap<String, BufferView>>(HashMap::new());
 		let (users_tx, users_rx) = watch::channel(HashMap::new());
