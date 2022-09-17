@@ -30,8 +30,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	info!("Starting server");
 
 	Server::builder()
-		.add_service(WorkspaceService::server(state.clone()))
-		.add_service(BufferService::server(state.clone()))
+		.add_service(WorkspaceService::new(state.clone()).server())
+		.add_service(BufferService::new(state.clone()).server())
 		.serve(addr)
 		.await?;
 

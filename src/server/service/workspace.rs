@@ -1,6 +1,8 @@
 use std::{pin::Pin, sync::Arc};
 
-use tracing::{debug, error, info, warn};
+use tonic::codegen::InterceptedService;
+use tonic::service::Interceptor;
+use tracing::debug;
 
 use tokio_stream::wrappers::ReceiverStream;
 use tonic::{Request, Response, Status};
@@ -15,7 +17,47 @@ use tokio_stream::Stream; // TODO example used this?
 use proto::workspace_server::{Workspace, WorkspaceServer};
 use proto::{BufferList, Event, WorkspaceRequest, WorkspaceResponse, UsersList, BufferRequest};
 
-use crate::actor::{buffer::Buffer, state::StateManager, workspace::{Workspace as WorkspaceInstance}}; // TODO fuck x2!
+use crate::actor::{buffer::Buffer, state::StateManager, workspace::Workspace as WorkspaceInstance}; // TODO fuck x2!
+
+struct WorkspaceExtension {
+	id: String
+}
+
+#[derive(Debug, Clone)]
+pub struct WorkspaceInterceptor {
+	state: Arc<StateManager>,
+}
+
+impl Interceptor for WorkspaceInterceptor {
+	fn call(&mut self, mut req: tonic::Request<()>) -> Result<tonic::Request<()>, Status> {
+		// Set an extension that can be retrieved by `say_hello`
+		let id;
+
+		// TODO this is kinda spaghetti but I can't borrow immutably and mutably req inside this match
+		// tree...
+		match req.metadata().get("workspace") {
+			Some(value) => {
+				match value.to_str() {
+					Ok(w_id) => {
+						id = w_id.to_string();
+					},
+					Err(_) => return Err(Status::invalid_argument("Workspace key is not valid")),
+				}
+			},
+			None => return Err(Status::unauthenticated("No workspace key included in request"))
+		}
+
+		if !self.state.workspaces.borrow().contains_key(&id) {
+			return Err(Status::not_found(format!("Workspace '{}' could not be found", id)));
+		}
+
+		req.extensions_mut().insert(WorkspaceExtension { id });
+		Ok(req)
+	}
+}
+
+
+
 
 type EventStream = Pin<Box<dyn Stream<Item = Result<Event, Status>> + Send>>;
 
@@ -33,9 +75,11 @@ impl Workspace for WorkspaceService {
 		request: Request<WorkspaceRequest>,
 	) -> Result<Response<WorkspaceResponse>, Status> {
 		debug!("create request: {:?}", request);
+		// We should always have an extension because of the interceptor but maybe don't unwrap?
+		let ext = request.extensions().get::<WorkspaceExtension>().unwrap();
 		let r = request.into_inner();
 
-		let _w = WorkspaceInstance::new(r.session_key.clone());
+		let _w = WorkspaceInstance::new(ext.id);
 
 		let reply = WorkspaceResponse {
 			// session_key: r.session_key.clone(),
@@ -137,13 +181,31 @@ impl Workspace for WorkspaceService {
 		&self,
 		req: Request<WorkspaceRequest>,
 	) -> Result<Response<UsersList>, Status> {
-		todo!()
+		let r = req.into_inner();
+		match self.state.get(&r.session_key) {
+			Some(w) => {
+				let mut out = Vec::new();
+				for (_k, v) in w.users.borrow().iter() {
+					out.push(v.name.clone());
+				}
+				Ok(Response::new(UsersList { name: out }))
+			},
+			None => Err(Status::not_found(format!(
+				"No active workspace with session_key '{}'",
+				r.session_key
+			))),
+		}
 	}
 
 }
 
 impl WorkspaceService {
-	pub fn server(state: Arc<StateManager>) -> WorkspaceServer<WorkspaceService> {
-		WorkspaceServer::new(WorkspaceService { state })
+	pub fn new(state: Arc<StateManager>) -> WorkspaceService {
+		WorkspaceService { state }
+	}
+
+	pub fn server(self) -> InterceptedService<WorkspaceServer<WorkspaceService>, WorkspaceInterceptor> {
+		let state = self.state.clone();
+		WorkspaceServer::with_interceptor(self, WorkspaceInterceptor { state })
 	}
 }

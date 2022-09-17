@@ -145,8 +145,11 @@ impl Buffer for BufferService {
 }
 
 impl BufferService {
-	// TODO is this smart? Should I let main() instantiate servers?
-	pub fn server(state: Arc<StateManager>) -> BufferServer<BufferService> {
-		BufferServer::new(BufferService { state })
+	pub fn new(state: Arc<StateManager>) -> BufferService {
+		BufferService { state }
+	}
+
+	pub fn server(self) -> BufferServer<BufferService> {
+		BufferServer::new(self)
 	}
 }
