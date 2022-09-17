@@ -8,11 +8,11 @@ default = ["nvim"]
 nvim = []
 
 [[bin]] # Bin to run the CodeMP gRPC server
-name = "codemp-server"
+name = "server"
 path = "src/server/main.rs"
 
 [[bin]] # Bin to run the CodeMP gRPC client
-name = "codemp-client"
+name = "client-neovim"
 path = "src/client/main.rs"
 
 [dependencies]
