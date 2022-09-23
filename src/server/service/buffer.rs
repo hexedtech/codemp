@@ -8,8 +8,6 @@ use operational_transform::OperationSeq;
 use tonic::{Request, Response, Status};
 
 pub mod proto {
-	tonic::include_proto!("session");
-	tonic::include_proto!("workspace");
 	tonic::include_proto!("buffer");
 }
 

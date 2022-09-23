@@ -26,6 +26,7 @@ tokio-stream = "0.1"
 rmpv = "1"
 operational-transform = "0.6"
 nvim-rs = { version = "0.4", features = ["use_tokio"] }  # TODO put this behind a conditional feature
+uuid = { version = "1", features = ["v4", "fast-rng", "macro-diagnostics"] }
 
 [build-dependencies]
 tonic-build = "0.7"

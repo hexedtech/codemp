@@ -16,7 +16,7 @@ use tonic::transport::Server;
 
 use crate::{
 	actor::state::StateManager,
-	service::{buffer::BufferService, workspace::WorkspaceService},
+	service::{buffer::BufferService, workspace::WorkspaceService, session::SessionService},
 };
 
 #[tokio::main]
@@ -30,6 +30,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	info!("Starting server");
 
 	Server::builder()
+		.add_service(SessionService::new(state.clone()).server())
 		.add_service(WorkspaceService::new(state.clone()).server())
 		.add_service(BufferService::new(state.clone()).server())
 		.serve(addr)

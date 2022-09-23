@@ -1,12 +1,23 @@
-use crate::actor::state::{User, UserCursor};
+use std::fmt::Display;
+use crate::actor::state::User;
 
 #[derive(Debug, Clone)]
 pub enum Event {
 	UserJoin { user: User },
 	UserLeave { name: String },
-	Cursor { user: String, cursor: UserCursor },
 	BufferNew { path: String },
 	BufferDelete { path: String },
+}
+
+impl Display for Event {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			Self::UserJoin     { user }  => write!(f, "UserJoin(user:{})",     user),
+			Self::UserLeave    { name }  => write!(f, "UserLeave(user:{})",    name),
+			Self::BufferNew    { path }  => write!(f, "BufferNew(path:{})",    path),
+			Self::BufferDelete { path }  => write!(f, "BufferDelete(path:{})", path),
+		}
+	}
 }
 
 // pub type Event = Box<dyn EventInterface>;

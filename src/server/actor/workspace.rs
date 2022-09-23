@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use tokio::sync::{broadcast, mpsc, watch::{self, Ref}};
 use tracing::warn;
 
-use crate::events::Event;
+use crate::{events::Event, service::workspace::proto::CursorUpdate};
 
 use super::{buffer::{BufferView, Buffer}, state::{User, UserCursor}};
 
@@ -66,8 +66,10 @@ impl WorkspaceView {
 // Must be clonable, containing references to the actual state maybe? Or maybe give everyone an Arc, idk
 #[derive(Debug)]
 pub struct Workspace {
+	pub id: uuid::Uuid,
 	pub name: String,
 	pub bus: broadcast::Sender<Event>,
+	pub cursors: broadcast::Sender<CursorUpdate>,
 
 	pub buffers: BuffersTreeView,
 	pub users: UsersView,
@@ -90,10 +92,13 @@ impl Workspace {
 		let (buffer_tx, buffer_rx) = watch::channel::<HashMap<String, BufferView>>(HashMap::new());
 		let (users_tx, users_rx) = watch::channel(HashMap::new());
 		let (broadcast_tx, _broadcast_rx) = broadcast::channel::<Event>(32);
+		let (cursors_tx, _cursors_rx) = broadcast::channel::<CursorUpdate>(32);
 
 		let w = Workspace {
+			id: uuid::Uuid::new_v4(),
 			name,
 			bus: broadcast_tx,
+			cursors: cursors_tx,
 			buffers: BuffersTreeView{ op: op_buf_tx, watch: buffer_rx },
 			users: UsersView{ op: op_usr_tx, watch: users_rx },
 			run_tx,
@@ -137,28 +142,42 @@ impl Workspace {
 
 	fn users_worker(&self, mut rx: mpsc::Receiver<UserAction>, tx: watch::Sender<HashMap<String, User>>) {
 		let bus = self.bus.clone();
+		let cursors_tx = self.cursors.clone();
 		let run = self.run_rx.clone();
 		tokio::spawn(async move {
+			let mut cursors_rx = cursors_tx.subscribe();
 			let mut users : HashMap<String, User> = HashMap::new();
 
 			while run.borrow().to_owned() {
-				match rx.recv().await.unwrap() {
-					UserAction::ADD { user } => {
-						users.insert(user.name.clone(), user);
+				tokio::select!{
+					action = rx.recv() => {
+						match action.unwrap() {
+							UserAction::ADD { user } => {
+								users.insert(user.name.clone(), user.clone());
+								bus.send(Event::UserJoin { user }).unwrap();
+							},
+							UserAction::REMOVE { name } => {
+								if let None = users.remove(&name) {
+									continue; // don't update channel since this was a no-op
+								} else {
+									bus.send(Event::UserLeave { name }).unwrap();
+								}
+							},
+							UserAction::CURSOR { name, cursor } => {
+								if let Some(user) = users.get_mut(&name) {
+									user.cursor = cursor.clone();
+								} else {
+									continue; // don't update channel since this was a no-op
+								}
+							},
+						};
 					},
-					UserAction::REMOVE { name } => {
-						if let None = users.remove(&name) {
-							continue; // don't update channel since this was a no-op
+					cursor = cursors_rx.recv() => {
+						let cursor = cursor.unwrap();
+						if let Some(user) = users.get_mut(&cursor.username) {
+							user.cursor = UserCursor { buffer: cursor.buffer, x:cursor.col, y:cursor.row };
 						}
-					},
-					UserAction::CURSOR { name, cursor } => {
-						if let Some(user) = users.get_mut(&name) {
-							user.cursor = cursor.clone();
-							bus.send(Event::Cursor{user: name, cursor}).unwrap();
-						} else {
-							continue; // don't update channel since this was a no-op
-						}
-					},
+					}
 				}
 
 				tx.send(

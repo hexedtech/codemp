@@ -2,17 +2,28 @@ syntax = "proto3";
 package workspace;
 
 service Workspace {
-	rpc Create        (WorkspaceRequest) returns (WorkspaceResponse);
-	rpc Subscribe     (WorkspaceRequest) returns (stream Event);
-	rpc Buffers       (WorkspaceRequest) returns (BufferList);
-	rpc ListUsers     (WorkspaceRequest) returns (UsersList);
-	rpc NewBuffer     (BufferRequest) returns (WorkspaceResponse);
-	rpc RemoveBuffer  (BufferRequest) returns (WorkspaceResponse);
+	rpc Join          (JoinRequest)         returns (stream WorkspaceEvent);
+	rpc Subscribe     (stream CursorUpdate) returns (stream CursorUpdate);
+	rpc ListUsers     (WorkspaceRequest)    returns (UsersList);
+	rpc Buffers       (WorkspaceRequest)    returns (BufferList);
+	rpc NewBuffer     (BufferRequest)       returns (WorkspaceResponse);
+	rpc RemoveBuffer  (BufferRequest)       returns (WorkspaceResponse);
 }
 
-message Event {
+message JoinRequest {
+	string name = 1;
+}
+
+message WorkspaceEvent {
 	int32 id = 1;
 	optional string body = 2;
+}
+
+message CursorUpdate {
+	string username = 1;
+	int32 buffer = 2;
+	int32 col = 3;
+	int32 row = 4;
 }
 
 message WorkspaceRequest {

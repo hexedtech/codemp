@@ -2,8 +2,9 @@ syntax = "proto3";
 package session;
 
 service Session {
-	rpc Authenticate(SessionRequest) returns (SessionResponse);
-	rpc ListWorkspaces(SessionRequest) returns (WorkspaceList);
+	// rpc Authenticate(SessionRequest) returns (SessionResponse);
+	// rpc ListWorkspaces(SessionRequest) returns (WorkspaceList);
+	rpc CreateWorkspace(WorkspaceBuilderRequest) returns (SessionResponse);
 }
 
 message SessionRequest {
@@ -13,6 +14,10 @@ message SessionRequest {
 message SessionResponse {
 	string sessionKey = 1;
 	bool accepted = 2;
+}
+
+message WorkspaceBuilderRequest {
+	string name = 1;
 }
 
 message WorkspaceList {

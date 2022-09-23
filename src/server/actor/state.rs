@@ -1,5 +1,5 @@
 
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, sync::Arc, fmt::Display};
 use tokio::sync::{mpsc, watch};
 use tracing::error;
 
@@ -7,16 +7,30 @@ use crate::actor::workspace::Workspace;
 
 #[derive(Debug, Clone)]
 pub struct UserCursor{
-	pub buffer: i64,
+	pub buffer: i32,
 	pub x: i32,
 	pub y: i32
 }
+
+impl Display for UserCursor {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(f, "Cursor(buffer:{}, x:{}, y:{})", self.buffer, self.x, self.y)
+	}
+}
+
 
 #[derive(Debug, Clone)]
 pub struct User {
 	pub name: String,
 	pub cursor: UserCursor,
 }
+
+impl Display for User {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(f, "User(name:{}, cursor:{})", self.name, self.cursor)
+	}
+}
+
 
 #[derive(Debug)]
 enum WorkspaceAction {
@@ -41,7 +55,7 @@ impl WorkspacesView {
 	}
 
 	pub async fn add(&mut self, w: Workspace) {
-		self.op.send(WorkspaceAction::ADD { key: w.name.clone(), w: Box::new(w) }).await.unwrap();
+		self.op.send(WorkspaceAction::ADD { key: w.id.to_string(), w: Box::new(w) }).await.unwrap();
 	}
 
 	pub async fn remove(&mut self, key: String) {
@@ -52,8 +66,8 @@ impl WorkspacesView {
 #[derive(Debug)]
 pub struct StateManager {
 	pub workspaces: WorkspacesView,
+	pub run: watch::Receiver<bool>,
 	run_tx: watch::Sender<bool>,
-	run_rx: watch::Receiver<bool>,
 }
 
 impl Drop for StateManager {
@@ -72,7 +86,7 @@ impl StateManager {
 
 		let s = StateManager { 
 			workspaces: WorkspacesView { watch: workspaces_rx, op: tx },
-			run_tx, run_rx,
+			run_tx, run: run_rx,
 		};
 
 		s.workspaces_worker(rx, workspaces_tx);
@@ -81,7 +95,7 @@ impl StateManager {
 	}
 
 	fn workspaces_worker(&self, mut rx: mpsc::Receiver<WorkspaceAction>, tx: watch::Sender<HashMap<String, Arc<Workspace>>>) {
-		let run = self.run_rx.clone();
+		let run = self.run.clone();
 		tokio::spawn(async move {
 			let mut store = HashMap::new();
 
