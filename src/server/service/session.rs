@@ -16,6 +16,8 @@ use self::proto::session_server::SessionServer;
 
 use super::workspace::WorkspaceExtension;
 
+use uuid::Uuid;
+
 #[derive(Debug)]
 pub struct SessionService {
 	state: Arc<StateManager>,
@@ -27,9 +29,8 @@ impl Session for SessionService {
 		&self,
 		req: Request<WorkspaceBuilderRequest>,
 	) -> Result<Response<SessionResponse>, Status> {
-		let name = req.extensions().get::<WorkspaceExtension>().unwrap().id.clone();
-
-		let w = Workspace::new(name);
+		// let name = req.extensions().get::<WorkspaceExtension>().unwrap().id.clone();
+		let w = Workspace::new("im lazy".into());
 		let res = SessionResponse { accepted:true, session_key: w.id.to_string() };
 
 		self.state.view().add(w).await;

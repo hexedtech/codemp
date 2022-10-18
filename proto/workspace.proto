@@ -19,11 +19,13 @@ message WorkspaceEvent {
 	optional string body = 2;
 }
 
+// nvim-rs passes everything as i64, so having them as i64 in the packet itself is convenient
+// TODO can we make them i32 and save some space?
 message CursorUpdate {
 	string username = 1;
-	int32 buffer = 2;
-	int32 col = 3;
-	int32 row = 4;
+	int64 buffer = 2;
+	int64 col = 3;
+	int64 row = 4;
 }
 
 message WorkspaceRequest {

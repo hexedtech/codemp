@@ -1,14 +1,16 @@
-mod nvim;
 
-pub mod proto { tonic::include_proto!("workspace"); }
-use proto::workspace_client::WorkspaceClient;
+mod nvim;
+pub mod dispatcher;
+
+use dispatcher::Dispatcher;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<(dyn std::error::Error + 'static)>> {
-	let client = WorkspaceClient::connect("http://[::1]:50051").await?;
+
+	let dispatcher = Dispatcher::connect("http://[::1]:50051".into()).await.unwrap();
 
 	#[cfg(feature = "nvim")]
-	crate::nvim::run_nvim_client(client).await?;
+	crate::nvim::run_nvim_client(dispatcher).await?;
 
 	Ok(())
 }

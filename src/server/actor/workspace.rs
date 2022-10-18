@@ -1,11 +1,13 @@
 use std::collections::HashMap;
 
 use tokio::sync::{broadcast, mpsc, watch::{self, Ref}};
-use tracing::warn;
+use tracing::{warn, info};
 
 use library::{events::Event, user::{User, UserCursor}};
 
-use super::{buffer::{BufferView, Buffer}, state::{User, UserCursor}};
+use crate::service::workspace::proto::CursorUpdate;
+
+use super::{buffer::{BufferView, Buffer}};
 
 #[derive(Debug, Clone)]
 pub struct UsersView {
@@ -107,6 +109,8 @@ impl Workspace {
 
 		w.users_worker(op_usr_rx, users_tx);    // spawn worker to handle users
 		w.buffers_worker(op_buf_rx, buffer_tx); // spawn worker to handle buffers
+																						//
+		info!("new workspace created: {}[{}]", w.name, w.id);
 
 		return w;
 	}

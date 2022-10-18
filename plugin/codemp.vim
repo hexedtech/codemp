@@ -10,7 +10,8 @@ if ! exists('s:jobid')
 	let s:jobid = 0
 endif
 
-let s:bin = "/home/alemi/projects/codemp/target/debug/codemp-client"
+" TODO I know I know...
+let s:bin = "/home/alemi/projects/codemp/target/debug/client-neovim"
 
 function codemp#init()
 	let result = s:StartJob()
@@ -61,9 +62,7 @@ function s:ConfigureJob(jobid)
 
 		autocmd VimLeavePre * :call s:StopJob()
 
-		autocmd InsertEnter * :call s:NotifyInsertEnter()
-		autocmd InsertLeave * :call s:NotifyInsertLeave()
-
+		autocmd CursorMoved * :call codemp#cursor()
 	augroup END
 endfunction
 
@@ -73,31 +72,26 @@ function s:NotifyInsertEnter()
 endfunction
 
 function s:NotifyInsertLeave()
-	call rpcnotify(s:jobid, 'insert', 0)
-endfunction
-
-function codemp#buffer()
-	call rpcrequest(s:jobid, "buffer")
-endfunction
-
-function codemp#ping()
-	call rpcrequest(s:jobid, "ping")
-endfunction
-
-function codemp#test()
-	call rpcrequest(s:jobid, "rpc")
+	call rpcnotify(s:jobid, 'insert', -1)
 endfunction
 
 function codemp#create(k)
-	call rpcrequest(s:jobid, "create", a:k)
+	let l:sid = rpcrequest(s:jobid, "create", a:k)
+	echo l:sid
 endfunction
 
-function codemp#sync(k)
-	call rpcrequest(s:jobid, "sync", a:k)
+function codemp#join(k)
+	let l:ret = rpcrequest(s:jobid, "join", a:k)
+	echo l:ret
 endfunction
 
-function codemp#leave(k)
-	call rpcrequest(s:jobid, "leave", a:k)
+function codemp#startcursor(k)
+	call rpcrequest(s:jobid, "cursor-start", a:k)
+endfunction
+
+function codemp#cursor()
+	let l:position = getpos('.')
+	call rpcnotify(s:jobid, "cursor", 0, l:position[1], l:position[2])
 endfunction
 
 function s:OnStderr(id, data, event) dict

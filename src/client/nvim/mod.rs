@@ -1,27 +1,26 @@
+use std::sync::Arc;
+
 use rmpv::Value;
 
 use tokio::io::Stdout;
 
 use nvim_rs::{compat::tokio::Compat, Handler, Neovim};
 use nvim_rs::create::tokio::new_parent;
-use tonic::transport::Channel;
+use tokio::sync::{mpsc, Mutex};
 
-use crate::proto::{WorkspaceRequest, workspace_client::WorkspaceClient};
+use crate::dispatcher::{Dispatcher, proto::CursorUpdate};
 
 #[derive(Clone)]
 pub struct NeovimHandler {
-	go: bool,
-	client: WorkspaceClient<Channel>,
+	dispatcher: Dispatcher,
+	sink: Arc<Mutex<Option<mpsc::Sender<CursorUpdate>>>>,
 }
 
 impl NeovimHandler {
-	pub fn new(client: WorkspaceClient<Channel>) -> Self {
-		NeovimHandler { go: true, client }
-	}
-
-	async fn live_edit_worker(&self) {
-		while self.go {
-
+	pub fn new(dispatcher: Dispatcher) -> Self {
+		NeovimHandler {
+			dispatcher,
+			sink: Arc::new(Mutex::new(None)),
 		}
 	}
 }
@@ -42,63 +41,50 @@ impl Handler for NeovimHandler {
 				if args.len() < 1 {
 					return Err(Value::from("[!] no session key"));
 				}
-				let buf = neovim.get_current_buf().await.unwrap();
-				let _content = buf.get_lines(0, buf.line_count().await.unwrap(), false).await.unwrap().join("\n");
-				let _request = tonic::Request::new(WorkspaceRequest {
-					session_key: args[0].to_string(),
-				});
-				let mut _c = self.client.clone();
-				Err(Value::from("[!] Unimplemented"))
-				// let resp = c.create(request).await.unwrap().into_inner();
-				// if resp.accepted {
-				// 	Ok(Value::from(resp.session_key))
-				// } else {
-				// 	Err(Value::from("[!] rejected"))
-				// }
+				let res = self.dispatcher.create_workspace(args[0].to_string())
+					.await
+					.map_err(|e| Value::from(e.to_string()))?
+					.into_inner();
+
+				Ok(res.session_key.into())
 			},
-			"sync" => {
+			"join" => {
 				if args.len() < 1 {
 					return Err(Value::from("[!] no session key"));
 				}
-				let _buf = neovim.get_current_buf().await.unwrap();
-				let _request = tonic::Request::new(WorkspaceRequest {
-					session_key: args[0].to_string(),
-				});
-				let mut _c = self.client.clone();
-				Err(Value::from("[!] Unimplemented"))
-				// let resp = c.sync(request).await.unwrap().into_inner();
-				// if let Some(content) = resp.content {
-				// 	buf.set_lines(
-				// 		0,
-				// 		buf.line_count().await.unwrap(),
-				// 		false,
-				// 		content.split("\n").map(|s| s.to_string()).collect()
-				// 	).await.unwrap();
-				// 	Ok(Value::from(""))
-				// } else {
-				// 	Err(Value::from("[!] no content"))
-				// }
+
+				self.dispatcher.join_workspace(
+					args[0].as_str().unwrap().to_string(), // TODO throw err if it's not a string?
+				).await.map_err(|e| Value::from(e.to_string()))?;
+
+				Ok("OK".into())
 			},
-			"leave" => {
+			"cursor-start" => {
 				if args.len() < 1 {
 					return Err(Value::from("[!] no session key"));
 				}
-				let _request = tonic::Request::new(WorkspaceRequest {
-					session_key: args[0].to_string(),
+				let (tx, stream) = mpsc::channel(50);
+				let mut rx = self.dispatcher.start_cursor_worker(
+					args[0].as_str().unwrap().to_string(), stream
+				).await.map_err(|e| Value::from(e.to_string()))?;
+				let sink = self.sink.clone();
+				sink.lock().await.replace(tx);
+				let _worker = tokio::spawn(async move {
+					let mut col : i64;
+					let mut row : i64 = 0;
+					let ns = neovim.create_namespace("Cursor").await.unwrap();
+					while let Some(update) = rx.recv().await {
+						neovim.exec_lua(format!("print('{:?}')", update).as_str(), vec![]).await.unwrap();
+						let buf = neovim.get_current_buf().await.unwrap();
+						buf.clear_namespace(ns, 0, -1).await.unwrap();
+						row = update.row as i64;
+						col = update.col as i64;
+						buf.add_highlight(ns, "ErrorMsg", row-1, col-1, col).await.unwrap();
+					}
+					sink.lock().await.take();
 				});
-				let mut _c = self.client.clone();
-				Err(Value::from("[!] Unimplemented"))
-				// let resp = c.leave(request).await.unwrap().into_inner();
-				// if resp.accepted {
-				// 	Ok(Value::from(format!("closed session #{}", resp.session_key)))
-				// } else {
-				// 	Err(Value::from("[!] could not close session"))
-				// }
+				Ok("OK".into())
 			},
-			"go" => {
-				self.live_edit_worker().await;
-				Ok(Value::from(""))
-			}
 			_ => {
 				eprintln!("[!] unexpected call");
 				Ok(Value::from(""))
@@ -109,19 +95,31 @@ impl Handler for NeovimHandler {
 	async fn handle_notify(
 		&self,
 		name: String,
-		_args: Vec<Value>,
+		args: Vec<Value>,
 		_neovim: Neovim<Compat<Stdout>>,
 	) {
 	match name.as_ref() {
 			"insert" => {},
+			"cursor" => {
+				if args.len() >= 3 {
+					if let Some(sink) = self.sink.lock().await.as_ref() {
+						sink.send(CursorUpdate {
+							buffer: args[0].as_i64().unwrap(),
+							row: args[1].as_i64().unwrap(),
+							col: args[2].as_i64().unwrap(),
+							username: "root".into()
+						}).await.unwrap();
+					}
+				}
+			},
 			"tick" => eprintln!("tock"),
 			_ => eprintln!("[!] unexpected notify",)
 		}
 	}
 }
 
-pub async fn run_nvim_client(c: WorkspaceClient<Channel>) -> Result<(), Box<dyn std::error::Error + 'static>> {
-	let handler: NeovimHandler = NeovimHandler::new(c);
+pub async fn run_nvim_client(dispatcher: Dispatcher) -> Result<(), Box<dyn std::error::Error + 'static>> {
+	let handler: NeovimHandler = NeovimHandler::new(dispatcher);
 	let (_nvim, io_handler) = new_parent(handler).await;
 
 	// Any error should probably be logged, as stderr is not visible to users.
