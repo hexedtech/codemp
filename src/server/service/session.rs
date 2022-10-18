@@ -4,7 +4,7 @@ pub mod proto {
 
 use std::sync::Arc;
 
-use proto::{session_server::{Session}, WorkspaceBuilderRequest, SessionRequest, SessionResponse, WorkspaceList};
+use proto::{session_server::Session, WorkspaceBuilderRequest, SessionResponse};
 use tonic::{Request, Response, Status};
 
 
@@ -13,10 +13,6 @@ use crate::actor::{
 };
 
 use self::proto::session_server::SessionServer;
-
-use super::workspace::WorkspaceExtension;
-
-use uuid::Uuid;
 
 #[derive(Debug)]
 pub struct SessionService {
@@ -27,7 +23,7 @@ pub struct SessionService {
 impl Session for SessionService {
 	async fn create_workspace(
 		&self,
-		req: Request<WorkspaceBuilderRequest>,
+		_req: Request<WorkspaceBuilderRequest>,
 	) -> Result<Response<SessionResponse>, Status> {
 		// let name = req.extensions().get::<WorkspaceExtension>().unwrap().id.clone();
 		let w = Workspace::new("im lazy".into());

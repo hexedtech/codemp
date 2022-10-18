@@ -71,7 +71,7 @@ impl Handler for NeovimHandler {
 				sink.lock().await.replace(tx);
 				let _worker = tokio::spawn(async move {
 					let mut col : i64;
-					let mut row : i64 = 0;
+					let mut row : i64;
 					let ns = neovim.create_namespace("Cursor").await.unwrap();
 					while let Some(update) = rx.recv().await {
 						neovim.exec_lua(format!("print('{:?}')", update).as_str(), vec![]).await.unwrap();

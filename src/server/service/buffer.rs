@@ -37,7 +37,7 @@ pub struct BufferService {
 fn op_seq(_o: &Operation) -> OperationSeq {
 	todo!()
 }
-fn op_net(_o: &OperationSeq) -> Operation {
+fn _op_net(_o: &OperationSeq) -> Operation {
 	todo!()
 }
 
@@ -45,7 +45,7 @@ fn op_net(_o: &OperationSeq) -> Operation {
 async fn buffer_worker(
 	bv: BufferView,
 	mut client_rx: Streaming<Operation>,
-	tx_client: mpsc::Sender<Result<Operation, Status>>,
+	_tx_client: mpsc::Sender<Result<Operation, Status>>,
 	mut rx_core: broadcast::Receiver<Event>,
 ) {
 	let mut queue: VecDeque<Operation> = VecDeque::new();
@@ -67,7 +67,7 @@ async fn buffer_worker(
 			},
 
 			server_op = rx_core.recv() => {
-				if let Ok(oop) = server_op {
+				if let Ok(_oop) = server_op {
 					let mut send_op = true;
 					for (i, _op) in queue.iter().enumerate() {
 						if true { // TODO must compare underlying OperationSeq here! (op.equals(server_op))

@@ -7,7 +7,7 @@ use library::{events::Event, user::{User, UserCursor}};
 
 use crate::service::workspace::proto::CursorUpdate;
 
-use super::{buffer::{BufferView, Buffer}};
+use super::buffer::{BufferView, Buffer};
 
 #[derive(Debug, Clone)]
 pub struct UsersView {
@@ -132,7 +132,7 @@ impl Workspace {
 					}
 					BufferAction::REMOVE { path } => {
 						buffers.remove(&path);
-						bus.send(Event::BufferDelete { path: path }).unwrap();
+						bus.send(Event::BufferDelete { path }).unwrap();
 					}
 				}
 				tx.send(

@@ -1,5 +1,5 @@
 
-use std::{collections::HashMap, sync::Arc, fmt::Display};
+use std::{collections::HashMap, sync::Arc};
 use tokio::sync::{mpsc, watch};
 use tracing::error;
 use uuid::Uuid;

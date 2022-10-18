@@ -33,7 +33,7 @@ impl Drop for Buffer {
 }
 
 impl Buffer {
-	pub fn new(name: String, bus: broadcast::Sender<Event>) -> Self {
+	pub fn new(name: String, _bus: broadcast::Sender<Event>) -> Self {
 		let (op_tx, mut op_rx) = mpsc::channel(32);
 		let (stop_tx, stop_rx) = watch::channel(true);
 		let (content_tx, content_rx) = watch::channel(String::new());
