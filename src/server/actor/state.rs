@@ -5,32 +5,6 @@ use tracing::error;
 
 use crate::actor::workspace::Workspace;
 
-#[derive(Debug, Clone)]
-pub struct UserCursor{
-	pub buffer: i32,
-	pub x: i32,
-	pub y: i32
-}
-
-impl Display for UserCursor {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		write!(f, "Cursor(buffer:{}, x:{}, y:{})", self.buffer, self.x, self.y)
-	}
-}
-
-
-#[derive(Debug, Clone)]
-pub struct User {
-	pub name: String,
-	pub cursor: UserCursor,
-}
-
-impl Display for User {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		write!(f, "User(name:{}, cursor:{})", self.name, self.cursor)
-	}
-}
-
 
 #[derive(Debug)]
 enum WorkspaceAction {

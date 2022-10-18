@@ -1,5 +1,5 @@
 use std::fmt::Display;
-use crate::actor::state::User;
+use crate::user::User;
 
 #[derive(Debug, Clone)]
 pub enum Event {

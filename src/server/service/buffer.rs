@@ -11,6 +11,8 @@ pub mod proto {
 	tonic::include_proto!("buffer");
 }
 
+use library::events::Event;
+
 use tokio::sync::{broadcast, mpsc};
 use tokio_stream::{Stream, StreamExt}; // TODO example used this?
 
@@ -21,7 +23,6 @@ use tonic::Streaming;
 //use futures::{Stream, StreamExt};
 
 use crate::actor::{buffer::BufferView, state::StateManager};
-use crate::events::Event;
 
 use self::proto::{BufferPayload, BufferResponse}; // TODO fuck x2!
 

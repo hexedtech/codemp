@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use tokio::sync::{broadcast, mpsc, watch::{self, Ref}};
 use tracing::warn;
 
-use crate::{events::Event, service::workspace::proto::CursorUpdate};
+use library::{events::Event, user::{User, UserCursor}};
 
 use super::{buffer::{BufferView, Buffer}, state::{User, UserCursor}};
 

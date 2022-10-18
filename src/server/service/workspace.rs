@@ -12,13 +12,15 @@ pub mod proto {
 	tonic::include_proto!("workspace");
 }
 
+use library::user::User;
+
 use tokio_stream::{Stream, StreamExt}; // TODO example used this?
 
 use proto::workspace_server::{Workspace, WorkspaceServer};
 use proto::{BufferList, WorkspaceEvent, WorkspaceRequest, WorkspaceResponse, UsersList, BufferRequest, CursorUpdate, JoinRequest};
 
-use crate::actor::state::UserCursor;
-use crate::actor::{buffer::Buffer, state::StateManager, workspace::Workspace as WorkspaceInstance}; // TODO fuck x2!
+use library::user::UserCursor;
+use crate::actor::{buffer::Buffer, state::StateManager}; // TODO fuck x2!
 
 pub struct WorkspaceExtension {
 	pub id: String
@@ -86,7 +88,7 @@ impl Workspace for WorkspaceService {
 					let mut event_receiver = w.bus.subscribe();
 					w.view().users.add(
 						crate::actor::state::User {
-							name: r.name.clone(),
+							name: "some-name".to_string(), // get from request
 							cursor: UserCursor { buffer:0, x:0, y:0 }
 						}
 					);

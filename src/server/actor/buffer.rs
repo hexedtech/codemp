@@ -2,7 +2,7 @@ use operational_transform::OperationSeq;
 use tokio::sync::{broadcast, mpsc, watch};
 use tracing::error;
 
-use crate::events::Event;
+use library::events::Event;
 
 #[derive(Debug, Clone)]
 /// A view of a buffer, with references to access value and send operations
