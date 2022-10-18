@@ -2,6 +2,7 @@
 use std::{collections::HashMap, sync::Arc, fmt::Display};
 use tokio::sync::{mpsc, watch};
 use tracing::error;
+use uuid::Uuid;
 
 use crate::actor::workspace::Workspace;
 
@@ -9,30 +10,30 @@ use crate::actor::workspace::Workspace;
 #[derive(Debug)]
 enum WorkspaceAction {
 	ADD {
-		key: String,
+		key: Uuid,
 		w: Box<Workspace>,
 	},
 	REMOVE {
-		key: String
+		key: Uuid
 	},
 }
 
 #[derive(Debug, Clone)]
 pub struct WorkspacesView {
-	watch: watch::Receiver<HashMap<String, Arc<Workspace>>>,
+	watch: watch::Receiver<HashMap<Uuid, Arc<Workspace>>>,
 	op: mpsc::Sender<WorkspaceAction>,
 }
 
 impl WorkspacesView {
-	pub fn borrow(&self) -> watch::Ref<HashMap<String, Arc<Workspace>>> {
+	pub fn borrow(&self) -> watch::Ref<HashMap<Uuid, Arc<Workspace>>> {
 		self.watch.borrow()
 	}
 
 	pub async fn add(&mut self, w: Workspace) {
-		self.op.send(WorkspaceAction::ADD { key: w.id.to_string(), w: Box::new(w) }).await.unwrap();
+		self.op.send(WorkspaceAction::ADD { key: w.id, w: Box::new(w) }).await.unwrap();
 	}
 
-	pub async fn remove(&mut self, key: String) {
+	pub async fn remove(&mut self, key: Uuid) {
 		self.op.send(WorkspaceAction::REMOVE { key }).await.unwrap();
 	}
 }
@@ -68,7 +69,7 @@ impl StateManager {
 		return s;
 	}
 
-	fn workspaces_worker(&self, mut rx: mpsc::Receiver<WorkspaceAction>, tx: watch::Sender<HashMap<String, Arc<Workspace>>>) {
+	fn workspaces_worker(&self, mut rx: mpsc::Receiver<WorkspaceAction>, tx: watch::Sender<HashMap<Uuid, Arc<Workspace>>>) {
 		let run = self.run.clone();
 		tokio::spawn(async move {
 			let mut store = HashMap::new();
@@ -96,7 +97,7 @@ impl StateManager {
 	}
 
 	/// get a workspace Arc directly, without passing by the WorkspacesView
-	pub fn get(&self, key: &String) -> Option<Arc<Workspace>> {
+	pub fn get(&self, key: &Uuid) -> Option<Arc<Workspace>> {
 		if let Some(w) = self.workspaces.borrow().get(key) {
 			return Some(w.clone());
 		}

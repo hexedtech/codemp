@@ -1,6 +1,8 @@
 use std::collections::VecDeque;
 use std::{pin::Pin, sync::Arc};
 
+use uuid::Uuid;
+
 use tokio_stream::wrappers::ReceiverStream;
 use tracing::error;
 
@@ -111,7 +113,7 @@ impl Buffer for BufferService {
 		}
 		// TODO make these above nicer? more concise? idk
 
-		if let Some(workspace) = self.state.workspaces.borrow().get(&session_id) {
+		if let Some(workspace) = self.state.workspaces.borrow().get(&Uuid::parse_str(session_id.as_str()).unwrap()) {
 			let in_stream = req.into_inner();
 			let (tx_og, rx) = mpsc::channel::<Result<Operation, Status>>(128);
 
