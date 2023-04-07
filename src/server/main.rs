@@ -4,19 +4,13 @@
 //!  all clients and synching everyone's cursor.
 //!
 
-pub mod actor;
-pub mod service;
-
-use std::sync::Arc;
+mod buffer;
 
 use tracing::info;
 
 use tonic::transport::Server;
 
-use crate::{
-	actor::state::StateManager,
-	service::{buffer::BufferService, workspace::WorkspaceService, session::SessionService},
-};
+use crate::buffer::service::BufferService;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -24,14 +18,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	let addr = "[::1]:50051".parse()?;
 
-	let state = Arc::new(StateManager::new());
-
 	info!("Starting server");
 
 	Server::builder()
-		.add_service(SessionService::new(state.clone()).server())
-		.add_service(WorkspaceService::new(state.clone()).server())
-		.add_service(BufferService::new(state.clone()).server())
+		.add_service(BufferService::new().server())
 		.serve(addr)
 		.await?;
 

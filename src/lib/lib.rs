@@ -1,2 +1,4 @@
-pub mod events;
-pub mod user;
+pub mod proto;
+
+pub use tonic;
+pub use tokio;

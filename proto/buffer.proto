@@ -2,35 +2,26 @@ syntax = "proto3";
 package buffer;
 
 service Buffer {
-	rpc Attach (stream Operation) returns (stream Operation);
-	rpc Push   (BufferPayload)    returns (BufferResponse);
-	rpc Pull   (BufferPayload)    returns (BufferPayload);
+	rpc Attach (BufferPayload)    returns (stream RawOp);
+	rpc Edit   (OperationRequest) returns (BufferResponse);
+	rpc Create (BufferPayload)    returns (BufferResponse);
 }
 
-message Operation {
-	int64 opId = 1;
+message RawOp {
+	string opseq = 1;
+}
 
-	enum Action {
-		RETAIN = 0;
-		INSERT = 1;
-		DELETE = 2;
-	};
-	Action action = 2;
-
-	int32 row = 3;
-	int32 column = 4;
-
-	optional string text = 5;
+message OperationRequest {
+	string path  = 1;
+	string hash  = 2;
+	string opseq = 3;
 }
 
 message BufferPayload {
-	string sessionKey = 1;
 	string path = 2;
 	optional string content = 3;
 }
 
 message BufferResponse {
-	string sessionKey = 1;
-	string path = 2;
 	bool accepted = 3;
 }
