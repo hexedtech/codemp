@@ -8,7 +8,7 @@ edition = "2021"
 # nvim = []
 
 [lib]
-name = "library"
+name = "codemp"
 path = "src/lib/lib.rs"
 
 [[bin]] # Bin to run the CodeMP gRPC server
