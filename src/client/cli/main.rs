@@ -1,5 +1,5 @@
 use clap::Parser;
-use library::proto::{buffer_client::BufferClient, BufferPayload};
+use codemp::proto::{buffer_client::BufferClient, BufferPayload};
 use tokio_stream::StreamExt;
 
 #[derive(Parser, Debug)]

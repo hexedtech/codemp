@@ -1,12 +1,11 @@
 use std::{pin::Pin, sync::{Arc, RwLock}, collections::HashMap};
 
-use operational_transform::OperationSeq;
 use tokio::sync::mpsc;
 use tonic::{Request, Response, Status};
 
 use tokio_stream::{Stream, wrappers::ReceiverStream}; // TODO example used this?
 
-use library::proto::{buffer_server::{Buffer, BufferServer}, RawOp, BufferPayload, BufferResponse, OperationRequest};
+use codemp::proto::{buffer_server::{Buffer, BufferServer}, RawOp, BufferPayload, BufferResponse, OperationRequest};
 use tracing::info;
 
 use super::actor::{BufferHandle, BufferStore};
@@ -42,6 +41,7 @@ impl Buffer for BufferService {
 
 	async fn attach(&self, req: Request<BufferPayload>) -> Result<tonic::Response<OperationStream>, Status> {
 		let request = req.into_inner();
+		let myself = request.user;
 		match self.map.read().unwrap().get(&request.path) {
 			Some(handle) => {
 				let (tx, rx) = mpsc::channel(128);
@@ -50,8 +50,8 @@ impl Buffer for BufferService {
 					loop {
 						match sub.recv().await {
 							Ok(v) => {
-								let snd = RawOp { opseq: serde_json::to_string(&v).unwrap() };
-								tx.send(Ok(snd)).await.unwrap();
+								if v.user == myself { continue }
+								tx.send(Ok(v)).await.unwrap(); // TODO unnecessary channel?
 							}
 							Err(_e) => break,
 						}
@@ -69,16 +69,15 @@ impl Buffer for BufferService {
 		let request = req.into_inner();
 		let tx = match self.map.read().unwrap().get(&request.path) {
 			Some(handle) => {
-				if format!("{:x}", *handle.digest.borrow()) != request.hash {
-					return Ok(Response::new(BufferResponse { accepted : false } ));
-				}
+				// if format!("{:x}", *handle.digest.borrow()) != request.hash {
+				// 	return Ok(Response::new(BufferResponse { accepted : false } ));
+				// }
 				handle.edit.clone()
 			},
 			None => return Err(Status::not_found("path not found")),
 		};
-		let opseq : OperationSeq = serde_json::from_str(&request.opseq).unwrap();
-		tx.send(opseq).await.unwrap();
-		info!("sent edit to buffer");
+		info!("sending edit to buffer: {}", request.opseq);
+		tx.send(request).await.unwrap();
 		Ok(Response::new(BufferResponse { accepted: true }))
 	}
 	

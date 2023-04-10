@@ -1,3 +1,4 @@
+use codemp::proto::{RawOp, OperationRequest};
 use tokio::sync::{mpsc, broadcast, watch};
 use tracing::error;
 use md5::Digest;
@@ -16,8 +17,8 @@ pub trait BufferStore<T> {
 
 #[derive(Clone)]
 pub struct BufferHandle {
-	pub edit: mpsc::Sender<OperationSeq>,
-	events: broadcast::Sender<OperationSeq>,
+	pub edit: mpsc::Sender<OperationRequest>,
+	events: broadcast::Sender<RawOp>,
 	pub digest: watch::Receiver<Digest>,
 }
 
@@ -47,7 +48,7 @@ impl BufferHandle {
 		}
 	}
 
-	pub fn subscribe(&self) -> broadcast::Receiver<OperationSeq> {
+	pub fn subscribe(&self) -> broadcast::Receiver<RawOp> {
 		self.events.subscribe()
 
 	}
@@ -55,8 +56,8 @@ impl BufferHandle {
 
 struct BufferWorker {
 	content: String,
-	edits: mpsc::Receiver<OperationSeq>,
-	events: broadcast::Sender<OperationSeq>,
+	edits: mpsc::Receiver<OperationRequest>,
+	events: broadcast::Sender<RawOp>,
 	digest: watch::Sender<Digest>,
 }
 
@@ -66,11 +67,16 @@ impl BufferWorker {
 			match self.edits.recv().await {
 				None => break,
 				Some(v) => {
-					match v.apply(&self.content) {
+					let op : OperationSeq = serde_json::from_str(&v.opseq).unwrap();
+					match op.apply(&self.content) {
 						Ok(res) => {
 							self.content = res;
 							self.digest.send(md5::compute(&self.content)).unwrap();
-							if let Err(e) = self.events.send(v) {
+							let msg = RawOp {
+								opseq: v.opseq,
+								user: v.user
+							};
+							if let Err(e) = self.events.send(msg) {
 								error!("could not broadcast OpSeq: {}", e);
 							}
 						},
