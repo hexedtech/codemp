@@ -1,6 +1,6 @@
 use codemp::proto::{RawOp, OperationRequest};
 use tokio::sync::{mpsc, broadcast, watch};
-use tracing::error;
+use tracing::{error, warn};
 use md5::Digest;
 
 use operational_transform::OperationSeq;
@@ -69,23 +69,27 @@ impl BufferWorker {
 	async fn work(mut self) {
 		loop {
 			match self.edits.recv().await {
-				None => break,
-				Some(v) => {
-					let op : OperationSeq = serde_json::from_str(&v.opseq).unwrap();
-					match op.apply(&self.store) {
+				None => break warn!("channel closed"),
+				Some(v) => match serde_json::from_str::<OperationSeq>(&v.opseq) {
+					Err(e) => break error!("could not deserialize opseq: {}", e),
+					Ok(op) => match op.apply(&self.store) {
+						Err(e) => error!("coult not apply OpSeq '{:?}' on '{}' : {}", v, self.store, e),
 						Ok(res) => {
 							self.store = res;
-							self.digest.send(md5::compute(&self.store)).unwrap();
-							self.content.send(self.store.clone()).unwrap();
 							let msg = RawOp {
 								opseq: v.opseq,
 								user: v.user
 							};
+							if let Err(e) = self.digest.send(md5::compute(&self.store)) {
+								error!("could not update digest: {}", e);
+							}
+							if let Err(e) = self.content.send(self.store.clone()) {
+								error!("could not update content: {}", e);
+							}
 							if let Err(e) = self.events.send(msg) {
 								error!("could not broadcast OpSeq: {}", e);
 							}
 						},
-						Err(e) => error!("coult not apply OpSeq '{:?}' on '{}' : {}", v, self.store, e),
 					}
 				},
 			}

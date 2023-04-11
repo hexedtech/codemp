@@ -77,8 +77,10 @@ impl Buffer for BufferService {
 			None => return Err(Status::not_found("path not found")),
 		};
 		info!("sending edit to buffer: {}", request.opseq);
-		tx.send(request).await.unwrap();
-		Ok(Response::new(BufferResponse { accepted: true, content: None }))
+		match tx.send(request).await {
+			Ok(()) => Ok(Response::new(BufferResponse { accepted: true, content: None })),
+			Err(e) => Err(Status::internal(format!("error sending edit to buffer actor: {}", e))),
+		}
 	}
 	
 	async fn create(&self, req:Request<BufferPayload>) -> Result<Response<BufferResponse>, Status> {
