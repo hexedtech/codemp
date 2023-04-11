@@ -1,23 +1,21 @@
 /// TODO better name for this file
 
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use tracing::{error, warn};
 use uuid::Uuid;
 
 use crate::{
-	opfactory::OperationFactory,
+	opfactory::AsyncFactory,
 	proto::{buffer_client::BufferClient, BufferPayload, OperationRequest, RawOp},
 	tonic::{transport::Channel, Status, Streaming},
 };
-
-type FactoryHandle = Arc<Mutex<OperationFactory>>;
 
 impl From::<BufferClient<Channel>> for CodempClient {
 	fn from(x: BufferClient<Channel>) -> CodempClient {
 		CodempClient {
 			id: Uuid::new_v4(),
 			client:x,
-			factory: Arc::new(Mutex::new(OperationFactory::new(None)))
+			factory: Arc::new(AsyncFactory::new(None)),
 		}
 	}
 }
@@ -26,7 +24,7 @@ impl From::<BufferClient<Channel>> for CodempClient {
 pub struct CodempClient {
 	id: Uuid,
 	client: BufferClient<Channel>,
-	factory: FactoryHandle, // TODO less jank solution than Arc<Mutex>
+	factory: Arc<AsyncFactory>,
 }
 
 impl CodempClient {
@@ -46,8 +44,7 @@ impl CodempClient {
 	}
 
 	pub async fn insert(&mut self, path: String, txt: String, pos: u64) -> Result<bool, Status> {
-		let res = { self.factory.lock().unwrap().insert(&txt, pos) };
-		match res {
+		match self.factory.insert(txt, pos).await {
 			Ok(op) => {
 				Ok(
 					self.client.edit(
@@ -68,8 +65,7 @@ impl CodempClient {
 	}
 
 	pub async fn delete(&mut self, path: String, pos: u64, count: u64) -> Result<bool, Status> {
-		let res = { self.factory.lock().unwrap().delete(pos, count) };
-		match res {
+		match self.factory.delete(pos, count).await {
 			Ok(op) => {
 				Ok(
 					self.client.edit(
@@ -106,31 +102,32 @@ impl CodempClient {
 		Ok(())
 	}
 
-	async fn worker<F : Fn(String) -> ()>(mut stream: Streaming<RawOp>, factory: FactoryHandle, callback: F) {
-		loop {
-			match stream.message().await {
-				Ok(v) => match v {
-					Some(operation) => {
-						match serde_json::from_str(&operation.opseq) {
-							Ok(op) => {
-								let res = { factory.lock().unwrap().process(op) };
-								match res {
-									Ok(x) => callback(x),
-									Err(e) => break error!("desynched: {}", e),
-								}
-							},
-							Err(e) => break error!("could not deserialize opseq: {}", e),
-						}
-					}
-					None => break warn!("stream closed"),
-				},
-				Err(e) => break error!("error receiving change: {}", e),
+	pub async fn sync(&mut self, path: String) -> Result<String, Status> {
+		let res = self.client.sync(
+			BufferPayload {
+				path, content: None, user: self.id.to_string(),
 			}
-		}
+		).await?;
+		Ok(res.into_inner().content.unwrap_or("".into()))
 	}
 
-	pub fn content(&self) -> String {
-		let factory = self.factory.lock().unwrap();
-		factory.content()
+	async fn worker<F : Fn(String) -> ()>(mut stream: Streaming<RawOp>, factory: Arc<AsyncFactory>, callback: F) {
+		loop {
+			match stream.message().await {
+				Err(e) => break error!("error receiving change: {}", e),
+				Ok(v) => match v {
+					None => break warn!("stream closed"),
+					Some(operation) => {
+						match serde_json::from_str(&operation.opseq) {
+							Err(e) => break error!("could not deserialize opseq: {}", e),
+							Ok(op) => match factory.process(op).await {
+								Err(e) => break error!("desynched: {}", e),
+								Ok(x) => callback(x),
+							},
+						}
+					}
+				},
+			}
+		}
 	}
 }
