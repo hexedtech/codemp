@@ -5,6 +5,7 @@ service Buffer {
 	rpc Attach (BufferPayload)    returns (stream RawOp);
 	rpc Edit   (OperationRequest) returns (BufferResponse);
 	rpc Create (BufferPayload)    returns (BufferResponse);
+	rpc Sync   (BufferPayload)    returns (BufferResponse);
 }
 
 message RawOp {
@@ -27,4 +28,5 @@ message BufferPayload {
 
 message BufferResponse {
 	bool accepted = 1;
+	optional string content = 2;
 }

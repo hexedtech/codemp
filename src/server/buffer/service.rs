@@ -78,17 +78,28 @@ impl Buffer for BufferService {
 		};
 		info!("sending edit to buffer: {}", request.opseq);
 		tx.send(request).await.unwrap();
-		Ok(Response::new(BufferResponse { accepted: true }))
+		Ok(Response::new(BufferResponse { accepted: true, content: None }))
 	}
 	
 	async fn create(&self, req:Request<BufferPayload>) -> Result<Response<BufferResponse>, Status> {
 		let request = req.into_inner();
 		let _handle = self.map.write().unwrap().handle(request.path, request.content);
 		info!("created new buffer");
-		let answ = BufferResponse { accepted: true };
+		let answ = BufferResponse { accepted: true, content: None };
 		Ok(Response::new(answ))
 	}
-	
+
+	async fn sync(&self, req: Request<BufferPayload>) -> Result<Response<BufferResponse>, Status> {
+		let request = req.into_inner();
+		match self.map.read().unwrap().get(&request.path) {
+			None => Err(Status::not_found("requested buffer does not exist")),
+			Some(buf) => {
+				info!("synching buffer");
+				let answ = BufferResponse { accepted: true, content: Some(buf.content.borrow().clone()) };
+				Ok(Response::new(answ))
+			}
+		}
+	}
 }
 
 impl BufferService {
