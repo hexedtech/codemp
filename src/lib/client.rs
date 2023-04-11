@@ -67,6 +67,28 @@ impl CodempClient {
 		}
 	}
 
+	pub async fn delete(&mut self, path: String, pos: u64, count: u64) -> Result<bool, Status> {
+		let res = { self.factory.lock().unwrap().delete(pos, count) };
+		match res {
+			Ok(op) => {
+				Ok(
+					self.client.edit(
+						OperationRequest {
+							path,
+							hash: "".into(),
+							opseq: serde_json::to_string(&op).unwrap(),
+							user: self.id.to_string(),
+						}
+					)
+						.await?
+						.into_inner()
+						.accepted
+				)
+			},
+			Err(e) => Err(Status::internal(format!("invalid operation: {}", e))),
+		}
+	}
+
 	pub async fn attach<F : Fn(String) -> () + Send + 'static>(&mut self, path: String, callback: F) -> Result<(), Status> {
 		let stream = self.client.attach(
 				BufferPayload {

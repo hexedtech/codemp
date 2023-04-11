@@ -68,6 +68,24 @@ impl Handler for NeovimHandler {
 				}
 			},
 
+			"delete" => {
+				if args.len() < 3 {
+					return Err(Value::from("not enough arguments"));
+				}
+				let path = args.get(0).unwrap().as_str().unwrap().into();
+				let pos = args.get(1).unwrap().as_u64().unwrap();
+				let count = args.get(2).unwrap().as_u64().unwrap();
+
+				let mut c = self.client.clone();
+				match c.delete(path, pos, count).await {
+					Ok(res) => match res {
+						true => Ok(Value::from("accepted")),
+						false => Err(Value::from("rejected")),
+					},
+					Err(e) => Err(Value::from(format!("could not send insert: {}", e))),
+				}
+			},
+
 			"attach" => {
 				if args.len() < 1 {
 					return Err(Value::from("no path given"));
