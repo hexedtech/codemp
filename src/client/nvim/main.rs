@@ -137,6 +137,16 @@ impl Handler for NeovimHandler {
 				}
 			},
 
+			"detach" => {
+				if args.len() < 1 {
+					return Err(Value::from("no path given"));
+				}
+				let path = default_empty_str(&args, 0);
+				let mut c = self.client.clone();
+				c.detach(path);
+				Ok(Value::Nil)
+			},
+
 			_ => Err(Value::from("unimplemented")),
 		}
 	}

@@ -1,7 +1,7 @@
 /// TODO better name for this file
 
 use std::{sync::{Arc, RwLock}, collections::BTreeMap};
-use tracing::{error, warn};
+use tracing::{error, warn, info};
 use uuid::Uuid;
 
 use crate::{
@@ -104,6 +104,10 @@ impl CodempClient {
 		Ok(content)
 	}
 
+	pub fn detach(&mut self, path: String) {
+		self.factories.write().unwrap().remove(&path);
+	}
+
 	async fn sync(&mut self, path: String) -> Result<String, Status> {
 		let res = self.client.sync(
 			BufferPayload {
@@ -115,6 +119,7 @@ impl CodempClient {
 
 	async fn worker<F>(mut stream: Streaming<RawOp>, factory: Arc<AsyncFactory>, callback: F)
 	where F : Fn(String) -> () {
+		info!("|> buffer worker started");
 		loop {
 			match stream.message().await {
 				Err(e) => break error!("error receiving change: {}", e),
@@ -130,5 +135,6 @@ impl CodempClient {
 				},
 			}
 		}
+		info!("[] buffer worker stopped");
 	}
 }
