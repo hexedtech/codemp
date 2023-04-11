@@ -1,4 +1,5 @@
 use operational_transform::{OperationSeq, OTError};
+use tracing::{debug, info};
 
 
 #[derive(Clone)]
@@ -9,6 +10,11 @@ pub struct OperationFactory {
 impl OperationFactory {
 	pub fn new(init: Option<String>) -> Self {
 		OperationFactory { content: init.unwrap_or(String::new()) }
+	}
+
+	// TODO remove the need for this
+	pub fn content(&self) -> String {
+		self.content.clone()
 	}
 
 	pub fn check(&self, txt: &str) -> bool {
@@ -25,10 +31,11 @@ impl OperationFactory {
 	}
 
 	pub fn insert(&mut self, txt: &str, pos: u64) -> Result<OperationSeq, OTError> {
+		info!("inserting {} at {}", txt, pos);
 		let mut out = OperationSeq::default();
 		out.retain(pos);
 		out.insert(txt);
-		self.content = out.apply(&self.content)?; // TODO does aplying mutate the OpSeq itself?
+		self.content = out.apply(&self.content)?; // TODO does applying mutate the OpSeq itself?
 		Ok(out)
 	}
 
@@ -36,7 +43,7 @@ impl OperationFactory {
 		let mut out = OperationSeq::default();
 		out.retain(pos - count);
 		out.delete(count);
-		self.content = out.apply(&self.content)?; // TODO does aplying mutate the OpSeq itself?
+		self.content = out.apply(&self.content)?; // TODO does applying mutate the OpSeq itself?
 		Ok(out)
 	}
 
@@ -44,13 +51,13 @@ impl OperationFactory {
 		let mut out = OperationSeq::default();
 		out.retain(pos);
 		out.delete(count);
-		self.content = out.apply(&self.content)?; // TODO does aplying mutate the OpSeq itself?
+		self.content = out.apply(&self.content)?; // TODO does applying mutate the OpSeq itself?
 		Ok(out)
 	}
 
-	pub fn process(&mut self, op: OperationSeq) -> Result<(), OTError> {
+	pub fn process(&mut self, op: OperationSeq) -> Result<String, OTError> {
 		self.content = op.apply(&self.content)?;
-		Ok(())
+		Ok(self.content.clone())
 	}
 
 }

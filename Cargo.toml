@@ -39,11 +39,12 @@ md5 = "0.7.0"
 prost = "0.11.8"
 clap = { version = "4.2.1", features = ["derive"], optional = true }
 nvim-rs = { version = "0.5", features = ["use_tokio"], optional = true }
+uuid = { version = "1.3.1", features = ["v4"] }
 
 [build-dependencies]
 tonic-build = "0.9"
 
 [features]
-default = []
+default = ["nvim"]
 cli  = ["dep:clap"]
-nvim = ["dep:nvim-rs"]
+nvim = ["dep:nvim-rs", "dep:clap"]
