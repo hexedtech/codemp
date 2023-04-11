@@ -47,8 +47,6 @@ impl Handler for NeovimHandler {
 		match name.as_ref() {
 			"ping" => Ok(Value::from("pong")),
 
-			"error" => Err(Value::from("user-requested error")),
-
 			"create" => {
 				if args.len() < 1 {
 					return Err(Value::from("no path given"));
@@ -58,7 +56,7 @@ impl Handler for NeovimHandler {
 				let mut c = self.client.clone();
 				match c.create(path, content).await {
 					Ok(r) => match r {
-						true => Ok(Value::from("accepted")),
+						true => Ok(Value::Nil),
 						false => Err(Value::from("rejected")),
 					},
 					Err(e) => Err(Value::from(format!("could not create buffer: {}", e))),
@@ -78,7 +76,7 @@ impl Handler for NeovimHandler {
 					Ok(res) => {
 						info!("RPC 'insert' completed");
 						match res {
-							true => Ok(Value::from("accepted")),
+							true => Ok(Value::Nil),
 							false => Err(Value::from("rejected")),
 						}
 					},
@@ -97,7 +95,7 @@ impl Handler for NeovimHandler {
 				let mut c = self.client.clone();
 				match c.delete(path, pos, count).await {
 					Ok(res) => match res {
-						true => Ok(Value::from("accepted")),
+						true => Ok(Value::Nil),
 						false => Err(Value::from("rejected")),
 					},
 					Err(e) => Err(Value::from(format!("could not send insert: {}", e))),
@@ -132,7 +130,7 @@ impl Handler for NeovimHandler {
 						if let Err(e) = buffer.set_lines(0, -1, false, lines).await {
 							error!("could not update buffer: {}", e);
 						}
-						Ok(Value::from("spawned worker"))
+						Ok(Value::Nil)
 					},
 				}
 			},
