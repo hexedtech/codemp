@@ -104,40 +104,19 @@ impl Handler for NeovimHandler {
 				}
 			},
 
-			"sync" => {
-				if args.len() < 1 {
-					return Err(Value::from("no path given"));
-				}
-				let path = default_empty_str(&args, 0);
-
-				let mut c = self.client.clone();
-				match c.sync(path).await {
-					Err(e) => Err(Value::from(format!("could not sync: {}", e))),
-					Ok(content) => match nvim.get_current_buf().await {
-						Err(e) => return Err(Value::from(format!("could not get current buffer: {}", e))),
-						Ok(b) => {
-							let lines : Vec<String> = content.split("\n").map(|x| x.to_string()).collect();
-							match b.set_lines(0, -1, false, lines).await {
-								Err(e) => Err(Value::from(format!("failed sync: {}", e))),
-								Ok(()) => Ok(Value::from("synched")),
-							}
-						},
-					},
-				}
-			}
-
 			"attach" => {
 				if args.len() < 1 {
 					return Err(Value::from("no path given"));
 				}
 				let path = default_empty_str(&args, 0);
-				let buf = match nvim.get_current_buf().await {
+				let buffer = match nvim.get_current_buf().await {
 					Ok(b) => b,
 					Err(e) => return Err(Value::from(format!("could not get current buffer: {}", e))),
 				};
 
 				let mut c = self.client.clone();
 
+				let buf = buffer.clone();
 				match c.attach(path, move |x| {
 					let lines : Vec<String> = x.split("\n").map(|x| x.to_string()).collect();
 					let b = buf.clone();
@@ -147,8 +126,14 @@ impl Handler for NeovimHandler {
 						}
 					});
 				}).await {
-					Ok(()) => Ok(Value::from("spawned worker")),
 					Err(e) => Err(Value::from(format!("could not attach to stream: {}", e))),
+					Ok(content) => {
+						let lines : Vec<String> = content.split("\n").map(|x| x.to_string()).collect();
+						if let Err(e) = buffer.set_lines(0, -1, false, lines).await {
+							error!("could not update buffer: {}", e);
+						}
+						Ok(Value::from("spawned worker"))
+					},
 				}
 			},
 
