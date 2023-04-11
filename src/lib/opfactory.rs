@@ -1,5 +1,5 @@
 use operational_transform::{OperationSeq, OTError};
-use tracing::{debug, info};
+use tracing::info;
 
 
 #[derive(Clone)]
