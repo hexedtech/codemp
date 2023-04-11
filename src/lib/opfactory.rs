@@ -99,26 +99,26 @@ impl AsyncFactory {
 
 	pub async fn insert(&self, txt: String, pos: u64) -> Result<OperationSeq, OTError> {
 		let (tx, rx) = oneshot::channel();
-		self.ops.send(OpMsg::Exec(OpWrapper::Insert(txt, pos), tx)).await.unwrap();
-		rx.await.unwrap()
+		self.ops.send(OpMsg::Exec(OpWrapper::Insert(txt, pos), tx)).await.map_err(|_| OTError)?;
+		rx.await.map_err(|_| OTError)?
 	}
 
 	pub async fn delete(&self, pos: u64, count: u64) -> Result<OperationSeq, OTError> {
 		let (tx, rx) = oneshot::channel();
-		self.ops.send(OpMsg::Exec(OpWrapper::Delete(pos, count), tx)).await.unwrap();
-		rx.await.unwrap()
+		self.ops.send(OpMsg::Exec(OpWrapper::Delete(pos, count), tx)).await.map_err(|_| OTError)?;
+		rx.await.map_err(|_| OTError)?
 	}
 
 	pub async fn cancel(&self, pos: u64, count: u64) -> Result<OperationSeq, OTError> {
 		let (tx, rx) = oneshot::channel();
-		self.ops.send(OpMsg::Exec(OpWrapper::Cancel(pos, count), tx)).await.unwrap();
-		rx.await.unwrap()
+		self.ops.send(OpMsg::Exec(OpWrapper::Cancel(pos, count), tx)).await.map_err(|_| OTError)?;
+		rx.await.map_err(|_| OTError)?
 	}
 
 	pub async fn process(&self, opseq: OperationSeq) -> Result<String, OTError> {
 		let (tx, rx) = oneshot::channel();
-		self.ops.send(OpMsg::Process(opseq, tx)).await.unwrap();
-		rx.await.unwrap()
+		self.ops.send(OpMsg::Process(opseq, tx)).await.map_err(|_| OTError)?;
+		rx.await.map_err(|_| OTError)?
 	}
 }
 
