@@ -16,11 +16,6 @@ name = "server"
 path = "src/server/main.rs"
 
 [[bin]]
-name = "client-cli"
-path = "src/client/cli/main.rs"
-required-features = ["cli"]
-
-[[bin]]
 name = "client-nvim"
 path = "src/client/nvim/main.rs"
 required-features = ["nvim"]
