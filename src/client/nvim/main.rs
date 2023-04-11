@@ -1,8 +1,4 @@
-mod client;
-
-use std::error::Error;
-
-use client::CodempClient;
+use codemp::client::CodempClient;
 use codemp::proto::buffer_client::BufferClient;
 use rmpv::Value;
 
@@ -10,9 +6,7 @@ use rmpv::Value;
 use tokio::io::Stdout;
 use clap::Parser;
 
-use nvim_rs::{
-	compat::tokio::Compat, create::tokio as create, Handler, Neovim,
-};
+use nvim_rs::{compat::tokio::Compat, create::tokio as create, Handler, Neovim};
 use tonic::async_trait;
 use tracing::{error, warn, debug};
 
@@ -123,8 +117,7 @@ struct CliArgs {
 
 
 #[tokio::main]
-async fn main() -> Result<(), tonic::transport::Error> {
-
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let args = CliArgs::parse();
 
 	tracing_subscriber::fmt()
@@ -144,40 +137,10 @@ async fn main() -> Result<(), tonic::transport::Error> {
 
 	let (nvim, io_handler) = create::new_parent(handler).await;
 
-	// Any error should probably be logged, as stderr is not visible to users.
-	match io_handler.await {
-		Err(joinerr) => error!("Error joining IO loop: '{}'", joinerr),
-		Ok(Err(err)) => {
-			if !err.is_reader_error() {
-				// One last try, since there wasn't an error with writing to the
-				// stream
-				nvim
-					.err_writeln(&format!("Error: '{}'", err))
-					.await
-					.unwrap_or_else(|e| {
-						// We could inspect this error to see what was happening, and
-						// maybe retry, but at this point it's probably best
-						// to assume the worst and print a friendly and
-						// supportive message to our users
-						error!("Well, dang... '{}'", e);
-					});
-			}
+	nvim.out_write("[*] codemp loaded").await?;
 
-			if !err.is_channel_closed() {
-				// Closed channel usually means neovim quit itself, or this plugin was
-				// told to quit by closing the channel, so it's not always an error
-				// condition.
-				error!("Error: '{}'", err);
-
-				let mut source = err.source();
-
-				while let Some(e) = source {
-					error!("Caused by: '{}'", e);
-					source = e.source();
-				}
-			}
-		}
-		Ok(Ok(())) => {}
+	if let Err(e) = io_handler.await? {
+		error!("[!] worker stopped with error: {}", e);
 	}
 
 	Ok(())
