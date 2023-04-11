@@ -1,7 +1,13 @@
 local BINARY = "/home/alemi/projects/codemp/target/debug/client-nvim --debug"
 
 if vim.g.codemp_jobid == nil then
-	vim.g.codemp_jobid = vim.fn.jobstart(BINARY, { rpc = true })
+	vim.g.codemp_jobid = vim.fn.jobstart(
+		BINARY,
+		{
+			rpc = true,
+			on_stderr = function(_, data, _) print(vim.fn.join(data, "\n")) end,
+		}
+	)
 end
 
 local M = {}
