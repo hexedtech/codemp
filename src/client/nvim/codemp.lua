@@ -21,18 +21,23 @@ M.attach = function(path)
 		{
 			callback = function()
 				local cursor = vim.api.nvim_win_get_cursor(0)
-				M.insert(path, vim.v.char, cursor[2])
+				local off = vim.fn.line2byte(cursor[1]) + cursor[2] - 1
+				M.insert(path, vim.v.char, off)
 			end,
 		}
 	)
 	vim.keymap.set('i', '<BS>', function()
 		local cursor = vim.api.nvim_win_get_cursor(0)
-		M.delete(path, cursor[2], 1)
+		local off = vim.fn.line2byte(cursor[1]) + cursor[2] - 1
+		if off > 0 then
+			M.delete(path, off, 1)
+		end
 		return '<BS>'
 	end, {expr = true})
 	vim.keymap.set('i', '<CR>', function()
 		local cursor = vim.api.nvim_win_get_cursor(0)
-		M.insert(path, "\n", cursor[2])
+		local off = vim.fn.line2byte(cursor[1]) + cursor[2] - 1
+		M.insert(path, "\n", off)
 		return '<CR>'
 	end, {expr = true})
 	return vim.rpcrequest(vim.g.codemp_jobid, "attach", path)

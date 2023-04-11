@@ -1,3 +1,5 @@
+use std::{net::TcpStream, sync::Mutex};
+
 use codemp::client::CodempClient;
 use codemp::proto::buffer_client::BufferClient;
 use rmpv::Value;
@@ -19,6 +21,18 @@ fn nullable_optional_str(args: &Vec<Value>, index: usize) -> Option<String> {
 	Some(args.get(index)?.as_str()?.to_string())
 }
 
+fn default_empty_str(args: &Vec<Value>, index: usize) -> String {
+	nullable_optional_str(args, index).unwrap_or("".into())
+}
+
+fn nullable_optional_number(args: &Vec<Value>, index: usize) -> Option<u64> {
+	Some(args.get(index)?.as_u64()?)
+}
+
+fn default_zero_number(args: &Vec<Value>, index: usize) -> u64 {
+	nullable_optional_number(args, index).unwrap_or(0)
+}
+
 #[async_trait]
 impl Handler for NeovimHandler {
 	type Writer = Compat<Stdout>;
@@ -29,6 +43,7 @@ impl Handler for NeovimHandler {
 		args: Vec<Value>,
 		nvim: Neovim<Compat<Stdout>>,
 	) -> Result<Value, Value> {
+		debug!("processing '{}' - {:?}", name, args);
 		match name.as_ref() {
 			"ping" => Ok(Value::from("pong")),
 
@@ -38,7 +53,7 @@ impl Handler for NeovimHandler {
 				if args.len() < 1 {
 					return Err(Value::from("no path given"));
 				}
-				let path = args.get(0).unwrap().as_str().unwrap().into();
+				let path = default_empty_str(&args, 0);
 				let content = nullable_optional_str(&args, 1);
 				let mut c = self.client.clone();
 				match c.create(path, content).await {
@@ -54,9 +69,9 @@ impl Handler for NeovimHandler {
 				if args.len() < 3 {
 					return Err(Value::from("not enough arguments"));
 				}
-				let path = args.get(0).unwrap().as_str().unwrap().into();
-				let txt = args.get(1).unwrap().as_str().unwrap().into();
-				let pos = args.get(2).unwrap().as_u64().unwrap();
+				let path = default_empty_str(&args, 0);
+				let txt = default_empty_str(&args, 1);
+				let pos = default_zero_number(&args, 2);
 
 				let mut c = self.client.clone();
 				match c.insert(path, txt, pos).await {
@@ -72,9 +87,9 @@ impl Handler for NeovimHandler {
 				if args.len() < 3 {
 					return Err(Value::from("not enough arguments"));
 				}
-				let path = args.get(0).unwrap().as_str().unwrap().into();
-				let pos = args.get(1).unwrap().as_u64().unwrap();
-				let count = args.get(2).unwrap().as_u64().unwrap();
+				let path = default_empty_str(&args, 0);
+				let pos = default_zero_number(&args, 1);
+				let count = default_zero_number(&args, 2);
 
 				let mut c = self.client.clone();
 				match c.delete(path, pos, count).await {
@@ -90,8 +105,12 @@ impl Handler for NeovimHandler {
 				if args.len() < 1 {
 					return Err(Value::from("no path given"));
 				}
-				let path = args.get(0).unwrap().as_str().unwrap().into();
-				let buf = nvim.get_current_buf().await.unwrap();
+				let path = default_empty_str(&args, 0);
+				let buf = match nvim.get_current_buf().await {
+					Ok(b) => b,
+					Err(e) => return Err(Value::from(format!("could not get current buffer: {}", e))),
+				};
+
 				let mut c = self.client.clone();
 
 				match c.attach(path, move |x| {
@@ -138,13 +157,22 @@ struct CliArgs {
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let args = CliArgs::parse();
 
-	tracing_subscriber::fmt()
+	let sub = tracing_subscriber::fmt()
 		.compact()
 		.without_time()
-		.with_ansi(false)
-		.with_writer(std::io::stderr)
-		.with_max_level(if args.debug { tracing::Level::DEBUG } else { tracing::Level::INFO })
-		.init();
+		.with_ansi(false);
+	match TcpStream::connect("127.0.0.1:6969") {
+		Ok(stream) => {
+			sub.with_writer(Mutex::new(stream))
+				.with_max_level(if args.debug { tracing::Level::DEBUG } else { tracing::Level::INFO })
+				.init();
+		},
+		Err(_) => {
+			sub.with_writer(std::io::stderr)
+				.with_max_level(if args.debug { tracing::Level::DEBUG } else { tracing::Level::INFO })
+				.init();
+		},
+	}
 
 	let client = BufferClient::connect(args.host).await?;
 	debug!("client connected");

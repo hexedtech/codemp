@@ -111,11 +111,15 @@ impl CodempClient {
 			match stream.message().await {
 				Ok(v) => match v {
 					Some(operation) => {
-						let op = serde_json::from_str(&operation.opseq).unwrap();
-						let res = { factory.lock().unwrap().process(op) };
-						match res {
-							Ok(x) => callback(x),
-							Err(e) => break error!("desynched: {}", e),
+						match serde_json::from_str(&operation.opseq) {
+							Ok(op) => {
+								let res = { factory.lock().unwrap().process(op) };
+								match res {
+									Ok(x) => callback(x),
+									Err(e) => break error!("desynched: {}", e),
+								}
+							},
+							Err(e) => break error!("could not deserialize opseq: {}", e),
 						}
 					}
 					None => break warn!("stream closed"),
