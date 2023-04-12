@@ -1,7 +1,7 @@
 use codemp::proto::{RawOp, OperationRequest};
 use tokio::sync::{mpsc, broadcast, watch};
 use tracing::{error, warn};
-use md5::Digest;
+// use md5::Digest;
 
 use operational_transform::OperationSeq;
 
@@ -19,7 +19,7 @@ pub trait BufferStore<T> {
 pub struct BufferHandle {
 	pub edit: mpsc::Sender<OperationRequest>,
 	events: broadcast::Sender<RawOp>,
-	pub digest: watch::Receiver<Digest>,
+	// pub digest: watch::Receiver<Digest>,
 	pub content: watch::Receiver<String>,
 }
 
@@ -28,7 +28,7 @@ impl BufferHandle {
 		let init_val = init.unwrap_or("".into());
 		let (edits_tx, edits_rx) = mpsc::channel(64); // TODO hardcoded size
 		let (events_tx, _events_rx) = broadcast::channel(64); // TODO hardcoded size
-		let (digest_tx, digest_rx) = watch::channel(md5::compute(&init_val));
+		// let (digest_tx, digest_rx) = watch::channel(md5::compute(&init_val));
 		let (content_tx, content_rx) = watch::channel(init_val.clone());
 
 		let events_tx_clone = events_tx.clone();
@@ -38,7 +38,7 @@ impl BufferHandle {
 				store: init_val,
 				edits: edits_rx,
 				events: events_tx_clone,
-				digest: digest_tx,
+				// digest: digest_tx,
 				content: content_tx,
 			};
 			worker.work().await
@@ -47,7 +47,7 @@ impl BufferHandle {
 		BufferHandle {
 			edit: edits_tx,
 			events: events_tx,
-			digest: digest_rx,
+			// digest: digest_rx,
 			content: content_rx,
 		}
 	}
@@ -61,7 +61,7 @@ struct BufferWorker {
 	store: String,
 	edits: mpsc::Receiver<OperationRequest>,
 	events: broadcast::Sender<RawOp>,
-	digest: watch::Sender<Digest>,
+	// digest: watch::Sender<Digest>,
 	content: watch::Sender<String>,
 }
 
