@@ -4,25 +4,40 @@
 //!  all clients and synching everyone's cursor.
 //!
 
-mod buffer;
-
+use clap::Parser;
 use tracing::info;
-
 use tonic::transport::Server;
+
+mod buffer;
 
 use crate::buffer::service::BufferService;
 
+#[derive(Parser, Debug)]
+struct CliArgs {
+
+	/// address to listen on
+	#[arg(long, default_value = "[::1]:50051")]
+	host: String,
+
+	/// enable debug log level
+	#[arg(long, default_value_t = false)]
+	debug: bool,
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-	tracing_subscriber::fmt::init();
+	let args = CliArgs::parse();
 
-	let addr = "[::1]:50051".parse()?;
+	tracing_subscriber::fmt()
+		.with_writer(std::io::stdout)
+		.with_max_level(if args.debug { tracing::Level::DEBUG } else { tracing::Level::INFO })
+		.init();
 
-	info!("Starting server");
+	info!("starting server");
 
 	Server::builder()
 		.add_service(BufferService::new().server())
-		.serve(addr)
+		.serve(args.host.parse()?)
 		.await?;
 
 	Ok(())

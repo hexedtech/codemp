@@ -38,6 +38,7 @@ pub struct BufferService {
 }
 
 impl BufferService {
+	#[allow(unused)]
 	fn get_buffer(&self, path: &String) -> Result<BufferHandle, Status> {
 		match self.map.read().unwrap().get(path) {
 			Some(buf) => Ok(buf.clone()),
