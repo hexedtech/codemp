@@ -70,6 +70,7 @@ impl OperationFactory {
 pub struct AsyncFactory {
 	run: watch::Sender<bool>,
 	ops: mpsc::Sender<OpMsg>,
+	#[allow(unused)] // TODO is this necessary?
 	content: watch::Receiver<String>,
 }
 
@@ -121,9 +122,6 @@ impl AsyncFactory {
 		rx.await.map_err(|_| OTError)?
 	}
 }
-
-
-
 
 
 #[derive(Debug)]

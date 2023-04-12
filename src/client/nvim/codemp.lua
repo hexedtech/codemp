@@ -4,8 +4,10 @@ local M = {}
 M.jobid = nil
 M.create = function(path, content) return vim.rpcrequest(M.jobid, "create", path, content) end
 M.insert = function(path, txt, pos) return vim.rpcrequest(M.jobid, "insert", path, txt, pos) end
+M.cursor = function(path, row, col) return vim.rpcrequest(M.jobid, "cursor", path, row, col) end
 M.delete = function(path, pos, count) return vim.rpcrequest(M.jobid, "delete", path, pos, count) end
 M.attach = function(path) return vim.rpcrequest(M.jobid, "attach", path) end
+M.listen = function(path) return vim.rpcrequest(M.jobid, "listen", path) end
 M.detach = function(path) return vim.rpcrequest(M.jobid, "detach", path) end
 
 local function cursor_offset()
@@ -20,6 +22,17 @@ local function hook_callbacks(path, buffer)
 		{ "InsertCharPre" },
 		{
 			callback = function(_) M.insert(path, vim.v.char, cursor_offset()) end,
+			buffer = buffer,
+			group = codemp_autocmds,
+		}
+	)
+	vim.api.nvim_create_autocmd(
+		{ "CursorMoved" },
+		{
+			callback = function(_)
+				local cursor = vim.api.nvim_win_get_cursor(0)
+				M.cursor(path, cursor[1], cursor[2])
+			end,
 			buffer = buffer,
 			group = codemp_autocmds,
 		}
@@ -76,6 +89,7 @@ vim.api.nvim_create_user_command('Share',
 		M.create(path, vim.fn.join(lines, "\n"))
 		hook_callbacks(path, bufnr)
 		M.attach(path)
+		M.listen(path)
 	end,
 { nargs=1 })
 
@@ -85,6 +99,7 @@ vim.api.nvim_create_user_command('Join',
 		local bufnr = vim.api.nvim_get_current_buf()
 		hook_callbacks(path, bufnr)
 		M.attach(path)
+		M.listen(path)
 	end,
 { nargs=1 })
 

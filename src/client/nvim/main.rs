@@ -25,11 +25,11 @@ fn default_empty_str(args: &Vec<Value>, index: usize) -> String {
 	nullable_optional_str(args, index).unwrap_or("".into())
 }
 
-fn nullable_optional_number(args: &Vec<Value>, index: usize) -> Option<u64> {
-	Some(args.get(index)?.as_u64()?)
+fn nullable_optional_number(args: &Vec<Value>, index: usize) -> Option<i64> {
+	Some(args.get(index)?.as_i64()?)
 }
 
-fn default_zero_number(args: &Vec<Value>, index: usize) -> u64 {
+fn default_zero_number(args: &Vec<Value>, index: usize) -> i64 {
 	nullable_optional_number(args, index).unwrap_or(0)
 }
 
@@ -69,7 +69,7 @@ impl Handler for NeovimHandler {
 				}
 				let path = default_empty_str(&args, 0);
 				let txt = default_empty_str(&args, 1);
-				let pos = default_zero_number(&args, 2);
+				let pos = default_zero_number(&args, 2) as u64;
 				let mut c = self.client.clone();
 				info!("correctly parsed arguments: {} - {} - {}", path, txt, pos);
 				match c.insert(path, txt, pos).await {
@@ -89,8 +89,8 @@ impl Handler for NeovimHandler {
 					return Err(Value::from("not enough arguments"));
 				}
 				let path = default_empty_str(&args, 0);
-				let pos = default_zero_number(&args, 1);
-				let count = default_zero_number(&args, 2);
+				let pos = default_zero_number(&args, 1) as u64;
+				let count = default_zero_number(&args, 2) as u64;
 
 				let mut c = self.client.clone();
 				match c.delete(path, pos, count).await {
@@ -143,6 +143,53 @@ impl Handler for NeovimHandler {
 				let mut c = self.client.clone();
 				c.detach(path);
 				Ok(Value::Nil)
+			},
+
+			"listen" => {
+				if args.len() < 1 {
+					return Err(Value::from("no path given"));
+				}
+				let path = default_empty_str(&args, 0);
+				let mut c = self.client.clone();
+
+				let ns = nvim.create_namespace("Cursor").await
+					.map_err(|e| Value::from(format!("could not create namespace: {}", e)))?;
+
+				let buf = nvim.get_current_buf().await
+					.map_err(|e| Value::from(format!("could not get current buf: {}", e)))?;
+				
+				match c.listen(path, move |cur| {
+					let _b = buf.clone();
+					tokio::spawn(async move {
+						if let Err(e) = _b.clear_namespace(ns, 0, -1).await {
+							error!("could not clear previous cursor highlight: {}", e);
+						}
+						if let Err(e) = _b.add_highlight(
+							ns, "ErrorMsg",
+							cur.row as i64 - 1, cur.col as i64 - 1, cur.col as i64
+						).await {
+							error!("could not create highlight for cursor: {}", e);
+						}
+					});
+				}).await {
+					Ok(()) => Ok(Value::Nil),
+					Err(e) => Err(Value::from(format!("could not listen cursors: {}", e))),
+				}
+			},
+
+			"cursor" => {
+				if args.len() < 3 {
+					return Err(Value::from("not enough args"));
+				}
+				let path = default_empty_str(&args, 0);
+				let row = default_zero_number(&args, 1);
+				let col = default_zero_number(&args, 2);
+
+				let mut c = self.client.clone();
+				match c.cursor(path, row, col).await {
+					Ok(()) => Ok(Value::Nil),
+					Err(e) => Err(Value::from(format!("could not send cursor update: {}", e))),
+				}
 			},
 
 			_ => Err(Value::from("unimplemented")),

@@ -6,7 +6,7 @@ use uuid::Uuid;
 
 use crate::{
 	opfactory::AsyncFactory,
-	proto::{buffer_client::BufferClient, BufferPayload, OperationRequest, RawOp},
+	proto::{buffer_client::BufferClient, BufferPayload, OperationRequest, RawOp, CursorMov},
 	tonic::{transport::Channel, Status, Streaming},
 };
 
@@ -87,6 +87,32 @@ impl CodempClient {
 				Ok(res.accepted)
 			},
 		}
+	}
+
+	pub async fn cursor(&mut self, path: String, row: i64, col: i64) -> Result<(), Status> {
+		let req = CursorMov {
+			path, user: self.id.to_string(),
+			row, col,
+		};
+		let _res = self.client.cursor(req).await?.into_inner();
+		Ok(())
+	}
+
+	pub async fn listen<F>(&mut self, path: String, callback: F) -> Result<(), Status>
+	where F : Fn(CursorMov) -> () + Send + 'static {
+		let req = BufferPayload {
+			path,
+			content: None,
+			user: self.id.to_string(),
+		};
+		let mut stream = self.client.listen(req).await?.into_inner();
+		tokio::spawn(async move {
+			// TODO catch some errors
+			while let Ok(Some(x)) = stream.message().await {
+				callback(x)
+			}
+		});
+		Ok(())
 	}
 
 	pub async fn attach<F>(&mut self, path: String, callback: F) -> Result<String, Status>
