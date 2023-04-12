@@ -67,7 +67,13 @@ vim.api.nvim_create_user_command('Connect',
 			bin_args,
 			{
 				rpc = true,
-				on_stderr = function(_, data, _) print(vim.fn.join(data, "\n")) end,
+				on_stderr = function(_, data, _)
+					for _, line in pairs(data) do
+						print(line)
+					end
+					-- print(vim.fn.join(data, "\n"))
+				end,
+				stderr_buffered = false,
 			}
 		)
 		if M.jobid <= 0 then

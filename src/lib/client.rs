@@ -132,6 +132,7 @@ impl CodempClient {
 
 	pub fn detach(&mut self, path: String) {
 		self.factories.write().unwrap().remove(&path);
+		info!("|| detached from buffer");
 	}
 
 	async fn sync(&mut self, path: String) -> Result<String, Status> {

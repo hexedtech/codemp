@@ -238,18 +238,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	}
 
 	let client = BufferClient::connect(args.host).await?;
-	debug!("client connected");
 
 	let handler: NeovimHandler = NeovimHandler {
 		client: client.into(),
 	};
 
-	let (nvim, io_handler) = create::new_parent(handler).await;
+	let (_nvim, io_handler) = create::new_parent(handler).await;
 
-	nvim.out_write("[*] codemp loaded").await?;
+	info!("++ codemp started");
 
 	if let Err(e) = io_handler.await? {
-		error!("[!] worker stopped with error: {}", e);
+		error!("worker stopped with error: {}", e);
 	}
 
 	Ok(())
