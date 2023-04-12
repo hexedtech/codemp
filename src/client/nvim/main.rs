@@ -212,6 +212,10 @@ struct CliArgs {
 	/// show debug level logs
 	#[arg(long, default_value_t = false)]
 	debug: bool,
+
+	/// dump raw tracing logs into this TCP host
+	#[arg(long)]
+	remote_debug: Option<String>,
 }
 
 
@@ -219,22 +223,21 @@ struct CliArgs {
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let args = CliArgs::parse();
 
-	let sub = tracing_subscriber::fmt();
-	match TcpStream::connect("127.0.0.1:6969") { // TODO get rid of this
-		Ok(stream) => {
-			sub.with_writer(Mutex::new(stream))
+	match args.remote_debug {
+		Some(host) =>
+			tracing_subscriber::fmt()
+				.with_writer(Mutex::new(TcpStream::connect(host)?))
 				.with_max_level(if args.debug { tracing::Level::DEBUG } else { tracing::Level::INFO })
-				.init();
-		},
-		Err(_) => {
-			sub
+				.init(),
+
+		None =>
+			tracing_subscriber::fmt()
 				.compact()
 				.without_time()
 				.with_ansi(false)
 				.with_writer(std::io::stderr)
 				.with_max_level(if args.debug { tracing::Level::DEBUG } else { tracing::Level::INFO })
-				.init();
-		},
+				.init(),
 	}
 
 	let client = BufferClient::connect(args.host).await?;
