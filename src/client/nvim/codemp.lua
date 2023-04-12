@@ -27,7 +27,7 @@ local function hook_callbacks(path, buffer)
 		}
 	)
 	vim.api.nvim_create_autocmd(
-		{ "CursorMoved" },
+		{ "CursorMoved", "CursorMovedI" },
 		{
 			callback = function(_)
 				local cursor = vim.api.nvim_win_get_cursor(0)
@@ -48,7 +48,6 @@ local function unhook_callbacks(buffer)
 	vim.keymap.del('i', '<Del>', { buffer = buffer })
 	vim.keymap.del('i', '<CR>',  { buffer = buffer })
 end
-
 
 vim.api.nvim_create_user_command('Connect',
 	function(args)
@@ -71,6 +70,9 @@ vim.api.nvim_create_user_command('Connect',
 				on_stderr = function(_, data, _) print(vim.fn.join(data, "\n")) end,
 			}
 		)
+		if M.jobid <= 0 then
+			print("[!] could not start codemp client")
+		end
 	end,
 { nargs='?', bang=true })
 
@@ -83,6 +85,10 @@ vim.api.nvim_create_user_command('Stop',
 
 vim.api.nvim_create_user_command('Share',
 	function(args)
+		if M.jobid <= 0 then
+			print("[!] connect to codemp server first")
+			return
+		end
 		local path = args.fargs[1]
 		local bufnr = vim.api.nvim_get_current_buf()
 		local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
@@ -95,6 +101,10 @@ vim.api.nvim_create_user_command('Share',
 
 vim.api.nvim_create_user_command('Join',
 	function(args)
+		if M.jobid <= 0 then
+			print("[!] connect to codemp server first")
+			return
+		end
 		local path = args.fargs[1]
 		local bufnr = vim.api.nvim_get_current_buf()
 		hook_callbacks(path, bufnr)

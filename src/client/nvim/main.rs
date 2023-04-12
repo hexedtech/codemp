@@ -164,10 +164,7 @@ impl Handler for NeovimHandler {
 						if let Err(e) = _b.clear_namespace(ns, 0, -1).await {
 							error!("could not clear previous cursor highlight: {}", e);
 						}
-						if let Err(e) = _b.add_highlight(
-							ns, "ErrorMsg",
-							cur.row as i64 - 1, cur.col as i64 - 1, cur.col as i64
-						).await {
+						if let Err(e) = _b.add_highlight(ns, "ErrorMsg", cur.row-1, cur.col, cur.col+1).await {
 							error!("could not create highlight for cursor: {}", e);
 						}
 					});
