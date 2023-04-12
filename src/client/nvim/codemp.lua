@@ -1,4 +1,4 @@
-local BINARY = vim.g.codemp_binary or "/home/alemi/projects/codemp/target/debug/client-nvim"
+local BINARY = vim.g.codemp_binary or "./codemp-client-nvim"
 
 local M = {}
 M.jobid = nil
@@ -91,7 +91,7 @@ vim.api.nvim_create_user_command('Stop',
 
 vim.api.nvim_create_user_command('Share',
 	function(args)
-		if M.jobid <= 0 then
+		if M.jobid == nil or M.jobid <= 0 then
 			print("[!] connect to codemp server first")
 			return
 		end
@@ -107,7 +107,7 @@ vim.api.nvim_create_user_command('Share',
 
 vim.api.nvim_create_user_command('Join',
 	function(args)
-		if M.jobid <= 0 then
+		if M.jobid == nil or M.jobid <= 0 then
 			print("[!] connect to codemp server first")
 			return
 		end
