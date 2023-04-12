@@ -73,16 +73,16 @@ impl BufferWorker {
 				Some(v) => match serde_json::from_str::<OperationSeq>(&v.opseq) {
 					Err(e) => break error!("could not deserialize opseq: {}", e),
 					Ok(op) => match op.apply(&self.store) {
-						Err(e) => error!("coult not apply OpSeq '{:?}' on '{}' : {}", v, self.store, e),
+						Err(e) => error!("coult not apply OpSeq '{:?}' on '{}' : {}", v, self.store, e), // TODO
 						Ok(res) => {
 							self.store = res;
 							let msg = RawOp {
 								opseq: v.opseq,
 								user: v.user
 							};
-							if let Err(e) = self.digest.send(md5::compute(&self.store)) {
-								error!("could not update digest: {}", e);
-							}
+							// if let Err(e) = self.digest.send(md5::compute(&self.store)) {
+							// 	error!("could not update digest: {}", e);
+							// }
 							if let Err(e) = self.content.send(self.store.clone()) {
 								error!("could not update content: {}", e);
 							}

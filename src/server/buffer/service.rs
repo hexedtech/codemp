@@ -52,10 +52,11 @@ impl Buffer for BufferService {
 	type AttachStream = OperationStream;
 	type ListenStream = CursorStream;
 
-	async fn attach(&self, req: Request<BufferPayload>) -> Result<tonic::Response<OperationStream>, Status> {
+	async fn attach(&self, req: Request<BufferPayload>) -> Result<Response<OperationStream>, Status> {
 		let request = req.into_inner();
 		let myself = request.user;
 		match self.map.read().unwrap().get(&request.path) {
+			None => Err(Status::not_found("path not found")),
 			Some(handle) => {
 				let (tx, rx) = mpsc::channel(128);
 				let mut sub = handle.subscribe();
@@ -74,11 +75,10 @@ impl Buffer for BufferService {
 				info!("registered new subscriber on buffer");
 				Ok(Response::new(Box::pin(output_stream)))
 			},
-			None => Err(Status::not_found("path not found")),
 		}
 	}
 
-	async fn listen(&self, req: Request<BufferPayload>) -> Result<tonic::Response<CursorStream>, Status> {
+	async fn listen(&self, req: Request<BufferPayload>) -> Result<Response<CursorStream>, Status> {
 		let mut sub = self.cursor.subscribe();
 		let myself = req.into_inner().user;
 		let (tx, rx) = mpsc::channel(128);
