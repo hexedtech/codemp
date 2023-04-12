@@ -60,16 +60,26 @@ local function unhook_callbacks(buffer)
 	vim.keymap.del('i', '<CR>',  { buffer = buffer })
 end
 
+local function auto_address(addr)
+	if not string.find(addr, "://") then
+		addr = string.format("http://%s", addr)
+	end
+	if not string.find(addr, ":", 7) then -- skip first 7 chars because 'https://'
+		addr = string.format("%s:50051", addr)
+	end
+	return addr
+end
+
 vim.api.nvim_create_user_command('Connect',
 	function(args)
-		if M.jobid ~= nil then
+		if M.jobid ~= nil and M.jobid > 0 then
 			print("already connected, disconnect first")
 			return
 		end
 		local bin_args = { BINARY }
 		if #args.fargs > 0 then
 			table.insert(bin_args, "--host")
-			table.insert(bin_args, args.fargs[1])
+			table.insert(bin_args, auto_address(args.fargs[1]))
 		end
 		if vim.g.codemp_remote_debug then
 			table.insert(bin_args, "--remote-debug")

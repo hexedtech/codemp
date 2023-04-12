@@ -255,7 +255,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 				.init(),
 	}
 
-	let client = BufferClient::connect(args.host).await?;
+	let client = BufferClient::connect(args.host.clone()).await?;
 
 	let handler: NeovimHandler = NeovimHandler {
 		client: client.into(),
@@ -263,7 +263,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	let (_nvim, io_handler) = create::new_parent(handler).await;
 
-	info!("++ codemp started");
+	info!("++ codemp connected: {}", args.host);
 
 	if let Err(e) = io_handler.await? {
 		error!("worker stopped with error: {}", e);
