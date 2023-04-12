@@ -33,7 +33,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 		.with_max_level(if args.debug { tracing::Level::DEBUG } else { tracing::Level::INFO })
 		.init();
 
-	info!("starting server");
+	info!("binding server on {}", args.host);
 
 	Server::builder()
 		.add_service(BufferService::new().server())
