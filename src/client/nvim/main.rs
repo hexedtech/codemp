@@ -71,10 +71,8 @@ impl Handler for NeovimHandler {
 				let txt = default_empty_str(&args, 1);
 				let pos = default_zero_number(&args, 2) as u64;
 				let mut c = self.client.clone();
-				info!("correctly parsed arguments: {} - {} - {}", path, txt, pos);
 				match c.insert(path, txt, pos).await {
 					Ok(res) => {
-						info!("RPC 'insert' completed");
 						match res {
 							true => Ok(Value::Nil),
 							false => Err(Value::from("rejected")),
