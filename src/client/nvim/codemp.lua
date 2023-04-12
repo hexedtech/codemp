@@ -71,6 +71,10 @@ vim.api.nvim_create_user_command('Connect',
 			table.insert(bin_args, "--host")
 			table.insert(bin_args, args.fargs[1])
 		end
+		if vim.g.codemp_remote_debug then
+			table.insert(bin_args, "--remote-debug")
+			table.insert(bin_args, vim.g.codemp_remote_debug)
+		end
 		if args.bang then
 			table.insert(bin_args, "--debug")
 		end
