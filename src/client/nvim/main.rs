@@ -100,6 +100,23 @@ impl Handler for NeovimHandler {
 				}
 			},
 
+			"replace" => {
+				if args.len() < 2 {
+					return Err(Value::from("not enough arguments"));
+				}
+				let path = default_empty_str(&args, 0);
+				let txt = default_empty_str(&args, 1);
+
+				let mut c = self.client.clone();
+				match c.replace(path, txt).await {
+					Ok(res) => match res {
+						true => Ok(Value::Nil),
+						false => Err(Value::from("rejected")),
+					},
+					Err(e) => Err(Value::from(format!("could not send replace: {}", e))),
+				}
+			},
+
 			"attach" => {
 				if args.len() < 1 {
 					return Err(Value::from("no path given"));

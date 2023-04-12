@@ -1,14 +1,16 @@
 local BINARY = vim.g.codemp_binary or "./codemp-client-nvim"
 
 local M = {}
-M.jobid = nil
-M.create = function(path, content) return vim.rpcrequest(M.jobid, "create", path, content) end
-M.insert = function(path, txt, pos) return vim.rpcrequest(M.jobid, "insert", path, txt, pos) end
-M.cursor = function(path, row, col) return vim.rpcrequest(M.jobid, "cursor", path, row, col) end
-M.delete = function(path, pos, count) return vim.rpcrequest(M.jobid, "delete", path, pos, count) end
-M.attach = function(path) return vim.rpcrequest(M.jobid, "attach", path) end
-M.listen = function(path) return vim.rpcrequest(M.jobid, "listen", path) end
-M.detach = function(path) return vim.rpcrequest(M.jobid, "detach", path) end
+
+M.jobid   = nil
+M.create  = function(path, content) return vim.rpcrequest(M.jobid, "create", path, content) end
+M.insert  = function(path, txt, pos) return vim.rpcrequest(M.jobid, "insert", path, txt, pos) end
+M.delete  = function(path, pos, count) return vim.rpcrequest(M.jobid, "delete", path, pos, count) end
+M.replace = function(path, txt) return vim.rpcrequest(M.jobid, "replace", path, txt) end
+M.cursor  = function(path, row, col) return vim.rpcrequest(M.jobid, "cursor", path, row, col) end
+M.attach  = function(path) return vim.rpcrequest(M.jobid, "attach", path) end
+M.listen  = function(path) return vim.rpcrequest(M.jobid, "listen", path) end
+M.detach  = function(path) return vim.rpcrequest(M.jobid, "detach", path) end
 
 local function cursor_offset()
 	local cursor = vim.api.nvim_win_get_cursor(0)
@@ -18,10 +20,14 @@ end
 local codemp_autocmds = vim.api.nvim_create_augroup("CodempAuGroup", { clear = true })
 
 local function hook_callbacks(path, buffer)
+	local prev_changedtick = vim.b.changedtick
 	vim.api.nvim_create_autocmd(
 		{ "InsertCharPre" },
 		{
-			callback = function(_) M.insert(path, vim.v.char, cursor_offset()) end,
+			callback = function(_)
+				M.insert(path, vim.v.char, cursor_offset())
+				prev_changedtick = vim.b.changedtick + 1
+			end,
 			buffer = buffer,
 			group = codemp_autocmds,
 		}
@@ -29,7 +35,12 @@ local function hook_callbacks(path, buffer)
 	vim.api.nvim_create_autocmd(
 		{ "CursorMoved", "CursorMovedI" },
 		{
-			callback = function(_)
+			callback = function(args)
+				if vim.b.changedtick ~= prev_changedtick then
+					prev_changedtick = vim.b.changedtick
+					local lines = vim.api.nvim_buf_get_lines(args.buf, 0, -1, false)
+					M.replace(path, vim.fn.join(lines, "\n"))
+				end
 				local cursor = vim.api.nvim_win_get_cursor(0)
 				M.cursor(path, cursor[1], cursor[2])
 			end,
@@ -56,9 +67,9 @@ vim.api.nvim_create_user_command('Connect',
 			return
 		end
 		local bin_args = { BINARY }
-		if #args.args > 0 then
+		if #args.fargs > 0 then
 			table.insert(bin_args, "--host")
-			table.insert(bin_args, args.args[1])
+			table.insert(bin_args, args.fargs[1])
 		end
 		if args.bang then
 			table.insert(bin_args, "--debug")

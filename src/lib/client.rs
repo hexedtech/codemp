@@ -89,6 +89,24 @@ impl CodempClient {
 		}
 	}
 
+	pub async fn replace(&mut self, path: String, txt: String) -> Result<bool, Status> {
+		let factory = self.get_factory(&path)?;
+		match factory.replace(txt).await {
+			Err(e) => Err(Status::internal(format!("invalid operation: {}", e))),
+			Ok(op) => {
+				let req = OperationRequest {
+					path,
+					hash: "".into(),
+					user: self.id.to_string(),
+					opseq: serde_json::to_string(&op)
+						.map_err(|_| Status::invalid_argument("could not serialize opseq"))?,
+				};
+				let res = self.client.edit(req).await?.into_inner();
+				Ok(res.accepted)
+			},
+		}
+	}
+
 	pub async fn cursor(&mut self, path: String, row: i64, col: i64) -> Result<(), Status> {
 		let req = CursorMov {
 			path, user: self.id.to_string(),

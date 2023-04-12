@@ -41,6 +41,7 @@ tracing-subscriber = { version = "0.3", optional = true }
 rmpv = { version = "1", optional = true }
 clap = { version = "4.2.1", features = ["derive"], optional = true }
 nvim-rs = { version = "0.5", features = ["use_tokio"], optional = true }
+similar = { version = "2.2", features = ["inline"] }
 
 [build-dependencies]
 tonic-build = "0.9"

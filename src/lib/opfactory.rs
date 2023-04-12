@@ -1,4 +1,5 @@
 use operational_transform::{OperationSeq, OTError};
+use similar::TextDiff;
 use tokio::sync::{mpsc, watch, oneshot};
 use tracing::error;
 
@@ -21,13 +22,25 @@ impl OperationFactory {
 		self.content == txt
 	}
 
-	pub fn replace(&mut self, txt: &str) -> OperationSeq {
-		let out = OperationSeq::default();
-		if self.content == txt {
-			return out; // nothing to do
+	pub fn replace(&mut self, txt: &str) -> Result<OperationSeq, OTError> {
+		let mut out = OperationSeq::default();
+		if self.content == txt { // TODO throw and error rather than wasting everyone's resources
+			out.retain(txt.len() as u64);
+			return Ok(out); // nothing to do
 		}
 
-		todo!()
+		let diff = TextDiff::from_chars(self.content.as_str(), txt);
+
+		for change in diff.iter_all_changes() {
+			match change.tag() {
+				similar::ChangeTag::Equal => out.retain(1),
+				similar::ChangeTag::Delete => out.delete(1),
+				similar::ChangeTag::Insert => out.insert(change.value()),
+			}
+		}
+
+		self.content = out.apply(&self.content)?;
+		Ok(out)
 	}
 
 	pub fn insert(&mut self, txt: &str, pos: u64) -> Result<OperationSeq, OTError> {
@@ -116,6 +129,12 @@ impl AsyncFactory {
 		rx.await.map_err(|_| OTError)?
 	}
 
+	pub async fn replace(&self, txt: String) -> Result<OperationSeq, OTError> {
+		let (tx, rx) = oneshot::channel();
+		self.ops.send(OpMsg::Exec(OpWrapper::Replace(txt), tx)).await.map_err(|_| OTError)?;
+		rx.await.map_err(|_| OTError)?
+	}
+
 	pub async fn process(&self, opseq: OperationSeq) -> Result<String, OTError> {
 		let (tx, rx) = oneshot::channel();
 		self.ops.send(OpMsg::Process(opseq, tx)).await.map_err(|_| OTError)?;
@@ -135,6 +154,7 @@ enum OpWrapper {
 	Insert(String, u64),
 	Delete(u64, u64),
 	Cancel(u64, u64),
+	Replace(String),
 }
 
 struct AsyncFactoryWorker {
@@ -176,6 +196,7 @@ impl AsyncFactoryWorker {
 			OpWrapper::Insert(txt, pos) => Ok(self.factory.insert(&txt, pos)?),
 			OpWrapper::Delete(pos, count) => Ok(self.factory.delete(pos, count)?),
 			OpWrapper::Cancel(pos, count) => Ok(self.factory.cancel(pos, count)?),
+			OpWrapper::Replace(txt) => Ok(self.factory.replace(&txt)?),
 		}
 	}
 }
