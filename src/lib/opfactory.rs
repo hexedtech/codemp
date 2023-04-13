@@ -20,6 +20,7 @@ impl OperationFactory {
 	}
 
 	fn apply(&mut self, op: OperationSeq) -> Result<OperationSeq, OTError> {
+		if op.is_noop() { return Err(OTError) }
 		self.content = op.apply(&self.content)?;
 		self.queue.push_back(op.clone());
 		Ok(op)
