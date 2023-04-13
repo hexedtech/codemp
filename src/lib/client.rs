@@ -66,6 +66,9 @@ impl CodempClient {
 						.map_err(|_| Status::invalid_argument("could not serialize opseq"))?,
 				};
 				let res = self.client.edit(req).await?.into_inner();
+				if let Err(e) = factory.ack(op.clone()).await {
+					error!("could not ack op '{:?}' : {}", op, e);
+				}
 				Ok(res.accepted)
 			},
 		}
@@ -84,6 +87,9 @@ impl CodempClient {
 						.map_err(|_| Status::invalid_argument("could not serialize opseq"))?,
 				};
 				let res = self.client.edit(req).await?.into_inner();
+				if let Err(e) = factory.ack(op.clone()).await {
+					error!("could not ack op '{:?}' : {}", op, e);
+				}
 				Ok(res.accepted)
 			},
 		}
@@ -102,6 +108,9 @@ impl CodempClient {
 						.map_err(|_| Status::invalid_argument("could not serialize opseq"))?,
 				};
 				let res = self.client.edit(req).await?.into_inner();
+				if let Err(e) = factory.ack(op.clone()).await {
+					error!("could not ack op '{:?}' : {}", op, e);
+				}
 				Ok(res.accepted)
 			},
 		}
