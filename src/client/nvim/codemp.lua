@@ -20,37 +20,49 @@ end
 local codemp_autocmds = vim.api.nvim_create_augroup("CodempAuGroup", { clear = true })
 
 local function hook_callbacks(path, buffer)
-	local prev_changedtick = vim.b.changedtick
 	vim.api.nvim_create_autocmd(
 		{ "InsertCharPre" },
 		{
 			callback = function(_)
-				M.insert(path, vim.v.char, cursor_offset())
-				prev_changedtick = vim.b.changedtick + 1
+				pcall(M.insert, path, vim.v.char, cursor_offset()) -- TODO log errors
 			end,
 			buffer = buffer,
 			group = codemp_autocmds,
 		}
 	)
 	vim.api.nvim_create_autocmd(
-		{ "CursorMoved", "CursorMovedI" },
+		{ "CursorMoved", "CompleteDone", "InsertEnter", "InsertLeave" },
 		{
 			callback = function(args)
-				if vim.b.changedtick ~= prev_changedtick then
-					prev_changedtick = vim.b.changedtick
-					local lines = vim.api.nvim_buf_get_lines(args.buf, 0, -1, false)
-					M.replace(path, vim.fn.join(lines, "\n"))
-				end
+				local lines = vim.api.nvim_buf_get_lines(args.buf, 0, -1, false)
+				pcall(M.replace, path, vim.fn.join(lines, "\n")) -- TODO log errors
 				local cursor = vim.api.nvim_win_get_cursor(0)
-				M.cursor(path, cursor[1], cursor[2])
+				pcall(M.cursor, path, cursor[1], cursor[2]) -- TODO log errors
 			end,
 			buffer = buffer,
 			group = codemp_autocmds,
 		}
 	)
-	vim.keymap.set('i', '<BS>', function() M.delete(path, cursor_offset(), 1) return '<BS>' end, {expr = true, buffer = buffer})
-	vim.keymap.set('i', '<Del>', function() M.delete(path, cursor_offset() + 1, 1) return '<Del>' end, {expr = true, buffer = buffer})
-	vim.keymap.set('i', '<CR>', function() M.insert(path, "\n", cursor_offset()) return '<CR>'end, {expr = true, buffer = buffer})
+	local last_line = 0
+	vim.api.nvim_create_autocmd(
+		{ "CursorMovedI" },
+		{
+			callback = function(args)
+				local cursor = vim.api.nvim_win_get_cursor(0)
+				if cursor[1] == last_line then
+					return
+				end
+				last_line = cursor[1]
+				local lines = vim.api.nvim_buf_get_lines(args.buf, 0, -1, false)
+				pcall(M.replace, path, vim.fn.join(lines, "\n")) -- TODO log errors
+				pcall(M.cursor, path, cursor[1], cursor[2]) -- TODO log errors
+			end,
+			buffer = buffer,
+			group = codemp_autocmds,
+		}
+	)
+	vim.keymap.set('i', '<BS>', function() pcall(M.delete, path, cursor_offset(), 1) return '<BS>' end, {expr = true, buffer = buffer}) -- TODO log errors
+	vim.keymap.set('i', '<Del>', function() pcall(M.delete, path, cursor_offset() + 1, 1) return '<Del>' end, {expr = true, buffer = buffer}) -- TODO log errors
 end
 
 local function unhook_callbacks(buffer)
