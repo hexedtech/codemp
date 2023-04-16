@@ -1,47 +1,24 @@
-use std::collections::VecDeque;
+use std::sync::Arc;
 
 use operational_transform::{OperationSeq, OTError};
 use similar::TextDiff;
 use tokio::sync::{mpsc, watch, oneshot};
 use tracing::{error, warn};
 
-#[derive(Clone)]
-pub struct OperationFactory {
-	content: String,
-	queue: VecDeque<OperationSeq>,
-}
+#[tonic::async_trait]
+pub trait OperationFactory {
+	fn content(&self) -> String;
+	async fn apply(&self, op: OperationSeq) -> Result<String, OTError>;
+	async fn process(&self, op: OperationSeq) -> Result<String, OTError>;
+	async fn acknowledge(&self, op: OperationSeq) -> Result<(), OTError>;
 
-impl OperationFactory {
-	pub fn new(init: Option<String>) -> Self {
-		OperationFactory {
-			content: init.unwrap_or(String::new()),
-			queue: VecDeque::new(),
-		}
-	}
-
-	fn apply(&mut self, op: OperationSeq) -> Result<OperationSeq, OTError> {
-		if op.is_noop() { return Err(OTError) }
-		self.content = op.apply(&self.content)?;
-		self.queue.push_back(op.clone());
-		Ok(op)
-	}
-
-	// TODO remove the need for this
-	pub fn content(&self) -> String {
-		self.content.clone()
-	}
-
-	pub fn check(&self, txt: &str) -> bool {
-		self.content == txt
-	}
-
-	pub fn replace(&mut self, txt: &str) -> Result<OperationSeq, OTError> {
+	fn replace(&self, txt: &str) -> OperationSeq {
 		let mut out = OperationSeq::default();
-		if self.content == txt { // TODO throw and error rather than wasting everyone's resources
-			return Err(OTError); // nothing to do
+		if self.content() == txt {
+			return out; // TODO this won't work, should we return a noop instead?
 		}
 
-		let diff = TextDiff::from_chars(self.content.as_str(), txt);
+		let diff = TextDiff::from_chars(self.content().as_str(), txt);
 
 		for change in diff.iter_all_changes() {
 			match change.tag() {
@@ -51,58 +28,36 @@ impl OperationFactory {
 			}
 		}
 
-		self.content = out.apply(&self.content)?;
-		Ok(out)
+		out
 	}
 
-	pub fn insert(&mut self, txt: &str, pos: u64) -> Result<OperationSeq, OTError> {
+	fn insert(&self, txt: &str, pos: u64) -> OperationSeq {
 		let mut out = OperationSeq::default();
-		let total = self.content.len() as u64;
+		let total = self.content().len() as u64;
 		out.retain(pos);
 		out.insert(txt);
 		out.retain(total - pos);
-		Ok(self.apply(out)?)
+		out
 	}
 
-	pub fn delete(&mut self, pos: u64, count: u64) -> Result<OperationSeq, OTError> {
+	fn delete(&self, pos: u64, count: u64) -> OperationSeq {
 		let mut out = OperationSeq::default();
-		let len = self.content.len() as u64;
+		let len = self.content().len() as u64;
 		out.retain(pos - count);
 		out.delete(count);
 		out.retain(len - pos);
-		Ok(self.apply(out)?)
+		out
 	}
 
-	pub fn cancel(&mut self, pos: u64, count: u64) -> Result<OperationSeq, OTError> {
+	fn cancel(&self, pos: u64, count: u64) -> OperationSeq {
 		let mut out = OperationSeq::default();
-		let len = self.content.len() as u64;
+		let len = self.content().len() as u64;
 		out.retain(pos);
 		out.delete(count);
 		out.retain(len - (pos+count));
-		Ok(self.apply(out)?)
-	}
-
-	pub fn ack(&mut self, op: OperationSeq) -> Result<(), OTError> { // TODO use a different error?
-		// TODO is manually iterating from behind worth the manual search boilerplate?
-		for (i, o) in self.queue.iter().enumerate().rev() {
-			if o == &op {
-				self.queue.remove(i);
-				return Ok(());
-			}
-		}
-		warn!("could not ack op {:?} from {:?}", op, self.queue);
-		Err(OTError)
-	}
-
-	pub fn process(&mut self, mut op: OperationSeq) -> Result<String, OTError> {
-		for o in self.queue.iter_mut() {
-			(op, *o) = op.transform(o)?;
-		}
-		self.content = op.apply(&self.content)?;
-		Ok(self.content.clone())
+		out
 	}
 }
-
 
 pub struct AsyncFactory {
 	run: watch::Sender<bool>,
@@ -117,6 +72,32 @@ impl Drop for AsyncFactory {
 	}
 }
 
+#[tonic::async_trait]
+impl OperationFactory for AsyncFactory {
+	fn content(&self) -> String {
+		return self.content.borrow().clone();
+	}
+
+	async fn apply(&self, op: OperationSeq) -> Result<String, OTError> {
+		let (tx, rx) = oneshot::channel();
+		self.ops.send(OpMsg::Apply(op, tx)).await.map_err(|_| OTError)?;
+		Ok(rx.await.map_err(|_| OTError)?)
+	}
+
+	async fn process(&self, op: OperationSeq) -> Result<String, OTError> {
+		let (tx, rx) = oneshot::channel();
+		self.ops.send(OpMsg::Process(op, tx)).await.map_err(|_| OTError)?;
+		Ok(rx.await.map_err(|_| OTError)?)
+	}
+
+	async fn acknowledge(&self, op: OperationSeq) -> Result<(), OTError> {
+		let (tx, rx) = oneshot::channel();
+		self.ops.send(OpMsg::Acknowledge(op, tx)).await.map_err(|_| OTError)?;
+		Ok(rx.await.map_err(|_| OTError)?)
+	}
+
+}
+
 impl AsyncFactory {
 	pub fn new(init: Option<String>) -> Self {
 		let (run_tx, run_rx) = watch::channel(true);
@@ -124,7 +105,7 @@ impl AsyncFactory {
 		let (txt_tx, txt_rx) = watch::channel("".into());
 
 		let worker = AsyncFactoryWorker {
-			factory: OperationFactory::new(init),
+			text: init.unwrap_or("".into()),
 			ops: ops_rx,
 			run: run_rx,
 			content: txt_tx,
@@ -134,62 +115,18 @@ impl AsyncFactory {
 
 		AsyncFactory { run: run_tx, ops: ops_tx, content: txt_rx }
 	}
-
-	pub async fn insert(&self, txt: String, pos: u64) -> Result<OperationSeq, OTError> {
-		let (tx, rx) = oneshot::channel();
-		self.ops.send(OpMsg::Exec(OpWrapper::Insert(txt, pos), tx)).await.map_err(|_| OTError)?;
-		rx.await.map_err(|_| OTError)?
-	}
-
-	pub async fn delete(&self, pos: u64, count: u64) -> Result<OperationSeq, OTError> {
-		let (tx, rx) = oneshot::channel();
-		self.ops.send(OpMsg::Exec(OpWrapper::Delete(pos, count), tx)).await.map_err(|_| OTError)?;
-		rx.await.map_err(|_| OTError)?
-	}
-
-	pub async fn cancel(&self, pos: u64, count: u64) -> Result<OperationSeq, OTError> {
-		let (tx, rx) = oneshot::channel();
-		self.ops.send(OpMsg::Exec(OpWrapper::Cancel(pos, count), tx)).await.map_err(|_| OTError)?;
-		rx.await.map_err(|_| OTError)?
-	}
-
-	pub async fn replace(&self, txt: String) -> Result<OperationSeq, OTError> {
-		let (tx, rx) = oneshot::channel();
-		self.ops.send(OpMsg::Exec(OpWrapper::Replace(txt), tx)).await.map_err(|_| OTError)?;
-		rx.await.map_err(|_| OTError)?
-	}
-
-	pub async fn process(&self, opseq: OperationSeq) -> Result<String, OTError> {
-		let (tx, rx) = oneshot::channel();
-		self.ops.send(OpMsg::Process(opseq, tx)).await.map_err(|_| OTError)?;
-		rx.await.map_err(|_| OTError)?
-	}
-
-	pub async fn ack(&self, opseq: OperationSeq) -> Result<(), OTError> {
-		let (tx, rx) = oneshot::channel();
-		self.ops.send(OpMsg::Ack(opseq, tx)).await.map_err(|_| OTError)?;
-		rx.await.map_err(|_| OTError)?
-	}
 }
 
 
 #[derive(Debug)]
 enum OpMsg {
-	Exec(OpWrapper, oneshot::Sender<Result<OperationSeq, OTError>>),
-	Process(OperationSeq, oneshot::Sender<Result<String, OTError>>),
-	Ack(OperationSeq, oneshot::Sender<Result<(), OTError>>),
-}
-
-#[derive(Debug)]
-enum OpWrapper {
-	Insert(String, u64),
-	Delete(u64, u64),
-	Cancel(u64, u64),
-	Replace(String),
+	Apply(OperationSeq, oneshot::Sender<String>),
+	Process(OperationSeq, oneshot::Sender<String>),
+	Acknowledge(OperationSeq, oneshot::Sender<()>)
 }
 
 struct AsyncFactoryWorker {
-	factory: OperationFactory,
+	text: String,
 	ops: mpsc::Receiver<OpMsg>,
 	run: watch::Receiver<bool>,
 	content: watch::Sender<String>
@@ -204,7 +141,7 @@ impl AsyncFactoryWorker {
 					match recv {
 						Some(msg) => {
 							match msg {
-								OpMsg::Exec(op, tx) => tx.send(self.exec(op)).unwrap_or(()),
+								OpMsg::Apply(op, tx) => tx.send(self.exec(op)).unwrap_or(()),
 								OpMsg::Process(opseq, tx) => tx.send(self.factory.process(opseq)).unwrap_or(()),
 								OpMsg::Ack(opseq, tx) => tx.send(self.factory.ack(opseq)).unwrap_or(()),
 							}

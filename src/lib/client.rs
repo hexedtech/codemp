@@ -1,194 +1,80 @@
-/// TODO better name for this file
+use std::{future::Future, sync::Arc, pin::Pin};
 
-use std::{sync::{Arc, RwLock}, collections::BTreeMap};
-use tracing::{error, warn, info};
-use uuid::Uuid;
+use operational_transform::OperationSeq;
+use tokio::sync::mpsc;
+use tonic::{transport::{Channel, Error}, Status};
+use tracing::error;
 
-use crate::{
-	opfactory::AsyncFactory,
-	proto::{buffer_client::BufferClient, BufferPayload, OperationRequest, RawOp, CursorMov},
-	tonic::{transport::Channel, Status, Streaming},
-};
+use crate::{proto::{buffer_client::BufferClient, BufferPayload, OperationRequest, RawOp, CursorMov}, opfactory::AsyncFactory};
 
-pub type FactoryStore = Arc<RwLock<BTreeMap<String, Arc<AsyncFactory>>>>;
-
-impl From::<BufferClient<Channel>> for CodempClient {
-	fn from(x: BufferClient<Channel>) -> CodempClient {
-		CodempClient {
-			id: Uuid::new_v4(),
-			client:x,
-			factories: Arc::new(RwLock::new(BTreeMap::new())),
-		}
-	}
+pub trait EditorDriver : Clone {
+	fn id(&self) -> String;
 }
 
 #[derive(Clone)]
-pub struct CodempClient {
-	id: Uuid,
+pub struct CodempClient<T : EditorDriver> {
 	client: BufferClient<Channel>,
-	factories: FactoryStore,
+	driver: T,
 }
 
-impl CodempClient {
-	fn get_factory(&self, path: &String) -> Result<Arc<AsyncFactory>, Status> {
-		match self.factories.read().unwrap().get(path) {
-			Some(f) => Ok(f.clone()),
-			None => Err(Status::not_found("no active buffer for given path")),
-		}
+impl<T : EditorDriver> CodempClient<T> { // TODO wrap tonic 'connect' to allow multiple types
+	pub async fn new(addr: &str, driver: T) -> Result<Self, Error> {
+		let client = BufferClient::connect(addr.to_string()).await?;
+
+		Ok(CodempClient { client, driver })
 	}
 
-	pub fn add_factory(&self, path: String, factory:Arc<AsyncFactory>) {
-		self.factories.write().unwrap().insert(path, factory);
-	}
-
-	pub async fn create(&mut self, path: String, content: Option<String>) -> Result<bool, Status> {
+	pub async fn create_buffer(&mut self, path: String, content: Option<String>) -> Result<bool, Status> {
 		let req = BufferPayload {
-			path: path.clone(),
-			content: content.clone(),
-			user: self.id.to_string(),
+			path, content,
+			user: self.driver.id(),
 		};
 
-		let res = self.client.create(req).await?.into_inner();
+		let res = self.client.create(req).await?;
 
-		Ok(res.accepted)
+		Ok(res.into_inner().accepted)
 	}
 
-	pub async fn insert(&mut self, path: String, txt: String, pos: u64) -> Result<bool, Status> {
-		let factory = self.get_factory(&path)?;
-		match factory.insert(txt, pos).await {
-			Err(e) => Err(Status::internal(format!("invalid operation: {}", e))),
-			Ok(op) => {
-				let req = OperationRequest {
-					path,
-					hash: "".into(),
-					user: self.id.to_string(),
-					opseq: serde_json::to_string(&op)
-						.map_err(|_| Status::invalid_argument("could not serialize opseq"))?,
-				};
-				let res = self.client.edit(req).await?.into_inner();
-				if let Err(e) = factory.ack(op.clone()).await {
-					error!("could not ack op '{:?}' : {}", op, e);
-				}
-				Ok(res.accepted)
-			},
-		}
-	}
-
-	pub async fn delete(&mut self, path: String, pos: u64, count: u64) -> Result<bool, Status> {
-		let factory = self.get_factory(&path)?;
-		match factory.delete(pos, count).await {
-			Err(e) => Err(Status::internal(format!("invalid operation: {}", e))),
-			Ok(op) => {
-				let req = OperationRequest {
-					path,
-					hash: "".into(),
-					user: self.id.to_string(),
-					opseq: serde_json::to_string(&op)
-						.map_err(|_| Status::invalid_argument("could not serialize opseq"))?,
-				};
-				let res = self.client.edit(req).await?.into_inner();
-				if let Err(e) = factory.ack(op.clone()).await {
-					error!("could not ack op '{:?}' : {}", op, e);
-				}
-				Ok(res.accepted)
-			},
-		}
-	}
-
-	pub async fn replace(&mut self, path: String, txt: String) -> Result<bool, Status> {
-		let factory = self.get_factory(&path)?;
-		match factory.replace(txt).await {
-			Err(e) => Err(Status::internal(format!("invalid operation: {}", e))),
-			Ok(op) => {
-				let req = OperationRequest {
-					path,
-					hash: "".into(),
-					user: self.id.to_string(),
-					opseq: serde_json::to_string(&op)
-						.map_err(|_| Status::invalid_argument("could not serialize opseq"))?,
-				};
-				let res = self.client.edit(req).await?.into_inner();
-				if let Err(e) = factory.ack(op.clone()).await {
-					error!("could not ack op '{:?}' : {}", op, e);
-				}
-				Ok(res.accepted)
-			},
-		}
-	}
-
-	pub async fn cursor(&mut self, path: String, row: i64, col: i64) -> Result<(), Status> {
-		let req = CursorMov {
-			path, user: self.id.to_string(),
-			row, col,
-		};
-		let _res = self.client.cursor(req).await?.into_inner();
-		Ok(())
-	}
-
-	pub async fn listen<F>(&mut self, path: String, callback: F) -> Result<(), Status>
-	where F : Fn(CursorMov) -> () + Send + 'static {
+	pub async fn attach_buffer(&mut self, path: String) -> Result<mpsc::Sender<OperationSeq>, Status> {
 		let req = BufferPayload {
-			path,
-			content: None,
-			user: self.id.to_string(),
+			path, content: None,
+			user: self.driver.id(),
 		};
-		let mut stream = self.client.listen(req).await?.into_inner();
+
+		let content = self.client.sync(req.clone())
+			.await?
+			.into_inner()
+			.content;
+
+		let mut stream = self.client.attach(req).await?.into_inner();
+
+		let factory = Arc::new(AsyncFactory::new(content));
+
+		let (tx, mut rx) = mpsc::channel(64);
+
 		tokio::spawn(async move {
-			// TODO catch some errors
-			while let Ok(Some(x)) = stream.message().await {
-				callback(x)
+			loop {
+				match stream.message().await {
+					Err(e)      => break error!("error receiving update: {}", e),
+					Ok(None)    => break,
+					Ok(Some(x)) => match serde_json::from_str::<OperationSeq>(&x.opseq) {
+						Err(e) => break error!("error deserializing opseq: {}", e),
+						Ok(v) => match factory.process(v).await {
+							Err(e) => break error!("could not apply operation from server: {}", e),
+							Ok(txt) => { // send back txt
+							}
+						}
+					},
+				}
 			}
 		});
-		Ok(())
-	}
 
-	pub async fn attach<F>(&mut self, path: String, callback: F) -> Result<String, Status>
-	where F : Fn(String) -> () + Send + 'static {
-		let content = self.sync(path.clone()).await?;
-		let factory = Arc::new(AsyncFactory::new(Some(content.clone())));
-		self.add_factory(path.clone(), factory.clone());
-		let req = BufferPayload {
-			path,
-			content: None,
-			user: self.id.to_string(),
-		};
-		let stream = self.client.attach(req).await?.into_inner();
-		tokio::spawn(async move { Self::worker(stream, factory, callback).await } );
-		Ok(content)
-	}
+		tokio::spawn(async move {
+			while let Some(op) = rx.recv().await {
 
-	pub fn detach(&mut self, path: String) {
-		self.factories.write().unwrap().remove(&path);
-		info!("|| detached from buffer");
-	}
-
-	async fn sync(&mut self, path: String) -> Result<String, Status> {
-		let res = self.client.sync(
-			BufferPayload {
-				path, content: None, user: self.id.to_string(),
 			}
-		).await?;
-		Ok(res.into_inner().content.unwrap_or("".into()))
-	}
+		});
 
-	async fn worker<F>(mut stream: Streaming<RawOp>, factory: Arc<AsyncFactory>, callback: F)
-	where F : Fn(String) -> () {
-		info!("|> buffer worker started");
-		loop {
-			match stream.message().await {
-				Err(e) => break error!("error receiving change: {}", e),
-				Ok(v) => match v {
-					None => break warn!("stream closed"),
-					Some(operation) => match serde_json::from_str(&operation.opseq) {
-						Err(e) => break error!("could not deserialize opseq: {}", e),
-						Ok(op) => match factory.process(op).await {
-							Err(e) => break error!("desynched: {}", e),
-							Ok(x) => callback(x),
-						},
-					}
-				},
-			}
-		}
-		info!("[] buffer worker stopped");
+		Ok(tx)
 	}
 }
