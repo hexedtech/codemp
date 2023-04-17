@@ -1,6 +1,8 @@
-use std::{net::TcpStream, sync::Mutex};
+use std::{net::TcpStream, sync::Mutex, collections::BTreeMap};
 
-use codemp::client::CodempClient;
+use codemp::cursor::CursorController;
+use codemp::operation::OperationController;
+use codemp::{client::CodempClient, operation::OperationProcessor};
 use codemp::proto::buffer_client::BufferClient;
 use rmpv::Value;
 
@@ -9,12 +11,13 @@ use tokio::io::Stdout;
 use clap::Parser;
 
 use nvim_rs::{compat::tokio::Compat, create::tokio as create, Handler, Neovim};
-use tonic::async_trait;
 use tracing::{error, warn, debug, info};
 
 #[derive(Clone)]
 struct NeovimHandler {
 	client: CodempClient,
+	factories: BTreeMap<String, OperationController>,
+	cursor: Option<CursorController>,
 }
 
 fn nullable_optional_str(args: &Vec<Value>, index: usize) -> Option<String> {
@@ -33,7 +36,7 @@ fn default_zero_number(args: &Vec<Value>, index: usize) -> i64 {
 	nullable_optional_number(args, index).unwrap_or(0)
 }
 
-#[async_trait]
+#[tonic::async_trait]
 impl Handler for NeovimHandler {
 	type Writer = Compat<Stdout>;
 
