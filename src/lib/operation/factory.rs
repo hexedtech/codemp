@@ -6,11 +6,12 @@ pub trait OperationFactory {
 
 	fn replace(&self, txt: &str) -> OperationSeq {
 		let mut out = OperationSeq::default();
-		if self.content() == txt {
+		let content = self.content();
+		if content == txt {
 			return out; // TODO this won't work, should we return a noop instead?
 		}
 
-		let diff = TextDiff::from_chars(self.content().as_str(), txt);
+		let diff = TextDiff::from_chars(content.as_str(), txt);
 
 		for change in diff.iter_all_changes() {
 			match change.tag() {
