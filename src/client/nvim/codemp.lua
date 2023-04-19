@@ -49,13 +49,13 @@ local function hook_callbacks(path, buffer)
 		{
 			callback = function(args)
 				local cursor = vim.api.nvim_win_get_cursor(0)
+				pcall(M.cursor, path, cursor[1], cursor[2]) -- TODO log errors
 				if cursor[1] == last_line then
 					return
 				end
 				last_line = cursor[1]
 				local lines = vim.api.nvim_buf_get_lines(args.buf, 0, -1, false)
 				pcall(M.replace, path, vim.fn.join(lines, "\n")) -- TODO log errors
-				pcall(M.cursor, path, cursor[1], cursor[2]) -- TODO log errors
 			end,
 			buffer = buffer,
 			group = codemp_autocmds,
@@ -111,6 +111,7 @@ vim.api.nvim_create_user_command('Connect',
 					-- print(vim.fn.join(data, "\n"))
 				end,
 				stderr_buffered = false,
+				env = { RUST_BACKTRACE = 1 }
 			}
 		)
 		if M.jobid <= 0 then
