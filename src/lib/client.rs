@@ -8,7 +8,7 @@ use uuid::Uuid;
 use crate::{
 	cursor::{CursorController, CursorStorage},
 	operation::{OperationController, OperationProcessor},
-	proto::{buffer_client::BufferClient, BufferPayload, OperationRequest},
+	proto::{buffer_client::BufferClient, BufferPayload, OperationRequest, CursorMov},
 };
 
 #[derive(Clone)]
@@ -26,7 +26,6 @@ impl From::<BufferClient<Channel>> for CodempClient {
 impl CodempClient {
 	pub fn new(id: String, client: BufferClient<Channel>) -> Self {
 		CodempClient { id, client }
-
 	}
 
 	pub async fn create(&mut self, path: String, content: Option<String>) -> Result<bool, Status> {
@@ -91,7 +90,9 @@ impl CodempClient {
 						Err(e) => break error!("error deserializing opseq: {}", e),
 						Ok(v) => match _factory.process(v).await {
 							Err(e) => break error!("could not apply operation from server: {}", e),
-							Ok(_txt) => { }
+							Ok(_txt) => {
+								// send event containing where the change happened
+							}
 						}
 					},
 				}
@@ -124,5 +125,14 @@ impl CodempClient {
 		});
 
 		Ok(factory)
+	}
+
+	pub async fn cursor(&mut self, path: String, row: i64, col: i64) -> Result<bool, Status> {
+		let req = CursorMov {
+			path, row, col,
+			user: self.id.clone(),
+		};
+		let res = self.client.cursor(req).await?.into_inner();
+		Ok(res.accepted)
 	}
 }

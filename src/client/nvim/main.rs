@@ -1,7 +1,7 @@
+use std::sync::Arc;
 use std::{net::TcpStream, sync::Mutex, collections::BTreeMap};
 
-use codemp::cursor::CursorController;
-use codemp::operation::OperationController;
+use codemp::operation::{OperationController, OperationFactory};
 use codemp::{client::CodempClient, operation::OperationProcessor};
 use codemp::proto::buffer_client::BufferClient;
 use rmpv::Value;
@@ -16,8 +16,7 @@ use tracing::{error, warn, debug, info};
 #[derive(Clone)]
 struct NeovimHandler {
 	client: CodempClient,
-	factories: BTreeMap<String, OperationController>,
-	cursor: Option<CursorController>,
+	factories: Arc<Mutex<BTreeMap<String, Arc<OperationController>>>>,
 }
 
 fn nullable_optional_str(args: &Vec<Value>, index: usize) -> Option<String> {
@@ -34,6 +33,12 @@ fn nullable_optional_number(args: &Vec<Value>, index: usize) -> Option<i64> {
 
 fn default_zero_number(args: &Vec<Value>, index: usize) -> i64 {
 	nullable_optional_number(args, index).unwrap_or(0)
+}
+
+impl NeovimHandler {
+	fn buffer_controller(&self, path: &String) -> Option<Arc<OperationController>> {
+		Some(self.factories.lock().unwrap().get(path)?.clone())
+	}
 }
 
 #[tonic::async_trait]
@@ -72,16 +77,18 @@ impl Handler for NeovimHandler {
 				}
 				let path = default_empty_str(&args, 0);
 				let txt = default_empty_str(&args, 1);
-				let pos = default_zero_number(&args, 2) as u64;
-				let mut c = self.client.clone();
-				match c.insert(path, txt, pos).await {
-					Ok(res) => {
-						match res {
-							true => Ok(Value::Nil),
-							false => Err(Value::from("rejected")),
+				let mut pos = default_zero_number(&args, 2) as i64;
+				
+				if pos <= 0 { pos = 0 } // TODO wtf vim??
+
+				match self.buffer_controller(&path) {
+					None => Err(Value::from("no controller for given path")),
+					Some(controller) => {
+						match controller.apply(controller.insert(&txt, pos as u64)).await {
+							Err(e) => Err(Value::from(format!("could not send insert: {}", e))),
+							Ok(_res) => Ok(Value::Nil),
 						}
-					},
-					Err(e) => Err(Value::from(format!("could not send insert: {}", e))),
+					}
 				}
 			},
 
@@ -93,13 +100,12 @@ impl Handler for NeovimHandler {
 				let pos = default_zero_number(&args, 1) as u64;
 				let count = default_zero_number(&args, 2) as u64;
 
-				let mut c = self.client.clone();
-				match c.delete(path, pos, count).await {
-					Ok(res) => match res {
-						true => Ok(Value::Nil),
-						false => Err(Value::from("rejected")),
-					},
-					Err(e) => Err(Value::from(format!("could not send insert: {}", e))),
+				match self.buffer_controller(&path) {
+					None => Err(Value::from("no controller for given path")),
+					Some(controller) => match controller.apply(controller.delete(pos, count)).await {
+						Err(e) => Err(Value::from(format!("could not send delete: {}", e))),
+						Ok(_res) => Ok(Value::Nil),
+					}
 				}
 			},
 
@@ -110,13 +116,12 @@ impl Handler for NeovimHandler {
 				let path = default_empty_str(&args, 0);
 				let txt = default_empty_str(&args, 1);
 
-				let mut c = self.client.clone();
-				match c.replace(path, txt).await {
-					Ok(res) => match res {
-						true => Ok(Value::Nil),
-						false => Err(Value::from("rejected")),
-					},
-					Err(e) => Err(Value::from(format!("could not send replace: {}", e))),
+				match self.buffer_controller(&path) {
+					None => Err(Value::from("no controller for given path")),
+					Some(controller) => match controller.apply(controller.replace(&txt)).await {
+						Err(e) => Err(Value::from(format!("could not send replace: {}", e))),
+						Ok(_res) => Ok(Value::Nil),
+					}
 				}
 			},
 
@@ -132,63 +137,72 @@ impl Handler for NeovimHandler {
 
 				let mut c = self.client.clone();
 
-				let buf = buffer.clone();
-				match c.attach(path, move |x| {
-					let lines : Vec<String> = x.split("\n").map(|x| x.to_string()).collect();
-					let b = buf.clone();
-					tokio::spawn(async move {
-						if let Err(e) = b.set_lines(0, -1, false, lines).await {
-							error!("could not update buffer: {}", e);
-						}
-					});
-				}).await {
+				match c.attach(path.clone()).await {
 					Err(e) => Err(Value::from(format!("could not attach to stream: {}", e))),
-					Ok(content) => {
-						let lines : Vec<String> = content.split("\n").map(|x| x.to_string()).collect();
-						if let Err(e) = buffer.set_lines(0, -1, false, lines).await {
-							error!("could not update buffer: {}", e);
+					Ok(controller) => {
+						let _controller = controller.clone();
+						let lines : Vec<String> = _controller.content().split("\n").map(|x| x.to_string()).collect();
+						match buffer.set_lines(0, -1, false, lines).await {
+							Err(e) => Err(Value::from(format!("could not sync buffer: {}", e))),
+							Ok(()) => {
+								tokio::spawn(async move {
+									loop {
+										_controller.wait().await;
+										let lines : Vec<String> = _controller.content().split("\n").map(|x| x.to_string()).collect();
+										if let Err(e) = buffer.set_lines(0, -1, false, lines).await {
+											error!("could not update buffer: {}", e);
+										}
+									}
+								});
+								self.factories.lock().unwrap().insert(path, controller);
+								Ok(Value::Nil)
+							}
 						}
-						Ok(Value::Nil)
 					},
 				}
 			},
 
 			"detach" => {
-				if args.len() < 1 {
-					return Err(Value::from("no path given"));
-				}
-				let path = default_empty_str(&args, 0);
-				let mut c = self.client.clone();
-				c.detach(path);
-				Ok(Value::Nil)
+				Err(Value::from("unimplemented! try with :q!"))
+				// if args.len() < 1 {
+				// 	return Err(Value::from("no path given"));
+				// }
+				// let path = default_empty_str(&args, 0);
+				// let mut c = self.client.clone();
+				// c.detach(path);
+				// Ok(Value::Nil)
 			},
 
 			"listen" => {
-				if args.len() < 1 {
-					return Err(Value::from("no path given"));
-				}
-				let path = default_empty_str(&args, 0);
-				let mut c = self.client.clone();
-
 				let ns = nvim.create_namespace("Cursor").await
 					.map_err(|e| Value::from(format!("could not create namespace: {}", e)))?;
 
 				let buf = nvim.get_current_buf().await
 					.map_err(|e| Value::from(format!("could not get current buf: {}", e)))?;
 				
-				match c.listen(path, move |cur| {
-					let _b = buf.clone();
-					tokio::spawn(async move {
-						if let Err(e) = _b.clear_namespace(ns, 0, -1).await {
-							error!("could not clear previous cursor highlight: {}", e);
-						}
-						if let Err(e) = _b.add_highlight(ns, "ErrorMsg", cur.row-1, cur.col, cur.col+1).await {
-							error!("could not create highlight for cursor: {}", e);
-						}
-					});
-				}).await {
-					Ok(()) => Ok(Value::Nil),
+				let mut c = self.client.clone();
+				match c.listen().await {
 					Err(e) => Err(Value::from(format!("could not listen cursors: {}", e))),
+					Ok(cursor) => {
+						let mut sub = cursor.sub();
+						debug!("spawning cursor processing worker");
+						tokio::spawn(async move {
+							loop {
+								match sub.recv().await {
+									Err(e) => return error!("error receiving cursor update from controller: {}", e),
+									Ok((_usr, cur)) => {
+										if let Err(e) = buf.clear_namespace(ns, 0, -1).await {
+											error!("could not clear previous cursor highlight: {}", e);
+										}
+										if let Err(e) = buf.add_highlight(ns, "ErrorMsg", cur.start.row-1, cur.start.col, cur.start.col+1).await {
+											error!("could not create highlight for cursor: {}", e);
+										}
+									}
+								}
+							}
+						});
+						Ok(Value::Nil)
+					},
 				}
 			},
 
@@ -202,8 +216,8 @@ impl Handler for NeovimHandler {
 
 				let mut c = self.client.clone();
 				match c.cursor(path, row, col).await {
-					Ok(()) => Ok(Value::Nil),
-					Err(e) => Err(Value::from(format!("could not send cursor update: {}", e))),
+					Ok(_) => Ok(Value::Nil),
+					Err(e) => Err(Value:: from(format!("could not update cursor: {}", e))),
 				}
 			},
 
@@ -262,6 +276,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	let handler: NeovimHandler = NeovimHandler {
 		client: client.into(),
+		factories: Arc::new(Mutex::new(BTreeMap::new())),
 	};
 
 	let (_nvim, io_handler) = create::new_parent(handler).await;
