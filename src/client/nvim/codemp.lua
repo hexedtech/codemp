@@ -136,6 +136,7 @@ vim.api.nvim_create_user_command('Share',
 		local path = args.fargs[1]
 		local bufnr = vim.api.nvim_get_current_buf()
 		local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
+		vim.opt.fileformat = "unix"
 		M.create(path, vim.fn.join(lines, "\n"))
 		hook_callbacks(path, bufnr)
 		M.attach(path)
@@ -151,6 +152,7 @@ vim.api.nvim_create_user_command('Join',
 		end
 		local path = args.fargs[1]
 		local bufnr = vim.api.nvim_get_current_buf()
+		vim.opt.fileformat = "unix"
 		hook_callbacks(path, bufnr)
 		M.attach(path)
 		M.listen(path)
