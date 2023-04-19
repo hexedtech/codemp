@@ -1,7 +1,7 @@
 use std::{collections::HashMap, sync::Mutex};
 
 use tokio::sync::broadcast;
-use tracing::{info, error, debug, warn};
+use tracing::{error, debug, warn};
 
 use crate::proto::CursorMov;
 

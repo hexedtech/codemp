@@ -1,8 +1,8 @@
 use std::sync::Arc;
 use std::{net::TcpStream, sync::Mutex, collections::BTreeMap};
 
-use codemp::operation::{OperationController, OperationFactory};
-use codemp::{client::CodempClient, operation::OperationProcessor};
+use codemp::operation::{OperationController, OperationFactory, OperationProcessor};
+use codemp::client::CodempClient;
 use codemp::proto::buffer_client::BufferClient;
 use rmpv::Value;
 
