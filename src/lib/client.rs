@@ -24,10 +24,6 @@ impl From::<BufferClient<Channel>> for CodempClient {
 }
 
 impl CodempClient {
-	pub fn new(id: String, client: BufferClient<Channel>) -> Self {
-		CodempClient { id, client }
-	}
-
 	pub async fn create(&mut self, path: String, content: Option<String>) -> Result<bool, Status> {
 		let req = BufferPayload {
 			path, content,
@@ -90,9 +86,7 @@ impl CodempClient {
 						Err(e) => break error!("error deserializing opseq: {}", e),
 						Ok(v) => match _factory.process(v).await {
 							Err(e) => break error!("could not apply operation from server: {}", e),
-							Ok(_txt) => {
-								// send event containing where the change happened
-							}
+							Ok(_range) => { } // user gets this range by awaiting wait() so we can drop it here
 						}
 					},
 				}

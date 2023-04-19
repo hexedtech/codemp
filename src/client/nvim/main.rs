@@ -147,7 +147,8 @@ impl Handler for NeovimHandler {
 							Ok(()) => {
 								tokio::spawn(async move {
 									loop {
-										_controller.wait().await;
+										let _span = _controller.wait().await;
+										// TODO only change lines affected!
 										let lines : Vec<String> = _controller.content().split("\n").map(|x| x.to_string()).collect();
 										if let Err(e) = buffer.set_lines(0, -1, false, lines).await {
 											error!("could not update buffer: {}", e);
