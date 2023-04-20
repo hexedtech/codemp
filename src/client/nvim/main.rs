@@ -147,7 +147,7 @@ impl Handler for NeovimHandler {
 							Ok(()) => {
 								tokio::spawn(async move {
 									loop {
-										if !_controller.run() { break }
+										if !_controller.run() { break debug!("buffer updater clean exit") }
 										let _span = _controller.wait().await;
 										// TODO only change lines affected!
 										let lines : Vec<String> = _controller.content().split("\n").map(|x| x.to_string()).collect();
@@ -199,9 +199,9 @@ impl Handler for NeovimHandler {
 						debug!("spawning cursor processing worker");
 						tokio::spawn(async move {
 							loop {
-								if !controller.run() { break }
+								if !controller.run() { break debug!("cursor worker clean exit") }
 								match sub.recv().await {
-									Err(e) => return error!("error receiving cursor update from controller: {}", e),
+									Err(e) => break error!("error receiving cursor update from controller: {}", e),
 									Ok((_usr, cur)) => {
 										if let Err(e) = buf.clear_namespace(ns, 0, -1).await {
 											error!("could not clear previous cursor highlight: {}", e);
@@ -211,6 +211,9 @@ impl Handler for NeovimHandler {
 										}
 									}
 								}
+							}
+							if let Err(e) = buf.clear_namespace(ns, 0, -1).await {
+								error!("could not clear previous cursor highlight: {}", e);
 							}
 						});
 						Ok(Value::Nil)

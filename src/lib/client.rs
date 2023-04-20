@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use operational_transform::OperationSeq;
 use tonic::{transport::Channel, Status};
-use tracing::{error, warn, info};
+use tracing::{error, warn, debug};
 use uuid::Uuid;
 
 use crate::{
@@ -51,7 +51,7 @@ impl CodempClient {
 			loop {
 				match stream.message().await {
 					Err(e)      => break error!("error receiving cursor: {}", e),
-					Ok(None)    => break,
+					Ok(None)    => break debug!("cursor worker clean exit"),
 					Ok(Some(x)) => { _controller.update(x); },
 				}
 			}
@@ -77,12 +77,13 @@ impl CodempClient {
 		let factory = Arc::new(OperationController::new(content.unwrap_or("".into())));
 
 		let _factory = factory.clone();
+		let _path = path.clone();
 		tokio::spawn(async move {
 			loop {
-				if !_factory.run() { break }
+				if !_factory.run() { break debug!("downstream worker clean exit") }
 				match stream.message().await {
 					Err(e) => break error!("error receiving update: {}", e),
-					Ok(None) => break, // clean exit
+					Ok(None) => break warn!("stream closed for buffer {}", _path),
 					Ok(Some(x)) => match serde_json::from_str::<OperationSeq>(&x.opseq) {
 						Err(e) => error!("error deserializing opseq: {}", e),
 						Ok(v) => match _factory.process(v).await {
@@ -118,6 +119,7 @@ impl CodempClient {
 					Err(e) => error!("could not send edit: {}", e),
 				}
 			}
+			debug!("upstream worker clean exit");
 		});
 
 		Ok(factory)
