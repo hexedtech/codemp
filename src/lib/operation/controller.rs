@@ -60,7 +60,11 @@ impl OperationController {
 
 	pub fn stop(&self) -> bool {
 		match self.stop.send(false) {
-			Ok(()) => true,
+			Ok(()) => {
+				ignore_and_log(self.changed_notifier.send(0..0), "unlocking downstream for stop");
+				ignore_and_log(self.notifier.send(OperationSeq::default()), "unlocking upstream for stop");
+				true
+			},
 			Err(e) => {
 				error!("could not send stop signal to workers: {}", e);
 				false
