@@ -4,14 +4,21 @@ use similar::{TextDiff, ChangeTag};
 pub trait OperationFactory {
 	fn content(&self) -> String;
 
-	fn replace(&self, txt: &str) -> OperationSeq {
+	fn replace(&self, txt: &str) -> OperationSeq { self.delta(0, txt, 0) }
+
+	fn delta(&self, skip: usize, txt: &str, tail: usize) -> OperationSeq {
 		let mut out = OperationSeq::default();
 		let content = self.content();
-		if content == txt {
+		let tail_index = content.len() - tail;
+		let content_slice = &content[skip..tail_index];
+
+		if content_slice == txt {
 			return out; // TODO this won't work, should we return a noop instead?
 		}
 
-		let diff = TextDiff::from_chars(content.as_str(), txt);
+		out.retain(skip as u64);
+
+		let diff = TextDiff::from_chars(content_slice, txt);
 
 		for change in diff.iter_all_changes() {
 			match change.tag() {
@@ -20,6 +27,8 @@ pub trait OperationFactory {
 				ChangeTag::Insert => out.insert(change.value()),
 			}
 		}
+
+		out.retain(tail as u64);
 
 		out
 	}
