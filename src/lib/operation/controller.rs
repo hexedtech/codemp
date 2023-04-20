@@ -2,7 +2,7 @@ use std::{sync::Mutex, collections::VecDeque, ops::Range};
 
 use operational_transform::{OperationSeq, OTError};
 use tokio::sync::watch;
-use tracing::warn;
+use tracing::{warn, error};
 
 use super::{OperationFactory, OperationProcessor, op_effective_range};
 
@@ -14,12 +14,15 @@ pub struct OperationController {
 	notifier: watch::Sender<OperationSeq>,
 	changed: Mutex<watch::Receiver<Range<u64>>>,
 	changed_notifier: watch::Sender<Range<u64>>,
+	run: watch::Receiver<bool>,
+	stop: watch::Sender<bool>,
 }
 
 impl OperationController {
 	pub fn new(content: String) -> Self {
 		let (tx, rx) = watch::channel(OperationSeq::default());
 		let (done, wait) = watch::channel(0..0);
+		let (stop, run) = watch::channel(true);
 		OperationController {
 			text: Mutex::new(content),
 			queue: Mutex::new(VecDeque::new()),
@@ -27,6 +30,7 @@ impl OperationController {
 			notifier: tx,
 			changed: Mutex::new(wait),
 			changed_notifier: done,
+			run, stop,
 		}
 	}
 
@@ -52,6 +56,20 @@ impl OperationController {
 
 	pub async fn ack(&self) -> Option<OperationSeq> {
 		self.queue.lock().unwrap().pop_front()
+	}
+
+	pub fn stop(&self) -> bool {
+		match self.stop.send(false) {
+			Ok(()) => true,
+			Err(e) => {
+				error!("could not send stop signal to workers: {}", e);
+				false
+			}
+		}
+	}
+
+	pub fn run(&self) -> bool {
+		*self.run.borrow()
 	}
 }
 

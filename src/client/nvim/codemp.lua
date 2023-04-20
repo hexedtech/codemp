@@ -69,7 +69,6 @@ local function unhook_callbacks(buffer)
 	vim.api.nvim_clear_autocmds({ group = codemp_autocmds, buffer = buffer })
 	vim.keymap.del('i', '<BS>',  { buffer = buffer })
 	vim.keymap.del('i', '<Del>', { buffer = buffer })
-	vim.keymap.del('i', '<CR>',  { buffer = buffer })
 end
 
 local function auto_address(addr)
@@ -162,8 +161,12 @@ vim.api.nvim_create_user_command('Join',
 vim.api.nvim_create_user_command('Detach',
 	function(args)
 		local bufnr = vim.api.nvim_get_current_buf()
-		unhook_callbacks(bufnr)
-		M.detach(args.fargs[1])
+		if M.detach(args.fargs[1]) then
+			unhook_callbacks(bufnr)
+			print("[/] detached from buffer")
+		else
+			print("[!] error detaching from buffer")
+		end
 	end,
 { nargs=1 })
 

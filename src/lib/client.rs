@@ -2,12 +2,12 @@ use std::sync::Arc;
 
 use operational_transform::OperationSeq;
 use tonic::{transport::Channel, Status};
-use tracing::{error, warn};
+use tracing::{error, warn, info};
 use uuid::Uuid;
 
 use crate::{
 	cursor::{CursorController, CursorStorage},
-	operation::{OperationController, OperationProcessor},
+	operation::{OperationProcessor, OperationController},
 	proto::{buffer_client::BufferClient, BufferPayload, OperationRequest, CursorMov},
 };
 
@@ -79,11 +79,12 @@ impl CodempClient {
 		let _factory = factory.clone();
 		tokio::spawn(async move {
 			loop {
+				if !_factory.run() { break }
 				match stream.message().await {
 					Err(e) => break error!("error receiving update: {}", e),
 					Ok(None) => break, // clean exit
 					Ok(Some(x)) => match serde_json::from_str::<OperationSeq>(&x.opseq) {
-						Err(e) => break error!("error deserializing opseq: {}", e),
+						Err(e) => error!("error deserializing opseq: {}", e),
 						Ok(v) => match _factory.process(v).await {
 							Err(e) => break error!("could not apply operation from server: {}", e),
 							Ok(_range) => { } // user gets this range by awaiting wait() so we can drop it here
@@ -99,6 +100,7 @@ impl CodempClient {
 		let _path = path.clone();
 		tokio::spawn(async move {
 			while let Some(op) = _factory.poll().await {
+				if !_factory.run() { break }
 				let req = OperationRequest {
 					hash: "".into(),
 					opseq: serde_json::to_string(&op).unwrap(),
