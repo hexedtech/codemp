@@ -1,10 +1,12 @@
 pub mod factory;
 pub mod processor;
+pub mod controller;
 
 use std::ops::Range;
 
 use operational_transform::{Operation, OperationSeq};
-pub use processor::{OperationController, OperationProcessor};
+pub use processor::OperationProcessor;
+pub use controller::OperationController;
 pub use factory::OperationFactory;
 
 pub const fn leading_noop(seq: &[Operation]) -> u64 { count_noop(seq.first()) }
