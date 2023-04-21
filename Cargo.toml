@@ -1,25 +1,13 @@
+[workspace]
+members = ["client/nvim", "server"]
+
 [package]
 name = "codemp"
 version = "0.2.0"
 edition = "2021"
 
-# [features]
-# default = ["nvim"]
-# nvim = []
-
 [lib]
 name = "codemp"
-path = "src/lib/lib.rs"
-
-[[bin]] # Bin to run the CodeMP gRPC server
-name = "server"
-path = "src/server/main.rs"
-required-features = ["server"]
-
-[[bin]]
-name = "client-nvim"
-path = "src/client/nvim/main.rs"
-required-features = ["nvim"]
 
 [dependencies]
 # core
@@ -29,27 +17,12 @@ prost = "0.11.8"
 md5 = "0.7.0"
 uuid = { version = "1.3.1", features = ["v4"] }
 operational-transform = { version = "0.6", features = ["serde"] }
-# can these be optional?
 tokio = { version = "1.0", features = ["macros", "rt-multi-thread", "sync", "full"], optional = false }
 tokio-stream = { version = "0.1", optional = false }
 serde = { version = "1", optional = false }
 serde_json = { version = "1", optional = false }
-# runtime
-# logs
 tracing-subscriber = { version = "0.3", optional = true }
-# nvim
-rmpv = { version = "1", optional = true }
-clap = { version = "4.2.1", features = ["derive"], optional = true }
-nvim-rs = { version = "0.5", features = ["use_tokio"], optional = true }
 similar = { version = "2.2", features = ["inline"] }
 
 [build-dependencies]
 tonic-build = "0.9"
-
-[features]
-default = []
-logs = ["dep:tracing-subscriber"]
-# runtime = ["dep:tokio", "dep:tokio-stream"]
-# serde = ["dep:serde", "dep:serde_json"]
-server = ["logs", "dep:clap"]
-nvim = ["logs", "dep:nvim-rs", "dep:clap", "dep:rmpv"]

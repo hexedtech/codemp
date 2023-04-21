@@ -41,7 +41,7 @@ impl NeovimHandler {
 	}
 }
 
-#[tonic::async_trait]
+#[async_trait::async_trait]
 impl Handler for NeovimHandler {
 	type Writer = Compat<Stdout>;
 
