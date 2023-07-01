@@ -2,9 +2,10 @@ use std::{sync::Mutex, collections::VecDeque, ops::Range};
 
 use operational_transform::{OperationSeq, OTError};
 use tokio::sync::watch;
-use tracing::{warn, error};
+use tracing::error;
 
 use super::{OperationFactory, OperationProcessor, op_effective_range};
+use crate::errors::IgnorableError;
 
 
 pub struct OperationController {
@@ -37,8 +38,8 @@ impl OperationController {
 	pub async fn wait(&self) -> Range<u64> {
 		let mut blocker = self.changed.lock().unwrap().clone();
 		// TODO less jank way
-		ignore_and_log(blocker.changed().await, "waiting for changed content #1");
-		ignore_and_log(blocker.changed().await, "waiting for changed content #2");
+		blocker.changed().await.unwrap_or_log("waiting for changed content #1");
+		blocker.changed().await.unwrap_or_log("waiting for changed content #2");
 		let span = blocker.borrow().clone();
 		span
 	}
@@ -48,8 +49,8 @@ impl OperationController {
 		if len <= 0 {
 			let mut recv = self.last.lock().unwrap().clone();
 			// TODO less jank way
-			ignore_and_log(recv.changed().await, "wairing for op changes #1"); // acknowledge current state
-			ignore_and_log(recv.changed().await, "wairing for op changes #2"); // wait for a change in state
+			recv.changed().await.unwrap_or_log("wairing for op changes #1"); // acknowledge current state
+			recv.changed().await.unwrap_or_log("wairing for op changes #2"); // wait for a change in state
 		}
 		Some(self.queue.lock().unwrap().get(0)?.clone())
 	}
@@ -61,8 +62,8 @@ impl OperationController {
 	pub fn stop(&self) -> bool {
 		match self.stop.send(false) {
 			Ok(()) => {
-				ignore_and_log(self.changed_notifier.send(0..0), "unlocking downstream for stop");
-				ignore_and_log(self.notifier.send(OperationSeq::default()), "unlocking upstream for stop");
+				self.changed_notifier.send(0..0).unwrap_or_log("unlocking downstream for stop");
+				self.notifier.send(OperationSeq::default()).unwrap_or_log("unlocking upstream for stop");
 				true
 			},
 			Err(e) => {
@@ -75,6 +76,13 @@ impl OperationController {
 	pub fn run(&self) -> bool {
 		*self.run.borrow()
 	}
+
+	async fn operation(&self, op: &OperationSeq) -> Result<Range<u64>, OTError> {
+		let txt = self.content();
+		let res = op.apply(&txt)?;
+		*self.text.lock().unwrap() = res.clone();
+		Ok(op_effective_range(op))
+	}
 }
 
 impl OperationFactory for OperationController {
@@ -83,38 +91,25 @@ impl OperationFactory for OperationController {
 	}
 }
 
-/// TODO properly handle errors rather than sinking them all in here!
-fn ignore_and_log<T, E : std::fmt::Display>(x: Result<T, E>, msg: &str) {
-	match x {
-		Ok(_) => {},
-		Err(e) => {
-			warn!("ignored error {}: {}", msg, e);
-		}
-	}
-}
-
 #[tonic::async_trait]
 impl OperationProcessor for OperationController {
 	async fn apply(&self, op: OperationSeq) -> Result<Range<u64>, OTError> {
-		let txt = self.content();
-		let res = op.apply(&txt)?;
-		*self.text.lock().unwrap() = res.clone();
+		let span = self.operation(&op).await?;
 		self.queue.lock().unwrap().push_back(op.clone());
-		ignore_and_log(self.notifier.send(op.clone()), "notifying of applied change");
-		Ok(op_effective_range(&op))
+		self.notifier.send(op.clone()).unwrap_or_log("notifying of applied change");
+		Ok(span)
 	}
 
 
 	async fn process(&self, mut op: OperationSeq) -> Result<Range<u64>, OTError> {
-		let mut queue = self.queue.lock().unwrap();
-		for el in queue.iter_mut() {
-			(op, *el) = op.transform(el)?;
+		{
+			let mut queue = self.queue.lock().unwrap();
+			for el in queue.iter_mut() {
+				(op, *el) = op.transform(el)?;
+			}
 		}
-		let txt = self.content();
-		let res = op.apply(&txt)?;
-		let span = op_effective_range(&op);
-		*self.text.lock().unwrap() = res.clone();
-		ignore_and_log(self.changed_notifier.send(span.clone()), "notifying of changed content");
+		let span = self.operation(&op).await?;
+		self.changed_notifier.send(span.clone()).unwrap_or_log("notifying of changed content");
 		Ok(span)
 	}
 }
