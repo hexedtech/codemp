@@ -19,19 +19,19 @@ struct NeovimHandler {
 	factories: Arc<Mutex<BTreeMap<String, Arc<OperationController>>>>,
 }
 
-fn nullable_optional_str(args: &Vec<Value>, index: usize) -> Option<String> {
+fn nullable_optional_str(args: &[Value], index: usize) -> Option<String> {
 	Some(args.get(index)?.as_str()?.to_string())
 }
 
-fn default_empty_str(args: &Vec<Value>, index: usize) -> String {
+fn default_empty_str(args: &[Value], index: usize) -> String {
 	nullable_optional_str(args, index).unwrap_or("".into())
 }
 
-fn nullable_optional_number(args: &Vec<Value>, index: usize) -> Option<i64> {
-	Some(args.get(index)?.as_i64()?)
+fn nullable_optional_number(args: &[Value], index: usize) -> Option<i64> {
+	args.get(index)?.as_i64()
 }
 
-fn default_zero_number(args: &Vec<Value>, index: usize) -> i64 {
+fn default_zero_number(args: &[Value], index: usize) -> i64 {
 	nullable_optional_number(args, index).unwrap_or(0)
 }
 
@@ -56,7 +56,7 @@ impl Handler for NeovimHandler {
 			"ping" => Ok(Value::from("pong")),
 
 			"create" => {
-				if args.len() < 1 {
+				if args.is_empty() {
 					return Err(Value::from("no path given"));
 				}
 				let path = default_empty_str(&args, 0);
@@ -77,7 +77,7 @@ impl Handler for NeovimHandler {
 				}
 				let path = default_empty_str(&args, 0);
 				let txt = default_empty_str(&args, 1);
-				let mut pos = default_zero_number(&args, 2) as i64;
+				let mut pos = default_zero_number(&args, 2);
 				
 				if pos <= 0 { pos = 0 } // TODO wtf vim??
 
@@ -126,7 +126,7 @@ impl Handler for NeovimHandler {
 			},
 
 			"attach" => {
-				if args.len() < 1 {
+				if args.is_empty() {
 					return Err(Value::from("no path given"));
 				}
 				let path = default_empty_str(&args, 0);
@@ -141,7 +141,7 @@ impl Handler for NeovimHandler {
 					Err(e) => Err(Value::from(format!("could not attach to stream: {}", e))),
 					Ok(controller) => {
 						let _controller = controller.clone();
-						let lines : Vec<String> = _controller.content().split("\n").map(|x| x.to_string()).collect();
+						let lines : Vec<String> = _controller.content().split('\n').map(|x| x.to_string()).collect();
 						match buffer.set_lines(0, -1, false, lines).await {
 							Err(e) => Err(Value::from(format!("could not sync buffer: {}", e))),
 							Ok(()) => {
@@ -150,7 +150,7 @@ impl Handler for NeovimHandler {
 										if !_controller.run() { break debug!("buffer updater clean exit") }
 										let _span = _controller.wait().await;
 										// TODO only change lines affected!
-										let lines : Vec<String> = _controller.content().split("\n").map(|x| x.to_string()).collect();
+										let lines : Vec<String> = _controller.content().split('\n').map(|x| x.to_string()).collect();
 										if let Err(e) = buffer.set_lines(0, -1, false, lines).await {
 											error!("could not update buffer: {}", e);
 										}
@@ -165,7 +165,7 @@ impl Handler for NeovimHandler {
 			},
 
 			"detach" => {
-				if args.len() < 1 {
+				if args.is_empty() {
 					return Err(Value::from("no path given"));
 				}
 				let path = default_empty_str(&args, 0);
@@ -176,7 +176,7 @@ impl Handler for NeovimHandler {
 			},
 
 			"listen" => {
-				if args.len() < 1 {
+				if args.is_empty() {
 					return Err(Value::from("no path given"));
 				}
 				let path = default_empty_str(&args, 0);

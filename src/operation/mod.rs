@@ -15,10 +15,8 @@ pub const fn tailing_noop(seq: &[Operation]) -> u64 { count_noop(seq.last())  }
 const fn count_noop(op: Option<&Operation>) -> u64 {
 	match op {
 		None => 0,
-		Some(op) => match op {
-			Operation::Retain(n) => *n,
-			_ => 0,
-		}
+		Some(Operation::Retain(n)) => *n,
+		Some(_) => 0,
 	}
 }
 

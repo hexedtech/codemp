@@ -46,7 +46,7 @@ impl OperationController {
 
 	pub async fn poll(&self) -> Option<OperationSeq> {
 		let len = self.queue.lock().unwrap().len();
-		if len <= 0 {
+		if len == 0 {
 			let mut recv = self.last.lock().unwrap().clone();
 			// TODO less jank way
 			recv.changed().await.unwrap_or_warn("wairing for op changes #1"); // acknowledge current state
@@ -80,7 +80,7 @@ impl OperationController {
 	async fn operation(&self, op: &OperationSeq) -> Result<Range<u64>, OTError> {
 		let txt = self.content();
 		let res = op.apply(&txt)?;
-		*self.text.lock().unwrap() = res.clone();
+		*self.text.lock().unwrap() = res;
 		Ok(op_effective_range(op))
 	}
 }

@@ -61,14 +61,9 @@ impl Buffer for BufferService {
 				let (tx, rx) = mpsc::channel(128);
 				let mut sub = handle.subscribe();
 				tokio::spawn(async move {
-					loop {
-						match sub.recv().await {
-							Ok(v) => {
-								if v.user == myself { continue }
-								tx.send(Ok(v)).await.unwrap(); // TODO unnecessary channel?
-							}
-							Err(_e) => break,
-						}
+					while let Ok(v) = sub.recv().await {
+						if v.user == myself { continue }
+						tx.send(Ok(v)).await.unwrap(); // TODO unnecessary channel?
 					}
 				});
 				let output_stream = ReceiverStream::new(rx);
@@ -83,14 +78,9 @@ impl Buffer for BufferService {
 		let myself = req.into_inner().user;
 		let (tx, rx) = mpsc::channel(128);
 		tokio::spawn(async move {
-			loop {
-				match sub.recv().await {
-					Ok(v) => {
-						if v.user == myself { continue }
-						tx.send(Ok(v)).await.unwrap(); // TODO unnecessary channel?
-					}
-					Err(_e) => break,
-				}
+			while let Ok(v) = sub.recv().await {
+				if v.user == myself { continue }
+				tx.send(Ok(v)).await.unwrap(); // TODO unnecessary channel?
 			}
 		});
 		let output_stream = ReceiverStream::new(rx);

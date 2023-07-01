@@ -7,7 +7,7 @@ use crate::proto::CursorMov;
 
 /// Note that this differs from any hashmap in its put method: no &mut!
 pub trait CursorStorage {
-	fn get(&self, id: &String) -> Option<Cursor>;
+	fn get(&self, id: &str) -> Option<Cursor>;
 	fn put(&self, id: String, val: Cursor);
 
 	fn update(&self, event: CursorMov) -> Option<Cursor> {
@@ -44,14 +44,20 @@ pub struct CursorController {
 	_bus_keepalive: Mutex<broadcast::Receiver<(String, Cursor)>>,
 }
 
-impl CursorController {
-	pub fn new() -> Self {
+impl Default for CursorController {
+	fn default() -> Self {
 		let (tx, _rx) = broadcast::channel(64);
 		CursorController {
 			users: Mutex::new(HashMap::new()),
 			bus: tx,
 			_bus_keepalive: Mutex::new(_rx),
 		}
+	}
+}
+
+impl CursorController {
+	pub fn new() -> Self {
+		CursorController::default()
 	}
 
 	pub fn sub(&self) -> broadcast::Receiver<(String, Cursor)> {
@@ -77,7 +83,7 @@ impl CursorStorage for CursorController {
 		Some(cur)
 	}
 	
-	fn get(&self, id: &String) -> Option<Cursor> {
+	fn get(&self, id: &str) -> Option<Cursor> {
 		Some(self.users.lock().unwrap().get(id)?.clone())
 	}
 
