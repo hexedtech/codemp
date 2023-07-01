@@ -38,8 +38,8 @@ impl OperationController {
 	pub async fn wait(&self) -> Range<u64> {
 		let mut blocker = self.changed.lock().unwrap().clone();
 		// TODO less jank way
-		blocker.changed().await.unwrap_or_log("waiting for changed content #1");
-		blocker.changed().await.unwrap_or_log("waiting for changed content #2");
+		blocker.changed().await.unwrap_or_warn("waiting for changed content #1");
+		blocker.changed().await.unwrap_or_warn("waiting for changed content #2");
 		let span = blocker.borrow().clone();
 		span
 	}
@@ -49,8 +49,8 @@ impl OperationController {
 		if len <= 0 {
 			let mut recv = self.last.lock().unwrap().clone();
 			// TODO less jank way
-			recv.changed().await.unwrap_or_log("wairing for op changes #1"); // acknowledge current state
-			recv.changed().await.unwrap_or_log("wairing for op changes #2"); // wait for a change in state
+			recv.changed().await.unwrap_or_warn("wairing for op changes #1"); // acknowledge current state
+			recv.changed().await.unwrap_or_warn("wairing for op changes #2"); // wait for a change in state
 		}
 		Some(self.queue.lock().unwrap().get(0)?.clone())
 	}
@@ -62,8 +62,8 @@ impl OperationController {
 	pub fn stop(&self) -> bool {
 		match self.stop.send(false) {
 			Ok(()) => {
-				self.changed_notifier.send(0..0).unwrap_or_log("unlocking downstream for stop");
-				self.notifier.send(OperationSeq::default()).unwrap_or_log("unlocking upstream for stop");
+				self.changed_notifier.send(0..0).unwrap_or_warn("unlocking downstream for stop");
+				self.notifier.send(OperationSeq::default()).unwrap_or_warn("unlocking upstream for stop");
 				true
 			},
 			Err(e) => {
@@ -96,7 +96,7 @@ impl OperationProcessor for OperationController {
 	async fn apply(&self, op: OperationSeq) -> Result<Range<u64>, OTError> {
 		let span = self.operation(&op).await?;
 		self.queue.lock().unwrap().push_back(op.clone());
-		self.notifier.send(op.clone()).unwrap_or_log("notifying of applied change");
+		self.notifier.send(op.clone()).unwrap_or_warn("notifying of applied change");
 		Ok(span)
 	}
 
@@ -109,7 +109,7 @@ impl OperationProcessor for OperationController {
 			}
 		}
 		let span = self.operation(&op).await?;
-		self.changed_notifier.send(span.clone()).unwrap_or_log("notifying of changed content");
+		self.changed_notifier.send(span.clone()).unwrap_or_warn("notifying of changed content");
 		Ok(span)
 	}
 }

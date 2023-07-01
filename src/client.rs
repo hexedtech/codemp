@@ -78,17 +78,18 @@ impl CodempClient {
 
 		let _factory = factory.clone();
 		let _path = path.clone();
+
 		tokio::spawn(async move {
 			loop {
 				if !_factory.run() { break debug!("downstream worker clean exit") }
 				match stream.message().await {
-					Err(e) => break error!("error receiving update: {}", e),
-					Ok(None) => break warn!("stream closed for buffer {}", _path),
+					Err(e)      => break error!("error receiving update: {}", e),
+					Ok(None)    => break warn!("stream closed for buffer {}", _path),
 					Ok(Some(x)) => match serde_json::from_str::<OperationSeq>(&x.opseq) {
-						Err(e) => error!("error deserializing opseq: {}", e),
-						Ok(v) => match _factory.process(v).await {
-							Err(e) => break error!("could not apply operation from server: {}", e),
-							Ok(_range) => { } // user gets this range by awaiting wait() so we can drop it here
+						Err(e)    => error!("error deserializing opseq: {}", e),
+						Ok(v)     => match _factory.process(v).await {
+							Err(e)  => break error!("could not apply operation from server: {}", e),
+							Ok(_range) => { } // range is obtained awaiting wait(), need to pass the OpSeq itself
 						}
 					},
 				}
