@@ -1,5 +1,5 @@
-use codemp::proto::{RawOp, OperationRequest};
-use tokio::sync::{mpsc, broadcast, watch};
+use codemp::{proto::{RawOp, OperationRequest}, errors::IgnorableError};
+use tokio::sync::{mpsc, broadcast, watch, oneshot};
 use tracing::{error, warn};
 // use md5::Digest;
 
@@ -17,7 +17,7 @@ pub trait BufferStore<T> {
 
 #[derive(Clone)]
 pub struct BufferHandle {
-	pub edit: mpsc::Sender<OperationRequest>,
+	pub edit: mpsc::Sender<(oneshot::Sender<bool>, OperationRequest)>,
 	events: broadcast::Sender<RawOp>,
 	// pub digest: watch::Receiver<Digest>,
 	pub content: watch::Receiver<String>,
@@ -59,7 +59,7 @@ impl BufferHandle {
 
 struct BufferWorker {
 	store: String,
-	edits: mpsc::Receiver<OperationRequest>,
+	edits: mpsc::Receiver<(oneshot::Sender<bool>, OperationRequest)>,
 	events: broadcast::Sender<RawOp>,
 	// digest: watch::Sender<Digest>,
 	content: watch::Sender<String>,
@@ -70,10 +70,16 @@ impl BufferWorker {
 		loop {
 			match self.edits.recv().await {
 				None => break warn!("channel closed"),
-				Some(v) => match serde_json::from_str::<OperationSeq>(&v.opseq) {
-					Err(e) => break error!("could not deserialize opseq: {}", e),
+				Some((ack, v)) => match serde_json::from_str::<OperationSeq>(&v.opseq) {
+					Err(e) => {
+						ack.send(false).unwrap_or_warn("could not reject undeserializable opseq");
+						error!("could not deserialize opseq: {}", e);
+					},
 					Ok(op) => match op.apply(&self.store) {
-						Err(e) => error!("coult not apply OpSeq '{:?}' on '{}' : {}", v, self.store, e), // TODO
+						Err(e) => {
+							ack.send(false).unwrap_or_warn("could not reject unappliable opseq");
+							error!("coult not apply OpSeq '{:?}' on '{}' : {}", v, self.store, e); // TODO
+						}
 						Ok(res) => {
 							self.store = res;
 							let msg = RawOp {
@@ -83,12 +89,9 @@ impl BufferWorker {
 							// if let Err(e) = self.digest.send(md5::compute(&self.store)) {
 							// 	error!("could not update digest: {}", e);
 							// }
-							if let Err(e) = self.content.send(self.store.clone()) {
-								error!("could not update content: {}", e);
-							}
-							if let Err(e) = self.events.send(msg) {
-								error!("could not broadcast OpSeq: {}", e);
-							}
+							ack.send(true).unwrap_or_warn("could not accept opseq");
+							self.content.send(self.store.clone()).unwrap_or_warn("could not update content");
+							self.events.send(msg).unwrap_or_warn("could not broadcast OpSeq");
 						},
 					}
 				},

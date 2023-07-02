@@ -1,6 +1,6 @@
 use std::{pin::Pin, sync::{Arc, RwLock}, collections::HashMap};
 
-use tokio::sync::{mpsc, broadcast};
+use tokio::sync::{mpsc, broadcast, oneshot};
 use tonic::{Request, Response, Status};
 
 use tokio_stream::{Stream, wrappers::ReceiverStream}; // TODO example used this?
@@ -107,9 +107,13 @@ impl Buffer for BufferService {
 			None => return Err(Status::not_found("path not found")),
 		};
 		info!("sending edit to buffer: {}", request.opseq);
-		match tx.send(request).await {
-			Ok(()) => Ok(Response::new(BufferResponse { accepted: true, content: None })),
+		let (ack, status) = oneshot::channel();
+		match tx.send((ack, request)).await {
 			Err(e) => Err(Status::internal(format!("error sending edit to buffer actor: {}", e))),
+			Ok(()) => Ok(Response::new(BufferResponse {
+				accepted: status.await.unwrap_or(false),
+				content: None 
+			}))
 		}
 	}
 	
