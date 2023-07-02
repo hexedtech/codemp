@@ -1,3 +1,10 @@
 /target
 
 Cargo.lock
+
+# vscode extension build files
+/client/vscode/node_modules/
+/client/vscode/*.vsix
+/client/vscode/index.node
+/client/vscode/index.node
+
