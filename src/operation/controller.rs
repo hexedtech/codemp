@@ -8,6 +8,7 @@ use super::{OperationFactory, OperationProcessor, op_effective_range};
 use crate::errors::IgnorableError;
 
 
+#[derive(Debug)]
 pub struct OperationController {
 	text: Mutex<String>,
 	queue: Mutex<VecDeque<OperationSeq>>,
@@ -77,11 +78,19 @@ impl OperationController {
 		*self.run.borrow()
 	}
 
-	async fn operation(&self, op: &OperationSeq) -> Result<Range<u64>, OTError> {
+	fn operation(&self, op: &OperationSeq) -> Result<Range<u64>, OTError> {
 		let txt = self.content();
 		let res = op.apply(&txt)?;
 		*self.text.lock().unwrap() = res;
 		Ok(op_effective_range(op))
+	}
+
+	fn transform(&self, mut op: OperationSeq) -> Result<OperationSeq, OTError> {
+		let mut queue = self.queue.lock().unwrap();
+		for el in queue.iter_mut() {
+			(op, *el) = op.transform(el)?;
+		}
+		Ok(op)
 	}
 }
 
@@ -91,24 +100,18 @@ impl OperationFactory for OperationController {
 	}
 }
 
-#[tonic::async_trait]
 impl OperationProcessor for OperationController {
-	async fn apply(&self, op: OperationSeq) -> Result<Range<u64>, OTError> {
-		let span = self.operation(&op).await?;
+	fn apply(&self, op: OperationSeq) -> Result<Range<u64>, OTError> {
+		let span = self.operation(&op)?;
 		self.queue.lock().unwrap().push_back(op.clone());
-		self.notifier.send(op.clone()).unwrap_or_warn("notifying of applied change");
+		self.notifier.send(op).unwrap_or_warn("notifying of applied change");
 		Ok(span)
 	}
 
 
-	async fn process(&self, mut op: OperationSeq) -> Result<Range<u64>, OTError> {
-		{
-			let mut queue = self.queue.lock().unwrap();
-			for el in queue.iter_mut() {
-				(op, *el) = op.transform(el)?;
-			}
-		}
-		let span = self.operation(&op).await?;
+	fn process(&self, mut op: OperationSeq) -> Result<Range<u64>, OTError> {
+		op = self.transform(op)?;
+		let span = self.operation(&op)?;
 		self.changed_notifier.send(span.clone()).unwrap_or_warn("notifying of changed content");
 		Ok(span)
 	}

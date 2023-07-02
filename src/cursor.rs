@@ -38,6 +38,7 @@ pub struct Cursor {
 	pub end:   Position,
 }
 
+#[derive(Debug)]
 pub struct CursorController {
 	users: Mutex<HashMap<String, Cursor>>,
 	bus: broadcast::Sender<(String, Cursor)>,

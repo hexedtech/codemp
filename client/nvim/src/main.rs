@@ -4,10 +4,9 @@ use std::{net::TcpStream, sync::Mutex, collections::BTreeMap};
 use codemp::operation::{OperationController, OperationFactory, OperationProcessor};
 use codemp::client::CodempClient;
 use codemp::proto::buffer_client::BufferClient;
+use codemp::tokio;
+
 use rmpv::Value;
-
-
-use tokio::io::Stdout;
 use clap::Parser;
 
 use nvim_rs::{compat::tokio::Compat, create::tokio as create, Handler, Neovim};
@@ -43,13 +42,13 @@ impl NeovimHandler {
 
 #[async_trait::async_trait]
 impl Handler for NeovimHandler {
-	type Writer = Compat<Stdout>;
+	type Writer = Compat<tokio::io::Stdout>;
 
 	async fn handle_request(
 		&self,
 		name: String,
 		args: Vec<Value>,
-		nvim: Neovim<Compat<Stdout>>,
+		nvim: Neovim<Compat<tokio::io::Stdout>>,
 	) -> Result<Value, Value> {
 		debug!("processing '{}' - {:?}", name, args);
 		match name.as_ref() {
@@ -84,7 +83,7 @@ impl Handler for NeovimHandler {
 				match self.buffer_controller(&path) {
 					None => Err(Value::from("no controller for given path")),
 					Some(controller) => {
-						match controller.apply(controller.insert(&txt, pos as u64)).await {
+						match controller.apply(controller.insert(&txt, pos as u64)) {
 							Err(e) => Err(Value::from(format!("could not send insert: {}", e))),
 							Ok(_res) => Ok(Value::Nil),
 						}
@@ -102,7 +101,7 @@ impl Handler for NeovimHandler {
 
 				match self.buffer_controller(&path) {
 					None => Err(Value::from("no controller for given path")),
-					Some(controller) => match controller.apply(controller.delete(pos, count)).await {
+					Some(controller) => match controller.apply(controller.delete(pos, count)) {
 						Err(e) => Err(Value::from(format!("could not send delete: {}", e))),
 						Ok(_res) => Ok(Value::Nil),
 					}
@@ -118,7 +117,7 @@ impl Handler for NeovimHandler {
 
 				match self.buffer_controller(&path) {
 					None => Err(Value::from("no controller for given path")),
-					Some(controller) => match controller.apply(controller.replace(&txt)).await {
+					Some(controller) => match controller.apply(controller.replace(&txt)) {
 						Err(e) => Err(Value::from(format!("could not send replace: {}", e))),
 						Ok(_res) => Ok(Value::Nil),
 					}
@@ -244,7 +243,7 @@ impl Handler for NeovimHandler {
 		&self,
 		_name: String,
 		_args: Vec<Value>,
-		_nvim: Neovim<Compat<Stdout>>,
+		_nvim: Neovim<Compat<tokio::io::Stdout>>,
 	) {
 		warn!("notify not handled");
 	}

@@ -8,8 +8,6 @@ codemp = { path = "../.." }
 tracing = "0.1"
 tracing-subscriber = "0.3"
 uuid = { version = "1.3.1", features = ["v4"] }
-operational-transform = { version = "0.6", features = ["serde"] }
-tokio = { version = "1.0", features = ["macros", "rt-multi-thread", "sync", "full"] }
 serde = "1"
 serde_json = "1"
 rmpv = "1"
