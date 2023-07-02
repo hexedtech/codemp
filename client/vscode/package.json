@@ -1,0 +1,28 @@
+{
+  "name": "codemp-vscode",
+  "version": "0.0.1",
+  "description": "VSCode extension for CodeMP",
+  "main": "index.node",
+  "engines": {
+    "vscode": "^1.32.0"
+  },
+  "scripts": {
+    "build": "cargo-cp-artifact -nc index.node -- cargo build --message-format=json-render-diagnostics",
+    "install": "npm run build",
+    "test": "cargo test"
+  },
+  "devDependencies": {
+    "cargo-cp-artifact": "^0.1"
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "example.helloWorld",
+        "title": "Hello World"
+      }
+    ]
+  },
+  "activationEvents": [
+    "onCommand:example.helloWorld"
+  ]
+}

@@ -1,5 +1,5 @@
 [workspace]
-members = ["client/nvim", "server"]
+members = ["client/nvim", "client/vscode", "server"]
 
 [package]
 name = "codemp"
