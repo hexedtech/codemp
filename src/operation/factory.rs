@@ -4,13 +4,15 @@ use similar::{TextDiff, ChangeTag};
 pub trait OperationFactory {
 	fn content(&self) -> String;
 
-	fn replace(&self, txt: &str) -> OperationSeq { self.delta(0, txt, 0) }
+	fn replace(&self, txt: &str) -> OperationSeq {
+		self.delta(0, txt, self.content().len())
+	}
 
 	fn delta(&self, skip: usize, txt: &str, tail: usize) -> OperationSeq {
 		let mut out = OperationSeq::default();
 		let content = self.content();
 		let tail_index = content.len() - tail;
-		let content_slice = &content[skip..tail_index];
+		let content_slice = &content[skip..tail];
 
 		if content_slice == txt {
 			return out; // TODO this won't work, should we return a noop instead?
@@ -28,7 +30,7 @@ pub trait OperationFactory {
 			}
 		}
 
-		out.retain(tail as u64);
+		out.retain(tail_index as u64);
 
 		out
 	}
