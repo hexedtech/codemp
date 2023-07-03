@@ -1,5 +1,5 @@
 {
-  "name": "codemp",
+  "name": "codemp-vscode",
   "version": "0.0.1",
   "description": "VSCode extension for CodeMP",
   "main": "./out/extension.js",
@@ -7,7 +7,7 @@
     "vscode": "^1.32.0"
   },
   "scripts": {
-    "build": "cargo-cp-artifact -nc index.node -- cargo build --message-format=json-render-diagnostics",
+    "build": "cargo-cp-artifact --artifact cdylib codemp-vscode codemp.node -- cargo build --release --message-format=json-render-diagnostics",
     "install": "npm run build",
     "test": "cargo test"
   },
@@ -18,11 +18,21 @@
     "commands": [
       {
         "command": "codemp.connect",
-        "title": "Connect"
+        "title": "Connect to CodeMP"
+      },
+      {
+        "command": "codemp.join",
+        "title": "Join remote session"
+      },
+      {
+        "command": "codemp.share",
+        "title": "Share local session"
       }
     ]
   },
   "activationEvents": [
-    "onCommand:codemp.connect"
+    "onCommand:codemp.connect",
+    "onCommand:codemp.join",
+    "onCommand:codemp.share"
   ]
 }

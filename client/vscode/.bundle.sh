@@ -6,7 +6,7 @@ cp package.json .vsix/extension/package.json
 cp README.md .vsix/extension/README.md
 mkdir .vsix/extension/out
 cp -R src/*.js .vsix/extension/out
-cp -R index.node .vsix/extension/out/codemp.node
+cp -R codemp.node .vsix/extension/out/codemp.node
 cd .vsix/
 zip ../codemp.vsix -r *
 cd ..
