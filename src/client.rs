@@ -6,9 +6,9 @@ use tracing::{error, warn, debug};
 use uuid::Uuid;
 
 use crate::{
-	cursor::{CursorController, CursorStorage},
+	cursor::{CursorControllerHandle, CursorControllerWorker, CursorProvider},
 	operation::{OperationProcessor, OperationController},
-	proto::{buffer_client::BufferClient, BufferPayload, OperationRequest, CursorMov},
+	proto::{buffer_client::BufferClient, BufferPayload, OperationRequest, CursorMov}, errors::IgnorableError,
 };
 
 #[derive(Clone)]
@@ -24,6 +24,8 @@ impl From::<BufferClient<Channel>> for CodempClient {
 }
 
 impl CodempClient {
+	pub fn id(&self) -> &str { &self.id	}
+
 	pub async fn create(&mut self, path: String, content: Option<String>) -> Result<bool, Status> {
 		let req = BufferPayload {
 			path, content,
@@ -35,7 +37,7 @@ impl CodempClient {
 		Ok(res.into_inner().accepted)
 	}
 
-	pub async fn listen(&mut self) -> Result<Arc<CursorController>, Status> {
+	pub async fn listen(&mut self) -> Result<CursorControllerHandle, Status> {
 		let req = BufferPayload {
 			path: "".into(),
 			content: None,
@@ -44,20 +46,30 @@ impl CodempClient {
 
 		let mut stream = self.client.listen(req).await?.into_inner();
 
-		let controller = Arc::new(CursorController::new());
+		let mut controller = CursorControllerWorker::new(self.id().to_string());
+		let handle = controller.subscribe();
+		let mut _client = self.client.clone();
 
-		let _controller = controller.clone();
 		tokio::spawn(async move {
 			loop {
-				match stream.message().await {
-					Err(e)      => break error!("error receiving cursor: {}", e),
-					Ok(None)    => break debug!("cursor worker clean exit"),
-					Ok(Some(x)) => { _controller.update(x); },
+				tokio::select!{
+					res = stream.message() => {
+						match res {
+							Err(e)      => break error!("error receiving cursor: {}", e),
+							Ok(None)    => break debug!("cursor worker clean exit"),
+							Ok(Some(x)) => { controller.broadcast(x); },
+						}
+					},
+					Some(op) = controller.wait() => {
+						_client.cursor(CursorMov::from(op)).await
+							.unwrap_or_warn("could not send cursor update")
+					}
+
 				}
 			}
 		});
 
-		Ok(controller)
+		Ok(handle)
 	}
 
 	pub async fn attach(&mut self, path: String) -> Result<Arc<OperationController>, Status> {
@@ -124,14 +136,5 @@ impl CodempClient {
 		});
 
 		Ok(factory)
-	}
-
-	pub async fn cursor(&mut self, path: String, row: i64, col: i64) -> Result<bool, Status> {
-		let req = CursorMov {
-			path, row, col,
-			user: self.id.clone(),
-		};
-		let res = self.client.cursor(req).await?.into_inner();
-		Ok(res.accepted)
 	}
 }
