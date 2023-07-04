@@ -1,6 +1,7 @@
 use std::sync::Arc;
 use std::{net::TcpStream, sync::Mutex, collections::BTreeMap};
 
+use codemp::cursor::{CursorSubscriber, CursorControllerHandle};
 use codemp::operation::{OperationController, OperationFactory, OperationProcessor};
 use codemp::client::CodempClient;
 use codemp::proto::buffer_client::BufferClient;
@@ -16,6 +17,7 @@ use tracing::{error, warn, debug, info};
 struct NeovimHandler {
 	client: CodempClient,
 	factories: Arc<Mutex<BTreeMap<String, Arc<OperationController>>>>,
+	cursors: Arc<Mutex<BTreeMap<String, Arc<CursorControllerHandle>>>>,
 }
 
 fn nullable_optional_str(args: &[Value], index: usize) -> Option<String> {
@@ -37,6 +39,10 @@ fn default_zero_number(args: &[Value], index: usize) -> i64 {
 impl NeovimHandler {
 	fn buffer_controller(&self, path: &String) -> Option<Arc<OperationController>> {
 		Some(self.factories.lock().unwrap().get(path)?.clone())
+	}
+
+	fn cursor_controller(&self, path: &String) -> Option<Arc<CursorControllerHandle>> {
+		Some(self.cursors.lock().unwrap().get(path)?.clone())
 	}
 }
 
@@ -193,22 +199,17 @@ impl Handler for NeovimHandler {
 				let mut c = self.client.clone();
 				match c.listen().await {
 					Err(e) => Err(Value::from(format!("could not listen cursors: {}", e))),
-					Ok(cursor) => {
-						let mut sub = cursor.sub();
+					Ok(mut cursor) => {
+						self.cursors.lock().unwrap().insert(path, cursor.clone().into());
 						debug!("spawning cursor processing worker");
 						tokio::spawn(async move {
-							loop {
-								if !controller.run() { break debug!("cursor worker clean exit") }
-								match sub.recv().await {
-									Err(e) => break error!("error receiving cursor update from controller: {}", e),
-									Ok((_usr, cur)) => {
-										if let Err(e) = buf.clear_namespace(ns, 0, -1).await {
-											error!("could not clear previous cursor highlight: {}", e);
-										}
-										if let Err(e) = buf.add_highlight(ns, "ErrorMsg", cur.start.row-1, cur.start.col, cur.start.col+1).await {
-											error!("could not create highlight for cursor: {}", e);
-										}
-									}
+							while let Some(cur) = cursor.poll().await {
+								if !controller.run() { break }
+								if let Err(e) = buf.clear_namespace(ns, 0, -1).await {
+									error!("could not clear previous cursor highlight: {}", e);
+								}
+								if let Err(e) = buf.add_highlight(ns, "ErrorMsg", cur.start.row-1, cur.start.col, cur.start.col+1).await {
+									error!("could not create highlight for cursor: {}", e);
 								}
 							}
 							if let Err(e) = buf.clear_namespace(ns, 0, -1).await {
@@ -228,10 +229,12 @@ impl Handler for NeovimHandler {
 				let row = default_zero_number(&args, 1);
 				let col = default_zero_number(&args, 2);
 
-				let mut c = self.client.clone();
-				match c.cursor(path, row, col).await {
-					Ok(_) => Ok(Value::Nil),
-					Err(e) => Err(Value:: from(format!("could not update cursor: {}", e))),
+				match self.cursor_controller(&path) {
+					None => Err(Value::from("no path given")),
+					Some(cur) => {
+						cur.send(&path, (row, col).into(), (0i64, 0i64).into()).await;
+						Ok(Value::Nil)
+					}
 				}
 			},
 
@@ -291,6 +294,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let handler: NeovimHandler = NeovimHandler {
 		client: client.into(),
 		factories: Arc::new(Mutex::new(BTreeMap::new())),
+		cursors: Arc::new(Mutex::new(BTreeMap::new())),
 	};
 
 	let (_nvim, io_handler) = create::new_parent(handler).await;
