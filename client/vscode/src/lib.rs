@@ -221,10 +221,10 @@ fn callback_cursor(mut cx: FunctionContext) -> JsResult<JsUndefined> {
 			channel.send(move |mut cx| {
 				cb.to_inner(&mut cx)
 					.call_with(&cx)
-					.arg(cx.string(op.user))
-					.arg(cx.string(op.buffer))
-					.arg(tuple(&mut cx, op.start.row as i32, op.start.col as i32)?)
-					.arg(tuple(&mut cx, op.end.row as i32, op.end.col as i32)?)
+					.arg(cx.string(&op.user))
+					.arg(cx.string(&op.buffer))
+					.arg(tuple(&mut cx, op.start().row, op.start().col)?)
+					.arg(tuple(&mut cx, op.end().row, op.end().col)?)
 					.apply::<JsUndefined, _>(&mut cx)?;
 				Ok(())
 			});

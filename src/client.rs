@@ -8,7 +8,7 @@ use uuid::Uuid;
 use crate::{
 	cursor::{CursorControllerHandle, CursorControllerWorker, CursorProvider},
 	operation::{OperationProcessor, OperationController},
-	proto::{buffer_client::BufferClient, BufferPayload, OperationRequest, CursorMov}, errors::IgnorableError,
+	proto::{buffer_client::BufferClient, BufferPayload, OperationRequest}, errors::IgnorableError,
 };
 
 #[derive(Clone)]
@@ -61,7 +61,7 @@ impl CodempClient {
 						}
 					},
 					Some(op) = controller.wait() => {
-						_client.cursor(CursorMov::from(op)).await
+						_client.moved(op).await
 							.unwrap_or_warn("could not send cursor update")
 					}
 

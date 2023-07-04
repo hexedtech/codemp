@@ -3,55 +3,27 @@ use std::sync::Arc;
 use tokio::sync::{mpsc, broadcast};
 use tonic::async_trait;
 
-use crate::{proto::CursorMov, errors::IgnorableError};
+use crate::{proto::{Position, Cursor}, errors::IgnorableError};
 
-// TODO temp struct before we update protocol for real
-#[derive(Clone, Debug, Default)]
-pub struct Cursor {
-	pub user: String,
-	pub buffer: String,
-	pub start: Position,
-	pub end: Position,
-}
-
-impl From::<Cursor> for CursorMov {
-	fn from(cursor: Cursor) -> CursorMov {
-		CursorMov {
-			user: cursor.user,
-			path: cursor.buffer,
-			row: cursor.start.row,
-			col: cursor.start.col,
-		}
-	}
-}
-
-impl From::<CursorMov> for Cursor {
-	fn from(cursor: CursorMov) -> Self {
-		Cursor {
-			user: cursor.user,
-			buffer: cursor.path,
-			start: (cursor.row, cursor.col).into(),
-			end: (0,0).into(), // TODO temp!
-		}
-	}
-
-}
-
-#[derive(Copy, Clone, Debug, Default)]
-pub struct Position {
-	pub row: i64,
-	pub col: i64,
-}
-
-impl From::<(i64, i64)> for Position {
-	fn from((row, col): (i64, i64)) -> Self {
-		Position { row, col }
+impl From::<Position> for (i32, i32) {
+	fn from(pos: Position) -> (i32, i32) {
+		(pos.row, pos.col)
 	}
 }
 
 impl From::<(i32, i32)> for Position {
 	fn from((row, col): (i32, i32)) -> Self {
-		Position { row: row as i64, col: col as i64 }
+		Position { row, col }
+	}
+}
+
+impl Cursor {
+	pub fn start(&self) -> Position {
+		self.start.clone().unwrap_or((0, 0).into())
+	}
+
+	pub fn end(&self) -> Position {
+		self.end.clone().unwrap_or((0, 0).into())
 	}
 }
 
@@ -85,7 +57,8 @@ impl CursorSubscriber for CursorControllerHandle {
 		self.op.send(Cursor {
 			user: self.uid.clone(),
 			buffer: path.to_string(),
-			start, end
+			start: Some(start),
+			end: Some(end),
 		}).await.unwrap_or_warn("could not send cursor op")
 	}
 
@@ -104,7 +77,7 @@ impl CursorSubscriber for CursorControllerHandle {
 pub(crate) trait CursorProvider<T>
 where T : CursorSubscriber {
 	fn subscribe(&self) -> T;
-	fn broadcast(&self, op: CursorMov);
+	fn broadcast(&self, op: Cursor);
 	async fn wait(&mut self) -> Option<Cursor>;
 }
 
@@ -130,8 +103,8 @@ impl CursorControllerWorker {
 
 #[async_trait]
 impl CursorProvider<CursorControllerHandle> for CursorControllerWorker {
-	fn broadcast(&self, op: CursorMov) {
-		self.channel.send(op.into()).unwrap_or_warn("could not broadcast cursor event")
+	fn broadcast(&self, op: Cursor) {
+		self.channel.send(op).unwrap_or_warn("could not broadcast cursor event")
 	}
 
 	async fn wait(&mut self) -> Option<Cursor> {

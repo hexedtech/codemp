@@ -208,7 +208,12 @@ impl Handler for NeovimHandler {
 								if let Err(e) = buf.clear_namespace(ns, 0, -1).await {
 									error!("could not clear previous cursor highlight: {}", e);
 								}
-								if let Err(e) = buf.add_highlight(ns, "ErrorMsg", cur.start.row-1, cur.start.col, cur.start.col+1).await {
+								if let Err(e) = buf.add_highlight(
+									ns, "ErrorMsg",
+									(cur.start().row-1) as i64,
+									cur.start().col as i64,
+									(cur.start().col+1) as i64
+								).await {
 									error!("could not create highlight for cursor: {}", e);
 								}
 							}
@@ -226,13 +231,13 @@ impl Handler for NeovimHandler {
 					return Err(Value::from("not enough args"));
 				}
 				let path = default_empty_str(&args, 0);
-				let row = default_zero_number(&args, 1);
-				let col = default_zero_number(&args, 2);
+				let row = default_zero_number(&args, 1) as i32;
+				let col = default_zero_number(&args, 2) as i32;
 
 				match self.cursor_controller(&path) {
 					None => Err(Value::from("no path given")),
 					Some(cur) => {
-						cur.send(&path, (row, col).into(), (0i64, 0i64).into()).await;
+						cur.send(&path, (row, col).into(), (0, 0).into()).await;
 						Ok(Value::Nil)
 					}
 				}

@@ -5,13 +5,13 @@ use tonic::{Request, Response, Status};
 
 use tokio_stream::{Stream, wrappers::ReceiverStream}; // TODO example used this?
 
-use codemp::proto::{buffer_server::{Buffer, BufferServer}, RawOp, BufferPayload, BufferResponse, OperationRequest, CursorMov};
+use codemp::proto::{buffer_server::{Buffer, BufferServer}, RawOp, BufferPayload, BufferResponse, OperationRequest, Cursor};
 use tracing::info;
 
 use super::actor::{BufferHandle, BufferStore};
 
 type OperationStream = Pin<Box<dyn Stream<Item = Result<RawOp, Status>> + Send>>;
-type CursorStream    = Pin<Box<dyn Stream<Item = Result<CursorMov, Status>> + Send>>;
+type CursorStream    = Pin<Box<dyn Stream<Item = Result<Cursor, Status>> + Send>>;
 
 struct BufferMap {
 	store: HashMap<String, BufferHandle>,
@@ -34,7 +34,7 @@ impl BufferStore<String> for BufferMap {
 
 pub struct BufferService {
 	map: Arc<RwLock<BufferMap>>,
-	cursor: broadcast::Sender<CursorMov>,
+	cursor: broadcast::Sender<Cursor>,
 }
 
 impl BufferService {
@@ -88,7 +88,7 @@ impl Buffer for BufferService {
 		Ok(Response::new(Box::pin(output_stream)))
 	}
 
-	async fn cursor(&self, req:Request<CursorMov>) -> Result<Response<BufferResponse>, Status> {
+	async fn moved(&self, req:Request<Cursor>) -> Result<Response<BufferResponse>, Status> {
 		match self.cursor.send(req.into_inner()) {
 			Ok(_) => Ok(Response::new(BufferResponse { accepted: true, content: None})),
 			Err(e) => Err(Status::internal(format!("could not broadcast cursor update: {}", e))),

@@ -6,20 +6,25 @@ service Buffer {
 	rpc Edit   (OperationRequest) returns (BufferResponse);
 	rpc Create (BufferPayload)    returns (BufferResponse);
 	rpc Sync   (BufferPayload)    returns (BufferResponse);
-	rpc Cursor (CursorMov)        returns (BufferResponse);
-	rpc Listen (BufferPayload)    returns (stream CursorMov);
+	rpc Moved  (Cursor)           returns (BufferResponse);
+	rpc Listen (BufferPayload)    returns (stream Cursor);
+}
+
+message Position {
+	int32 row = 1;
+	int32 col = 2;
+}
+
+message Cursor {
+	string user = 1;
+	string buffer = 2;
+	Position start = 3;
+	Position end = 4;
 }
 
 message RawOp {
 	string opseq = 1;
 	string user = 2;
-}
-
-message CursorMov {
-	string user = 1;
-	string path = 2;
-	int64 row = 3;
-	int64 col = 4;
 }
 
 message OperationRequest {
