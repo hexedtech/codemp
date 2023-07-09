@@ -1,9 +1,10 @@
 use std::sync::Arc;
 use std::{net::TcpStream, sync::Mutex, collections::BTreeMap};
 
-use codemp::cursor::{CursorSubscriber, CursorControllerHandle};
-use codemp::operation::{OperationController, OperationFactory, OperationProcessor};
 use codemp::client::CodempClient;
+use codemp::controller::buffer::{OperationControllerHandle, OperationControllerSubscriber};
+use codemp::controller::cursor::{CursorControllerHandle, CursorSubscriber};
+use codemp::factory::OperationFactory;
 use codemp::proto::buffer_client::BufferClient;
 use codemp::tokio;
 
@@ -16,8 +17,8 @@ use tracing::{error, warn, debug, info};
 #[derive(Clone)]
 struct NeovimHandler {
 	client: CodempClient,
-	factories: Arc<Mutex<BTreeMap<String, Arc<OperationController>>>>,
-	cursors: Arc<Mutex<BTreeMap<String, Arc<CursorControllerHandle>>>>,
+	factories: Arc<Mutex<BTreeMap<String, OperationControllerHandle>>>,
+	cursors: Arc<Mutex<BTreeMap<String, CursorControllerHandle>>>,
 }
 
 fn nullable_optional_str(args: &[Value], index: usize) -> Option<String> {
@@ -37,11 +38,11 @@ fn default_zero_number(args: &[Value], index: usize) -> i64 {
 }
 
 impl NeovimHandler {
-	fn buffer_controller(&self, path: &String) -> Option<Arc<OperationController>> {
+	fn buffer_controller(&self, path: &String) -> Option<OperationControllerHandle> {
 		Some(self.factories.lock().unwrap().get(path)?.clone())
 	}
 
-	fn cursor_controller(&self, path: &String) -> Option<Arc<CursorControllerHandle>> {
+	fn cursor_controller(&self, path: &String) -> Option<CursorControllerHandle> {
 		Some(self.cursors.lock().unwrap().get(path)?.clone())
 	}
 }
@@ -89,11 +90,9 @@ impl Handler for NeovimHandler {
 				match self.buffer_controller(&path) {
 					None => Err(Value::from("no controller for given path")),
 					Some(controller) => {
-						match controller.apply(controller.insert(&txt, pos as u64)) {
-							Err(e) => Err(Value::from(format!("could not send insert: {}", e))),
-							Ok(_res) => Ok(Value::Nil),
-						}
-					}
+						controller.apply(controller.insert(&txt, pos as u64)).await;
+						Ok(Value::Nil)
+					},
 				}
 			},
 
@@ -107,9 +106,9 @@ impl Handler for NeovimHandler {
 
 				match self.buffer_controller(&path) {
 					None => Err(Value::from("no controller for given path")),
-					Some(controller) => match controller.apply(controller.delete(pos, count)) {
-						Err(e) => Err(Value::from(format!("could not send delete: {}", e))),
-						Ok(_res) => Ok(Value::Nil),
+					Some(controller) => {
+						controller.apply(controller.delete(pos, count)).await;
+						Ok(Value::Nil)
 					}
 				}
 			},
@@ -123,9 +122,11 @@ impl Handler for NeovimHandler {
 
 				match self.buffer_controller(&path) {
 					None => Err(Value::from("no controller for given path")),
-					Some(controller) => match controller.apply(controller.replace(&txt)) {
-						Err(e) => Err(Value::from(format!("could not send replace: {}", e))),
-						Ok(_res) => Ok(Value::Nil),
+					Some(controller) => {
+						if let Some(op) = controller.replace(&txt) {
+							controller.apply(op).await;
+						}
+						Ok(Value::Nil)
 					}
 				}
 			},
@@ -145,17 +146,15 @@ impl Handler for NeovimHandler {
 				match c.attach(path.clone()).await {
 					Err(e) => Err(Value::from(format!("could not attach to stream: {}", e))),
 					Ok(controller) => {
-						let _controller = controller.clone();
+						let mut _controller = controller.clone();
 						let lines : Vec<String> = _controller.content().split('\n').map(|x| x.to_string()).collect();
 						match buffer.set_lines(0, -1, false, lines).await {
 							Err(e) => Err(Value::from(format!("could not sync buffer: {}", e))),
 							Ok(()) => {
 								tokio::spawn(async move {
-									loop {
-										if !_controller.run() { break debug!("buffer updater clean exit") }
-										let _span = _controller.wait().await;
-										// TODO only change lines affected!
+									while let Some(_change) = _controller.poll().await {
 										let lines : Vec<String> = _controller.content().split('\n').map(|x| x.to_string()).collect();
+										// TODO only change lines affected!
 										if let Err(e) = buffer.set_lines(0, -1, false, lines).await {
 											error!("could not update buffer: {}", e);
 										}
@@ -170,14 +169,15 @@ impl Handler for NeovimHandler {
 			},
 
 			"detach" => {
-				if args.is_empty() {
-					return Err(Value::from("no path given"));
-				}
-				let path = default_empty_str(&args, 0);
-				match self.buffer_controller(&path) {
-					None => Err(Value::from("no controller for given path")),
-					Some(controller) => Ok(Value::from(controller.stop())),
-				}
+				Err(Value::String("not implemented".into()))
+				// if args.is_empty() {
+				// 	return Err(Value::from("no path given"));
+				// }
+				// let path = default_empty_str(&args, 0);
+				// match self.buffer_controller(&path) {
+				// 	None => Err(Value::from("no controller for given path")),
+				// 	Some(controller) => Ok(Value::from(controller.stop())),
+				// }
 			},
 
 			"listen" => {
@@ -185,10 +185,6 @@ impl Handler for NeovimHandler {
 					return Err(Value::from("no path given"));
 				}
 				let path = default_empty_str(&args, 0);
-				let controller = match self.buffer_controller(&path) {
-					None => return Err(Value::from("no controller for given path")),
-					Some(c) => c,
-				};
 
 				let ns = nvim.create_namespace("Cursor").await
 					.map_err(|e| Value::from(format!("could not create namespace: {}", e)))?;
@@ -200,19 +196,25 @@ impl Handler for NeovimHandler {
 				match c.listen().await {
 					Err(e) => Err(Value::from(format!("could not listen cursors: {}", e))),
 					Ok(mut cursor) => {
-						self.cursors.lock().unwrap().insert(path, cursor.clone().into());
+						self.cursors.lock().unwrap().insert(path, cursor.clone());
 						debug!("spawning cursor processing worker");
 						tokio::spawn(async move {
 							while let Some(cur) = cursor.poll().await {
-								if !controller.run() { break }
 								if let Err(e) = buf.clear_namespace(ns, 0, -1).await {
 									error!("could not clear previous cursor highlight: {}", e);
 								}
+								let start = cur.start();
+								let end = cur.end();
+								let end_col = if start.row == end.row {
+									end.col
+								} else {
+									0 // TODO what the fuck
+								};
 								if let Err(e) = buf.add_highlight(
 									ns, "ErrorMsg",
-									(cur.start().row-1) as i64,
-									cur.start().col as i64,
-									(cur.start().col+1) as i64
+									start.row as i64 - 1,
+									start.col as i64,
+									end_col as i64
 								).await {
 									error!("could not create highlight for cursor: {}", e);
 								}
@@ -233,11 +235,13 @@ impl Handler for NeovimHandler {
 				let path = default_empty_str(&args, 0);
 				let row = default_zero_number(&args, 1) as i32;
 				let col = default_zero_number(&args, 2) as i32;
+				let row_end = default_zero_number(&args, 3) as i32;
+				let col_end = default_zero_number(&args, 4) as i32;
 
 				match self.cursor_controller(&path) {
 					None => Err(Value::from("no path given")),
 					Some(cur) => {
-						cur.send(&path, (row, col).into(), (0, 0).into()).await;
+						cur.send(&path, (row, col).into(), (row_end, col_end).into()).await;
 						Ok(Value::Nil)
 					}
 				}

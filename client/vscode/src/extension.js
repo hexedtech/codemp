@@ -92,36 +92,34 @@ async function _attach(path) {
 				DECORATION = null
 			}
 			const range_start = new vscode.Position(start[0] - 1, start[1]);
-			const range_end = new vscode.Position(start[0] - 1, start[1] + 1);
+			const range_end = new vscode.Position(end[0] - 1, end[1]);
 			const decorationRange = new vscode.Range(range_start, range_end);
 			DECORATION = vscode.window.createTextEditorDecorationType(
 				{backgroundColor: 'red', color: 'white'}
 			)
 			editor.setDecorations(DECORATION, [decorationRange])
 		} catch (err) {
-			vscode.window.showErrorMessage("fuck! " + err)
+			vscode.window.showErrorMessage("error setting cursor decoration: " + err)
 		}
 	})
 	vscode.window.onDidChangeTextEditorSelection(async (e) => {
 		let buf = e.textEditor.document.uri.toString()
 		let selection = e.selections[0] // TODO there may be more than one cursor!!
 		let anchor = [selection.anchor.line+1, selection.anchor.character]
-		let position = [selection.active.line+1, selection.active.character]
+		let position = [selection.active.line+1, selection.active.character+1]
 		// (anchor, position) = _order_tuples(anchor, position)
 		await CURSOR.send(buf, anchor, position)
 	})
 
 	CONTROLLER = await CLIENT.attach(path)
-	CONTROLLER.callback((start, end) => {
-		// TODO only change affected document range
-		let content = CONTROLLER.content()
-		let range = new vscode.Range(
-			editor.document.positionAt(0),
-			editor.document.positionAt(editor.document.getText().length)
-		)
+	CONTROLLER.callback((start, end, text) => {
 		try {
-			OP_CACHE.add((range, content))
-			editor.edit(editBuilder => editBuilder.replace(range, content))
+			let range = new vscode.Range(
+				editor.document.positionAt(start),
+				editor.document.positionAt(end)
+			)
+			OP_CACHE.add((range, text))
+			editor.edit(editBuilder => editBuilder.replace(range, text))
 		} catch (err) {
 			vscode.window.showErrorMessage("could not set buffer: " + err)
 		}

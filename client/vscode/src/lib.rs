@@ -3,8 +3,9 @@ use std::sync::Arc;
 use neon::prelude::*;
 use once_cell::sync::OnceCell;
 use codemp::{
-	cursor::{CursorControllerHandle, CursorSubscriber}, client::CodempClient, operation::{OperationController, OperationFactory, OperationProcessor},
-	proto::buffer_client::BufferClient,
+	controller::{cursor::{CursorSubscriber, CursorControllerHandle}, buffer::{OperationControllerHandle, OperationControllerSubscriber}},
+	client::CodempClient,
+	proto::buffer_client::BufferClient, factory::OperationFactory,
 };
 use codemp::tokio::{runtime::Runtime, sync::Mutex};
 
@@ -126,7 +127,7 @@ fn attach_client(mut cx: FunctionContext) -> JsResult<JsPromise> {
 			Ok(controller) => {
 				deferred.settle_with(&channel, move |mut cx| {
 					let obj = cx.empty_object();
-					let boxed_value = cx.boxed(OperationControllerHandle(controller));
+					let boxed_value = cx.boxed(OperationControllerJs(controller));
 					obj.set(&mut cx, "boxed", boxed_value)?;
 					let apply_method = JsFunction::new(&mut cx, apply_operation)?;
 					obj.set(&mut cx, "apply", apply_method)?;
@@ -145,12 +146,12 @@ fn attach_client(mut cx: FunctionContext) -> JsResult<JsPromise> {
 }
 
 
-struct OperationControllerHandle(Arc<OperationController>);
-impl Finalize for OperationControllerHandle {}
+struct OperationControllerJs(OperationControllerHandle);
+impl Finalize for OperationControllerJs {}
 
 fn apply_operation(mut cx: FunctionContext) -> JsResult<JsPromise> {
 	let this = cx.this();
-	let boxed : Handle<JsBox<OperationControllerHandle>> = this.get(&mut cx, "boxed")?;
+	let boxed : Handle<JsBox<OperationControllerJs>> = this.get(&mut cx, "boxed")?;
 	let skip = cx.argument::<JsNumber>(0)?.value(&mut cx).round() as usize;
 	let text = cx.argument::<JsString>(1)?.value(&mut cx);
 	let tail = cx.argument::<JsNumber>(2)?.value(&mut cx).round() as usize;
@@ -160,10 +161,11 @@ fn apply_operation(mut cx: FunctionContext) -> JsResult<JsPromise> {
 	let channel = cx.channel();
 
 	runtime(&mut cx)?.spawn(async move {
-		let op = rc.delta(skip, text.as_str(), tail);
-		match rc.apply(op) {
-			Err(e) => deferred.settle_with(&channel, move |mut cx| cx.throw_error::<_, Handle<JsString>>(format!("could not apply operation: {}", e))),
-			Ok(span) => deferred.settle_with(&channel, move |mut cx| tuple(&mut cx, span.start as i32, span.end as i32)),
+		if let Some(op) = rc.delta(skip, text.as_str(), tail) {
+			rc.apply(op).await;
+			deferred.settle_with(&channel, move |mut cx| Ok(cx.boolean(true)));
+		} else {
+			deferred.settle_with(&channel, move |mut cx| Ok(cx.undefined()));
 		}
 	});
 
@@ -172,28 +174,28 @@ fn apply_operation(mut cx: FunctionContext) -> JsResult<JsPromise> {
 
 fn content_operation(mut cx: FunctionContext) -> JsResult<JsString> {
 	let this = cx.this();
-	let boxed : Handle<JsBox<OperationControllerHandle>> = this.get(&mut cx, "boxed")?;
+	let boxed : Handle<JsBox<OperationControllerJs>> = this.get(&mut cx, "boxed")?;
 	Ok(cx.string(boxed.0.content()))
 }
 
 fn callback_operation(mut cx: FunctionContext) -> JsResult<JsUndefined> {
 	let this = cx.this();
-	let boxed : Handle<JsBox<OperationControllerHandle>> = this.get(&mut cx, "boxed")?;
+	let boxed : Handle<JsBox<OperationControllerJs>> = this.get(&mut cx, "boxed")?;
 	let callback = Arc::new(cx.argument::<JsFunction>(0)?.root(&mut cx));
 
-	let rc = boxed.0.clone();
+	let mut rc = boxed.0.clone();
 	let channel = cx.channel();
 
 	// TODO when garbage collecting OperationController stop this worker
 	runtime(&mut cx)?.spawn(async move {
-		loop{
-			let span = rc.wait().await;
+		while let Some(edit) = rc.poll().await {
 			let cb = callback.clone();
 			channel.send(move |mut cx| {
 				cb.to_inner(&mut cx)
 					.call_with(&cx)
-					.arg(cx.number(span.start as i32))
-					.arg(cx.number(span.end as i32))
+					.arg(cx.number(edit.span.start as i32))
+					.arg(cx.number(edit.span.end as i32))
+					.arg(cx.string(edit.content))
 					.apply::<JsUndefined, _>(&mut cx)?;
 				Ok(())
 			});
