@@ -7,7 +7,7 @@ M.create  = function(path, content) return vim.rpcrequest(M.jobid, "create", pat
 M.insert  = function(path, txt, pos) return vim.rpcrequest(M.jobid, "insert", path, txt, pos) end
 M.delete  = function(path, pos, count) return vim.rpcrequest(M.jobid, "delete", path, pos, count) end
 M.replace = function(path, txt) return vim.rpcrequest(M.jobid, "replace", path, txt) end
-M.cursor  = function(path, row, col) return vim.rpcrequest(M.jobid, "cursor", path, row, col) end
+M.cursor  = function(path, cur) return vim.rpcrequest(M.jobid, "cursor", path, cur[1][1], cur[1][2], cur[2][1], cur[2][2]) end
 M.attach  = function(path) return vim.rpcrequest(M.jobid, "attach", path) end
 M.listen  = function(path) return vim.rpcrequest(M.jobid, "listen", path) end
 M.detach  = function(path) return vim.rpcrequest(M.jobid, "detach", path) end
@@ -18,6 +18,24 @@ local function cursor_offset()
 end
 
 local codemp_autocmds = vim.api.nvim_create_augroup("CodempAuGroup", { clear = true })
+
+local function get_cursor_range()
+	local mode = vim.fn.mode()
+	if mode == "" or mode == "s" or mode == "Vs" or mode == "V" or mode == "vs" or mode == "v" then
+		local start = vim.fn.getpos("'<")
+		local finish = vim.fn.getpos("'>")
+		return {
+			{ start[2], start[3] },
+			{ finish[2], finish[3] }
+		}
+	else
+		local cursor = vim.api.nvim_win_get_cursor(0)
+		return {
+			{ cursor[1], cursor[2] },
+			{ cursor[1], cursor[2] + 1 },
+		}
+	end
+end
 
 local function hook_callbacks(path, buffer)
 	vim.api.nvim_create_autocmd(
@@ -36,8 +54,7 @@ local function hook_callbacks(path, buffer)
 			callback = function(args)
 				local lines = vim.api.nvim_buf_get_lines(args.buf, 0, -1, false)
 				pcall(M.replace, path, vim.fn.join(lines, "\n")) -- TODO log errors
-				local cursor = vim.api.nvim_win_get_cursor(0)
-				pcall(M.cursor, path, cursor[1], cursor[2]) -- TODO log errors
+				pcall(M.cursor, path, get_cursor_range()) -- TODO log errors
 			end,
 			buffer = buffer,
 			group = codemp_autocmds,
@@ -48,12 +65,12 @@ local function hook_callbacks(path, buffer)
 		{ "CursorMovedI" },
 		{
 			callback = function(args)
-				local cursor = vim.api.nvim_win_get_cursor(0)
-				pcall(M.cursor, path, cursor[1], cursor[2]) -- TODO log errors
-				if cursor[1] == last_line then
+				local cursor = get_cursor_range()
+				pcall(M.cursor, path, cursor) -- TODO log errors
+				if cursor[1][1] == last_line then
 					return
 				end
-				last_line = cursor[1]
+				last_line = cursor[1][1]
 				local lines = vim.api.nvim_buf_get_lines(args.buf, 0, -1, false)
 				pcall(M.replace, path, vim.fn.join(lines, "\n")) -- TODO log errors
 			end,
