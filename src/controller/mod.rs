@@ -1,13 +1,16 @@
-pub mod factory;
-pub mod processor;
-pub mod controller;
+pub mod buffer;
+pub mod cursor;
 
 use std::ops::Range;
 
 use operational_transform::{Operation, OperationSeq};
-pub use processor::OperationProcessor;
-pub use controller::OperationController;
-pub use factory::OperationFactory;
+use tonic::async_trait;
+
+#[async_trait]
+pub trait ControllerWorker<T> {
+	fn subscribe(&self) -> T;
+	async fn work(self);
+}
 
 pub const fn leading_noop(seq: &[Operation]) -> u64 { count_noop(seq.first()) }
 pub const fn tailing_noop(seq: &[Operation]) -> u64 { count_noop(seq.last())  }

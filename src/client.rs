@@ -1,14 +1,13 @@
-use std::sync::Arc;
-
 use operational_transform::OperationSeq;
-use tonic::{transport::Channel, Status};
-use tracing::{error, warn, debug};
+use tonic::{transport::Channel, Status, Streaming, async_trait};
 use uuid::Uuid;
 
 use crate::{
-	cursor::{CursorControllerHandle, CursorControllerWorker, CursorProvider},
-	operation::{OperationProcessor, OperationController},
-	proto::{buffer_client::BufferClient, BufferPayload, OperationRequest}, errors::IgnorableError,
+	controller::{ControllerWorker,
+		cursor::{CursorControllerHandle, CursorControllerWorker, CursorEditor},
+		buffer::{OperationControllerHandle, OperationControllerEditor, OperationControllerWorker}
+	},
+	proto::{buffer_client::BufferClient, BufferPayload, RawOp, OperationRequest, Cursor},
 };
 
 #[derive(Clone)]
@@ -24,6 +23,10 @@ impl From::<BufferClient<Channel>> for CodempClient {
 }
 
 impl CodempClient {
+	pub async fn new(dest: &str) -> Result<Self, tonic::transport::Error> {
+		Ok(BufferClient::connect(dest.to_string()).await?.into())
+	}
+
 	pub fn id(&self) -> &str { &self.id	}
 
 	pub async fn create(&mut self, path: String, content: Option<String>) -> Result<bool, Status> {
@@ -44,35 +47,21 @@ impl CodempClient {
 			user: self.id.clone(),
 		};
 
-		let mut stream = self.client.listen(req).await?.into_inner();
+		let stream = self.client.listen(req).await?.into_inner();
 
-		let mut controller = CursorControllerWorker::new(self.id().to_string());
+		let controller = CursorControllerWorker::new(self.id().to_string(), (self.clone(), stream));
 		let handle = controller.subscribe();
-		let mut _client = self.client.clone();
 
 		tokio::spawn(async move {
-			loop {
-				tokio::select!{
-					res = stream.message() => {
-						match res {
-							Err(e)      => break error!("error receiving cursor: {}", e),
-							Ok(None)    => break debug!("cursor worker clean exit"),
-							Ok(Some(x)) => { controller.broadcast(x); },
-						}
-					},
-					Some(op) = controller.wait() => {
-						_client.moved(op).await
-							.unwrap_or_warn("could not send cursor update")
-					}
-
-				}
-			}
+			tracing::debug!("cursor worker started");
+			controller.work().await;
+			tracing::debug!("cursor worker stopped");
 		});
 
 		Ok(handle)
 	}
 
-	pub async fn attach(&mut self, path: String) -> Result<Arc<OperationController>, Status> {
+	pub async fn attach(&mut self, path: String) -> Result<OperationControllerHandle, Status> {
 		let req = BufferPayload {
 			path: path.clone(),
 			content: None,
@@ -82,59 +71,73 @@ impl CodempClient {
 		let content = self.client.sync(req.clone())
 			.await?
 			.into_inner()
-			.content;
+			.content
+			.unwrap_or("".into());
 
-		let mut stream = self.client.attach(req).await?.into_inner();
+		let stream = self.client.attach(req).await?.into_inner();
 
-		let factory = Arc::new(OperationController::new(content.unwrap_or("".into())));
-
-		let _factory = factory.clone();
-		let _path = path.clone();
+		let controller = OperationControllerWorker::new((self.clone(), stream), content, path);
+		let factory = controller.subscribe();
 
 		tokio::spawn(async move {
-			loop {
-				if !_factory.run() { break debug!("downstream worker clean exit") }
-				match stream.message().await {
-					Err(e)      => break error!("error receiving update: {}", e),
-					Ok(None)    => break warn!("stream closed for buffer {}", _path),
-					Ok(Some(x)) => match serde_json::from_str::<OperationSeq>(&x.opseq) {
-						Err(e)    => error!("error deserializing opseq: {}", e),
-						Ok(v)     => match _factory.process(v) {
-							Err(e)  => break error!("could not apply operation from server: {}", e),
-							Ok(_range) => { } // range is obtained awaiting wait(), need to pass the OpSeq itself
-						}
-					},
-				}
-			}
-		});
-
-		let mut _client = self.client.clone();
-		let _uid = self.id.clone();
-		let _factory = factory.clone();
-		let _path = path.clone();
-		tokio::spawn(async move {
-			while let Some(op) = _factory.poll().await {
-				if !_factory.run() { break }
-				let req = OperationRequest {
-					hash: "".into(),
-					opseq: serde_json::to_string(&op).unwrap(),
-					path: _path.clone(),
-					user: _uid.clone(),
-				};
-				match _client.edit(req).await {
-					Ok(res) => match res.into_inner().accepted {
-						true => { _factory.ack().await; },
-						false => {
-							warn!("server rejected operation, retrying in 1s");
-							tokio::time::sleep(std::time::Duration::from_secs(1)).await;
-						}
-					},
-					Err(e) => error!("could not send edit: {}", e),
-				}
-			}
-			debug!("upstream worker clean exit");
+			tracing::debug!("buffer worker started");
+			controller.work().await;
+			tracing::debug!("buffer worker stopped");
 		});
 
 		Ok(factory)
+	}
+}
+
+#[async_trait]
+impl OperationControllerEditor for (CodempClient, Streaming<RawOp>) {
+	async fn edit(&mut self, path: String, op: OperationSeq) -> bool {
+		let req = OperationRequest {
+			hash: "".into(),
+			opseq: serde_json::to_string(&op).unwrap(),
+			path,
+			user: self.0.id().to_string(),
+		};
+		match self.0.client.edit(req).await {
+			Ok(res) => res.into_inner().accepted,
+			Err(e) => {
+				tracing::error!("error sending edit: {}", e);
+				false
+			}
+		}
+	}
+
+	async fn recv(&mut self) -> Option<OperationSeq> {
+		match self.1.message().await {
+			Ok(Some(op)) => Some(serde_json::from_str(&op.opseq).unwrap()),
+			Ok(None) => None,
+			Err(e) => {
+				tracing::error!("could not receive edit from server: {}", e);
+				None
+			}
+		}
+	}
+}
+
+#[async_trait]
+impl CursorEditor for (CodempClient, Streaming<Cursor>) {
+	async fn moved(&mut self, cursor: Cursor) -> bool {
+		match self.0.client.moved(cursor).await {
+			Ok(res) => res.into_inner().accepted,
+			Err(e) => {
+				tracing::error!("could not send cursor movement: {}", e);
+				false
+			}
+		}
+	}
+
+	async fn recv(&mut self) -> Option<Cursor> {
+		match self.1.message().await {
+			Ok(cursor) => cursor,
+			Err(e) => {
+				tracing::error!("could not receive cursor update: {}", e);
+				None
+			}
+		}
 	}
 }
