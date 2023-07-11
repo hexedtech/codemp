@@ -8,18 +8,18 @@ pub trait OperationFactory {
 		self.delta(0, txt, self.content().len())
 	}
 
-	fn delta(&self, skip: usize, txt: &str, tail: usize) -> Option<OperationSeq> {
+	fn delta(&self, start: usize, txt: &str, end: usize) -> Option<OperationSeq> {
 		let mut out = OperationSeq::default();
 		let content = self.content();
-		let tail_index = content.len() - tail;
-		let content_slice = &content[skip..tail];
+		let tail_skip = content.len() - end;
+		let content_slice = &content[start..tail_skip];
 
 		if content_slice == txt {
 			// if slice equals given text, no operation should be taken
 			return None;
 		}
 
-		out.retain(skip as u64);
+		out.retain(start as u64);
 
 		let diff = TextDiff::from_chars(content_slice, txt);
 
@@ -31,7 +31,7 @@ pub trait OperationFactory {
 			}
 		}
 
-		out.retain(tail_index as u64);
+		out.retain(tail_skip as u64);
 
 		Some(out)
 	}
