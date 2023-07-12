@@ -1,5 +1,6 @@
 pub mod proto;
 pub mod client;
+pub mod workspace;
 pub mod controller;
 pub mod cursor;
 pub mod errors;
