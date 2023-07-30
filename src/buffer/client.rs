@@ -3,10 +3,9 @@ use tonic::{transport::Channel, Status, Streaming, async_trait};
 use uuid::Uuid;
 
 use crate::{
-	controller::{ControllerWorker,
-		cursor::{CursorControllerHandle, CursorControllerWorker, CursorEditor},
-		buffer::{OperationControllerHandle, OperationControllerEditor, OperationControllerWorker}
-	},
+	ControllerWorker,
+	cursor::controller::{CursorControllerHandle, CursorControllerWorker, CursorEditor},
+	buffer::controller::{OperationControllerHandle, OperationControllerEditor, OperationControllerWorker},
 	proto::{buffer_client::BufferClient, BufferPayload, RawOp, OperationRequest, Cursor},
 };
 
@@ -27,11 +26,12 @@ impl CodempClient {
 		Ok(BufferClient::connect(dest.to_string()).await?.into())
 	}
 
-	pub fn id(&self) -> &str { &self.id	}
+	pub fn id(&self) -> &str { &self.id }
 
-	pub async fn create(&mut self, path: String, content: Option<String>) -> Result<bool, Status> {
+	pub async fn create(&mut self, path: &str, content: Option<&str>) -> Result<bool, Status> {
 		let req = BufferPayload {
-			path, content,
+			path: path.to_string(),
+			content: content.map(|x| x.to_string()),
 			user: self.id.clone(),
 		};
 
@@ -61,9 +61,9 @@ impl CodempClient {
 		Ok(handle)
 	}
 
-	pub async fn attach(&mut self, path: String) -> Result<OperationControllerHandle, Status> {
+	pub async fn attach(&mut self, path: &str) -> Result<OperationControllerHandle, Status> {
 		let req = BufferPayload {
-			path: path.clone(),
+			path: path.to_string(),
 			content: None,
 			user: self.id.clone(),
 		};
@@ -76,7 +76,7 @@ impl CodempClient {
 
 		let stream = self.client.attach(req).await?.into_inner();
 
-		let controller = OperationControllerWorker::new((self.clone(), stream), content, path);
+		let controller = OperationControllerWorker::new((self.clone(), stream), &content, path);
 		let factory = controller.subscribe();
 
 		tokio::spawn(async move {

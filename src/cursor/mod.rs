@@ -1,3 +1,5 @@
+pub mod controller;
+
 use crate::proto::{Position, Cursor};
 
 impl From::<Position> for (i32, i32) {

@@ -1,12 +1,12 @@
 use std::{sync::Arc, collections::VecDeque, ops::Range};
 
 use operational_transform::OperationSeq;
-use tokio::sync::{watch, mpsc, broadcast};
+use tokio::sync::{watch, mpsc, broadcast, Mutex};
 use tonic::async_trait;
 
-use super::{leading_noop, tailing_noop, ControllerWorker};
+use crate::ControllerWorker;
 use crate::errors::IgnorableError;
-use crate::factory::OperationFactory;
+use crate::buffer::factory::{leading_noop, tailing_noop, OperationFactory};
 
 pub struct TextChange {
 	pub span: Range<usize>,
@@ -15,26 +15,16 @@ pub struct TextChange {
 
 #[async_trait]
 pub trait OperationControllerSubscriber {
-	async fn poll(&mut self) -> Option<TextChange>;
+	async fn poll(&self) -> Option<TextChange>;
 	async fn apply(&self, op: OperationSeq);
 }
 
+#[derive(Clone)]
 pub struct OperationControllerHandle {
 	content: watch::Receiver<String>,
 	operations: mpsc::Sender<OperationSeq>,
 	original: Arc<broadcast::Sender<OperationSeq>>,
-	stream: broadcast::Receiver<OperationSeq>,
-}
-
-impl Clone for OperationControllerHandle {
-	fn clone(&self) -> Self {
-		OperationControllerHandle {
-			content: self.content.clone(),
-			operations: self.operations.clone(),
-			original: self.original.clone(),
-			stream: self.original.subscribe(),
-		}
-	}
+	stream: Arc<Mutex<broadcast::Receiver<OperationSeq>>>,
 }
 
 #[async_trait]
@@ -46,8 +36,8 @@ impl OperationFactory for OperationControllerHandle {
 
 #[async_trait]
 impl OperationControllerSubscriber for OperationControllerHandle {
-	async fn poll(&mut self) -> Option<TextChange> {
-		let op = self.stream.recv().await.ok()?;
+	async fn poll(&self) -> Option<TextChange> {
+		let op = self.stream.lock().await.recv().await.ok()?;
 		let after = self.content.borrow().clone();
 		let skip = leading_noop(op.ops()) as usize; 
 		let before_len = op.base_len();
@@ -61,6 +51,15 @@ impl OperationControllerSubscriber for OperationControllerHandle {
 		self.operations.send(op).await
 			.unwrap_or_warn("could not apply+send operation")
 	}
+
+	// fn subscribe(&self) -> Self {
+	// 	OperationControllerHandle {
+	// 		content: self.content.clone(),
+	// 		operations: self.operations.clone(),
+	// 		original: self.original.clone(),
+	// 		stream: Arc::new(Mutex::new(self.original.subscribe())),
+	// 	}
+	// }
 }
 
 #[async_trait]
@@ -88,7 +87,7 @@ impl<C : OperationControllerEditor + Send> ControllerWorker<OperationControllerH
 			content: self.receiver.clone(),
 			operations: self.sender.clone(),
 			original: self.stream.clone(),
-			stream: self.stream.subscribe(),
+			stream: Arc::new(Mutex::new(self.stream.subscribe())),
 		}
 	}
 
@@ -122,8 +121,8 @@ impl<C : OperationControllerEditor + Send> ControllerWorker<OperationControllerH
 }
 
 impl<C : OperationControllerEditor> OperationControllerWorker<C> {
-	pub fn new(client: C, buffer: String, path: String) -> Self {
-		let (txt_tx, txt_rx) = watch::channel(buffer.clone());
+	pub fn new(client: C, buffer: &str, path: &str) -> Self {
+		let (txt_tx, txt_rx) = watch::channel(buffer.to_string());
 		let (op_tx, op_rx) = mpsc::channel(64);
 		let (s_tx, _s_rx) = broadcast::channel(64);
 		OperationControllerWorker {
@@ -133,7 +132,9 @@ impl<C : OperationControllerEditor> OperationControllerWorker<C> {
 			receiver: txt_rx,
 			sender: op_tx,
 			queue: VecDeque::new(),
-			client, buffer, path
+			buffer: buffer.to_string(),
+			path: path.to_string(),
+			client,
 		}
 	}
 }

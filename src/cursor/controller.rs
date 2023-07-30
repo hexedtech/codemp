@@ -1,30 +1,31 @@
 use std::sync::Arc;
 
-use tokio::sync::{mpsc, broadcast};
+use tokio::sync::{mpsc, broadcast::{self, error::{TryRecvError, RecvError}}, Mutex};
 use tonic::async_trait;
 
-use crate::{proto::{Position, Cursor}, errors::IgnorableError, controller::ControllerWorker};
+use crate::{proto::{Position, Cursor}, errors::IgnorableError, ControllerWorker};
 
 #[async_trait]
 pub trait CursorSubscriber {
 	async fn send(&self, path: &str, start: Position, end: Position);
-	async fn poll(&mut self) -> Option<Cursor>;
+	async fn poll(&self) -> Option<Cursor>;
+	fn try_poll(&self) -> Option<Option<Cursor>>; // TODO fuck this fuck neovim
 }
 
 pub struct CursorControllerHandle {
 	uid: String,
 	op: mpsc::Sender<Cursor>,
-	stream: broadcast::Receiver<Cursor>,
 	original: Arc<broadcast::Sender<Cursor>>,
+	stream: Mutex<broadcast::Receiver<Cursor>>,
 }
 
 impl Clone for CursorControllerHandle {
 	fn clone(&self) -> Self {
-		Self {
+		CursorControllerHandle {
 			uid: self.uid.clone(),
 			op: self.op.clone(),
-			stream: self.original.subscribe(),
-			original: self.original.clone()
+			original: self.original.clone(),
+			stream: Mutex::new(self.original.subscribe()),
 		}
 	}
 }
@@ -40,12 +41,30 @@ impl CursorSubscriber for CursorControllerHandle {
 		}).await.unwrap_or_warn("could not send cursor op")
 	}
 
-	async fn poll(&mut self) -> Option<Cursor> {
-		match self.stream.recv().await {
+	// TODO is this cancelable? so it can be used in tokio::select!
+	async fn poll(&self) -> Option<Cursor> {
+		let mut stream = self.stream.lock().await;
+		match stream.recv().await {
 			Ok(x) => Some(x),
-			Err(e) => {
-				tracing::warn!("could not poll for cursor: {}", e);
-				None
+			Err(RecvError::Closed) => None,
+			Err(RecvError::Lagged(n)) => {
+				tracing::error!("cursor channel lagged behind, skipping {} events", n);
+				Some(stream.recv().await.expect("could not receive after lagging"))
+			}
+		}
+	}
+
+	fn try_poll(&self) -> Option<Option<Cursor>> {
+		match self.stream.try_lock() {
+			Err(_) => None,
+			Ok(mut x) => match x.try_recv() {
+				Ok(x) => Some(Some(x)),
+				Err(TryRecvError::Empty) => None,
+				Err(TryRecvError::Closed) => Some(None),
+				Err(TryRecvError::Lagged(n)) => {
+					tracing::error!("cursor channel lagged behind, skipping {} events", n);
+					Some(Some(x.try_recv().expect("could not receive after lagging")))
+				}
 			}
 		}
 	}
@@ -84,8 +103,8 @@ impl<C : CursorEditor + Send> ControllerWorker<CursorControllerHandle> for Curso
 		CursorControllerHandle {
 			uid: self.uid.clone(),
 			op: self.producer.clone(),
-			stream: self.channel.subscribe(),
 			original: self.channel.clone(),
+			stream: Mutex::new(self.channel.subscribe()),
 		}
 	}
 
@@ -98,7 +117,6 @@ impl<C : CursorEditor + Send> ControllerWorker<CursorControllerHandle> for Curso
 			}
 		}
 	}
-
 }
 
 
