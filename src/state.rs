@@ -8,6 +8,21 @@ use crate::{
 	cursor::controller::CursorSubscriber, errors::CodempError,
 };
 
+#[cfg(feature = "static")]
+pub mod instance {
+	use tokio::runtime::Runtime;
+	use super::Workspace;
+
+	const CODEMP_DEFAULT_HOST : &str = "http://fantabos.co:50051";
+
+	lazy_static::lazy_static! {
+		static ref RUNTIME   : Runtime = Runtime::new().expect("could not create tokio runtime");
+		static ref WORKSPACE : Workspace = RUNTIME.block_on(
+			Workspace::new(&std::env::var("CODEMP_HOST").unwrap_or(CODEMP_DEFAULT_HOST.into()))
+		).expect("could not create codemp workspace");
+	}
+}
+
 pub struct Workspace {
 	client: CodempClient,
 	buffers: RwLock<BTreeMap<Box<str>, BufferController>>,
@@ -19,7 +34,7 @@ pub type BufferController = Arc<dyn OperationControllerSubscriber + Send + Sync>
 
 #[async_trait]
 pub trait WorkspaceHandle {
-	fn cursor(&self) -> CursorController;
+	async fn cursor(&self) -> CursorController;
 	async fn buffer(&self, path: &str) -> Option<BufferController>;
 	async fn attach(&self, path: &str) -> Result<(), CodempError>;
 	async fn create(&self, path: &str, content: Option<&str>) -> Result<bool, CodempError>;
@@ -42,7 +57,7 @@ impl Workspace {
 #[async_trait]
 impl WorkspaceHandle for Workspace {
 	// Cursor
-	fn cursor(&self) -> CursorController {
+	async fn cursor(&self) -> CursorController {
 		self.cursor.clone()
 	}
 

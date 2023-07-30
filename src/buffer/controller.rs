@@ -14,17 +14,28 @@ pub struct TextChange {
 }
 
 #[async_trait]
-pub trait OperationControllerSubscriber {
+pub trait OperationControllerSubscriber : OperationFactory {
 	async fn poll(&self) -> Option<TextChange>;
 	async fn apply(&self, op: OperationSeq);
 }
 
-#[derive(Clone)]
+
 pub struct OperationControllerHandle {
 	content: watch::Receiver<String>,
 	operations: mpsc::Sender<OperationSeq>,
 	original: Arc<broadcast::Sender<OperationSeq>>,
-	stream: Arc<Mutex<broadcast::Receiver<OperationSeq>>>,
+	stream: Mutex<broadcast::Receiver<OperationSeq>>,
+}
+
+impl Clone for OperationControllerHandle {
+	fn clone(&self) -> Self {
+		OperationControllerHandle {
+			content: self.content.clone(),
+			operations: self.operations.clone(),
+			original: self.original.clone(),
+			stream: Mutex::new(self.original.subscribe()),
+		}
+	}
 }
 
 #[async_trait]
@@ -87,7 +98,7 @@ impl<C : OperationControllerEditor + Send> ControllerWorker<OperationControllerH
 			content: self.receiver.clone(),
 			operations: self.sender.clone(),
 			original: self.stream.clone(),
-			stream: Arc::new(Mutex::new(self.stream.subscribe())),
+			stream: Mutex::new(self.stream.subscribe()),
 		}
 	}
 
