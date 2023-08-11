@@ -1,151 +1,121 @@
-use std::{sync::Arc, collections::VecDeque, ops::Range};
-
 use operational_transform::OperationSeq;
-use tokio::sync::{watch, mpsc, broadcast, Mutex};
-use tonic::async_trait;
+use tonic::{transport::Channel, Status, Streaming, async_trait};
+use uuid::Uuid;
 
-use crate::ControllerWorker;
-use crate::errors::IgnorableError;
-use crate::buffer::factory::{leading_noop, tailing_noop, OperationFactory};
+use crate::{
+	ControllerWorker,
+	cursor::tracker::{CursorTracker, CursorTrackerWorker},
+	buffer::controller::{OperationControllerHandle, OperationControllerEditor, OperationControllerWorker},
+	proto::{buffer_client::BufferClient, BufferPayload, RawOp, OperationRequest},
+};
 
-pub struct TextChange {
-	pub span: Range<usize>,
-	pub content: String,
+#[derive(Clone)]
+pub struct BufferController {
+	id: String,
+	client: BufferClient<Channel>,
 }
 
-#[async_trait]
-pub trait OperationControllerSubscriber : OperationFactory {
-	async fn poll(&self) -> Option<TextChange>;
-	async fn apply(&self, op: OperationSeq);
+impl From::<BufferClient<Channel>> for BufferController {
+	fn from(value: BufferClient<Channel>) -> Self {
+		BufferController { id: Uuid::new_v4().to_string(), client: value }
+	}
 }
 
+impl BufferController {
+	pub async fn new(dest: &str) -> Result<Self, tonic::transport::Error> {
+		Ok(BufferClient::connect(dest.to_string()).await?.into())
+	}
 
-pub struct OperationControllerHandle {
-	content: watch::Receiver<String>,
-	operations: mpsc::Sender<OperationSeq>,
-	original: Arc<broadcast::Sender<OperationSeq>>,
-	stream: Mutex<broadcast::Receiver<OperationSeq>>,
-}
+	pub fn id(&self) -> &str { &self.id }
 
-impl Clone for OperationControllerHandle {
-	fn clone(&self) -> Self {
-		OperationControllerHandle {
-			content: self.content.clone(),
-			operations: self.operations.clone(),
-			original: self.original.clone(),
-			stream: Mutex::new(self.original.subscribe()),
-		}
+	pub async fn create(&mut self, path: &str, content: Option<&str>) -> Result<bool, Status> {
+		let req = BufferPayload {
+			path: path.to_string(),
+			content: content.map(|x| x.to_string()),
+			user: self.id.clone(),
+		};
+
+		let res = self.client.create(req).await?;
+
+		Ok(res.into_inner().accepted)
+	}
+
+	pub async fn listen(&mut self) -> Result<CursorTracker, Status> {
+		let req = BufferPayload {
+			path: "".into(),
+			content: None,
+			user: self.id.clone(),
+		};
+
+		let stream = self.client.listen(req).await?.into_inner();
+
+		let controller = CursorTrackerWorker::new(self.id().to_string());
+		let handle = controller.subscribe();
+		let client = self.client.clone();
+
+		tokio::spawn(async move {
+			tracing::debug!("cursor worker started");
+			controller.work(stream, client).await;
+			tracing::debug!("cursor worker stopped");
+		});
+
+		Ok(handle)
+	}
+
+	pub async fn attach(&mut self, path: &str) -> Result<OperationControllerHandle, Status> {
+		let req = BufferPayload {
+			path: path.to_string(),
+			content: None,
+			user: self.id.clone(),
+		};
+
+		let content = self.client.sync(req.clone())
+			.await?
+			.into_inner()
+			.content
+			.unwrap_or("".into());
+
+		let stream = self.client.attach(req).await?.into_inner();
+
+		let controller = OperationControllerWorker::new((self.clone(), stream), &content, path);
+		let factory = controller.subscribe();
+
+		tokio::spawn(async move {
+			tracing::debug!("buffer worker started");
+			controller.work().await;
+			tracing::debug!("buffer worker stopped");
+		});
+
+		Ok(factory)
 	}
 }
 
 #[async_trait]
-impl OperationFactory for OperationControllerHandle {
-	fn content(&self) -> String {
-		self.content.borrow().clone()
-	}
-}
-
-#[async_trait]
-impl OperationControllerSubscriber for OperationControllerHandle {
-	async fn poll(&self) -> Option<TextChange> {
-		let op = self.stream.lock().await.recv().await.ok()?;
-		let after = self.content.borrow().clone();
-		let skip = leading_noop(op.ops()) as usize; 
-		let before_len = op.base_len();
-		let tail = tailing_noop(op.ops()) as usize;
-		let span = skip..before_len-tail;
-		let content = after[skip..after.len()-tail].to_string();
-		Some(TextChange { span, content })
-	}
-
-	async fn apply(&self, op: OperationSeq) {
-		self.operations.send(op).await
-			.unwrap_or_warn("could not apply+send operation")
-	}
-
-	// fn subscribe(&self) -> Self {
-	// 	OperationControllerHandle {
-	// 		content: self.content.clone(),
-	// 		operations: self.operations.clone(),
-	// 		original: self.original.clone(),
-	// 		stream: Arc::new(Mutex::new(self.original.subscribe())),
-	// 	}
-	// }
-}
-
-#[async_trait]
-pub(crate) trait OperationControllerEditor {
-	async fn edit(&mut self, path: String, op: OperationSeq) -> bool;
-	async fn recv(&mut self) -> Option<OperationSeq>;
-}
-
-pub(crate) struct OperationControllerWorker<C : OperationControllerEditor> {
-	pub(crate) content: watch::Sender<String>,
-	pub(crate) operations: mpsc::Receiver<OperationSeq>,
-	pub(crate) stream: Arc<broadcast::Sender<OperationSeq>>,
-	pub(crate) queue: VecDeque<OperationSeq>,
-	receiver: watch::Receiver<String>,
-	sender: mpsc::Sender<OperationSeq>,
-	client: C,
-	buffer: String,
-	path: String,
-}
-
-#[async_trait]
-impl<C : OperationControllerEditor + Send> ControllerWorker<OperationControllerHandle> for OperationControllerWorker<C> {
-	fn subscribe(&self) -> OperationControllerHandle {
-		OperationControllerHandle {
-			content: self.receiver.clone(),
-			operations: self.sender.clone(),
-			original: self.stream.clone(),
-			stream: Mutex::new(self.stream.subscribe()),
-		}
-	}
-
-	async fn work(mut self) {
-		loop {
-			let op = tokio::select! {
-				Some(operation) = self.client.recv() => {
-					let mut out = operation;
-					for op in self.queue.iter_mut() {
-						(*op, out) = op.transform(&out).unwrap();
-					}
-					self.stream.send(out.clone()).unwrap();
-					out
-				},
-				Some(op) = self.operations.recv() => {
-					self.queue.push_back(op.clone());
-					op
-				},
-				else => break
-			};
-			self.buffer = op.apply(&self.buffer).unwrap();
-			self.content.send(self.buffer.clone()).unwrap();
-
-			while let Some(op) = self.queue.get(0) {
-				if !self.client.edit(self.path.clone(), op.clone()).await { break }
-				self.queue.pop_front();
+impl OperationControllerEditor for (BufferController, Streaming<RawOp>) {
+	async fn edit(&mut self, path: String, op: OperationSeq) -> bool {
+		let req = OperationRequest {
+			hash: "".into(),
+			opseq: serde_json::to_string(&op).unwrap(),
+			path,
+			user: self.0.id().to_string(),
+		};
+		match self.0.client.edit(req).await {
+			Ok(res) => res.into_inner().accepted,
+			Err(e) => {
+				tracing::error!("error sending edit: {}", e);
+				false
 			}
 		}
 	}
 
-}
-
-impl<C : OperationControllerEditor> OperationControllerWorker<C> {
-	pub fn new(client: C, buffer: &str, path: &str) -> Self {
-		let (txt_tx, txt_rx) = watch::channel(buffer.to_string());
-		let (op_tx, op_rx) = mpsc::channel(64);
-		let (s_tx, _s_rx) = broadcast::channel(64);
-		OperationControllerWorker {
-			content: txt_tx,
-			operations: op_rx,
-			stream: Arc::new(s_tx),
-			receiver: txt_rx,
-			sender: op_tx,
-			queue: VecDeque::new(),
-			buffer: buffer.to_string(),
-			path: path.to_string(),
-			client,
+	async fn recv(&mut self) -> Option<OperationSeq> {
+		match self.1.message().await {
+			Ok(Some(op)) => Some(serde_json::from_str(&op.opseq).unwrap()),
+			Ok(None) => None,
+			Err(e) => {
+				tracing::error!("could not receive edit from server: {}", e);
+				None
+			}
 		}
 	}
 }
