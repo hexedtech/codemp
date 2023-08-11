@@ -1,11 +1,11 @@
 use std::{collections::BTreeMap, sync::Arc};
 
-use tokio::sync::{RwLock, Mutex};
-use tonic::async_trait;
+use tokio::sync::RwLock;
 
 use crate::{
-	buffer::{controller::BufferController, handle::OperationControllerEditor},
-	errors::CodempError, Controller, proto::Cursor, cursor::tracker::CursorTracker,
+	buffer::{controller::BufferController, handle::BufferHandle},
+	cursor::tracker::CursorTracker,
+	errors::CodempError,
 };
 
 
@@ -25,14 +25,14 @@ pub mod instance {
 }
 
 pub struct Workspace {
-	client: CodempClient,
-	buffers: RwLock<BTreeMap<Box<str>, BufferController>>,
+	client: BufferController,
+	buffers: RwLock<BTreeMap<Box<str>, Arc<BufferHandle>>>,
 	cursor: Arc<CursorTracker>,
 }
 
 impl Workspace {
 	pub async fn new(dest: &str) -> Result<Self, CodempError> {
-		let mut client = CodempClient::new(dest).await?;
+		let mut client = BufferController::new(dest).await?;
 		let cursor = Arc::new(client.listen().await?);
 		Ok(
 			Workspace {
@@ -49,7 +49,7 @@ impl Workspace {
 	}
 
 	// Buffer
-	pub async fn buffer(&self, path: &str) -> Option<BufferController> {
+	pub async fn buffer(&self, path: &str) -> Option<Arc<BufferHandle>> {
 		self.buffers.read().await.get(path).cloned()
 	}
 
@@ -62,20 +62,4 @@ impl Workspace {
 		self.buffers.write().await.insert(path.into(), Arc::new(controller));
 		Ok(())
 	}
-
-	// pub async fn diff(&self, path: &str, span: Range<usize>, text: &str) {
-	// 	if let Some(controller) = self.inner.read().await.buffers.get(path) {
-	// 		if let Some(op) = controller.delta(span.start, text, span.end) {
-	// 			controller.apply(op).await
-	// 		}
-	// 	}
-	// }
-
-	// async fn send(&self, path: &str, start: (i32, i32), end: (i32, i32)) {
-	// 	self.inner.read().await.cursor.send(path, start.into(), end.into()).await
-	// }
-
-	// pub async fn recv(&self) -> Option<Cursor> {
-	// 	self.inner.write().await.cursor.poll().await
-	// }
 }

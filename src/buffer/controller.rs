@@ -5,7 +5,7 @@ use uuid::Uuid;
 use crate::{
 	ControllerWorker,
 	cursor::tracker::{CursorTracker, CursorTrackerWorker},
-	buffer::controller::{OperationControllerHandle, OperationControllerEditor, OperationControllerWorker},
+	buffer::handle::{BufferHandle, OperationControllerEditor, OperationControllerWorker},
 	proto::{buffer_client::BufferClient, BufferPayload, RawOp, OperationRequest},
 };
 
@@ -62,7 +62,7 @@ impl BufferController {
 		Ok(handle)
 	}
 
-	pub async fn attach(&mut self, path: &str) -> Result<OperationControllerHandle, Status> {
+	pub async fn attach(&mut self, path: &str) -> Result<BufferHandle, Status> {
 		let req = BufferPayload {
 			path: path.to_string(),
 			content: None,
