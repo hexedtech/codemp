@@ -1,5 +1,6 @@
 use std::{error::Error, fmt::Display};
 
+use tokio::sync::mpsc;
 use tonic::{Status, Code};
 use tracing::warn;
 
@@ -24,7 +25,9 @@ pub enum CodempError {
 		status: Code,
 		message: String,
 	},
-	Channel { },
+	Channel {
+		send: bool
+	},
 
 	// TODO filler error, remove later
 	Filler {
@@ -38,7 +41,7 @@ impl Display for CodempError {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		match self {
 			Self::Transport { status, message } => write!(f, "Transport error: ({}) {}", status, message),
-			Self::Channel { } => write!(f, "Channel error"),
+			Self::Channel { send } => write!(f, "Channel error (send:{})", send),
 			_ => write!(f, "Unknown error"),
 		}
 	}
@@ -55,5 +58,11 @@ impl From<tonic::transport::Error> for CodempError {
 		CodempError::Transport {
 			status: Code::Unknown, message: format!("underlying transport error: {:?}", err)
 		}
+	}
+}
+
+impl<T> From<mpsc::error::SendError<T>> for CodempError {
+	fn from(_value: mpsc::error::SendError<T>) -> Self {
+		CodempError::Channel { send: true }
 	}
 }

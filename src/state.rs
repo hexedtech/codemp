@@ -1,12 +1,13 @@
 use std::{collections::BTreeMap, sync::Arc};
 
-use tokio::sync::RwLock;
+use tokio::sync::{RwLock, Mutex};
 use tonic::async_trait;
 
 use crate::{
-	buffer::{client::CodempClient, controller::OperationControllerSubscriber},
-	cursor::controller::CursorSubscriber, errors::CodempError,
+	buffer::{controller::BufferController, handle::OperationControllerEditor},
+	errors::CodempError, Controller, proto::Cursor, cursor::tracker::CursorTracker,
 };
+
 
 #[cfg(feature = "static")]
 pub mod instance {
@@ -26,18 +27,7 @@ pub mod instance {
 pub struct Workspace {
 	client: CodempClient,
 	buffers: RwLock<BTreeMap<Box<str>, BufferController>>,
-	cursor: CursorController,
-}
-
-pub type CursorController = Arc<dyn CursorSubscriber + Send + Sync>;
-pub type BufferController = Arc<dyn OperationControllerSubscriber + Send + Sync>;
-
-#[async_trait]
-pub trait WorkspaceHandle {
-	async fn cursor(&self) -> CursorController;
-	async fn buffer(&self, path: &str) -> Option<BufferController>;
-	async fn attach(&self, path: &str) -> Result<(), CodempError>;
-	async fn create(&self, path: &str, content: Option<&str>) -> Result<bool, CodempError>;
+	cursor: Arc<CursorTracker>,
 }
 
 impl Workspace {
@@ -52,25 +42,22 @@ impl Workspace {
 			}
 		)
 	}
-}
 
-#[async_trait]
-impl WorkspaceHandle for Workspace {
 	// Cursor
-	async fn cursor(&self) -> CursorController {
+	pub async fn cursor(&self) -> Arc<CursorTracker> {
 		self.cursor.clone()
 	}
 
 	// Buffer
-	async fn buffer(&self, path: &str) -> Option<BufferController> {
+	pub async fn buffer(&self, path: &str) -> Option<BufferController> {
 		self.buffers.read().await.get(path).cloned()
 	}
 
-	async fn create(&self, path: &str, content: Option<&str>) -> Result<bool, CodempError> {
+	pub async fn create(&self, path: &str, content: Option<&str>) -> Result<bool, CodempError> {
 		Ok(self.client.clone().create(path, content).await?)
 	}
 
-	async fn attach(&self, path: &str) -> Result<(), CodempError> {
+	pub async fn attach(&self, path: &str) -> Result<(), CodempError> {
 		let controller = self.client.clone().attach(path).await?;
 		self.buffers.write().await.insert(path.into(), Arc::new(controller));
 		Ok(())
