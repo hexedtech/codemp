@@ -34,11 +34,11 @@ impl ControllerWorker<CursorEvent> for CursorControllerWorker {
 	type Rx = Streaming<CursorEvent>;
 
 	fn subscribe(&self) -> CursorController {
-		CursorController {
-			uid: self.uid.clone(),
-			op: self.producer.clone(),
-			stream: Mutex::new(self.channel.subscribe()),
-		}
+		CursorController::new(
+			self.uid.clone(),
+			self.producer.clone(),
+			Mutex::new(self.channel.subscribe())
+		)
 	}
 
 	async fn work(mut self, mut tx: Self::Tx, mut rx: Self::Rx) {

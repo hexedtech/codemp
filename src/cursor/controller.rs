@@ -9,6 +9,16 @@ pub struct CursorController {
 	stream: Mutex<broadcast::Receiver<CursorEvent>>,
 }
 
+impl CursorController {
+	pub(crate) fn new(
+		uid: String,
+		op: mpsc::Sender<CursorEvent>,
+		stream: Mutex<broadcast::Receiver<CursorEvent>>
+	) -> Self {
+		CursorController { uid, op, stream }
+	}
+}
+
 #[async_trait]
 impl Controller<CursorEvent> for CursorController {
 	type Input = CursorPosition;

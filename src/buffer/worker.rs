@@ -51,11 +51,11 @@ impl ControllerWorker<TextChange> for BufferControllerWorker {
 	type Rx = Streaming<RawOp>;
 
 	fn subscribe(&self) -> BufferController {
-		BufferController {
-			content: self.receiver.clone(),
-			operations: self.sender.clone(),
-			stream: Mutex::new(self.stream.subscribe()),
-		}
+		BufferController::new(
+			self.receiver.clone(),
+			self.sender.clone(),
+			Mutex::new(self.stream.subscribe()),
+		)
 	}
 
 	async fn work(mut self, mut tx: Self::Tx, mut rx: Self::Rx) {

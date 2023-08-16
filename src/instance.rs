@@ -10,8 +10,6 @@ use crate::{
 
 use tokio::runtime::Runtime;
 
-const CODEMP_DEFAULT_HOST : &str = "http://alemi.dev:50051";
-
 lazy_static::lazy_static! {
 	static ref RUNTIME  : Runtime  = Runtime::new().expect("could not create tokio runtime");
 	static ref INSTANCE : Instance = Instance::default();

@@ -13,6 +13,16 @@ pub struct BufferController {
 	stream: Mutex<broadcast::Receiver<OperationSeq>>,
 }
 
+impl BufferController {
+	pub(crate) fn new(
+		content: watch::Receiver<String>,
+		operations: mpsc::Sender<OperationSeq>,
+		stream: Mutex<broadcast::Receiver<OperationSeq>>,
+	) -> Self {
+		BufferController { content, operations, stream }
+	}
+}
+
 #[async_trait]
 impl OperationFactory for BufferController {
 	fn content(&self) -> String {

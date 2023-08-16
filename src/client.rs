@@ -38,11 +38,11 @@ impl CodempClient {
 	}
 
 	pub fn get_cursor(&self) -> Option<Arc<CursorController>> {
-		Some(self.workspace?.cursor.clone())
+		Some(self.workspace.as_ref()?.cursor.clone())
 	}
 
 	pub fn get_buffer(&self, path: &str) -> Option<Arc<BufferController>> {
-		self.workspace?.buffers.get(path).cloned()
+		self.workspace.as_ref()?.buffers.get(path).cloned()
 	}
 
 	pub async fn join(&mut self, _session: &str) -> Result<Arc<CursorController>, CodempError> {
@@ -72,7 +72,7 @@ impl CodempClient {
 	}
 
 	pub async fn create(&mut self, path: &str, content: Option<&str>) -> Result<(), CodempError> {
-		if let Some(workspace) = &self.workspace {
+		if let Some(_workspace) = &self.workspace {
 			self.client.buffer
 				.create(BufferPayload {
 					user: self.id.clone(),
@@ -86,7 +86,7 @@ impl CodempClient {
 		}
 	}
 
-	pub async fn attach(&mut self, path: &str, content: Option<&str>) -> Result<Arc<BufferController>, CodempError> {
+	pub async fn attach(&mut self, path: &str) -> Result<Arc<BufferController>, CodempError> {
 		if let Some(workspace) = &mut self.workspace {
 			let mut client = self.client.buffer.clone();
 			let req = BufferPayload {
