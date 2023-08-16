@@ -3,6 +3,7 @@ pub mod errors;
 pub mod buffer;
 
 pub mod state;
+pub mod client;
 
 pub use tonic;
 pub use tokio;
@@ -19,12 +20,18 @@ pub use errors::CodempError;
 
 #[tonic::async_trait] // TODO move this somewhere?
 pub(crate) trait ControllerWorker<T> {
-	fn subscribe(&self) -> T;
-	async fn work(self);
+	type Controller : Controller<T>;
+	type Tx;
+	type Rx;
+
+	fn subscribe(&self) -> Self::Controller;
+	async fn work(self, tx: Self::Tx, rx: Self::Rx);
 }
 
 #[tonic::async_trait]
 pub trait Controller<T> {
+	type Input;
+
+	async fn send(&self, x: Self::Input) -> Result<(), CodempError>;
 	async fn recv(&self) -> Result<T, CodempError>;
-	async fn send(&self, x: T) -> Result<(), CodempError>;
 }

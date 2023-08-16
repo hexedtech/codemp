@@ -1,11 +1,10 @@
-use operational_transform::OperationSeq;
-use tonic::{transport::Channel, Status, Streaming, async_trait};
+use tonic::{transport::Channel, Status};
 use uuid::Uuid;
 
 use crate::{
 	ControllerWorker,
-	buffer::handle::{BufferHandle, OperationControllerEditor, OperationControllerWorker},
-	proto::{buffer_client::BufferClient, BufferPayload, RawOp, OperationRequest},
+	buffer::handle::{BufferHandle, OperationControllerWorker},
+	proto::{buffer_client::BufferClient, BufferPayload},
 };
 
 #[derive(Clone)]
@@ -75,45 +74,16 @@ impl BufferController {
 
 		let stream = self.client.attach(req).await?.into_inner();
 
-		let controller = OperationControllerWorker::new((self.clone(), stream), &content, path);
+		let controller = OperationControllerWorker::new(self.id().to_string(), &content, path);
 		let factory = controller.subscribe();
+		let client = self.client.clone();
 
 		tokio::spawn(async move {
 			tracing::debug!("buffer worker started");
-			controller.work().await;
+			controller.work(client, stream).await;
 			tracing::debug!("buffer worker stopped");
 		});
 
 		Ok(factory)
-	}
-}
-
-#[async_trait]
-impl OperationControllerEditor for (BufferController, Streaming<RawOp>) {
-	async fn edit(&mut self, path: String, op: OperationSeq) -> bool {
-		let req = OperationRequest {
-			hash: "".into(),
-			opseq: serde_json::to_string(&op).unwrap(),
-			path,
-			user: self.0.id().to_string(),
-		};
-		match self.0.client.edit(req).await {
-			Ok(_) => true,
-			Err(e) => {
-				tracing::error!("error sending edit: {}", e);
-				false
-			}
-		}
-	}
-
-	async fn recv(&mut self) -> Option<OperationSeq> {
-		match self.1.message().await {
-			Ok(Some(op)) => Some(serde_json::from_str(&op.opseq).unwrap()),
-			Ok(None) => None,
-			Err(e) => {
-				tracing::error!("could not receive edit from server: {}", e);
-				None
-			}
-		}
 	}
 }

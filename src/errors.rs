@@ -1,6 +1,6 @@
 use std::{error::Error, fmt::Display};
 
-use tokio::sync::mpsc;
+use tokio::sync::{mpsc, broadcast};
 use tonic::{Status, Code};
 use tracing::warn;
 
@@ -64,5 +64,11 @@ impl From<tonic::transport::Error> for CodempError {
 impl<T> From<mpsc::error::SendError<T>> for CodempError {
 	fn from(_value: mpsc::error::SendError<T>) -> Self {
 		CodempError::Channel { send: true }
+	}
+}
+
+impl From<broadcast::error::RecvError> for CodempError {
+	fn from(_value: broadcast::error::RecvError) -> Self {
+		CodempError::Channel { send: false }
 	}
 }
