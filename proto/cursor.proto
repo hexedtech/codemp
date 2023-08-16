@@ -3,22 +3,26 @@ syntax = "proto3";
 package codemp.cursor;
 
 service Cursor {
-	rpc Moved  (CursorPosition)   returns (MovedResponse);
-	rpc Listen (UserIdentity)     returns (stream CursorPosition);
+	rpc Moved  (CursorEvent)      returns (MovedResponse);
+	rpc Listen (UserIdentity)     returns (stream CursorEvent);
 }
 
 message MovedResponse {}
 
-message RowColumn {
+message RowCol {
 	int32 row = 1;
 	int32 col = 2;
 }
 
 message CursorPosition {
+	string buffer = 1;
+	RowCol start = 2;
+	RowCol end = 3;
+}
+
+message CursorEvent {
 	string user = 1;
-	string buffer = 2;
-	RowColumn start = 3;
-	RowColumn end = 4;
+	CursorPosition position = 2;
 }
 
 message UserIdentity {

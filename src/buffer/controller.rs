@@ -1,89 +1,41 @@
-use tonic::{transport::Channel, Status};
-use uuid::Uuid;
+use operational_transform::OperationSeq;
+use tokio::sync::{watch, mpsc, broadcast, Mutex};
+use tonic::async_trait;
 
-use crate::{
-	ControllerWorker,
-	buffer::handle::{BufferHandle, OperationControllerWorker},
-	proto::{buffer_client::BufferClient, BufferPayload},
-};
+use crate::{Controller, CodempError};
+use crate::buffer::factory::{leading_noop, tailing_noop, OperationFactory};
 
-#[derive(Clone)]
+use super::TextChange;
+
 pub struct BufferController {
-	id: String,
-	client: BufferClient<Channel>,
+	content: watch::Receiver<String>,
+	operations: mpsc::Sender<OperationSeq>,
+	stream: Mutex<broadcast::Receiver<OperationSeq>>,
 }
 
-impl From::<BufferClient<Channel>> for BufferController {
-	fn from(value: BufferClient<Channel>) -> Self {
-		BufferController { id: Uuid::new_v4().to_string(), client: value }
+#[async_trait]
+impl OperationFactory for BufferController {
+	fn content(&self) -> String {
+		self.content.borrow().clone()
 	}
 }
 
-impl BufferController {
-	pub async fn new(dest: &str) -> Result<Self, tonic::transport::Error> {
-		Ok(BufferClient::connect(dest.to_string()).await?.into())
+#[async_trait]
+impl Controller<TextChange> for BufferController {
+	type Input = OperationSeq;
+
+	async fn recv(&self) -> Result<TextChange, CodempError> {
+		let op = self.stream.lock().await.recv().await?;
+		let after = self.content.borrow().clone();
+		let skip = leading_noop(op.ops()) as usize; 
+		let before_len = op.base_len();
+		let tail = tailing_noop(op.ops()) as usize;
+		let span = skip..before_len-tail;
+		let content = after[skip..after.len()-tail].to_string();
+		Ok(TextChange { span, content })
 	}
 
-	pub fn id(&self) -> &str { &self.id }
-
-	pub async fn create(&mut self, path: &str, content: Option<&str>) -> Result<(), Status> {
-		let req = BufferPayload {
-			path: path.to_string(),
-			content: content.map(|x| x.to_string()),
-			user: self.id.clone(),
-		};
-
-		self.client.create(req).await?;
-
-		Ok(())
-	}
-
-	// pub async fn listen(&mut self) -> Result<CursorTracker, Status> {
-	// 	let req = BufferPayload {
-	// 		path: "".into(),
-	// 		content: None,
-	// 		user: self.id.clone(),
-	// 	};
-
-	// 	let stream = self.client.listen(req).await?.into_inner();
-
-	// 	let controller = CursorTrackerWorker::new(self.id().to_string());
-	// 	let handle = controller.subscribe();
-	// 	let client = self.client.clone();
-
-	// 	tokio::spawn(async move {
-	// 		tracing::debug!("cursor worker started");
-	// 		controller.work(stream, client).await;
-	// 		tracing::debug!("cursor worker stopped");
-	// 	});
-
-	// 	Ok(handle)
-	// }
-
-	pub async fn attach(&mut self, path: &str) -> Result<BufferHandle, Status> {
-		let req = BufferPayload {
-			path: path.to_string(),
-			content: None,
-			user: self.id.clone(),
-		};
-
-		let content = self.client.sync(req.clone())
-			.await?
-			.into_inner()
-			.content;
-
-		let stream = self.client.attach(req).await?.into_inner();
-
-		let controller = OperationControllerWorker::new(self.id().to_string(), &content, path);
-		let factory = controller.subscribe();
-		let client = self.client.clone();
-
-		tokio::spawn(async move {
-			tracing::debug!("buffer worker started");
-			controller.work(client, stream).await;
-			tracing::debug!("buffer worker stopped");
-		});
-
-		Ok(factory)
+	async fn send(&self, op: OperationSeq) -> Result<(), CodempError> {
+		Ok(self.operations.send(op).await?)
 	}
 }

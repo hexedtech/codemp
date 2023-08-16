@@ -1,3 +1,11 @@
-pub mod factory;
+use std::ops::Range;
+
+pub(crate) mod worker;
 pub mod controller;
-pub mod handle;
+pub mod factory;
+
+
+pub struct TextChange {
+	pub span: Range<usize>,
+	pub content: String,
+}

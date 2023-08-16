@@ -28,6 +28,9 @@ pub enum CodempError {
 	Channel {
 		send: bool
 	},
+	InvalidState {
+		msg: String,
+	},
 
 	// TODO filler error, remove later
 	Filler {

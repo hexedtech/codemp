@@ -2,8 +2,10 @@ pub mod cursor;
 pub mod errors;
 pub mod buffer;
 
-pub mod state;
 pub mod client;
+
+#[cfg(feature = "static")]
+pub mod instance;
 
 pub use tonic;
 pub use tokio;

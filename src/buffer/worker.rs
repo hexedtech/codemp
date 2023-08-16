@@ -1,4 +1,4 @@
-use std::{sync::Arc, collections::VecDeque, ops::Range};
+use std::{sync::Arc, collections::VecDeque};
 
 use operational_transform::OperationSeq;
 use tokio::sync::{watch, mpsc, broadcast, Mutex};
@@ -7,48 +7,13 @@ use tonic::{async_trait, Streaming};
 
 use crate::proto::{OperationRequest, RawOp};
 use crate::proto::buffer_client::BufferClient;
-use crate::{ControllerWorker, Controller, CodempError};
-use crate::buffer::factory::{leading_noop, tailing_noop, OperationFactory};
+use crate::ControllerWorker;
 
-pub struct TextChange {
-	pub span: Range<usize>,
-	pub content: String,
-}
+use super::TextChange;
+use super::controller::BufferController;
 
-pub struct BufferHandle {
-	content: watch::Receiver<String>,
-	operations: mpsc::Sender<OperationSeq>,
-	stream: Mutex<broadcast::Receiver<OperationSeq>>,
-}
 
-#[async_trait]
-impl OperationFactory for BufferHandle {
-	fn content(&self) -> String {
-		self.content.borrow().clone()
-	}
-}
-
-#[async_trait]
-impl Controller<TextChange> for BufferHandle {
-	type Input = OperationSeq;
-
-	async fn recv(&self) -> Result<TextChange, CodempError> {
-		let op = self.stream.lock().await.recv().await?;
-		let after = self.content.borrow().clone();
-		let skip = leading_noop(op.ops()) as usize; 
-		let before_len = op.base_len();
-		let tail = tailing_noop(op.ops()) as usize;
-		let span = skip..before_len-tail;
-		let content = after[skip..after.len()-tail].to_string();
-		Ok(TextChange { span, content })
-	}
-
-	async fn send(&self, op: OperationSeq) -> Result<(), CodempError> {
-		Ok(self.operations.send(op).await?)
-	}
-}
-
-pub(crate) struct OperationControllerWorker {
+pub(crate) struct BufferControllerWorker {
 	uid: String,
 	pub(crate) content: watch::Sender<String>,
 	pub(crate) operations: mpsc::Receiver<OperationSeq>,
@@ -60,12 +25,12 @@ pub(crate) struct OperationControllerWorker {
 	path: String,
 }
 
-impl OperationControllerWorker {
+impl BufferControllerWorker {
 	pub fn new(uid: String, buffer: &str, path: &str) -> Self {
 		let (txt_tx, txt_rx) = watch::channel(buffer.to_string());
 		let (op_tx, op_rx) = mpsc::channel(64);
 		let (s_tx, _s_rx) = broadcast::channel(64);
-		OperationControllerWorker {
+		BufferControllerWorker {
 			uid,
 			content: txt_tx,
 			operations: op_rx,
@@ -80,13 +45,13 @@ impl OperationControllerWorker {
 }
 
 #[async_trait]
-impl ControllerWorker<TextChange> for OperationControllerWorker {
-	type Controller = BufferHandle;
+impl ControllerWorker<TextChange> for BufferControllerWorker {
+	type Controller = BufferController;
 	type Tx = BufferClient<Channel>;
 	type Rx = Streaming<RawOp>;
 
-	fn subscribe(&self) -> BufferHandle {
-		BufferHandle {
+	fn subscribe(&self) -> BufferController {
+		BufferController {
 			content: self.receiver.clone(),
 			operations: self.sender.clone(),
 			stream: Mutex::new(self.stream.subscribe()),
