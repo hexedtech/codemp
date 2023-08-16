@@ -9,8 +9,10 @@ pub use tokio;
 pub use operational_transform as ot;
 
 #[cfg(feature = "proto")]
+#[allow(non_snake_case)]
 pub mod proto {
-	tonic::include_proto!("buffer");
+	tonic::include_proto!("codemp.buffer");
+	tonic::include_proto!("codemp.cursor");
 }
 
 pub use errors::CodempError;
