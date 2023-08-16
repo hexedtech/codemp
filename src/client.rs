@@ -1,143 +1,117 @@
-use operational_transform::OperationSeq;
-use tonic::{transport::Channel, Status, Streaming, async_trait};
-use uuid::Uuid;
+use std::{sync::Arc, collections::BTreeMap};
+
+use tonic::transport::Channel;
 
 use crate::{
-	controller::{ControllerWorker,
-		cursor::{CursorControllerHandle, CursorControllerWorker, CursorEditor},
-		buffer::{OperationControllerHandle, OperationControllerEditor, OperationControllerWorker}
+	cursor::{worker::CursorControllerWorker, controller::CursorController},
+	proto::{
+		buffer_client::BufferClient, cursor_client::CursorClient, UserIdentity, BufferPayload,
 	},
-	proto::{buffer_client::BufferClient, BufferPayload, RawOp, OperationRequest, Cursor},
+	CodempError, ControllerWorker, buffer::{controller::BufferController, worker::BufferControllerWorker},
 };
 
-#[derive(Clone)]
+
 pub struct CodempClient {
 	id: String,
-	client: BufferClient<Channel>,
+	client: ServiceClients,
+	workspace: Option<Workspace>,
 }
 
-impl From::<BufferClient<Channel>> for CodempClient {
-	fn from(value: BufferClient<Channel>) -> Self {
-		CodempClient { id: Uuid::new_v4().to_string(), client: value }
-	}
+struct ServiceClients {
+	buffer: BufferClient<Channel>,
+	cursor: CursorClient<Channel>,
 }
+
+struct Workspace {
+	cursor: Arc<CursorController>,
+	buffers: BTreeMap<String, Arc<BufferController>>,
+}
+
 
 impl CodempClient {
-	pub async fn new(dest: &str) -> Result<Self, tonic::transport::Error> {
-		Ok(BufferClient::connect(dest.to_string()).await?.into())
+	pub async fn new(dst: &str) -> Result<Self, tonic::transport::Error> {
+		let buffer = BufferClient::connect(dst.to_string()).await?;
+		let cursor = CursorClient::connect(dst.to_string()).await?;
+		let id = uuid::Uuid::new_v4().to_string();
+		
+		Ok(CodempClient { id, client: ServiceClients { buffer, cursor}, workspace: None })
 	}
 
-	pub fn id(&self) -> &str { &self.id	}
-
-	pub async fn create(&mut self, path: String, content: Option<String>) -> Result<bool, Status> {
-		let req = BufferPayload {
-			path, content,
-			user: self.id.clone(),
-		};
-
-		let res = self.client.create(req).await?;
-
-		Ok(res.into_inner().accepted)
+	pub fn get_cursor(&self) -> Option<Arc<CursorController>> {
+		Some(self.workspace?.cursor.clone())
 	}
 
-	pub async fn listen(&mut self) -> Result<CursorControllerHandle, Status> {
-		let req = BufferPayload {
-			path: "".into(),
-			content: None,
-			user: self.id.clone(),
-		};
+	pub fn get_buffer(&self, path: &str) -> Option<Arc<BufferController>> {
+		self.workspace?.buffers.get(path).cloned()
+	}
 
-		let stream = self.client.listen(req).await?.into_inner();
+	pub async fn join(&mut self, _session: &str) -> Result<Arc<CursorController>, CodempError> {
+		// TODO there is no real workspace handling in codemp server so it behaves like one big global
+		//  session. I'm still creating this to start laying out the proper use flow
+		let stream = self.client.cursor.listen(UserIdentity { id: "".into() }).await?.into_inner();
 
-		let controller = CursorControllerWorker::new(self.id().to_string(), (self.clone(), stream));
-		let handle = controller.subscribe();
+		let controller = CursorControllerWorker::new(self.id.clone());
+		let client = self.client.cursor.clone();
+
+		let handle = Arc::new(controller.subscribe());
 
 		tokio::spawn(async move {
 			tracing::debug!("cursor worker started");
-			controller.work().await;
+			controller.work(client, stream).await;
 			tracing::debug!("cursor worker stopped");
 		});
+
+		self.workspace = Some(
+			Workspace {
+				cursor: handle.clone(),
+				buffers: BTreeMap::new()
+			}
+		);
 
 		Ok(handle)
 	}
 
-	pub async fn attach(&mut self, path: String) -> Result<OperationControllerHandle, Status> {
-		let req = BufferPayload {
-			path: path.clone(),
-			content: None,
-			user: self.id.clone(),
-		};
+	pub async fn create(&mut self, path: &str, content: Option<&str>) -> Result<(), CodempError> {
+		if let Some(workspace) = &self.workspace {
+			self.client.buffer
+				.create(BufferPayload {
+					user: self.id.clone(),
+					path: path.to_string(),
+					content: content.map(|x| x.to_string()),
+				}).await?;
 
-		let content = self.client.sync(req.clone())
-			.await?
-			.into_inner()
-			.content
-			.unwrap_or("".into());
-
-		let stream = self.client.attach(req).await?.into_inner();
-
-		let controller = OperationControllerWorker::new((self.clone(), stream), content, path);
-		let factory = controller.subscribe();
-
-		tokio::spawn(async move {
-			tracing::debug!("buffer worker started");
-			controller.work().await;
-			tracing::debug!("buffer worker stopped");
-		});
-
-		Ok(factory)
-	}
-}
-
-#[async_trait]
-impl OperationControllerEditor for (CodempClient, Streaming<RawOp>) {
-	async fn edit(&mut self, path: String, op: OperationSeq) -> bool {
-		let req = OperationRequest {
-			hash: "".into(),
-			opseq: serde_json::to_string(&op).unwrap(),
-			path,
-			user: self.0.id().to_string(),
-		};
-		match self.0.client.edit(req).await {
-			Ok(res) => res.into_inner().accepted,
-			Err(e) => {
-				tracing::error!("error sending edit: {}", e);
-				false
-			}
+			Ok(())
+		} else {
+			Err(CodempError::InvalidState { msg: "join a workspace first".into() })
 		}
 	}
 
-	async fn recv(&mut self) -> Option<OperationSeq> {
-		match self.1.message().await {
-			Ok(Some(op)) => Some(serde_json::from_str(&op.opseq).unwrap()),
-			Ok(None) => None,
-			Err(e) => {
-				tracing::error!("could not receive edit from server: {}", e);
-				None
-			}
-		}
-	}
-}
+	pub async fn attach(&mut self, path: &str, content: Option<&str>) -> Result<Arc<BufferController>, CodempError> {
+		if let Some(workspace) = &mut self.workspace {
+			let mut client = self.client.buffer.clone();
+			let req = BufferPayload {
+				path: path.to_string(), user: self.id.clone(), content: None
+			};
 
-#[async_trait]
-impl CursorEditor for (CodempClient, Streaming<Cursor>) {
-	async fn moved(&mut self, cursor: Cursor) -> bool {
-		match self.0.client.moved(cursor).await {
-			Ok(res) => res.into_inner().accepted,
-			Err(e) => {
-				tracing::error!("could not send cursor movement: {}", e);
-				false
-			}
-		}
-	}
+			let content = client.sync(req.clone()).await?.into_inner().content;
 
-	async fn recv(&mut self) -> Option<Cursor> {
-		match self.1.message().await {
-			Ok(cursor) => cursor,
-			Err(e) => {
-				tracing::error!("could not receive cursor update: {}", e);
-				None
-			}
+			let stream = client.attach(req).await?.into_inner();
+
+			let controller = BufferControllerWorker::new(self.id.clone(), &content, path);
+			let handler = Arc::new(controller.subscribe());
+
+			let _path = path.to_string();
+			tokio::spawn(async move {
+				tracing::debug!("buffer[{}] worker started", _path);
+				controller.work(client, stream).await;
+				tracing::debug!("buffer[{}] worker stopped", _path);
+			});
+
+			workspace.buffers.insert(path.to_string(), handler.clone());
+
+			Ok(handler)
+		} else {
+			Err(CodempError::InvalidState { msg: "join a workspace first".into() })
 		}
 	}
 }

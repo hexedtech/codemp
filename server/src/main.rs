@@ -5,12 +5,16 @@
 //!
 
 use clap::Parser;
+use codemp::proto::buffer_server::BufferServer;
+use codemp::proto::cursor_server::CursorServer;
 use tracing::info;
 use tonic::transport::Server;
 
 mod buffer;
+mod cursor;
 
 use crate::buffer::service::BufferService;
+use crate::cursor::service::CursorService;
 
 #[derive(Parser, Debug)]
 struct CliArgs {
@@ -37,7 +41,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	info!("binding on {}", args.host);
 
 	Server::builder()
-		.add_service(BufferService::new().server())
+		.add_service(BufferServer::new(BufferService::default()))
+		.add_service(CursorServer::new(CursorService::default()))
 		.serve(args.host.parse()?)
 		.await?;
 

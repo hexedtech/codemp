@@ -1,26 +1,16 @@
 syntax = "proto3";
-package buffer;
+
+package codemp.buffer;
 
 service Buffer {
 	rpc Attach (BufferPayload)    returns (stream RawOp);
-	rpc Edit   (OperationRequest) returns (BufferResponse);
-	rpc Create (BufferPayload)    returns (BufferResponse);
+	rpc Edit   (OperationRequest) returns (BufferEditResponse);
+	rpc Create (BufferPayload)    returns (BufferCreateResponse);
 	rpc Sync   (BufferPayload)    returns (BufferResponse);
-	rpc Moved  (Cursor)           returns (BufferResponse);
-	rpc Listen (BufferPayload)    returns (stream Cursor);
 }
 
-message Position {
-	int32 row = 1;
-	int32 col = 2;
-}
-
-message Cursor {
-	string user = 1;
-	string buffer = 2;
-	Position start = 3;
-	Position end = 4;
-}
+message BufferCreateResponse {}
+message BufferEditResponse {}
 
 message RawOp {
 	string opseq = 1;
@@ -41,6 +31,5 @@ message BufferPayload {
 }
 
 message BufferResponse {
-	bool accepted = 1;
-	optional string content = 2;
+	string content = 2;
 }
