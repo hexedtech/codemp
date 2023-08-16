@@ -4,7 +4,6 @@ use tokio::sync::RwLock;
 
 use crate::{
 	buffer::{controller::BufferController, handle::BufferHandle},
-	cursor::tracker::CursorTracker,
 	errors::CodempError,
 };
 
@@ -25,35 +24,35 @@ pub mod instance {
 }
 
 pub struct Workspace {
-	client: BufferController,
 	buffers: RwLock<BTreeMap<Box<str>, Arc<BufferHandle>>>,
-	cursor: Arc<CursorTracker>,
+	// cursor: Arc<CursorTracker>,
+	client: BufferController,
 }
 
 impl Workspace {
 	pub async fn new(dest: &str) -> Result<Self, CodempError> {
-		let mut client = BufferController::new(dest).await?;
-		let cursor = Arc::new(client.listen().await?);
+		let client = BufferController::new(dest).await?;
+		// let cursor = Arc::new(client.listen().await?);
 		Ok(
 			Workspace {
 				buffers: RwLock::new(BTreeMap::new()),
-				cursor,
+				// cursor,
 				client,
 			}
 		)
 	}
 
 	// Cursor
-	pub async fn cursor(&self) -> Arc<CursorTracker> {
-		self.cursor.clone()
-	}
+	// pub async fn cursor(&self) -> Arc<CursorTracker> {
+	// 	self.cursor.clone()
+	// }
 
 	// Buffer
 	pub async fn buffer(&self, path: &str) -> Option<Arc<BufferHandle>> {
 		self.buffers.read().await.get(path).cloned()
 	}
 
-	pub async fn create(&self, path: &str, content: Option<&str>) -> Result<bool, CodempError> {
+	pub async fn create(&self, path: &str, content: Option<&str>) -> Result<(), CodempError> {
 		Ok(self.client.clone().create(path, content).await?)
 	}
 

@@ -3,17 +3,17 @@ use std::sync::Arc;
 use tokio::sync::{mpsc, broadcast::{self, error::RecvError}, Mutex};
 use tonic::{Streaming, transport::Channel};
 
-use crate::{proto::{Position, Cursor, buffer_client::BufferClient}, errors::IgnorableError, CodempError};
+use crate::{proto::{RowColumn, CursorPosition, buffer_client::BufferClient}, errors::IgnorableError, CodempError};
 
 pub struct CursorTracker {
 	uid: String,
-	op: mpsc::Sender<Cursor>,
-	stream: Mutex<broadcast::Receiver<Cursor>>,
+	op: mpsc::Sender<CursorPosition>,
+	stream: Mutex<broadcast::Receiver<CursorPosition>>,
 }
 
 impl CursorTracker {
-	pub async fn moved(&self, path: &str, start: Position, end: Position) -> Result<(), CodempError> {
-		Ok(self.op.send(Cursor {
+	pub async fn moved(&self, path: &str, start: RowColumn, end: RowColumn) -> Result<(), CodempError> {
+		Ok(self.op.send(CursorPosition {
 			user: self.uid.clone(),
 			buffer: path.to_string(),
 			start: start.into(),
@@ -23,7 +23,7 @@ impl CursorTracker {
 
 	// TODO is this cancelable? so it can be used in tokio::select!
 	// TODO is the result type overkill? should be an option?
-	pub async fn recv(&self) -> Result<Cursor, CodempError> {
+	pub async fn recv(&self) -> Result<CursorPosition, CodempError> {
 		let mut stream = self.stream.lock().await;
 		match stream.recv().await {
 			Ok(x) => Ok(x),
@@ -35,7 +35,7 @@ impl CursorTracker {
 		}
 	}
 
-	// fn try_poll(&self) -> Option<Option<Cursor>> {
+	// fn try_poll(&self) -> Option<Option<CursorPosition>> {
 	// 	match self.stream.try_lock() {
 	// 		Err(_) => None,
 	// 		Ok(mut x) => match x.try_recv() {
@@ -51,14 +51,14 @@ impl CursorTracker {
 	// }
 }
 
-pub(crate) struct CursorTrackerWorker {
+pub(crate) struct CursorPositionTrackerWorker {
 	uid: String,
-	producer: mpsc::Sender<Cursor>,
-	op: mpsc::Receiver<Cursor>,
-	channel: Arc<broadcast::Sender<Cursor>>,
+	producer: mpsc::Sender<CursorPosition>,
+	op: mpsc::Receiver<CursorPosition>,
+	channel: Arc<broadcast::Sender<CursorPosition>>,
 }
 
-impl CursorTrackerWorker {
+impl CursorPositionTrackerWorker {
 	pub(crate) fn new(uid: String) -> Self {
 		let (op_tx, op_rx) = mpsc::channel(64);
 		let (cur_tx, _cur_rx) = broadcast::channel(64);
@@ -79,11 +79,11 @@ impl CursorTrackerWorker {
 	}
 
 	// TODO is it possible to avoid passing directly tonic Streaming and proto BufferClient ?
-	pub(crate) async fn work(mut self, mut rx: Streaming<Cursor>, mut tx: BufferClient<Channel>) {
+	pub(crate) async fn work(mut self, mut rx: Streaming<CursorPosition>, mut tx: BufferClient<Channel>) {
 		loop {
 			tokio::select!{
 				Ok(Some(cur)) = rx.message() => self.channel.send(cur).unwrap_or_warn("could not broadcast event"),
-				Some(op) = self.op.recv() => { tx.moved(op).await.unwrap_or_warn("could not update cursor"); },
+				Some(op) = self.op.recv() => { todo!() } // tx.moved(op).await.unwrap_or_warn("could not update cursor"); },
 				else => break,
 			}
 		}
