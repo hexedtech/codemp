@@ -1,7 +1,7 @@
 use tokio::sync::{mpsc, broadcast::{self, error::RecvError}, Mutex};
 use tonic::async_trait;
 
-use crate::{proto::{CursorPosition, CursorEvent}, CodempError, Controller};
+use crate::{proto::{CursorPosition, CursorEvent}, Error, Controller};
 
 pub struct CursorController {
 	uid: String,
@@ -23,7 +23,7 @@ impl CursorController {
 impl Controller<CursorEvent> for CursorController {
 	type Input = CursorPosition;
 
-	async fn send(&self, cursor: CursorPosition) -> Result<(), CodempError> {
+	async fn send(&self, cursor: CursorPosition) -> Result<(), Error> {
 		Ok(self.op.send(CursorEvent {
 			user: self.uid.clone(),
 			position: Some(cursor),
@@ -32,11 +32,11 @@ impl Controller<CursorEvent> for CursorController {
 
 	// TODO is this cancelable? so it can be used in tokio::select!
 	// TODO is the result type overkill? should be an option?
-	async fn recv(&self) -> Result<CursorEvent, CodempError> {
+	async fn recv(&self) -> Result<CursorEvent, Error> {
 		let mut stream = self.stream.lock().await;
 		match stream.recv().await {
 			Ok(x) => Ok(x),
-			Err(RecvError::Closed) => Err(CodempError::Channel { send: false }),
+			Err(RecvError::Closed) => Err(Error::Channel { send: false }),
 			Err(RecvError::Lagged(n)) => {
 				tracing::error!("cursor channel lagged behind, skipping {} events", n);
 				Ok(stream.recv().await.expect("could not receive after lagging"))

@@ -4,7 +4,7 @@ use tokio::sync::Mutex;
 
 use crate::{
 	buffer::controller::BufferController,
-	errors::CodempError, client::CodempClient, cursor::controller::CursorController,
+	errors::Error, client::Client, cursor::controller::CursorController,
 };
 
 
@@ -16,7 +16,7 @@ lazy_static::lazy_static! {
 }
 
 pub struct Instance {
-	client: Mutex<Option<CodempClient>>,
+	client: Mutex<Option<Client>>,
 }
 
 impl Default for Instance {
@@ -28,52 +28,52 @@ impl Default for Instance {
 // TODO these methods repeat a lot of code but Mutex makes it hard to simplify
 
 impl Instance {
-	pub async fn connect(&self, addr: &str) -> Result<(), CodempError> {
-		*self.client.lock().await = Some(CodempClient::new(addr).await?);
+	pub async fn connect(&self, addr: &str) -> Result<(), Error> {
+		*self.client.lock().await = Some(Client::new(addr).await?);
 		Ok(())
 	}
 
-	pub async fn join(&self, session: &str) -> Result<(), CodempError> {
+	pub async fn join(&self, session: &str) -> Result<(), Error> {
 		self.client
 			.lock()
 			.await
 			.as_mut()
-			.ok_or(CodempError::InvalidState { msg: "connect first".into() })?
+			.ok_or(Error::InvalidState { msg: "connect first".into() })?
 			.join(session)
 			.await?;
 
 		Ok(())
 	}
 
-	pub async fn create(&self, path: &str, content: Option<&str>) -> Result<(), CodempError> {
+	pub async fn create(&self, path: &str, content: Option<&str>) -> Result<(), Error> {
 		self.client
 			.lock()
 			.await
 			.as_mut()
-			.ok_or(CodempError::InvalidState { msg: "connect first".into() })?
+			.ok_or(Error::InvalidState { msg: "connect first".into() })?
 			.create(path, content)
 			.await?;
 
 		Ok(())
 	}
 
-	pub async fn get_cursor(&self) -> Result<Arc<CursorController>, CodempError> {
+	pub async fn get_cursor(&self) -> Result<Arc<CursorController>, Error> {
 		self.client
 			.lock()
 			.await
 			.as_mut()
-			.ok_or(CodempError::InvalidState { msg: "connect first".into() })?
+			.ok_or(Error::InvalidState { msg: "connect first".into() })?
 			.get_cursor()
-			.ok_or(CodempError::InvalidState { msg: "join a workspace first".into() })
+			.ok_or(Error::InvalidState { msg: "join a workspace first".into() })
 	}
 
-	pub async fn get_buffer(&self, path: &str) -> Result<Arc<BufferController>, CodempError> {
+	pub async fn get_buffer(&self, path: &str) -> Result<Arc<BufferController>, Error> {
 		self.client
 			.lock()
 			.await
 			.as_mut()
-			.ok_or(CodempError::InvalidState { msg: "connect first".into() })?
+			.ok_or(Error::InvalidState { msg: "connect first".into() })?
 			.get_buffer(path)
-			.ok_or(CodempError::InvalidState { msg: "join a workspace or create requested buffer first".into() })
+			.ok_or(Error::InvalidState { msg: "join a workspace or create requested buffer first".into() })
 	}
 }

@@ -1,4 +1,4 @@
-use std::{error::Error, fmt::Display};
+use std::{error::Error as StdError, fmt::Display};
 
 use tokio::sync::{mpsc, broadcast};
 use tonic::{Status, Code};
@@ -20,7 +20,7 @@ where E : std::fmt::Display {
 
 // TODO split this into specific errors for various parts of the library
 #[derive(Debug)]
-pub enum CodempError {
+pub enum Error {
 	Transport {
 		status: Code,
 		message: String,
@@ -38,9 +38,9 @@ pub enum CodempError {
 	},
 }
 
-impl Error for CodempError {}
+impl StdError for Error {}
 
-impl Display for CodempError {
+impl Display for Error {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		match self {
 			Self::Transport { status, message } => write!(f, "Transport error: ({}) {}", status, message),
@@ -50,28 +50,28 @@ impl Display for CodempError {
 	}
 }
 
-impl From<Status> for CodempError {
+impl From<Status> for Error {
 	fn from(status: Status) -> Self {
-		CodempError::Transport { status: status.code(), message: status.message().to_string() }
+		Error::Transport { status: status.code(), message: status.message().to_string() }
 	}
 }
 
-impl From<tonic::transport::Error> for CodempError {
+impl From<tonic::transport::Error> for Error {
 	fn from(err: tonic::transport::Error) -> Self {
-		CodempError::Transport {
+		Error::Transport {
 			status: Code::Unknown, message: format!("underlying transport error: {:?}", err)
 		}
 	}
 }
 
-impl<T> From<mpsc::error::SendError<T>> for CodempError {
+impl<T> From<mpsc::error::SendError<T>> for Error {
 	fn from(_value: mpsc::error::SendError<T>) -> Self {
-		CodempError::Channel { send: true }
+		Error::Channel { send: true }
 	}
 }
 
-impl From<broadcast::error::RecvError> for CodempError {
+impl From<broadcast::error::RecvError> for Error {
 	fn from(_value: broadcast::error::RecvError) -> Self {
-		CodempError::Channel { send: false }
+		Error::Channel { send: false }
 	}
 }

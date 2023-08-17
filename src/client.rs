@@ -7,17 +7,17 @@ use crate::{
 	proto::{
 		buffer_client::BufferClient, cursor_client::CursorClient, UserIdentity, BufferPayload,
 	},
-	CodempError, ControllerWorker, buffer::{controller::BufferController, worker::BufferControllerWorker},
+	Error, ControllerWorker, buffer::{controller::BufferController, worker::BufferControllerWorker},
 };
 
 
-pub struct CodempClient {
+pub struct Client {
 	id: String,
-	client: ServiceClients,
+	client: Services,
 	workspace: Option<Workspace>,
 }
 
-struct ServiceClients {
+struct Services {
 	buffer: BufferClient<Channel>,
 	cursor: CursorClient<Channel>,
 }
@@ -28,13 +28,13 @@ struct Workspace {
 }
 
 
-impl CodempClient {
+impl Client {
 	pub async fn new(dst: &str) -> Result<Self, tonic::transport::Error> {
 		let buffer = BufferClient::connect(dst.to_string()).await?;
 		let cursor = CursorClient::connect(dst.to_string()).await?;
 		let id = uuid::Uuid::new_v4().to_string();
 		
-		Ok(CodempClient { id, client: ServiceClients { buffer, cursor}, workspace: None })
+		Ok(Client { id, client: Services { buffer, cursor}, workspace: None })
 	}
 
 	pub fn get_cursor(&self) -> Option<Arc<CursorController>> {
@@ -45,7 +45,7 @@ impl CodempClient {
 		self.workspace.as_ref()?.buffers.get(path).cloned()
 	}
 
-	pub async fn join(&mut self, _session: &str) -> Result<Arc<CursorController>, CodempError> {
+	pub async fn join(&mut self, _session: &str) -> Result<Arc<CursorController>, Error> {
 		// TODO there is no real workspace handling in codemp server so it behaves like one big global
 		//  session. I'm still creating this to start laying out the proper use flow
 		let stream = self.client.cursor.listen(UserIdentity { id: "".into() }).await?.into_inner();
@@ -71,7 +71,7 @@ impl CodempClient {
 		Ok(handle)
 	}
 
-	pub async fn create(&mut self, path: &str, content: Option<&str>) -> Result<(), CodempError> {
+	pub async fn create(&mut self, path: &str, content: Option<&str>) -> Result<(), Error> {
 		if let Some(_workspace) = &self.workspace {
 			self.client.buffer
 				.create(BufferPayload {
@@ -82,11 +82,11 @@ impl CodempClient {
 
 			Ok(())
 		} else {
-			Err(CodempError::InvalidState { msg: "join a workspace first".into() })
+			Err(Error::InvalidState { msg: "join a workspace first".into() })
 		}
 	}
 
-	pub async fn attach(&mut self, path: &str) -> Result<Arc<BufferController>, CodempError> {
+	pub async fn attach(&mut self, path: &str) -> Result<Arc<BufferController>, Error> {
 		if let Some(workspace) = &mut self.workspace {
 			let mut client = self.client.buffer.clone();
 			let req = BufferPayload {
@@ -111,7 +111,7 @@ impl CodempClient {
 
 			Ok(handler)
 		} else {
-			Err(CodempError::InvalidState { msg: "join a workspace first".into() })
+			Err(Error::InvalidState { msg: "join a workspace first".into() })
 		}
 	}
 }

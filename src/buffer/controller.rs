@@ -2,7 +2,7 @@ use operational_transform::OperationSeq;
 use tokio::sync::{watch, mpsc, broadcast, Mutex};
 use tonic::async_trait;
 
-use crate::{Controller, CodempError};
+use crate::{Controller, Error};
 use crate::buffer::factory::{leading_noop, tailing_noop, OperationFactory};
 
 use super::TextChange;
@@ -34,7 +34,7 @@ impl OperationFactory for BufferController {
 impl Controller<TextChange> for BufferController {
 	type Input = OperationSeq;
 
-	async fn recv(&self) -> Result<TextChange, CodempError> {
+	async fn recv(&self) -> Result<TextChange, Error> {
 		let op = self.stream.lock().await.recv().await?;
 		let after = self.content.borrow().clone();
 		let skip = leading_noop(op.ops()) as usize; 
@@ -45,7 +45,7 @@ impl Controller<TextChange> for BufferController {
 		Ok(TextChange { span, content })
 	}
 
-	async fn send(&self, op: OperationSeq) -> Result<(), CodempError> {
+	async fn send(&self, op: OperationSeq) -> Result<(), Error> {
 		Ok(self.operations.send(op).await?)
 	}
 }

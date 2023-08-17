@@ -7,6 +7,8 @@ pub mod client;
 #[cfg(feature = "static")]
 pub mod instance;
 
+pub mod prelude;
+
 pub use tonic;
 pub use tokio;
 pub use operational_transform as ot;
@@ -18,7 +20,7 @@ pub mod proto {
 	tonic::include_proto!("codemp.cursor");
 }
 
-pub use errors::CodempError;
+pub use errors::Error;
 
 #[tonic::async_trait] // TODO move this somewhere?
 pub(crate) trait ControllerWorker<T> {
@@ -34,6 +36,6 @@ pub(crate) trait ControllerWorker<T> {
 pub trait Controller<T> {
 	type Input;
 
-	async fn send(&self, x: Self::Input) -> Result<(), CodempError>;
-	async fn recv(&self) -> Result<T, CodempError>;
+	async fn send(&self, x: Self::Input) -> Result<(), Error>;
+	async fn recv(&self) -> Result<T, Error>;
 }
