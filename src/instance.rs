@@ -4,7 +4,7 @@ use tokio::sync::Mutex;
 
 use crate::{
 	buffer::controller::BufferController,
-	errors::Error, client::Client, cursor::controller::CursorController,
+	errors::Error, client::Client, cursor::controller::CursorController, Controller,
 };
 
 
@@ -33,16 +33,14 @@ impl Instance {
 		Ok(())
 	}
 
-	pub async fn join(&self, session: &str) -> Result<(), Error> {
+	pub async fn join(&self, session: &str) -> Result<Arc<CursorController>, Error> {
 		self.client
 			.lock()
 			.await
 			.as_mut()
 			.ok_or(Error::InvalidState { msg: "connect first".into() })?
 			.join(session)
-			.await?;
-
-		Ok(())
+			.await
 	}
 
 	pub async fn create(&self, path: &str, content: Option<&str>) -> Result<(), Error> {
@@ -52,9 +50,17 @@ impl Instance {
 			.as_mut()
 			.ok_or(Error::InvalidState { msg: "connect first".into() })?
 			.create(path, content)
-			.await?;
+			.await
+	}
 
-		Ok(())
+	pub async fn attach(&self, path: &str) -> Result<Arc<BufferController>, Error> {
+		self.client
+			.lock()
+			.await
+			.as_mut()
+			.ok_or(Error::InvalidState { msg: "connect first".into() })?
+			.attach(path)
+			.await
 	}
 
 	pub async fn get_cursor(&self) -> Result<Arc<CursorController>, Error> {
