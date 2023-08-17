@@ -11,8 +11,8 @@ use crate::{
 use tokio::runtime::Runtime;
 
 lazy_static::lazy_static! {
-	static ref RUNTIME  : Runtime  = Runtime::new().expect("could not create tokio runtime");
-	static ref INSTANCE : Instance = Instance::default();
+	pub static ref RUNTIME  : Runtime  = Runtime::new().expect("could not create tokio runtime");
+	pub static ref INSTANCE : Instance = Instance::default();
 }
 
 pub struct Instance {
