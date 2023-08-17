@@ -22,6 +22,8 @@ pub mod proto {
 
 pub use errors::Error;
 
+use std::sync::Arc;
+
 #[tonic::async_trait] // TODO move this somewhere?
 pub(crate) trait ControllerWorker<T> {
 	type Controller : Controller<T>;
@@ -33,9 +35,20 @@ pub(crate) trait ControllerWorker<T> {
 }
 
 #[tonic::async_trait]
-pub trait Controller<T> {
+pub trait Controller<T> : Sized + Send + Sync {
 	type Input;
 
 	async fn send(&self, x: Self::Input) -> Result<(), Error>;
 	async fn recv(&self) -> Result<T, Error>;
+
+	fn callback<F>(self: Arc<Self>, mut cb: F)
+	where Self : 'static, F : FnMut(T) + Sync + Send + 'static
+	{
+		let x = Arc::new(self);
+		tokio::spawn(async move {
+			while let Ok(data) = x.recv().await {
+				cb(data)
+			}
+		});
+	}
 }
