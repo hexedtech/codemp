@@ -38,21 +38,23 @@ impl Instance {
 		}
 	}
 
+	pub fn rt(&self) -> &Runtime { &self.runtime }
+
 	pub fn connect(&self, addr: &str) -> Result<(), Error> {
-		*self.client.lock().expect("client mutex poisoned") = Some(self.runtime.block_on(Client::new(addr))?);
+		*self.client.lock().expect("client mutex poisoned") = Some(self.rt().block_on(Client::new(addr))?);
 		Ok(())
 	}
 
 	pub fn join(&self, session: &str) -> Result<Arc<CursorController>, Error> {
-		self.if_client(|c| self.runtime.block_on(c.join(session)))?
+		self.if_client(|c| self.rt().block_on(c.join(session)))?
 	}
 
 	pub fn create(&self, path: &str, content: Option<&str>) -> Result<(), Error> {
-		self.if_client(|c| self.runtime.block_on(c.create(path, content)))?
+		self.if_client(|c| self.rt().block_on(c.create(path, content)))?
 	}
 
 	pub fn attach(&self, path: &str) -> Result<Arc<BufferController>, Error> {
-		self.if_client(|c| self.runtime.block_on(c.attach(path)))?
+		self.if_client(|c| self.rt().block_on(c.attach(path)))?
 	}
 
 	pub fn get_cursor(&self) -> Result<Arc<CursorController>, Error> {

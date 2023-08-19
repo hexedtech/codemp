@@ -7,5 +7,5 @@ pub use crate::buffer::controller::BufferController as CodempBufferController;
 pub use crate::buffer::TextChange as CodempTextChange;
 pub use crate::proto::CursorPosition as CodempCursorPosition;
 
-#[cfg(feature = "static")]
-pub use crate::instance::INSTANCE as CODEMP_INSTANCE;
+#[cfg(feature = "global")]
+pub use crate::instance::global::INSTANCE as CODEMP_INSTANCE;
