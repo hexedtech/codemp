@@ -26,6 +26,6 @@ lazy_static = { version = "1.4", optional = true }
 tonic-build = "0.9"
 
 [features]
-default = ["proto", "static"]
+default = ["proto", "global"]
 proto   = ["dep:prost"]
-static  = ["dep:lazy_static"]
+global  = ["dep:lazy_static"]

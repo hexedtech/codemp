@@ -1,10 +1,7 @@
 pub mod cursor;
-pub mod errors;
 pub mod buffer;
-
+pub mod errors;
 pub mod client;
-
-#[cfg(feature = "static")]
 pub mod instance;
 
 pub mod prelude;
