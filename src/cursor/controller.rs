@@ -1,8 +1,23 @@
+//! ### controller
+//! 
+//! a controller implementation for cursor actions
+
 use tokio::sync::{mpsc, broadcast::{self, error::RecvError}, Mutex};
 use tonic::async_trait;
 
 use crate::{proto::{CursorPosition, CursorEvent}, Error, Controller, errors::IgnorableError};
 
+/// the cursor controller implementation
+///
+/// this contains
+/// * the unique identifier of current user
+/// * a sink to send movements into
+/// * a mutex over a stream of inbound cursor events
+/// * a channel to stop the associated worker
+///
+/// for each controller a worker exists, managing outgoing and inbound event queues
+///
+/// upon dropping this handle will stop the associated worker
 pub struct CursorController {
 	uid: String,
 	op: mpsc::UnboundedSender<CursorEvent>,
@@ -31,6 +46,7 @@ impl CursorController {
 impl Controller<CursorEvent> for CursorController {
 	type Input = CursorPosition;
 
+	/// enqueue a cursor event to be broadcast to current workspace
 	fn send(&self, cursor: CursorPosition) -> Result<(), Error> {
 		Ok(self.op.send(CursorEvent {
 			user: self.uid.clone(),
@@ -40,6 +56,7 @@ impl Controller<CursorEvent> for CursorController {
 
 	// TODO is this cancelable? so it can be used in tokio::select!
 	// TODO is the result type overkill? should be an option?
+	/// get next cursor event from current workspace, or block until one is available
 	async fn recv(&self) -> Result<CursorEvent, Error> {
 		let mut stream = self.stream.lock().await;
 		match stream.recv().await {
@@ -51,19 +68,4 @@ impl Controller<CursorEvent> for CursorController {
 			}
 		}
 	}
-
-	// fn try_poll(&self) -> Option<Option<CursorPosition>> {
-	// 	match self.stream.try_lock() {
-	// 		Err(_) => None,
-	// 		Ok(mut x) => match x.try_recv() {
-	// 			Ok(x) => Some(Some(x)),
-	// 			Err(TryRecvError::Empty) => None,
-	// 			Err(TryRecvError::Closed) => Some(None),
-	// 			Err(TryRecvError::Lagged(n)) => {
-	// 				tracing::error!("cursor channel lagged behind, skipping {} events", n);
-	// 				Some(Some(x.try_recv().expect("could not receive after lagging")))
-	// 			}
-	// 		}
-	// 	}
-	// }
 }

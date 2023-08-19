@@ -3,18 +3,102 @@
 //! This is the core library of the codemp project.
 //!
 //! ## Structure
-//! The main entrypoint is the [client::Client] object, that maintains a connection and can 
+//! The main entrypoint is the [Client] object, that maintains a connection and can 
 //! be used to join workspaces or attach to buffers.
 //! 
 //! Some actions will return structs implementing the [Controller] trait. These can be polled 
-//! for new stream events, which will be returned in order. Blocking and callback variants are also 
-//! implemented. The [Controller] can also be used to send new events to the server.
+//! for new stream events ([Controller::recv]), which will be returned in order. Blocking and 
+//! callback variants are also implemented. The [Controller] can also be used to send new 
+//! events to the server ([Controller::send]).
+//!
+//! Each operation on a buffer is represented as an [ot::OperationSeq].
+//! A visualization about how OperationSeqs work is available
+//! [here](http://operational-transformation.github.io/index.html),
+//! but to use this library it's only sufficient to know that they can only 
+//! be applied on buffers of some length and are transformable to be able to be 
+//! applied in a different order while maintaining the same result.
+//!
+//! To generate Operation Sequences use helper methods from the trait [buffer::OperationFactory].
 //!
 //! ## Features
 //! * `proto` : include GRCP protocol definitions under [proto] (default)
 //! * `global`: provide a lazy_static global INSTANCE in [instance::global]
 //! * `sync`  : wraps the [instance::a_sync::Instance] holder into a sync variant: [instance::sync::Instance]
 //! 
+//! ## Example
+//! library can be used both sync and async depending on wether the `sync` feature flag has been
+//! enabled. a global `INSTANCE` static reference can also be made available with the `global`
+//! flag.
+//!
+//! ### Async
+//! ```no_run
+//! async fn async_example() -> codemp::Result<()> {
+//!   // create global instance
+//!   let codemp = codemp::Instance::default();
+//! 
+//!   // connect to a remote server
+//!   codemp.connect("http://alemi.dev:50051").await?;
+//! 
+//!   // join a remote workspace, obtaining a cursor controller
+//!   let cursor = codemp.join("some_workspace").await?;
+//! 
+//!   // move cursor
+//!   cursor.send(
+//!     codemp::proto::CursorPosition {
+//!       buffer: "test.txt".into(),
+//!       start: Some(codemp::proto::RowCol { row: 0, col: 0 }),
+//!       end: Some(codemp::proto::RowCol { row: 0, col: 1 }),
+//!     }
+//!   )?;
+//! 
+//!   // listen for event
+//!   let op = cursor.recv().await?;
+//!   println!("received cursor event: {:?}", op);
+//! 
+//!   // create a new buffer
+//!   codemp.create("test.txt", None).await?;
+//! 
+//!   // attach to created buffer
+//!   let buffer = codemp.attach("test.txt").await?;
+//! 
+//!   // sending operation
+//!   if let Some(delta) = buffer.delta(0, "hello", 0) {
+//!     buffer.send(delta).expect("could not enqueue operation");
+//!   }
+//! 
+//!   if let Some(delta) = buffer.delta(4, "o world", 5) {
+//!     buffer.send(delta).expect("could not enqueue operation");
+//!   }
+//! 
+//!   Ok(())
+//! }
+//! ```
+//!
+//! ### Sync
+//!
+//! ```no_run
+//! // activate feature "global" to access static CODEMP_INSTANCE
+//! use codemp::instance::global::INSTANCE;
+//!
+//! fn sync_example() -> Result<()> {
+//!   // connect to remote server
+//!   INSTANCE.connect("http://alemi.dev:50051")?;
+//! 
+//!   // join workspace
+//!   let cursor = INSTANCE.join("some_workspace")?;
+//! 
+//!   let (stop, stop_rx) = tokio::sync::mpsc::unbounded_channel();
+//!   Arc::new(cursor).callback(
+//!     INSTANCE.rt(),
+//!     stop_rx,
+//!     | cursor_event | {
+//!       println!("received cursor event: {:?}", cursor_event);
+//!     }
+//!   );
+//! 
+//!   Ok(())
+//! }
+//! ```
 
 
 /// cursor related types and controller
@@ -99,7 +183,7 @@ pub trait Controller<T : Sized + Send + Sync> : Sized + Send + Sync {
 	/// preventing it from being dropped (and likely disconnecting). using the stop channel is
 	/// important for proper cleanup
 	fn callback<F>(
-		self: Arc<Self>,
+		self: &Arc<Self>,
 		rt: &tokio::runtime::Runtime,
 		mut stop: tokio::sync::mpsc::UnboundedReceiver<()>,
 		mut cb: F
@@ -107,10 +191,11 @@ pub trait Controller<T : Sized + Send + Sync> : Sized + Send + Sync {
 		Self : 'static,
 		F : FnMut(T) + Sync + Send + 'static
 	{
+		let _self = self.clone();
 		rt.spawn(async move {
 			loop {
 				tokio::select! {
-					Ok(data) = self.recv() => cb(data),
+					Ok(data) = _self.recv() => cb(data),
 					Some(()) = stop.recv() => break,
 					else => break,
 				}

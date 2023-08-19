@@ -1,3 +1,7 @@
+//! ### Prelude
+//! 
+//! all-in-one renamed imports with `use codemp::prelude::*`
+
 pub use crate::{
 	Error as CodempError,
 	Result as CodempResult,

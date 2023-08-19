@@ -1,3 +1,7 @@
+//! ### client
+//! 
+//! codemp client manager, containing grpc services
+
 use std::{sync::Arc, collections::BTreeMap};
 
 use tonic::transport::Channel;
@@ -11,6 +15,11 @@ use crate::{
 };
 
 
+/// codemp client manager
+///
+/// contains all required grpc services and the unique user id
+/// will disconnect when dropped
+/// can be used to interact with server
 pub struct Client {
 	id: String,
 	client: Services,
@@ -29,6 +38,7 @@ struct Workspace {
 
 
 impl Client {
+	/// instantiate and connect a new client
 	pub async fn new(dst: &str) -> Result<Self, tonic::transport::Error> {
 		let buffer = BufferClient::connect(dst.to_string()).await?;
 		let cursor = CursorClient::connect(dst.to_string()).await?;
@@ -37,15 +47,18 @@ impl Client {
 		Ok(Client { id, client: Services { buffer, cursor}, workspace: None })
 	}
 
+	/// return a reference to current cursor controller, if currently in a workspace
 	pub fn get_cursor(&self) -> Option<Arc<CursorController>> {
 		Some(self.workspace.as_ref()?.cursor.clone())
 	}
 
+	/// leave current workspace if in one, disconnecting buffer and cursor controllers
 	pub fn leave_workspace(&mut self) {
 		// TODO need to stop tasks?
 		self.workspace = None
 	}
 
+	/// disconnect from a specific buffer
 	pub fn disconnect_buffer(&mut self, path: &str) -> bool {
 		match &mut self.workspace {
 			Some(w) => w.buffers.remove(path).is_some(),
@@ -53,10 +66,15 @@ impl Client {
 		}
 	}
 
+	/// get a new reference to a buffer controller, if any is active to given path
 	pub fn get_buffer(&self, path: &str) -> Option<Arc<BufferController>> {
 		self.workspace.as_ref()?.buffers.get(path).cloned()
 	}
 
+	/// join a workspace, starting a cursorcontroller and returning a new reference to it
+	/// 
+	/// to interact with such workspace [crate::Controller::send] cursor events or
+	/// [crate::Controller::recv] for events on the associated [crate::cursor::Controller].
 	pub async fn join(&mut self, _session: &str) -> Result<Arc<CursorController>, Error> {
 		// TODO there is no real workspace handling in codemp server so it behaves like one big global
 		//  session. I'm still creating this to start laying out the proper use flow
@@ -83,6 +101,7 @@ impl Client {
 		Ok(handle)
 	}
 
+	/// create a new buffer in current workspace, with optional given content
 	pub async fn create(&mut self, path: &str, content: Option<&str>) -> Result<(), Error> {
 		if let Some(_workspace) = &self.workspace {
 			self.client.buffer
@@ -98,6 +117,13 @@ impl Client {
 		}
 	}
 
+	/// attach to a buffer, starting a buffer controller and returning a new reference to it
+	/// 
+	/// to interact with such buffer [crate::Controller::send] operation sequences 
+	/// or [crate::Controller::recv] for text events using its [crate::buffer::Controller].
+	/// to generate operation sequences use the [crate::buffer::OperationFactory]
+	/// methods, which are implemented on [crate::buffer::Controller], such as
+	/// [crate::buffer::OperationFactory::delta].
 	pub async fn attach(&mut self, path: &str) -> Result<Arc<BufferController>, Error> {
 		if let Some(workspace) = &mut self.workspace {
 			let mut client = self.client.buffer.clone();

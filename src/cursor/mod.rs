@@ -1,4 +1,11 @@
+//! ### cursor
+//! 
+//! each user holds a cursor, which consists of multiple highlighted region 
+//! on a specific buffer
+
 pub(crate) mod worker;
+
+/// cursor controller implementation
 pub mod controller;
 
 pub use controller::CursorController as Controller;
@@ -18,10 +25,12 @@ impl From::<(i32, i32)> for RowCol {
 }
 
 impl CursorPosition {
+	/// extract start position, defaulting to (0,0)
 	pub fn start(&self) -> RowCol {
 		self.start.clone().unwrap_or((0, 0).into())
 	}
 
+	/// extract end position, defaulting to (0,0)
 	pub fn end(&self) -> RowCol {
 		self.end.clone().unwrap_or((0, 0).into())
 	}

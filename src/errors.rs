@@ -1,9 +1,14 @@
+//! ### Errors
+//! 
+//! library error helpers and types
+
 use std::{result::Result as StdResult, error::Error as StdError, fmt::Display};
 
 use tokio::sync::{mpsc, broadcast};
 use tonic::{Status, Code};
 use tracing::warn;
 
+/// an error which can be ignored with just a warning entry
 pub trait IgnorableError {
 	fn unwrap_or_warn(self, msg: &str);
 }
@@ -18,24 +23,29 @@ where E : std::fmt::Display {
 	}
 }
 
+/// result type for codemp errors
 pub type Result<T> = StdResult<T, Error>;
 
 // TODO split this into specific errors for various parts of the library
+/// codemp error type for library issues
 #[derive(Debug)]
 pub enum Error {
+	/// errors caused by tonic http layer
 	Transport {
 		status: Code,
 		message: String,
 	},
+	/// errors caused by async channels
 	Channel {
 		send: bool
 	},
+	/// errors caused by wrong usage of library objects
 	InvalidState {
 		msg: String,
 	},
 
-	// TODO filler error, remove later
-	Filler {
+	/// if you see these errors someone is being lazy (:
+	Filler { // TODO filler error, remove later
 		message: String,
 	},
 }
