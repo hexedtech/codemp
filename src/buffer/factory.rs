@@ -43,7 +43,7 @@ pub trait OperationFactory {
 	fn delta(&self, start: usize, txt: &str, end: usize) -> Option<OperationSeq> {
 		let mut out = OperationSeq::default();
 		let content = self.content();
-		let tail_skip = content.len() - end;
+		let tail_skip = content.len() - end; // TODO len is number of bytes, not chars
 		let content_slice = &content[start..tail_skip];
 
 		if content_slice == txt {
