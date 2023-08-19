@@ -2,6 +2,7 @@ use operational_transform::OperationSeq;
 use tokio::sync::{watch, mpsc, broadcast, Mutex};
 use tonic::async_trait;
 
+use crate::errors::IgnorableError;
 use crate::{Controller, Error};
 use crate::buffer::factory::{leading_noop, tailing_noop, OperationFactory};
 
@@ -11,6 +12,7 @@ pub struct BufferController {
 	content: watch::Receiver<String>,
 	operations: mpsc::Sender<OperationSeq>,
 	stream: Mutex<broadcast::Receiver<OperationSeq>>,
+	stop: mpsc::UnboundedSender<()>,
 }
 
 impl BufferController {
@@ -18,8 +20,15 @@ impl BufferController {
 		content: watch::Receiver<String>,
 		operations: mpsc::Sender<OperationSeq>,
 		stream: Mutex<broadcast::Receiver<OperationSeq>>,
+		stop: mpsc::UnboundedSender<()>,
 	) -> Self {
-		BufferController { content, operations, stream }
+		BufferController { content, operations, stream, stop }
+	}
+}
+
+impl Drop for BufferController {
+	fn drop(&mut self) {
+		self.stop.send(()).unwrap_or_warn("could not send stop message to worker");
 	}
 }
 

@@ -1,21 +1,29 @@
 use tokio::sync::{mpsc, broadcast::{self, error::RecvError}, Mutex};
 use tonic::async_trait;
 
-use crate::{proto::{CursorPosition, CursorEvent}, Error, Controller};
+use crate::{proto::{CursorPosition, CursorEvent}, Error, Controller, errors::IgnorableError};
 
 pub struct CursorController {
 	uid: String,
 	op: mpsc::Sender<CursorEvent>,
 	stream: Mutex<broadcast::Receiver<CursorEvent>>,
+	stop: mpsc::UnboundedSender<()>,
+}
+
+impl Drop for CursorController {
+	fn drop(&mut self) {
+		self.stop.send(()).unwrap_or_warn("could not stop cursor actor")
+	}
 }
 
 impl CursorController {
 	pub(crate) fn new(
 		uid: String,
 		op: mpsc::Sender<CursorEvent>,
-		stream: Mutex<broadcast::Receiver<CursorEvent>>
+		stream: Mutex<broadcast::Receiver<CursorEvent>>,
+		stop: mpsc::UnboundedSender<()>,
 	) -> Self {
-		CursorController { uid, op, stream }
+		CursorController { uid, op, stream, stop }
 	}
 }
 

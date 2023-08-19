@@ -41,6 +41,17 @@ impl Client {
 		Some(self.workspace.as_ref()?.cursor.clone())
 	}
 
+	pub fn leave_workspace(&mut self) {
+		self.workspace = None
+	}
+
+	pub fn disconnect_buffer(&mut self, path: &str) -> bool {
+		match &mut self.workspace {
+			Some(w) => w.buffers.remove(path).is_some(),
+			None => false,
+		}
+	}
+
 	pub fn get_buffer(&self, path: &str) -> Option<Arc<BufferController>> {
 		self.workspace.as_ref()?.buffers.get(path).cloned()
 	}

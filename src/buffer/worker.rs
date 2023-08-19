@@ -5,6 +5,7 @@ use tokio::sync::{watch, mpsc, broadcast, Mutex};
 use tonic::transport::Channel;
 use tonic::{async_trait, Streaming};
 
+use crate::errors::IgnorableError;
 use crate::proto::{OperationRequest, RawOp};
 use crate::proto::buffer_client::BufferClient;
 use crate::ControllerWorker;
@@ -23,6 +24,8 @@ pub(crate) struct BufferControllerWorker {
 	sender: mpsc::Sender<OperationSeq>,
 	buffer: String,
 	path: String,
+	stop: mpsc::UnboundedReceiver<()>,
+	stop_control: mpsc::UnboundedSender<()>,
 }
 
 impl BufferControllerWorker {
@@ -30,6 +33,7 @@ impl BufferControllerWorker {
 		let (txt_tx, txt_rx) = watch::channel(buffer.to_string());
 		let (op_tx, op_rx) = mpsc::channel(64);
 		let (s_tx, _s_rx) = broadcast::channel(64);
+		let (end_tx, end_rx) = mpsc::unbounded_channel();
 		BufferControllerWorker {
 			uid,
 			content: txt_tx,
@@ -40,6 +44,8 @@ impl BufferControllerWorker {
 			queue: VecDeque::new(),
 			buffer: buffer.to_string(),
 			path: path.to_string(),
+			stop: end_rx,
+			stop_control: end_tx,
 		}
 	}
 }
@@ -55,6 +61,7 @@ impl ControllerWorker<TextChange> for BufferControllerWorker {
 			self.receiver.clone(),
 			self.sender.clone(),
 			Mutex::new(self.stream.subscribe()),
+			self.stop_control.clone(),
 		)
 	}
 
@@ -64,19 +71,31 @@ impl ControllerWorker<TextChange> for BufferControllerWorker {
 				Some(operation) = recv_opseq(&mut rx) => {
 					let mut out = operation;
 					for op in self.queue.iter_mut() {
-						(*op, out) = op.transform(&out).unwrap();
+						(*op, out) = match op.transform(&out) {
+							Ok((x, y)) => (x, y),
+							Err(e) => {
+								tracing::warn!("could not transform enqueued operation: {}", e);
+								break
+							},
+						}
 					}
-					self.stream.send(out.clone()).unwrap();
+					self.stream.send(out.clone()).unwrap_or_warn("could not send operation to server");
 					out
 				},
 				Some(op) = self.operations.recv() => {
 					self.queue.push_back(op.clone());
 					op
 				},
+				Some(()) = self.stop.recv() => {
+					break;
+				}
 				else => break
 			};
-			self.buffer = op.apply(&self.buffer).unwrap();
-			self.content.send(self.buffer.clone()).unwrap();
+			self.buffer = op.apply(&self.buffer).unwrap_or_else(|e| {
+				tracing::error!("could not update buffer string: {}", e);
+				self.buffer
+			});
+			self.content.send(self.buffer.clone()).unwrap_or_warn("error showing updated buffer");
 
 			while let Some(op) = self.queue.get(0) {
 				if !send_opseq(&mut tx, self.uid.clone(), self.path.clone(), op.clone()).await { break }
@@ -87,11 +106,17 @@ impl ControllerWorker<TextChange> for BufferControllerWorker {
 }
 
 async fn send_opseq(tx: &mut BufferClient<Channel>, uid: String, path: String, op: OperationSeq) -> bool {
+	let opseq = match serde_json::to_string(&op) {
+		Ok(x) => x,
+		Err(e) => {
+			tracing::warn!("could not serialize opseq: {}", e);
+			return false;
+		}
+	};
 	let req = OperationRequest {
 		hash: "".into(),
-		opseq: serde_json::to_string(&op).unwrap(),
-		path,
 		user: uid,
+		opseq, path,
 	};
 	match tx.edit(req).await {
 		Ok(_) => true,
@@ -104,7 +129,13 @@ async fn send_opseq(tx: &mut BufferClient<Channel>, uid: String, path: String, o
 
 async fn recv_opseq(rx: &mut Streaming<RawOp>) -> Option<OperationSeq> {
 	match rx.message().await {
-		Ok(Some(op)) => Some(serde_json::from_str(&op.opseq).unwrap()),
+		Ok(Some(op)) => match serde_json::from_str(&op.opseq) {
+			Ok(x) => Some(x),
+			Err(e) => {
+				tracing::warn!("could not deserialize opseq: {}", e);
+				None
+			}
+		},
 		Ok(None) => None,
 		Err(e) => {
 			tracing::error!("could not receive edit from server: {}", e);

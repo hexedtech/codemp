@@ -41,13 +41,22 @@ pub trait Controller<T> : Sized + Send + Sync {
 	async fn send(&self, x: Self::Input) -> Result<(), Error>;
 	async fn recv(&self) -> Result<T, Error>;
 
-	fn callback<F>(self: Arc<Self>, rt: &tokio::runtime::Runtime, mut cb: F)
-	where Self : 'static, F : FnMut(T) + Sync + Send + 'static
+	fn callback<F>(
+		self: Arc<Self>,
+		rt: &tokio::runtime::Runtime,
+		mut stop: tokio::sync::mpsc::UnboundedReceiver<()>,
+		mut cb: F
+	) where
+		Self : 'static,
+		F : FnMut(T) + Sync + Send + 'static
 	{
-		let x = Arc::new(self);
 		rt.spawn(async move {
-			while let Ok(data) = x.recv().await {
-				cb(data)
+			loop {
+				tokio::select! {
+					Ok(data) = self.recv() => cb(data),
+					Some(()) = stop.recv() => break,
+					else => break,
+				}
 			}
 		});
 	}

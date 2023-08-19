@@ -4,7 +4,7 @@ use tokio::sync::Mutex;
 
 use crate::{
 	buffer::controller::BufferController,
-	errors::Error, client::Client, cursor::controller::CursorController, Controller,
+	errors::Error, client::Client, cursor::controller::CursorController,
 };
 
 
@@ -81,5 +81,26 @@ impl Instance {
 			.ok_or(Error::InvalidState { msg: "connect first".into() })?
 			.get_buffer(path)
 			.ok_or(Error::InvalidState { msg: "join a workspace or create requested buffer first".into() })
+	}
+
+	pub async fn leave_workspace(&self) -> Result<(), Error> {
+		self.client
+			.lock()
+			.await
+			.as_mut()
+			.ok_or(Error::InvalidState { msg: "connect first".into() })?
+			.leave_workspace();
+		Ok(())
+	}
+
+	pub async fn disconnect_buffer(&self, path: &str) -> Result<bool, Error> {
+		Ok(
+			self.client
+				.lock()
+				.await
+				.as_mut()
+				.ok_or(Error::InvalidState { msg: "connect first".into() })?
+				.disconnect_buffer(path)
+		)
 	}
 }

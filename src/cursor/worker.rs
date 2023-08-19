@@ -12,17 +12,22 @@ pub(crate) struct CursorControllerWorker {
 	producer: mpsc::Sender<CursorEvent>,
 	op: mpsc::Receiver<CursorEvent>,
 	channel: Arc<broadcast::Sender<CursorEvent>>,
+	stop: mpsc::UnboundedReceiver<()>,
+	stop_control: mpsc::UnboundedSender<()>,
 }
 
 impl CursorControllerWorker {
 	pub(crate) fn new(uid: String) -> Self {
 		let (op_tx, op_rx) = mpsc::channel(64);
 		let (cur_tx, _cur_rx) = broadcast::channel(64);
+		let (end_tx, end_rx) = mpsc::unbounded_channel();
 		Self {
 			uid,
 			producer: op_tx,
 			op: op_rx,
 			channel: Arc::new(cur_tx),
+			stop: end_rx,
+			stop_control: end_tx,
 		}
 	}
 }
@@ -37,7 +42,8 @@ impl ControllerWorker<CursorEvent> for CursorControllerWorker {
 		CursorController::new(
 			self.uid.clone(),
 			self.producer.clone(),
-			Mutex::new(self.channel.subscribe())
+			Mutex::new(self.channel.subscribe()),
+			self.stop_control.clone(),
 		)
 	}
 
@@ -46,6 +52,7 @@ impl ControllerWorker<CursorEvent> for CursorControllerWorker {
 			tokio::select!{
 				Ok(Some(cur)) = rx.message() => self.channel.send(cur).unwrap_or_warn("could not broadcast event"),
 				Some(op) = self.op.recv() => { tx.moved(op).await.unwrap_or_warn("could not update cursor"); },
+				Some(()) = self.stop.recv() => { break; },
 				else => break,
 			}
 		}
