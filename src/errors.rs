@@ -1,4 +1,4 @@
-use std::{error::Error as StdError, fmt::Display};
+use std::{result::Result as StdResult, error::Error as StdError, fmt::Display};
 
 use tokio::sync::{mpsc, broadcast};
 use tonic::{Status, Code};
@@ -8,7 +8,7 @@ pub trait IgnorableError {
 	fn unwrap_or_warn(self, msg: &str);
 }
 
-impl<T, E> IgnorableError for Result<T, E>
+impl<T, E> IgnorableError for StdResult<T, E>
 where E : std::fmt::Display {
 	fn unwrap_or_warn(self, msg: &str) {
 		match self {
@@ -17,6 +17,8 @@ where E : std::fmt::Display {
 		}
 	}
 }
+
+pub type Result<T> = StdResult<T, Error>;
 
 // TODO split this into specific errors for various parts of the library
 #[derive(Debug)]

@@ -1,6 +1,8 @@
 pub(crate) mod worker;
 pub mod controller;
 
+pub use controller::CursorController as Controller;
+
 use crate::proto::{RowCol, CursorPosition};
 
 impl From::<RowCol> for (i32, i32) {

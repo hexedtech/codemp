@@ -10,7 +10,7 @@ use super::TextChange;
 
 pub struct BufferController {
 	content: watch::Receiver<String>,
-	operations: mpsc::Sender<OperationSeq>,
+	operations: mpsc::UnboundedSender<OperationSeq>,
 	stream: Mutex<broadcast::Receiver<OperationSeq>>,
 	stop: mpsc::UnboundedSender<()>,
 }
@@ -18,7 +18,7 @@ pub struct BufferController {
 impl BufferController {
 	pub(crate) fn new(
 		content: watch::Receiver<String>,
-		operations: mpsc::Sender<OperationSeq>,
+		operations: mpsc::UnboundedSender<OperationSeq>,
 		stream: Mutex<broadcast::Receiver<OperationSeq>>,
 		stop: mpsc::UnboundedSender<()>,
 	) -> Self {
@@ -54,7 +54,7 @@ impl Controller<TextChange> for BufferController {
 		Ok(TextChange { span, content })
 	}
 
-	async fn send(&self, op: OperationSeq) -> Result<(), Error> {
-		Ok(self.operations.send(op).await?)
+	fn send(&self, op: OperationSeq) -> Result<(), Error> {
+		Ok(self.operations.send(op)?)
 	}
 }

@@ -17,11 +17,11 @@ use super::controller::BufferController;
 pub(crate) struct BufferControllerWorker {
 	uid: String,
 	pub(crate) content: watch::Sender<String>,
-	pub(crate) operations: mpsc::Receiver<OperationSeq>,
+	pub(crate) operations: mpsc::UnboundedReceiver<OperationSeq>,
 	pub(crate) stream: Arc<broadcast::Sender<OperationSeq>>,
 	pub(crate) queue: VecDeque<OperationSeq>,
 	receiver: watch::Receiver<String>,
-	sender: mpsc::Sender<OperationSeq>,
+	sender: mpsc::UnboundedSender<OperationSeq>,
 	buffer: String,
 	path: String,
 	stop: mpsc::UnboundedReceiver<()>,
@@ -31,7 +31,7 @@ pub(crate) struct BufferControllerWorker {
 impl BufferControllerWorker {
 	pub fn new(uid: String, buffer: &str, path: &str) -> Self {
 		let (txt_tx, txt_rx) = watch::channel(buffer.to_string());
-		let (op_tx, op_rx) = mpsc::channel(64);
+		let (op_tx, op_rx) = mpsc::unbounded_channel();
 		let (s_tx, _s_rx) = broadcast::channel(64);
 		let (end_tx, end_rx) = mpsc::unbounded_channel();
 		BufferControllerWorker {

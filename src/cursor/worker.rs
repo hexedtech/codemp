@@ -9,8 +9,8 @@ use super::controller::CursorController;
 
 pub(crate) struct CursorControllerWorker {
 	uid: String,
-	producer: mpsc::Sender<CursorEvent>,
-	op: mpsc::Receiver<CursorEvent>,
+	producer: mpsc::UnboundedSender<CursorEvent>,
+	op: mpsc::UnboundedReceiver<CursorEvent>,
 	channel: Arc<broadcast::Sender<CursorEvent>>,
 	stop: mpsc::UnboundedReceiver<()>,
 	stop_control: mpsc::UnboundedSender<()>,
@@ -18,7 +18,7 @@ pub(crate) struct CursorControllerWorker {
 
 impl CursorControllerWorker {
 	pub(crate) fn new(uid: String) -> Self {
-		let (op_tx, op_rx) = mpsc::channel(64);
+		let (op_tx, op_rx) = mpsc::unbounded_channel();
 		let (cur_tx, _cur_rx) = broadcast::channel(64);
 		let (end_tx, end_rx) = mpsc::unbounded_channel();
 		Self {

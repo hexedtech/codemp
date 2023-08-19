@@ -5,7 +5,7 @@ use crate::{proto::{CursorPosition, CursorEvent}, Error, Controller, errors::Ign
 
 pub struct CursorController {
 	uid: String,
-	op: mpsc::Sender<CursorEvent>,
+	op: mpsc::UnboundedSender<CursorEvent>,
 	stream: Mutex<broadcast::Receiver<CursorEvent>>,
 	stop: mpsc::UnboundedSender<()>,
 }
@@ -19,7 +19,7 @@ impl Drop for CursorController {
 impl CursorController {
 	pub(crate) fn new(
 		uid: String,
-		op: mpsc::Sender<CursorEvent>,
+		op: mpsc::UnboundedSender<CursorEvent>,
 		stream: Mutex<broadcast::Receiver<CursorEvent>>,
 		stop: mpsc::UnboundedSender<()>,
 	) -> Self {
@@ -31,11 +31,11 @@ impl CursorController {
 impl Controller<CursorEvent> for CursorController {
 	type Input = CursorPosition;
 
-	async fn send(&self, cursor: CursorPosition) -> Result<(), Error> {
+	fn send(&self, cursor: CursorPosition) -> Result<(), Error> {
 		Ok(self.op.send(CursorEvent {
 			user: self.uid.clone(),
 			position: Some(cursor),
-		}).await?)
+		})?)
 	}
 
 	// TODO is this cancelable? so it can be used in tokio::select!

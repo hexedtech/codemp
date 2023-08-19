@@ -1,25 +1,22 @@
-pub use crate::client::Client as CodempClient;
-pub use crate::errors::Error as CodempError;
+pub use crate::{
+	Error as CodempError,
+	Result as CodempResult,
+	
+	Client as CodempClient,
+	Controller as CodempController,
+	cursor::Controller as CodempCursorController,
+	buffer::Controller as CodempBufferController,
 
-pub use crate::Controller as CodempController;
-pub use crate::cursor::controller::CursorController as CodempCursorController;
-pub use crate::buffer::controller::BufferController as CodempBufferController;
+	buffer::OperationFactory as CodempOperationFactory,
+	ot::OperationSeq as CodempOperationSeq,
+	buffer::TextChange as CodempTextChange,
 
-pub use crate::buffer::factory::OperationFactory as CodempOperationFactory;
-pub use operational_transform::OperationSeq as CodempOperationSeq;
-pub use crate::buffer::TextChange as CodempTextChange;
+	proto::CursorPosition as CodempCursorPosition,
+	proto::CursorEvent as CodempCursorEvent,
+	proto::RowCol as CodempRowCol,
 
-pub use crate::proto::{
-	CursorPosition as CodempCursorPosition,
-	CursorEvent as CodempCursorEvent,
-	RowCol as CodempRowCol,
+	Instance as CodempInstance,
 };
-
-#[cfg(feature = "sync")]
-pub use crate::instance::sync::Instance as CodempInstance;
-
-#[cfg(not(feature = "sync"))]
-pub use crate::instance::a_sync::Instance as CodempInstance;
 
 #[cfg(feature = "global")]
 pub use crate::instance::global::INSTANCE as CODEMP_INSTANCE;
