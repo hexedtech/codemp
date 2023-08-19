@@ -62,13 +62,13 @@
 //!   let buffer = codemp.attach("test.txt").await?;
 //! 
 //!   // sending operation
-//!   if let Some(delta) = buffer.delta(0, "hello", 0) {
-//!     buffer.send(delta).expect("could not enqueue operation");
-//!   }
+//!   buffer.send(buffer.insert("hello", 0))?;
 //! 
-//!   if let Some(delta) = buffer.delta(4, "o world", 5) {
-//!     buffer.send(delta).expect("could not enqueue operation");
+//!   if let Some(operation) = buffer.delta(4, "o world", 5) {
+//!     buffer.send(operation)?;
 //!   }
+//!
+//!   assert_eq!(buffer.content(), "hello world");
 //! 
 //!   Ok(())
 //! }
