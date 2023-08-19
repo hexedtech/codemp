@@ -29,3 +29,4 @@ tonic-build = "0.9"
 default = ["proto", "global"]
 proto   = ["dep:prost"]
 global  = ["dep:lazy_static"]
+sync    = []

@@ -42,6 +42,7 @@ impl Client {
 	}
 
 	pub fn leave_workspace(&mut self) {
+		// TODO need to stop tasks?
 		self.workspace = None
 	}
 
