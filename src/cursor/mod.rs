@@ -1,4 +1,6 @@
 //! ### cursor
+//!
+//! ![demo gif of early cursor sync in action](https://cdn.alemi.dev/codemp/demo-nvim.gif)
 //! 
 //! each user holds a cursor, which consists of multiple highlighted region 
 //! on a specific buffer

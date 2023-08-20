@@ -23,11 +23,11 @@
 //! To generate Operation Sequences use helper methods from the trait [buffer::OperationFactory].
 //!
 //! ## Features
-//! * `proto` : include GRCP protocol definitions under [proto] (default)
+//! * `proto` : include GRCP protocol definitions under [proto] (default enabled)
 //! * `global`: provide a lazy_static global INSTANCE in [instance::global]
 //! * `sync`  : wraps the [instance::a_sync::Instance] holder into a sync variant: [instance::sync::Instance]
 //! 
-//! ## Example
+//! ## Examples
 //! library can be used both sync and async depending on wether the `sync` feature flag has been
 //! enabled. a global `INSTANCE` static reference can also be made available with the `global`
 //! flag.
@@ -160,6 +160,12 @@ pub trait Controller<T : Sized + Send + Sync> : Sized + Send + Sync {
 	fn send(&self, x: Self::Input) -> Result<()>;
 
 	/// get next value from stream, blocking until one is available
+	///
+	/// this is just an async trait function wrapped by `async_trait`:
+	///
+	/// ```
+	/// async fn recv(&self) -> codemp::Result<T>;
+	/// ```
 	async fn recv(&self) -> Result<T>;
 
 	/// sync variant of [Self::recv], blocking invoking thread

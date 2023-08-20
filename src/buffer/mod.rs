@@ -1,4 +1,6 @@
 //! ### buffer
+//!
+//! ![demo gif of early buffer sync in action](https://cdn.alemi.dev/codemp/demo-vscode.gif)
 //! 
 //! a buffer is a container fo text edited by users.
 //! this module contains buffer-related operations and helpers to create Operation Sequences
