@@ -1,10 +1,10 @@
-//! # MultiPlayer Code Editing
+//! # MultiPlayer Code Editinglib
 //!
 //! ![just a nice pic](https://alemi.dev/img/about-slice-1.png)
 //!
 //! This is the core library of the codemp project.
 //!
-//! ## Structure
+//! ## structure
 //! The main entrypoint is the [Client] object, that maintains a connection and can 
 //! be used to join workspaces or attach to buffers.
 //! 
@@ -22,69 +22,103 @@
 //!
 //! To generate Operation Sequences use helper methods from the trait [buffer::OperationFactory].
 //!
-//! ## Features
+//! ## features
 //! * `proto` : include GRCP protocol definitions under [proto] (default enabled)
 //! * `global`: provide a lazy_static global INSTANCE in [instance::global]
 //! * `sync`  : wraps the [instance::a_sync::Instance] holder into a sync variant: [instance::sync::Instance]
 //! 
-//! ## Examples
-//! library can be used both sync and async depending on wether the `sync` feature flag has been
-//! enabled. a global `INSTANCE` static reference can also be made available with the `global`
-//! flag.
+//! ## examples
+//! while the [Client] itself is the core structure implementing all methods, plugins will mostly
+//! interact with [Instance] managers.
 //!
-//! ### Async
-//! ```rust,ignore
-//! async fn async_example() -> codemp::Result<()> {
-//!   let session = codemp::Instance::default();   // create global session
-//!   session.connect("http://alemi.dev:50051").await?;   // connect to remote server
+//! ### async
+//! this library is natively async and thus async usage should be preferred if possible
+//!
+//! ```rust,no_run
+//! use codemp::Controller;
+//! use codemp::buffer::OperationFactory;
+//!
+//! # async fn async_example() -> codemp::Result<()> {
+//! let session = codemp::Instance::default();   // create global session
+//! session.connect("http://alemi.dev:50051").await?;   // connect to remote server
 //! 
-//!   // join a remote workspace, obtaining a cursor controller
-//!   let cursor = session.join("some_workspace").await?;
-//!   cursor.send(   // move cursor
-//!     codemp::proto::CursorPosition {
-//!       buffer: "test.txt".into(),
-//!       start: Some(codemp::proto::RowCol { row: 0, col: 0 }),
-//!       end: Some(codemp::proto::RowCol { row: 0, col: 1 }),
-//!     }
-//!   )?;
-//!   let op = cursor.recv().await?;   // listen for event
-//!   println!("received cursor event: {:?}", op);
-//! 
-//!   // attach to a new buffer and execute operations on it
-//!   session.create("test.txt", None).await?;   // create new buffer
-//!   let buffer = session.attach("test.txt").await?; // attach to it
-//!   buffer.send(buffer.insert("hello", 0))?; // insert some text
-//!   if let Some(operation) = buffer.delta(4, "o world", 5) {
-//!     buffer.send(operation)?; // replace with precision, if valid
+//! // join a remote workspace, obtaining a cursor controller
+//! let cursor = session.join("some_workspace").await?;
+//! cursor.send(   // move cursor
+//!   codemp::proto::CursorPosition {
+//!     buffer: "test.txt".into(),
+//!     start: Some(codemp::proto::RowCol { row: 0, col: 0 }),
+//!     end: Some(codemp::proto::RowCol { row: 0, col: 1 }),
 //!   }
-//!   assert_eq!(buffer.content(), "hello world");
+//! )?;
+//! let op = cursor.recv().await?;   // listen for event
+//! println!("received cursor event: {:?}", op);
 //! 
-//!   Ok(())
+//! // attach to a new buffer and execute operations on it
+//! session.create("test.txt", None).await?;   // create new buffer
+//! let buffer = session.attach("test.txt").await?; // attach to it
+//! buffer.send(buffer.insert("hello", 0))?; // insert some text
+//! if let Some(operation) = buffer.delta(4, "o world", 5) {
+//!   buffer.send(operation)?; // replace with precision, if valid
 //! }
+//! assert_eq!(buffer.content(), "hello world");
+//! #
+//! # Ok(())
+//! # }
 //! ```
 //!
-//! ### Sync
+//! ### sync
+//! if async is not viable, including the feature `sync` will provide a sync-only Instance variant
 //!
-//! ```rust,ignore
-//! // activate feature "global" to access static CODEMP_INSTANCE
-//! use codemp::instance::global::INSTANCE;
+//! ```rust,no_run
+//! # use codemp::instance::sync::Instance;
+//! # use std::sync::Arc;
+//! # use codemp::Controller;
+//! #
+//! # fn sync_example() -> codemp::Result<()> {
+//! let session = Instance::default();   // instantiate sync variant
+//! session.connect("http://alemi.dev:50051")?;   // connect to server
 //!
-//! fn sync_example() -> codemp::Result<()> {
-//!   INSTANCE.connect("http://alemi.dev:50051")?;   // connect to server
-//!   let cursor = INSTANCE.join("some_workspace")?;   // join workspace
-//!   let (stop, stop_rx) = tokio::sync::mpsc::unbounded_channel();   // create stop channel
-//!   Arc::new(cursor).callback(   // register callback
-//!     INSTANCE.rt(), stop_rx,   // pass instance runtime and stop channel receiver
-//!     | cursor_event | {  
-//!       println!("received cursor event: {:?}", cursor_event);
-//!     }
-//!   );
-//! 
-//!   Ok(())
+//! // join remote workspace and handle cursor events with a callback
+//! let cursor = session.join("some_workspace")?;   // join workspace
+//! let (stop, stop_rx) = tokio::sync::mpsc::unbounded_channel();   // create stop channel
+//! Arc::new(cursor).callback(   // register callback
+//!   session.rt(), stop_rx,   // pass instance runtime and stop channel receiver
+//!   | cursor_event | {  
+//!     println!("received cursor event: {:?}", cursor_event);
+//!   }
+//! );
+//!
+//! // attach to buffer and blockingly receive events
+//! let buffer = session.attach("test.txt")?; // attach to buffer, must already exist
+//! while let Ok(op) = buffer.blocking_recv(session.rt()) {   // must pass runtime
+//!   println!("received buffer event: {:?}", op);
 //! }
+//! #
+//! # Ok(())
+//! # }
 //! ```
 //!
-//! ### reference
+//! ### global
+//! if instantiating the [Instance] manager is not possible, adding the feature `global` will
+//! provide a static lazyly-allocated global reference.
+//!
+//! ```rust,no_run
+//! # use codemp::instance::sync::Instance;
+//! # use std::sync::Arc;
+//! use codemp::prelude::*;   // prelude includes everything with "Codemp" in front
+//! # async fn global_example() -> codemp::Result<()> {
+//! CODEMP_INSTANCE.connect("http://alemi.dev:50051").await?;   // connect to server
+//! let cursor = CODEMP_INSTANCE.join("some_workspace").await?;   // join workspace
+//! while let Ok(event) = cursor.recv().await {   // receive cursor events
+//!   println!("received cursor event: {:?}", event);
+//! }
+//! #
+//! #  Ok(())
+//! # }
+//! ```
+//!
+//! ## references
 //!
 //! ![another cool pic coz why not](https://alemi.dev/img/about-slice-2.png)
 //!
