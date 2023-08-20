@@ -166,9 +166,7 @@ pub trait Controller<T : Sized + Send + Sync> : Sized + Send + Sync {
 	///
 	/// this is just an async trait function wrapped by `async_trait`:
 	///
-	/// ```rust,ignore
-	/// async fn recv(&self) -> codemp::Result<T>;
-	/// ```
+	/// `async fn recv(&self) -> codemp::Result<T>;`
 	async fn recv(&self) -> Result<T>;
 
 	/// sync variant of [Self::recv], blocking invoking thread
