@@ -1,5 +1,7 @@
 //! # MultiPlayer Code Editing
 //!
+//! ![just a nice pic](https://alemi.dev/img/about-slice-1.png)
+//!
 //! This is the core library of the codemp project.
 //!
 //! ## Structure
@@ -81,6 +83,16 @@
 //!   Ok(())
 //! }
 //! ```
+//!
+//! ### reference
+//!
+//! ![another cool pic coz why not](https://alemi.dev/img/about-slice-2.png)
+//!
+//! check [codemp-vscode](https://github.com/codewithotherpeopleandchangenamelater/codemp-vscode)
+//! or [codemp-nvim](https://github.com/codewithotherpeopleandchangenamelater/codemp-nvim)
+//! or [codemp-server](https://github.com/codewithotherpeopleandchangenamelater/codemp-server) for
+//! reference implementations
+//!
 
 
 /// cursor related types and controller
