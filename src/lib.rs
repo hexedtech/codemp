@@ -148,7 +148,7 @@ pub(crate) trait ControllerWorker<T : Sized + Send + Sync> {
 /// async and threadsafe handle to a generic bidirectional stream
 ///
 /// this generic trait is implemented by actors managing stream procedures.
-/// events can be enqueued for dispatching without blocking ([Controller:send]), and an async blocking 
+/// events can be enqueued for dispatching without blocking ([Controller::send]), and an async blocking 
 /// api ([Controller::recv]) is provided to wait for server events. Additional sync blocking
 /// ([Controller::blocking_recv]) and callback-based ([Controller::callback]) are implemented.
 #[tonic::async_trait]
