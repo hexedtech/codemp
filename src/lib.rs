@@ -91,7 +91,10 @@
 //! check [codemp-vscode](https://github.com/codewithotherpeopleandchangenamelater/codemp-vscode)
 //! or [codemp-nvim](https://github.com/codewithotherpeopleandchangenamelater/codemp-nvim)
 //! or [codemp-server](https://github.com/codewithotherpeopleandchangenamelater/codemp-server) for
-//! reference implementations
+//! reference implementations.
+//!
+//! keep track of feature completedness with the 
+//! [feature comparison matrix](https://github.com/orgs/codewithotherpeopleandchangenamelater/projects/3)
 //!
 
 
