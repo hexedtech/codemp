@@ -33,41 +33,28 @@
 //! ### Async
 //! ```no_run
 //! async fn async_example() -> codemp::Result<()> {
-//!   // create global instance
-//!   let codemp = codemp::Instance::default();
-//! 
-//!   // connect to a remote server
-//!   codemp.connect("http://alemi.dev:50051").await?;
+//!   let session = codemp::Instance::default();   // create global session
+//!   session.connect("http://alemi.dev:50051").await?;   // connect to remote server
 //! 
 //!   // join a remote workspace, obtaining a cursor controller
-//!   let cursor = codemp.join("some_workspace").await?;
-//! 
-//!   // move cursor
-//!   cursor.send(
+//!   let cursor = session.join("some_workspace").await?;
+//!   cursor.send(   // move cursor
 //!     codemp::proto::CursorPosition {
 //!       buffer: "test.txt".into(),
 //!       start: Some(codemp::proto::RowCol { row: 0, col: 0 }),
 //!       end: Some(codemp::proto::RowCol { row: 0, col: 1 }),
 //!     }
 //!   )?;
-//! 
-//!   // listen for event
-//!   let op = cursor.recv().await?;
+//!   let op = cursor.recv().await?;   // listen for event
 //!   println!("received cursor event: {:?}", op);
 //! 
-//!   // create a new buffer
-//!   codemp.create("test.txt", None).await?;
-//! 
-//!   // attach to created buffer
-//!   let buffer = codemp.attach("test.txt").await?;
-//! 
-//!   // sending operation
-//!   buffer.send(buffer.insert("hello", 0))?;
-//! 
+//!   // attach to a new buffer and execute operations on it
+//!   session.create("test.txt", None).await?;   // create new buffer
+//!   let buffer = session.attach("test.txt").await?; // attach to it
+//!   buffer.send(buffer.insert("hello", 0))?; // insert some text
 //!   if let Some(operation) = buffer.delta(4, "o world", 5) {
-//!     buffer.send(operation)?;
+//!     buffer.send(operation)?; // replace with precision, if valid
 //!   }
-//!
 //!   assert_eq!(buffer.content(), "hello world");
 //! 
 //!   Ok(())
@@ -80,18 +67,13 @@
 //! // activate feature "global" to access static CODEMP_INSTANCE
 //! use codemp::instance::global::INSTANCE;
 //!
-//! fn sync_example() -> Result<()> {
-//!   // connect to remote server
-//!   INSTANCE.connect("http://alemi.dev:50051")?;
-//! 
-//!   // join workspace
-//!   let cursor = INSTANCE.join("some_workspace")?;
-//! 
-//!   let (stop, stop_rx) = tokio::sync::mpsc::unbounded_channel();
-//!   Arc::new(cursor).callback(
-//!     INSTANCE.rt(),
-//!     stop_rx,
-//!     | cursor_event | {
+//! fn sync_example() -> codemp::Result<()> {
+//!   INSTANCE.connect("http://alemi.dev:50051")?;   // connect to server
+//!   let cursor = INSTANCE.join("some_workspace")?;   // join workspace
+//!   let (stop, stop_rx) = tokio::sync::mpsc::unbounded_channel();   // create stop channel
+//!   Arc::new(cursor).callback(   // register callback
+//!     INSTANCE.rt(), stop_rx,   // pass instance runtime and stop channel receiver
+//!     | cursor_event | {  
 //!       println!("received cursor event: {:?}", cursor_event);
 //!     }
 //!   );
