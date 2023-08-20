@@ -32,7 +32,8 @@
 //! interact with [Instance] managers.
 //!
 //! ### async
-//! this library is natively async and thus async usage should be preferred if possible
+//! this library is natively async and thus async usage should be preferred if possible with
+//! [instance::a_sync::Instance]
 //!
 //! ```rust,no_run
 //! use codemp::Controller;
@@ -68,7 +69,7 @@
 //! ```
 //!
 //! ### sync
-//! if async is not viable, including the feature `sync` will provide a sync-only Instance variant
+//! if async is not viable, including the feature `sync` will provide a sync-only [instance::sync::Instance] variant
 //!
 //! ```rust,no_run
 //! # use codemp::instance::sync::Instance;
@@ -101,7 +102,7 @@
 //!
 //! ### global
 //! if instantiating the [Instance] manager is not possible, adding the feature `global` will
-//! provide a static lazyly-allocated global reference.
+//! provide a static lazyly-allocated global reference: [struct@instance::global::INSTANCE].
 //!
 //! ```rust,no_run
 //! # use codemp::instance::sync::Instance;
