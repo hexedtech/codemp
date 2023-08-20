@@ -114,9 +114,10 @@ async fn send_opseq(tx: &mut BufferClient<Channel>, uid: String, path: String, o
 		}
 	};
 	let req = OperationRequest {
-		hash: "".into(),
-		user: uid,
-		opseq, path,
+		path, hash: "".into(),
+		op: Some(RawOp {
+			opseq, user: uid,
+		}),
 	};
 	match tx.edit(req).await {
 		Ok(_) => true,

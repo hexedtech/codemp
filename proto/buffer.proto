@@ -2,34 +2,59 @@ syntax = "proto3";
 
 package codemp.buffer;
 
+// handle buffer changes, keep in sync users
 service Buffer {
+	// attach to a buffer and receive operations
 	rpc Attach (BufferPayload)    returns (stream RawOp);
+	// send an operation for a specific buffer
 	rpc Edit   (OperationRequest) returns (BufferEditResponse);
+	// create a new buffer
 	rpc Create (BufferPayload)    returns (BufferCreateResponse);
+	// get contents of buffer
 	rpc Sync   (BufferPayload)    returns (BufferResponse);
 }
 
+// empty request
 message BufferCreateResponse {}
+
+// empty request
 message BufferEditResponse {}
 
+// raw wire operation sequence event
 message RawOp {
+	// operation seq serialized to json
 	string opseq = 1;
+
+	// user id that has executed the operation
 	string user = 2;
 }
 
+// client buffer operation request
 message OperationRequest {
+	// buffer path to operate onto
 	string path  = 1;
+
+	// buffer hash of source state
 	string hash  = 2;
-	string opseq = 3;
-	string user  = 4;
+
+	// raw operation sequence
+	RawOp op = 3;
 }
 
+// generic buffer operation request
 message BufferPayload {
+	// buffer path to operate onto
 	string path = 1;
+
+	// user id that is requesting the operation
 	string user = 2;
+
+	// optional buffer full content for replacing
 	optional string content = 3;
 }
 
+// response from server with buffer content
 message BufferResponse {
-	string content = 2;
+	// current buffer content
+	string content = 1;
 }
