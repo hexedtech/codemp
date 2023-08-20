@@ -33,7 +33,7 @@
 //! flag.
 //!
 //! ### Async
-//! ```no_run
+//! ```rust,ignore
 //! async fn async_example() -> codemp::Result<()> {
 //!   let session = codemp::Instance::default();   // create global session
 //!   session.connect("http://alemi.dev:50051").await?;   // connect to remote server
@@ -65,7 +65,7 @@
 //!
 //! ### Sync
 //!
-//! ```no_run
+//! ```rust,ignore
 //! // activate feature "global" to access static CODEMP_INSTANCE
 //! use codemp::instance::global::INSTANCE;
 //!
