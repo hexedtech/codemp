@@ -20,7 +20,7 @@
 //! be applied on buffers of some length and are transformable to be able to be 
 //! applied in a different order while maintaining the same result.
 //!
-//! To generate Operation Sequences use helper methods from the trait [buffer::OperationFactory].
+//! To generate Operation Sequences use helper methods from module [buffer::factory] (trait [buffer::OperationFactory]).
 //!
 //! ## features
 //! * `proto` : include GRCP protocol definitions under [proto] (default enabled)
