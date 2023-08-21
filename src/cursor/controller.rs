@@ -18,6 +18,7 @@ use crate::{proto::{CursorPosition, CursorEvent}, Error, Controller, errors::Ign
 /// for each controller a worker exists, managing outgoing and inbound event queues
 ///
 /// upon dropping this handle will stop the associated worker
+#[derive(Debug)]
 pub struct CursorController {
 	uid: String,
 	op: mpsc::UnboundedSender<CursorEvent>,

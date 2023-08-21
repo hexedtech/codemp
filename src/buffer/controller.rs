@@ -29,6 +29,7 @@ use super::TextChange;
 /// Operation Sequences easily
 ///
 /// upon dropping this handle will stop the associated worker
+#[derive(Debug)]
 pub struct BufferController {
 	content: watch::Receiver<String>,
 	operations: mpsc::UnboundedSender<OperationSeq>,
