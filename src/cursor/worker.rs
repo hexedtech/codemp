@@ -57,6 +57,7 @@ impl ControllerWorker<CursorEvent> for CursorControllerWorker {
 		loop {
 			tokio::select!{
 				Ok(Some(cur)) = rx.message() => {
+					if cur.user == self.uid { continue }
 					self.channel.send(cur.clone()).unwrap_or_warn("could not broadcast event");
 					self.changed.send(cur).unwrap_or_warn("could not update last event");
 				},
