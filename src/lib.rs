@@ -9,8 +9,8 @@
 //! be used to join workspaces or attach to buffers.
 //! 
 //! Some actions will return structs implementing the [Controller] trait. These can be polled 
-//! for new stream events ([Controller::recv]), which will be returned in order. Blocking and 
-//! callback variants are also implemented. The [Controller] can also be used to send new 
+//! for new stream events ([Controller::poll]/[Controller::recv]), which will be returned in order. 
+//! Blocking and callback variants are also implemented. The [Controller] can also be used to send new 
 //! events to the server ([Controller::send]).
 //!
 //! Each operation on a buffer is represented as an [ot::OperationSeq].
@@ -203,6 +203,16 @@ pub trait Controller<T : Sized + Send + Sync> : Sized + Send + Sync {
 	///
 	/// `async fn recv(&self) -> codemp::Result<T>;`
 	async fn recv(&self) -> Result<T>;
+
+	/// block until next value is added to the stream without removing any element
+	///
+	/// this is just an async trait function wrapped by `async_trait`:
+	///
+	/// `async fn poll(&self) -> codemp::Result<()>;`
+	async fn poll(&self) -> Result<()>;
+
+	/// attempt to receive a value without blocking, return None if nothing is available
+	fn try_recv(&self) -> Result<Option<T>>;
 
 	/// sync variant of [Self::recv], blocking invoking thread
 	fn blocking_recv(&self, rt: &Runtime) -> Result<T> {

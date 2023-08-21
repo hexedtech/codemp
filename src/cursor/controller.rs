@@ -2,7 +2,7 @@
 //! 
 //! a controller implementation for cursor actions
 
-use tokio::sync::{mpsc, broadcast::{self, error::RecvError}, Mutex};
+use tokio::sync::{mpsc, broadcast::{self, error::{TryRecvError, RecvError}}, Mutex, watch};
 use tonic::async_trait;
 
 use crate::{proto::{CursorPosition, CursorEvent}, Error, Controller, errors::IgnorableError};
@@ -21,6 +21,7 @@ use crate::{proto::{CursorPosition, CursorEvent}, Error, Controller, errors::Ign
 pub struct CursorController {
 	uid: String,
 	op: mpsc::UnboundedSender<CursorEvent>,
+	last_op: Mutex<watch::Receiver<CursorEvent>>,
 	stream: Mutex<broadcast::Receiver<CursorEvent>>,
 	stop: mpsc::UnboundedSender<()>,
 }
@@ -35,10 +36,11 @@ impl CursorController {
 	pub(crate) fn new(
 		uid: String,
 		op: mpsc::UnboundedSender<CursorEvent>,
+		last_op: Mutex<watch::Receiver<CursorEvent>>,
 		stream: Mutex<broadcast::Receiver<CursorEvent>>,
 		stop: mpsc::UnboundedSender<()>,
 	) -> Self {
-		CursorController { uid, op, stream, stop }
+		CursorController { uid, op, last_op, stream, stop }
 	}
 }
 
@@ -52,6 +54,20 @@ impl Controller<CursorEvent> for CursorController {
 			user: self.uid.clone(),
 			position: Some(cursor),
 		})?)
+	}
+
+	/// try to receive without blocking, but will still block on stream mutex
+	fn try_recv(&self) -> crate::Result<Option<CursorEvent>> {
+		let mut stream = self.stream.blocking_lock();
+		match stream.try_recv() {
+			Ok(x) => Ok(Some(x)),
+			Err(TryRecvError::Empty) => Ok(None),
+			Err(TryRecvError::Closed) => Err(Error::Channel { send: false }),
+			Err(TryRecvError::Lagged(n)) => {
+				tracing::warn!("cursor channel lagged, skipping {} events", n);
+				Ok(stream.try_recv().ok())
+			},
+		}
 	}
 
 	// TODO is this cancelable? so it can be used in tokio::select!
@@ -68,4 +84,10 @@ impl Controller<CursorEvent> for CursorController {
 			}
 		}
 	}
+
+	/// await for changed mutex and then next op change
+	async fn poll(&self) -> crate::Result<()> {
+		Ok(self.last_op.lock().await.changed().await?)
+	}
+
 }

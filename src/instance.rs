@@ -20,6 +20,7 @@ pub mod global {
 	}
 }
 
+#[cfg(feature = "global")]
 pub use global::INSTANCE;
 
 /// async implementation of session instance

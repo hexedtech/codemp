@@ -23,7 +23,7 @@ pub use controller::BufferController as Controller;
 /// an editor-friendly representation of a text change in a buffer
 ///
 /// TODO move in proto
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct TextChange {
 	/// range of text change, as byte indexes in buffer
 	pub span: Range<usize>,

@@ -4,7 +4,7 @@
 
 use std::{result::Result as StdResult, error::Error as StdError, fmt::Display};
 
-use tokio::sync::{mpsc, broadcast};
+use tokio::sync::{mpsc, broadcast, watch};
 use tonic::{Status, Code};
 use tracing::warn;
 
@@ -84,6 +84,12 @@ impl<T> From<mpsc::error::SendError<T>> for Error {
 
 impl From<broadcast::error::RecvError> for Error {
 	fn from(_value: broadcast::error::RecvError) -> Self {
+		Error::Channel { send: false }
+	}
+}
+
+impl From<watch::error::RecvError> for Error {
+	fn from(_value: watch::error::RecvError) -> Self {
 		Error::Channel { send: false }
 	}
 }
