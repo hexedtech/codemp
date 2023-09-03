@@ -3,7 +3,7 @@ use std::sync::Arc;
 use tokio::sync::{mpsc, broadcast::{self}, Mutex, watch};
 use tonic::{Streaming, transport::Channel, async_trait};
 
-use crate::{proto::{cursor_client::CursorClient, CursorEvent}, errors::IgnorableError, ControllerWorker};
+use crate::{proto::{cursor_client::CursorClient, CursorEvent}, errors::IgnorableError, api::ControllerWorker};
 
 use super::controller::CursorController;
 

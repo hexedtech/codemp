@@ -8,7 +8,7 @@ use tokio::sync::{watch, mpsc, broadcast, Mutex};
 use tonic::async_trait;
 
 use crate::errors::IgnorableError;
-use crate::{Controller, Error};
+use crate::{api::Controller, Error};
 use crate::buffer::factory::{leading_noop, tailing_noop, OperationFactory};
 
 use super::TextChange;

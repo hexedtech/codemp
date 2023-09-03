@@ -7,7 +7,7 @@ pub use crate::{
 	Result as CodempResult,
 	
 	Client as CodempClient,
-	Controller as CodempController,
+	api::Controller as CodempController,
 	cursor::Controller as CodempCursorController,
 	buffer::Controller as CodempBufferController,
 

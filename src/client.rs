@@ -11,7 +11,7 @@ use crate::{
 	proto::{
 		buffer_client::BufferClient, cursor_client::CursorClient, UserIdentity, BufferPayload,
 	},
-	Error, ControllerWorker, buffer::{controller::BufferController, worker::BufferControllerWorker},
+	Error, api::ControllerWorker, buffer::{controller::BufferController, worker::BufferControllerWorker},
 };
 
 
@@ -73,8 +73,8 @@ impl Client {
 
 	/// join a workspace, starting a cursorcontroller and returning a new reference to it
 	/// 
-	/// to interact with such workspace [crate::Controller::send] cursor events or
-	/// [crate::Controller::recv] for events on the associated [crate::cursor::Controller].
+	/// to interact with such workspace [crate::api::Controller::send] cursor events or
+	/// [crate::api::Controller::recv] for events on the associated [crate::cursor::Controller].
 	pub async fn join(&mut self, _session: &str) -> Result<Arc<CursorController>, Error> {
 		// TODO there is no real workspace handling in codemp server so it behaves like one big global
 		//  session. I'm still creating this to start laying out the proper use flow
@@ -119,8 +119,8 @@ impl Client {
 
 	/// attach to a buffer, starting a buffer controller and returning a new reference to it
 	/// 
-	/// to interact with such buffer [crate::Controller::send] operation sequences 
-	/// or [crate::Controller::recv] for text events using its [crate::buffer::Controller].
+	/// to interact with such buffer [crate::api::Controller::send] operation sequences 
+	/// or [crate::api::Controller::recv] for text events using its [crate::buffer::Controller].
 	/// to generate operation sequences use the [crate::buffer::OperationFactory]
 	/// methods, which are implemented on [crate::buffer::Controller], such as
 	/// [crate::buffer::OperationFactory::delta].
