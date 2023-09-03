@@ -138,6 +138,8 @@
 //! [feature comparison matrix](https://github.com/orgs/codewithotherpeopleandchangenamelater/projects/3)
 //!
 
+#![doc(html_no_source)]
+
 
 /// public traits exposed to clients
 pub mod api;
