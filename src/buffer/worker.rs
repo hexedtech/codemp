@@ -1,24 +1,25 @@
 use std::{sync::Arc, collections::VecDeque};
 
-use operational_transform::OperationSeq;
+use operational_transform::{OperationSeq, OTError};
 use tokio::sync::{watch, mpsc, broadcast, Mutex};
 use tonic::transport::Channel;
 use tonic::{async_trait, Streaming};
 
-use crate::errors::IgnorableError;
+use crate::errors::{IgnorableError, IgnorableDefaultableError};
 use crate::proto::{OperationRequest, RawOp};
 use crate::proto::buffer_client::BufferClient;
 use crate::api::ControllerWorker;
 
 use super::TextChange;
 use super::controller::BufferController;
+use super::factory::{leading_noop, tailing_noop};
 
 
 pub(crate) struct BufferControllerWorker {
 	uid: String,
 	pub(crate) content: watch::Sender<String>,
 	pub(crate) operations: mpsc::UnboundedReceiver<OperationSeq>,
-	pub(crate) stream: Arc<broadcast::Sender<OperationSeq>>,
+	pub(crate) stream: Arc<broadcast::Sender<TextChange>>,
 	pub(crate) queue: VecDeque<OperationSeq>,
 	receiver: watch::Receiver<String>,
 	sender: mpsc::UnboundedSender<OperationSeq>,
@@ -48,6 +49,21 @@ impl BufferControllerWorker {
 			stop_control: end_tx,
 		}
 	}
+
+	fn update(&mut self, op: OperationSeq) -> Result<TextChange, OTError> {
+		let before = Arc::new(self.buffer.clone());
+		let res = op.apply(&before)?;
+		self.content.send(res.clone())
+			.unwrap_or_warn("error showing updated buffer");
+		let after = Arc::new(res.clone());
+		self.buffer = res;
+		let skip = leading_noop(op.ops()) as usize; 
+		let before_len = op.base_len();
+		let tail = tailing_noop(op.ops()) as usize;
+		let span = skip..before_len-tail;
+		let content = after[skip..after.len()-tail].to_string();
+		Ok(TextChange { span, content, before, after })
+	}
 }
 
 #[async_trait]
@@ -67,7 +83,8 @@ impl ControllerWorker<TextChange> for BufferControllerWorker {
 
 	async fn work(mut self, mut tx: Self::Tx, mut rx: Self::Rx) {
 		loop {
-			let op = tokio::select! {
+			tokio::select! {
+
 				Some(operation) = recv_opseq(&mut rx) => {
 					let mut out = operation;
 					for op in self.queue.iter_mut() {
@@ -79,27 +96,28 @@ impl ControllerWorker<TextChange> for BufferControllerWorker {
 							},
 						}
 					}
-					self.stream.send(out.clone()).unwrap_or_warn("could not send operation to server");
-					out
+					let change = self.update(out)
+						.unwrap_or_warn_default("coult not update with (transformed) remote operation");
+					self.stream.send(change)
+						.unwrap_or_warn("could not send operation to server");
 				},
+
 				Some(op) = self.operations.recv() => {
 					self.queue.push_back(op.clone());
-					op
+					self.update(op)
+						.unwrap_or_warn("could not apply enqueued operation to current buffer");
+					while let Some(op) = self.queue.get(0) {
+						if !send_opseq(&mut tx, self.uid.clone(), self.path.clone(), op.clone()).await { break }
+						self.queue.pop_front();
+					}
 				},
+
 				Some(()) = self.stop.recv() => {
 					break;
 				}
-				else => break
-			};
-			self.buffer = op.apply(&self.buffer).unwrap_or_else(|e| {
-				tracing::error!("could not update buffer string: {}", e);
-				self.buffer
-			});
-			self.content.send(self.buffer.clone()).unwrap_or_warn("error showing updated buffer");
 
-			while let Some(op) = self.queue.get(0) {
-				if !send_opseq(&mut tx, self.uid.clone(), self.path.clone(), op.clone()).await { break }
-				self.queue.pop_front();
+				else => break
+
 			}
 		}
 	}

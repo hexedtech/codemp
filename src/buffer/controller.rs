@@ -9,7 +9,7 @@ use tonic::async_trait;
 
 use crate::errors::IgnorableError;
 use crate::{api::Controller, Error};
-use crate::buffer::factory::{leading_noop, tailing_noop, OperationFactory};
+use crate::buffer::factory::OperationFactory;
 
 use super::TextChange;
 
@@ -34,7 +34,7 @@ pub struct BufferController {
 	content: watch::Receiver<String>,
 	operations: mpsc::UnboundedSender<OperationSeq>,
 	last_op: Mutex<watch::Receiver<String>>,
-	stream: Mutex<broadcast::Receiver<OperationSeq>>,
+	stream: Mutex<broadcast::Receiver<TextChange>>,
 	stop: mpsc::UnboundedSender<()>,
 }
 
@@ -42,23 +42,13 @@ impl BufferController {
 	pub(crate) fn new(
 		content: watch::Receiver<String>,
 		operations: mpsc::UnboundedSender<OperationSeq>,
-		stream: Mutex<broadcast::Receiver<OperationSeq>>,
+		stream: Mutex<broadcast::Receiver<TextChange>>,
 		stop: mpsc::UnboundedSender<()>,
 	) -> Self {
 		BufferController {
 			last_op: Mutex::new(content.clone()),
 			content, operations, stream, stop,
 		}
-	}
-
-	fn op_to_change(&self, op: OperationSeq) -> TextChange {
-		let after = self.content.borrow().clone();
-		let skip = leading_noop(op.ops()) as usize; 
-		let before_len = op.base_len();
-		let tail = tailing_noop(op.ops()) as usize;
-		let span = skip..before_len-tail;
-		let content = after[skip..after.len()-tail].to_string();
-		TextChange { span, content }
 	}
 }
 
@@ -85,7 +75,7 @@ impl Controller<TextChange> for BufferController {
 
 	fn try_recv(&self) -> Result<Option<TextChange>, Error> {
 		match self.stream.blocking_lock().try_recv() {
-			Ok(op) => Ok(Some(self.op_to_change(op))),
+			Ok(op) => Ok(Some(op)),
 			Err(TryRecvError::Empty) => Ok(None),
 			Err(TryRecvError::Closed) => Err(Error::Channel { send: false }),
 			Err(TryRecvError::Lagged(n)) => {
@@ -98,7 +88,7 @@ impl Controller<TextChange> for BufferController {
 	/// receive an operation seq and transform it into a TextChange from buffer content
 	async fn recv(&self) -> Result<TextChange, Error> {
 		let op = self.stream.lock().await.recv().await?;
-		Ok(self.op_to_change(op))
+		Ok(op)
 	}
 
 	/// enqueue an opseq for processing
