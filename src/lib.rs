@@ -5,8 +5,9 @@
 //! This is the core library of the codemp project.
 //!
 //! ## structure
-//! The main entrypoint is the [Client] object, that maintains a connection and can 
-//! be used to join workspaces or attach to buffers.
+//! The main entrypoint is the [Instance] object, that maintains a connection and can 
+//! be used to join workspaces or attach to buffers. It contains the underlying [Client] and 
+//! stores active controllers.
 //! 
 //! Some actions will return structs implementing the [Controller] trait. These can be polled 
 //! for new stream events ([Controller::poll]/[Controller::recv]), which will be returned in order. 
