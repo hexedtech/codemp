@@ -19,6 +19,8 @@ pub mod factory;
 pub use factory::OperationFactory;
 pub use controller::BufferController as Controller;
 
+use crate::proto::RowCol;
+
 
 /// an editor-friendly representation of a text change in a buffer
 ///
@@ -34,4 +36,26 @@ pub struct TextChange {
 	/// reference to current content of buffer
 	pub after: Arc<String>,
 }
+
+impl TextChange {
+	/// convert from byte index to row and column.
+	/// if `end` is true, span end will be used, otherwise span start
+	/// if `after` is true, buffer after change will be used, otherwise buffer before change
+	fn index_to_rowcol(&self, end: bool, after: bool) -> RowCol {
+		let txt = if after { &self.after } else { &self.before };
+		let index = if end { self.span.end } else { self.span.start };
+		let row = txt[..index].matches('\n').count() as i32;
+		let col = txt[..index].split('\n').last().unwrap_or("").len() as i32;
+		RowCol { row, col }
+	}
+
+	/// retrn row and column of text change start
+	pub fn start(&self) -> RowCol {
+		self.index_to_rowcol(false, false)
+	}
+
+	/// return row and column of text change end
+	pub fn end(&self) -> RowCol {
+		self.index_to_rowcol(true, false)
+	}
 }
