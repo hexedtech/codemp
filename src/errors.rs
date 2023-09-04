@@ -23,6 +23,25 @@ where E : std::fmt::Display {
 	}
 }
 
+
+/// an error which can be ignored with just a warning entry and returning the default value
+pub trait IgnorableDefaultableError<T> {
+	fn unwrap_or_warn_default(self, msg: &str) -> T;
+}
+
+impl<T, E> IgnorableDefaultableError<T> for StdResult<T, E>
+where E : std::fmt::Display, T: Default {
+	fn unwrap_or_warn_default(self, msg: &str) -> T {
+		match self {
+			Ok(x) => x,
+			Err(e) => {
+				warn!("{}: {}", msg, e);
+				T::default()
+			},
+		}
+	}
+}
+
 /// result type for codemp errors
 pub type Result<T> = StdResult<T, Error>;
 
