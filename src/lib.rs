@@ -1,4 +1,4 @@
-//! # MultiPlayer Code Editinglib
+//! # MultiPlayer Code Editing lib
 //!
 //! ![just a nice pic](https://alemi.dev/img/about-slice-1.png)
 //!
