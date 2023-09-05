@@ -2,6 +2,9 @@
 //! 
 //! a controller implementation for buffer actions
 
+use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
+
 use operational_transform::OperationSeq;
 use tokio::sync::broadcast::error::TryRecvError;
 use tokio::sync::{watch, mpsc, broadcast, Mutex};
@@ -36,6 +39,7 @@ pub struct BufferController {
 	last_op: Mutex<watch::Receiver<String>>,
 	stream: Mutex<broadcast::Receiver<TextChange>>,
 	stop: mpsc::UnboundedSender<()>,
+	operation_tick: Arc<AtomicU64>,
 }
 
 impl BufferController {
@@ -44,10 +48,12 @@ impl BufferController {
 		operations: mpsc::UnboundedSender<OperationSeq>,
 		stream: Mutex<broadcast::Receiver<TextChange>>,
 		stop: mpsc::UnboundedSender<()>,
+		operation_tick: Arc<AtomicU64>,
 	) -> Self {
 		BufferController {
 			last_op: Mutex::new(content.clone()),
 			content, operations, stream, stop,
+			operation_tick,
 		}
 	}
 }
@@ -93,6 +99,9 @@ impl Controller<TextChange> for BufferController {
 
 	/// enqueue an opseq for processing
 	fn send(&self, op: OperationSeq) -> Result<(), Error> {
-		Ok(self.operations.send(op)?)
+		let tick = self.operation_tick.load(Ordering::Acquire);
+		self.operations.send(op)?;
+		self.operation_tick.store(tick + 1, Ordering::Release);
+		Ok(())
 	}
 }
