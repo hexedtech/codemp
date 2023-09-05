@@ -109,6 +109,7 @@ impl ControllerWorker<TextChange> for BufferControllerWorker {
 					match res {
 						None => return tracing::warn!("client closed operation stream"),
 						Some(op) => {
+							let _ = self.update(&op);
 							clientside.push_back(op.clone());
 							last_seen_tick = self.operation_tick.load(Ordering::Acquire);
 						}
@@ -159,7 +160,6 @@ impl ControllerWorker<TextChange> for BufferControllerWorker {
 			// client operation waiting for us to be enqueued
 			if serverside.is_empty() {
 				while let Some(op) = clientside.get(0) {
-					self.update(op);
 					if !send_opseq(&mut tx, self.uid.clone(), self.path.clone(), op.clone()).await { break }
 					clientside.pop_front();
 				}
