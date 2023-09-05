@@ -97,10 +97,10 @@ impl ControllerWorker<TextChange> for BufferControllerWorker {
 					match res {
 						Err(e) => return tracing::error!("error receiving op from server: {}", e),
 						Ok(None) => return tracing::warn!("server closed operation stream"),
-						Ok(Some(msg)) => match serde_json::from_str(&msg.opseq) {
-							Err(e) => return tracing::error!("error deserializing op from server: {}", e),
-							Ok(op) => serverside.push_back(op),
-						}
+						Ok(Some(msg)) => serverside.push_back(
+							serde_json::from_str(&msg.opseq)
+								.expect("could not deserialize server opseq")
+						),
 					}
 				},
 
@@ -160,33 +160,21 @@ impl ControllerWorker<TextChange> for BufferControllerWorker {
 			// client operation waiting for us to be enqueued
 			if serverside.is_empty() {
 				while let Some(op) = clientside.get(0) {
-					if !send_opseq(&mut tx, self.uid.clone(), self.path.clone(), op.clone()).await { break }
+					let opseq = serde_json::to_string(&op).expect("could not serialize opseq");
+					let req = OperationRequest {
+						path: self.path.clone(),
+						hash: format!("{:x}", md5::compute(&self.buffer)),
+						op: Some(RawOp {
+							opseq, user: self.uid.clone(),
+						}),
+					};
+					if let Err(e) = tx.edit(req).await {
+						tracing::warn!("server rejected operation: {}", e);
+						break;
+					}
 					clientside.pop_front();
 				}
 			}
-		}
-	}
-}
-
-async fn send_opseq(tx: &mut BufferClient<Channel>, uid: String, path: String, op: OperationSeq) -> bool {
-	let opseq = match serde_json::to_string(&op) {
-		Ok(x) => x,
-		Err(e) => {
-			tracing::warn!("could not serialize opseq: {}", e);
-			return false;
-		}
-	};
-	let req = OperationRequest {
-		path, hash: "".into(),
-		op: Some(RawOp {
-			opseq, user: uid,
-		}),
-	};
-	match tx.edit(req).await {
-		Ok(_) => true,
-		Err(e) => {
-			tracing::error!("error sending edit: {}", e);
-			false
 		}
 	}
 }
