@@ -1,12 +1,12 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::{sync::Arc, collections::VecDeque};
 
-use operational_transform::{OperationSeq, OTError};
+use operational_transform::OperationSeq;
 use tokio::sync::{watch, mpsc, broadcast, Mutex};
 use tonic::transport::Channel;
 use tonic::{async_trait, Streaming};
 
-use crate::errors::{IgnorableError, IgnorableDefaultableError};
+use crate::errors::IgnorableError;
 use crate::proto::{OperationRequest, RawOp};
 use crate::proto::buffer_client::BufferClient;
 use crate::api::ControllerWorker;
@@ -50,21 +50,6 @@ impl BufferControllerWorker {
 			operation_tick: Arc::new(AtomicU64::new(0)),
 		}
 	}
-
-	fn update(&mut self, op: &OperationSeq) -> Result<TextChange, OTError> {
-		let before = Arc::new(self.buffer.clone());
-		let res = op.apply(&before)?;
-		self.content.send(res.clone())
-			.unwrap_or_warn("error showing updated buffer");
-		let after = Arc::new(res.clone());
-		self.buffer = res;
-		let skip = leading_noop(op.ops()) as usize; 
-		let before_len = op.base_len();
-		let tail = tailing_noop(op.ops()) as usize;
-		let span = skip..before_len-tail;
-		let content = after[skip..after.len()-tail].to_string();
-		Ok(TextChange { span, content, before, after })
-	}
 }
 
 #[async_trait]
@@ -87,6 +72,7 @@ impl ControllerWorker<TextChange> for BufferControllerWorker {
 		let mut clientside : VecDeque<OperationSeq> = VecDeque::new();
 		let mut serverside : VecDeque<OperationSeq> = VecDeque::new();
 		let mut last_seen_tick = 0;
+
 		loop {
 
 			// block until one of these is ready
@@ -109,7 +95,6 @@ impl ControllerWorker<TextChange> for BufferControllerWorker {
 					match res {
 						None => return tracing::warn!("client closed operation stream"),
 						Some(op) => {
-							let _ = self.update(&op);
 							clientside.push_back(op.clone());
 							last_seen_tick = self.operation_tick.load(Ordering::Acquire);
 						}
@@ -130,22 +115,40 @@ impl ControllerWorker<TextChange> for BufferControllerWorker {
 			// our ops with server's ops but server won't transform its ops with ours. We must transform
 			// ALL enqueued client ops: if a new one arrived before we could transform and update, we
 			// should discard our progress and poll again.
-			while let Some(mut operation) = serverside.get(0).cloned() {
+			while let Some(operation) = serverside.get(0).cloned() {
+				let mut transformed_op = operation.clone();
 				let mut queued_ops = clientside.clone();
+				let mut txt_before = self.buffer.clone();
 				for op in queued_ops.iter_mut() {
-					(*op, operation) = match op.transform(&operation) {
+					txt_before = match op.apply(&txt_before) {
+						Ok(x) => x,
+						Err(_) => { tracing::error!("could not apply outgoing enqueued opseq to current buffer?"); break; },
+					};
+					(*op, transformed_op) = match op.transform(&transformed_op) {
+						Err(e) => { tracing::warn!("could not transform enqueued operation: {}", e); break; },
 						Ok((x, y)) => (x, y),
-						Err(e) => {
-							tracing::warn!("could not transform enqueued operation: {}", e);
-							break
-						},
-					}
+					};
 				}
+
+				let skip = leading_noop(transformed_op.ops()) as usize;
+				let tail = tailing_noop(transformed_op.ops()) as usize;
+				let span = skip..(transformed_op.base_len() - tail);
+				let after = transformed_op.apply(&txt_before).expect("could not apply transformed op");
+				let change = TextChange { span, content: after[skip..after.len()-tail].to_string() };
+
 				let tick = self.operation_tick.load(std::sync::atomic::Ordering::Acquire);
-				if tick != last_seen_tick { break } // there are more ops to see first
+				if tick != last_seen_tick {
+					tracing::warn!("skipping downstream because there are ops");
+					break
+				} // there are more ops to see first
 				clientside = queued_ops;
-				let change = self.update(&operation)
-					.unwrap_or_warn_default("coult not update with (transformed) remote operation");
+				self.buffer = match operation.apply(&self.buffer) {
+					Ok(x) => x,
+					Err(_) => { tracing::error!("wtf received op could not be applied?"); break; },
+				};
+				if clientside.is_empty() {
+					self.content.send(self.buffer.clone()).expect("could not broadcast new buffer content");
+				}
 				self.stream.send(change)
 					.unwrap_or_warn("could not send operation to server");
 				serverside.pop_front();
@@ -172,8 +175,15 @@ impl ControllerWorker<TextChange> for BufferControllerWorker {
 						tracing::warn!("server rejected operation: {}", e);
 						break;
 					}
+					self.buffer = match op.apply(&self.buffer) {
+						Ok(x) => x,
+						Err(_) => { tracing::error!("wtf accepted remote op could not be applied to our buffer????"); break; },
+					};
+					self.content.send(self.buffer.clone()).expect("could not broadcast buffer update");
 					clientside.pop_front();
 				}
+			} else {
+				tracing::warn!("skipping upstream because there are ops");
 			}
 		}
 	}
