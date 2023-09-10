@@ -127,7 +127,7 @@ pub mod a_sync {
 pub mod sync {
 	use std::sync::{Mutex, Arc};
 
-	use tokio::runtime::Runtime;
+	use tokio::runtime::{Runtime, Handle};
 
 	use crate::{
 		client::Client, Error,
@@ -166,7 +166,7 @@ pub mod sync {
 		}
 	
 		/// return a reference to contained tokio runtime, to spawn tasks on
-		pub fn rt(&self) -> &Runtime { &self.runtime }
+		pub fn rt(&self) -> &Handle { &self.runtime.handle() }
 	
 		/// connect and store a client session, threadsafe and sync version of [crate::Client::new]
 		pub fn connect(&self, addr: &str) -> Result<(), Error> {

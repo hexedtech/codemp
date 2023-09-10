@@ -75,7 +75,7 @@ pub trait Controller<T : Sized + Send + Sync> : Sized + Send + Sync {
 	/// important for proper cleanup
 	fn callback<F>(
 		self: &Arc<Self>,
-		rt: &tokio::runtime::Runtime,
+		rt: &tokio::runtime::Handle,
 		mut stop: tokio::sync::mpsc::UnboundedReceiver<()>,
 		mut cb: F
 	) where
