@@ -5,21 +5,31 @@
 pub use crate::{
 	Error as CodempError,
 	Result as CodempResult,
-	
-	Client as CodempClient,
+};
+
+#[cfg(feature = "ot")]
+pub use	crate::ot::OperationSeq as CodempOperationSeq;
+
+#[cfg(feature = "api")]
+pub use crate::{
 	api::Controller as CodempController,
 	api::OperationFactory as CodempOperationFactory,
+};
+	
+#[cfg(feature = "client")]
+pub use crate::{
+	client::Client as CodempClient,
 	cursor::Controller as CodempCursorController,
 	buffer::Controller as CodempBufferController,
-
-	ot::OperationSeq as CodempOperationSeq,
 	buffer::TextChange as CodempTextChange,
+	Instance as CodempInstance,
+};
 
+#[cfg(feature = "proto")]
+pub use crate::{
 	proto::CursorPosition as CodempCursorPosition,
 	proto::CursorEvent as CodempCursorEvent,
 	proto::RowCol as CodempRowCol,
-
-	Instance as CodempInstance,
 };
 
 #[cfg(feature = "global")]

@@ -4,8 +4,6 @@
 
 use std::{result::Result as StdResult, error::Error as StdError, fmt::Display};
 
-use tokio::sync::{mpsc, broadcast, watch};
-use tonic::{Status, Code};
 use tracing::warn;
 
 /// an error which can be ignored with just a warning entry
@@ -51,7 +49,7 @@ pub type Result<T> = StdResult<T, Error>;
 pub enum Error {
 	/// errors caused by tonic http layer
 	Transport {
-		status: Code,
+		status: String,
 		message: String,
 	},
 	/// errors caused by async channels
@@ -81,34 +79,43 @@ impl Display for Error {
 	}
 }
 
-impl From<Status> for Error {
-	fn from(status: Status) -> Self {
-		Error::Transport { status: status.code(), message: status.message().to_string() }
-	}
-}
-
-impl From<tonic::transport::Error> for Error {
-	fn from(err: tonic::transport::Error) -> Self {
+#[cfg(feature = "client")]
+impl From<tonic::Status> for Error {
+	fn from(status: tonic::Status) -> Self {
 		Error::Transport {
-			status: Code::Unknown, message: format!("underlying transport error: {:?}", err)
+			status: status.code().to_string(),
+			message: status.message().to_string()
 		}
 	}
 }
 
-impl<T> From<mpsc::error::SendError<T>> for Error {
-	fn from(_value: mpsc::error::SendError<T>) -> Self {
+#[cfg(feature = "client")]
+impl From<tonic::transport::Error> for Error {
+	fn from(err: tonic::transport::Error) -> Self {
+		Error::Transport {
+			status: tonic::Code::Unknown.to_string(),
+			message: format!("underlying transport error: {:?}", err)
+		}
+	}
+}
+
+#[cfg(feature = "client")]
+impl<T> From<tokio::sync::mpsc::error::SendError<T>> for Error {
+	fn from(_value: tokio::sync::mpsc::error::SendError<T>) -> Self {
 		Error::Channel { send: true }
 	}
 }
 
-impl From<broadcast::error::RecvError> for Error {
-	fn from(_value: broadcast::error::RecvError) -> Self {
+#[cfg(feature = "client")]
+impl From<tokio::sync::broadcast::error::RecvError> for Error {
+	fn from(_value: tokio::sync::broadcast::error::RecvError) -> Self {
 		Error::Channel { send: false }
 	}
 }
 
-impl From<watch::error::RecvError> for Error {
-	fn from(_value: watch::error::RecvError) -> Self {
+#[cfg(feature = "client")]
+impl From<tokio::sync::watch::error::RecvError> for Error {
+	fn from(_value: tokio::sync::watch::error::RecvError) -> Self {
 		Error::Channel { send: false }
 	}
 }

@@ -7,7 +7,7 @@ use crate::Result;
 use std::sync::Arc;
 use tokio::runtime::Runtime;
 
-#[tonic::async_trait]
+#[async_trait::async_trait]
 pub(crate) trait ControllerWorker<T : Sized + Send + Sync> {
 	type Controller : Controller<T>;
 	type Tx;
@@ -27,7 +27,7 @@ pub(crate) trait ControllerWorker<T : Sized + Send + Sync> {
 /// * if possible, prefer a pure [Controller::recv] consumer
 /// * a second possibility in preference is using a [Controller::callback]
 /// * if neither is feasible a [Controller::poll]/[Controller::try_recv] approach is available
-#[tonic::async_trait]
+#[async_trait::async_trait]
 pub trait Controller<T : Sized + Send + Sync> : Sized + Send + Sync {
 	/// type of upstream values, used in [Self::send]
 	type Input;
