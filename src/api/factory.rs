@@ -1,72 +1,8 @@
 //! ### factory
-//! 
-//! a helper trait to produce Operation Sequences, knowing the current 
-//! state of the buffer
 //!
-//! ```rust
-//! use codemp::buffer::factory::{OperationFactory, SimpleOperationFactory};
+//! a helper trait that any string container can implement, which generates opseqs
 //!
-//! let mut factory = SimpleOperationFactory::from("");
-//! let op = factory.insert("asd", 0);
-//! factory.update(op)?;
-//! assert_eq!(factory.content(), "asd");
-//! # Ok::<(), codemp::ot::OTError>(())
-//! ```
-//!
-//! use [OperationFactory::insert] to add new characters at a specific index
-//!
-//! ```rust
-//! # use codemp::buffer::factory::{OperationFactory, SimpleOperationFactory};
-//! # let mut factory = SimpleOperationFactory::from("asd");
-//! factory.update(factory.insert(" dsa", 3))?;
-//! assert_eq!(factory.content(), "asd dsa");
-//! # Ok::<(), codemp::ot::OTError>(())
-//! ```
-//!
-//! use [OperationFactory::delta] to arbitrarily change text at any position
-//!
-//! ```rust
-//! # use codemp::buffer::factory::{OperationFactory, SimpleOperationFactory};
-//! # let mut factory = SimpleOperationFactory::from("asd dsa");
-//! let op = factory.delta(2, " xxx ", 5).expect("replaced region is equal to origin");
-//! factory.update(op)?;
-//! assert_eq!(factory.content(), "as xxx sa");
-//! # Ok::<(), codemp::ot::OTError>(())
-//! ```
-//!
-//! use [OperationFactory::delete] to remove characters from given index
-//!
-//! ```rust
-//! # use codemp::buffer::factory::{OperationFactory, SimpleOperationFactory};
-//! # let mut factory = SimpleOperationFactory::from("as xxx sa");
-//! factory.update(factory.delete(2, 5))?;
-//! assert_eq!(factory.content(), "assa");
-//! # Ok::<(), codemp::ot::OTError>(())
-//! ```
-//!
-//! use [OperationFactory::replace] to completely replace buffer content
-//!
-//! ```rust
-//! # use codemp::buffer::factory::{OperationFactory, SimpleOperationFactory};
-//! # let mut factory = SimpleOperationFactory::from("assa");
-//! let op = factory.replace("from scratch").expect("replace is equal to origin");
-//! factory.update(op)?;
-//! assert_eq!(factory.content(), "from scratch");
-//! # Ok::<(), codemp::ot::OTError>(())
-//! ```
-//!
-//! use [OperationFactory::cancel] to remove characters at index, but backwards
-//!
-//! ```rust
-//! # use codemp::buffer::factory::{OperationFactory, SimpleOperationFactory};
-//! # let mut factory = SimpleOperationFactory::from("from scratch");
-//! factory.update(factory.cancel(12, 8))?;
-//! assert_eq!(factory.content(), "from");
-//! # Ok::<(), codemp::ot::OTError>(())
-//! ```
-//! 
-//!
-//! This trait provides an implementation for String, but plugin developers 
+//! an OperationFactory trait implementation is provided for String, but plugin developers 
 //! should implement their own operation factory interfacing directly with the editor 
 //! buffer when possible.
 
@@ -97,6 +33,73 @@ pub fn op_effective_range(op: &OperationSeq) -> Range<u64> {
 }
 
 /// a helper trait that any string container can implement, which generates opseqs
+///
+/// all operations are to be considered mutating current state, obtainable with
+/// [OperationFactory::content]. generating an operation has no effect on internal state
+///
+/// ### examples
+///
+/// ```rust
+/// use codemp::buffer::factory::{OperationFactory, SimpleOperationFactory};
+///
+/// let mut factory = SimpleOperationFactory::from("");
+/// let op = factory.insert("asd", 0);
+/// factory.update(op)?;
+/// assert_eq!(factory.content(), "asd");
+/// # Ok::<(), codemp::ot::OTError>(())
+/// ```
+///
+/// use [OperationFactory::insert] to add new characters at a specific index
+///
+/// ```rust
+/// # use codemp::buffer::factory::{OperationFactory, SimpleOperationFactory};
+/// # let mut factory = SimpleOperationFactory::from("asd");
+/// factory.update(factory.insert(" dsa", 3))?;
+/// assert_eq!(factory.content(), "asd dsa");
+/// # Ok::<(), codemp::ot::OTError>(())
+/// ```
+///
+/// use [OperationFactory::delta] to arbitrarily change text at any position
+///
+/// ```rust
+/// # use codemp::buffer::factory::{OperationFactory, SimpleOperationFactory};
+/// # let mut factory = SimpleOperationFactory::from("asd dsa");
+/// let op = factory.delta(2, " xxx ", 5).expect("replaced region is equal to origin");
+/// factory.update(op)?;
+/// assert_eq!(factory.content(), "as xxx sa");
+/// # Ok::<(), codemp::ot::OTError>(())
+/// ```
+///
+/// use [OperationFactory::delete] to remove characters from given index
+///
+/// ```rust
+/// # use codemp::buffer::factory::{OperationFactory, SimpleOperationFactory};
+/// # let mut factory = SimpleOperationFactory::from("as xxx sa");
+/// factory.update(factory.delete(2, 5))?;
+/// assert_eq!(factory.content(), "assa");
+/// # Ok::<(), codemp::ot::OTError>(())
+/// ```
+///
+/// use [OperationFactory::replace] to completely replace buffer content
+///
+/// ```rust
+/// # use codemp::buffer::factory::{OperationFactory, SimpleOperationFactory};
+/// # let mut factory = SimpleOperationFactory::from("assa");
+/// let op = factory.replace("from scratch").expect("replace is equal to origin");
+/// factory.update(op)?;
+/// assert_eq!(factory.content(), "from scratch");
+/// # Ok::<(), codemp::ot::OTError>(())
+/// ```
+///
+/// use [OperationFactory::cancel] to remove characters at index, but backwards
+///
+/// ```rust
+/// # use codemp::buffer::factory::{OperationFactory, SimpleOperationFactory};
+/// # let mut factory = SimpleOperationFactory::from("from scratch");
+/// factory.update(factory.cancel(12, 8))?;
+/// assert_eq!(factory.content(), "from");
+/// # Ok::<(), codemp::ot::OTError>(())
+/// ```
 pub trait OperationFactory {
 	/// the current content of the buffer
 	fn content(&self) -> String;

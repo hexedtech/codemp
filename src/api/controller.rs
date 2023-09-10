@@ -1,9 +1,7 @@
 //! # Controller
 //! 
-//! this generic trait is implemented by actors managing stream procedures.
-//! events can be enqueued for dispatching without blocking ([Controller::send]), and an async blocking 
-//! api ([Controller::recv]) is provided to wait for server events. Additional sync blocking
-//! ([Controller::blocking_recv]) and callback-based ([Controller::callback]) are implemented.
+//! an bidirectional stream handler to easily manage async operations across local buffers and the
+//! server
 
 use crate::Result;
 use std::sync::Arc;
@@ -20,6 +18,15 @@ pub(crate) trait ControllerWorker<T : Sized + Send + Sync> {
 }
 
 /// async and threadsafe handle to a generic bidirectional stream
+///
+/// this generic trait is implemented by actors managing stream procedures.
+/// events can be enqueued for dispatching without blocking ([Controller::send]), and an async blocking 
+/// api ([Controller::recv]) is provided to wait for server events. Additional sync blocking
+/// ([Controller::blocking_recv]) and callback-based ([Controller::callback]) are implemented.
+///
+/// * if possible, prefer a pure [Controller::recv] consumer
+/// * a second possibility in preference is using a [Controller::callback]
+/// * if neither is feasible a [Controller::poll]/[Controller::try_recv] approach is available
 #[tonic::async_trait]
 pub trait Controller<T : Sized + Send + Sync> : Sized + Send + Sync {
 	/// type of upstream values, used in [Self::send]
