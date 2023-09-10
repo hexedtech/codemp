@@ -40,64 +40,67 @@ pub fn op_effective_range(op: &OperationSeq) -> Range<u64> {
 /// ### examples
 ///
 /// ```rust
-/// use codemp::buffer::factory::{OperationFactory, SimpleOperationFactory};
+/// use codemp::api::OperationFactory;
 ///
-/// let mut factory = SimpleOperationFactory::from("");
-/// let op = factory.insert("asd", 0);
-/// factory.update(op)?;
-/// assert_eq!(factory.content(), "asd");
+/// let mut factory = String::new();
+/// let operation = factory.ins("asd", 0);
+/// factory = operation.apply(&factory)?;
+/// assert_eq!(factory, "asd");
 /// # Ok::<(), codemp::ot::OTError>(())
 /// ```
 ///
-/// use [OperationFactory::insert] to add new characters at a specific index
+/// use [OperationFactory::ins] to add new characters at a specific index
 ///
 /// ```rust
-/// # use codemp::buffer::factory::{OperationFactory, SimpleOperationFactory};
-/// # let mut factory = SimpleOperationFactory::from("asd");
-/// factory.update(factory.insert(" dsa", 3))?;
-/// assert_eq!(factory.content(), "asd dsa");
+/// # use codemp::api::OperationFactory;
+/// # let mut factory = String::from("asd");
+/// factory = factory.ins(" dsa", 3).apply(&factory)?;
+/// assert_eq!(factory, "asd dsa");
 /// # Ok::<(), codemp::ot::OTError>(())
 /// ```
 ///
-/// use [OperationFactory::delta] to arbitrarily change text at any position
+/// use [OperationFactory::diff] to arbitrarily change text at any position
 ///
 /// ```rust
-/// # use codemp::buffer::factory::{OperationFactory, SimpleOperationFactory};
-/// # let mut factory = SimpleOperationFactory::from("asd dsa");
-/// let op = factory.delta(2, " xxx ", 5).expect("replaced region is equal to origin");
-/// factory.update(op)?;
-/// assert_eq!(factory.content(), "as xxx sa");
+/// # use codemp::api::OperationFactory;
+/// # let mut factory = String::from("asd dsa");
+/// factory = factory
+///   .diff(2, " xxx ", 5)
+///   .expect("replaced region is equal to origin")
+///   .apply(&factory)?;
+/// assert_eq!(factory, "as xxx sa");
 /// # Ok::<(), codemp::ot::OTError>(())
 /// ```
 ///
-/// use [OperationFactory::delete] to remove characters from given index
+/// use [OperationFactory::del] to remove characters from given index
 ///
 /// ```rust
-/// # use codemp::buffer::factory::{OperationFactory, SimpleOperationFactory};
-/// # let mut factory = SimpleOperationFactory::from("as xxx sa");
-/// factory.update(factory.delete(2, 5))?;
-/// assert_eq!(factory.content(), "assa");
+/// # use codemp::api::OperationFactory;
+/// # let mut factory = String::from("as xxx sa");
+/// factory = factory.del(2, 5).apply(&factory)?;
+/// assert_eq!(factory, "assa");
 /// # Ok::<(), codemp::ot::OTError>(())
 /// ```
 ///
 /// use [OperationFactory::replace] to completely replace buffer content
 ///
 /// ```rust
-/// # use codemp::buffer::factory::{OperationFactory, SimpleOperationFactory};
-/// # let mut factory = SimpleOperationFactory::from("assa");
-/// let op = factory.replace("from scratch").expect("replace is equal to origin");
-/// factory.update(op)?;
-/// assert_eq!(factory.content(), "from scratch");
+/// # use codemp::api::OperationFactory;
+/// # let mut factory = String::from("assa");
+/// factory = factory.replace("from scratch")
+///   .expect("replace is equal to origin")
+///   .apply(&factory)?;
+/// assert_eq!(factory, "from scratch");
 /// # Ok::<(), codemp::ot::OTError>(())
 /// ```
 ///
-/// use [OperationFactory::cancel] to remove characters at index, but backwards
+/// use [OperationFactory::canc] to remove characters at index, but backwards
 ///
 /// ```rust
-/// # use codemp::buffer::factory::{OperationFactory, SimpleOperationFactory};
-/// # let mut factory = SimpleOperationFactory::from("from scratch");
-/// factory.update(factory.cancel(12, 8))?;
-/// assert_eq!(factory.content(), "from");
+/// # use codemp::api::OperationFactory;
+/// # let mut factory = String::from("from scratch");
+/// factory = factory.canc(12, 8).apply(&factory)?;
+/// assert_eq!(factory, "from");
 /// # Ok::<(), codemp::ot::OTError>(())
 /// ```
 pub trait OperationFactory {
@@ -106,11 +109,11 @@ pub trait OperationFactory {
 
 	/// completely replace the buffer with given text
 	fn replace(&self, txt: &str) -> Option<OperationSeq> {
-		self.delta(0, txt, self.content().len())
+		self.diff(0, txt, self.content().len())
 	}
 
 	/// transform buffer in range [start..end] with given text
-	fn delta(&self, start: usize, txt: &str, end: usize) -> Option<OperationSeq> {
+	fn diff(&self, start: usize, txt: &str, end: usize) -> Option<OperationSeq> {
 		let mut out = OperationSeq::default();
 		let content = self.content();
 		let tail_skip = content.len() - end; // TODO len is number of bytes, not chars
@@ -139,7 +142,7 @@ pub trait OperationFactory {
 	}
 
 	/// insert given chars at target position
-	fn insert(&self, txt: &str, pos: u64) -> OperationSeq {
+	fn ins(&self, txt: &str, pos: u64) -> OperationSeq {
 		let mut out = OperationSeq::default();
 		let total = self.content().len() as u64;
 		out.retain(pos);
@@ -149,7 +152,7 @@ pub trait OperationFactory {
 	}
 
 	/// delete n characters forward at given position
-	fn delete(&self, pos: u64, count: u64) -> OperationSeq {
+	fn del(&self, pos: u64, count: u64) -> OperationSeq {
 		let mut out = OperationSeq::default();
 		let len = self.content().len() as u64;
 		out.retain(pos);
@@ -159,7 +162,7 @@ pub trait OperationFactory {
 	}
 
 	/// delete n characters backwards at given position
-	fn cancel(&self, pos: u64, count: u64) -> OperationSeq {
+	fn canc(&self, pos: u64, count: u64) -> OperationSeq {
 		let mut out = OperationSeq::default();
 		let len = self.content().len() as u64;
 		out.retain(pos - count);

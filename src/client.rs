@@ -124,7 +124,7 @@ impl Client {
 	/// or [crate::api::Controller::recv] for text events using its [crate::buffer::Controller].
 	/// to generate operation sequences use the [crate::api::OperationFactory]
 	/// methods, which are implemented on [crate::buffer::Controller], such as
-	/// [crate::api::OperationFactory::delta].
+	/// [crate::api::OperationFactory::diff].
 	pub async fn attach(&mut self, path: &str) -> Result<Arc<BufferController>, Error> {
 		if let Some(workspace) = &mut self.workspace {
 			let mut client = self.client.buffer.clone();

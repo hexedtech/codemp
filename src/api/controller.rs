@@ -5,7 +5,6 @@
 
 use crate::Result;
 use std::sync::Arc;
-use tokio::runtime::Runtime;
 
 #[async_trait::async_trait]
 pub(crate) trait ControllerWorker<T : Sized + Send + Sync> {
@@ -60,7 +59,7 @@ pub trait Controller<T : Sized + Send + Sync> : Sized + Send + Sync {
 	fn try_recv(&self) -> Result<Option<T>>;
 
 	/// sync variant of [Self::recv], blocking invoking thread
-	fn blocking_recv(&self, rt: &Runtime) -> Result<T> {
+	fn blocking_recv(&self, rt: &tokio::runtime::Handle) -> Result<T> {
 		rt.block_on(self.recv())
 	}
 

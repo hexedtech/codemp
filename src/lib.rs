@@ -40,8 +40,7 @@
 //! [instance::a_sync::Instance]
 //!
 //! ```rust,no_run
-//! use codemp::api::Controller;
-//! use codemp::buffer::OperationFactory;
+//! use codemp::api::{Controller, OperationFactory};
 //! # use codemp::instance::a_sync::Instance;
 //!
 //! # async fn async_example() -> codemp::Result<()> {
@@ -63,8 +62,9 @@
 //! // attach to a new buffer and execute operations on it
 //! session.create("test.txt", None).await?;   // create new buffer
 //! let buffer = session.attach("test.txt").await?; // attach to it
-//! buffer.send(buffer.insert("hello", 0))?; // insert some text
-//! if let Some(operation) = buffer.delta(4, "o world", 5) {
+//! let text = buffer.content(); // any string can be used as operation factory
+//! buffer.send(text.ins("hello", 0))?; // insert some text
+//! if let Some(operation) = text.diff(4, "o world", 5) {
 //!   buffer.send(operation)?; // replace with precision, if valid
 //! }
 //! assert_eq!(buffer.content(), "hello world");
