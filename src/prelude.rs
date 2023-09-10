@@ -8,10 +8,10 @@ pub use crate::{
 	
 	Client as CodempClient,
 	api::Controller as CodempController,
+	api::OperationFactory as CodempOperationFactory,
 	cursor::Controller as CodempCursorController,
 	buffer::Controller as CodempBufferController,
 
-	buffer::OperationFactory as CodempOperationFactory,
 	ot::OperationSeq as CodempOperationSeq,
 	buffer::TextChange as CodempTextChange,
 

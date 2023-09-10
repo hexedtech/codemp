@@ -11,7 +11,8 @@ use crate::{
 	proto::{
 		buffer_client::BufferClient, cursor_client::CursorClient, UserIdentity, BufferPayload,
 	},
-	Error, api::ControllerWorker, buffer::{controller::BufferController, worker::BufferControllerWorker},
+	Error, api::controller::ControllerWorker,
+	buffer::{controller::BufferController, worker::BufferControllerWorker},
 };
 
 

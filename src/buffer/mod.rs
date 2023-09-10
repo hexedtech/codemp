@@ -13,8 +13,6 @@ pub(crate) mod worker;
 /// buffer controller implementation
 pub mod controller;
 
-/// operation factory, with helper functions to produce opseqs
-pub mod factory;
 
 pub use factory::OperationFactory;
 pub use controller::BufferController as Controller;

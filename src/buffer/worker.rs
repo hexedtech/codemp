@@ -9,11 +9,11 @@ use tonic::{async_trait, Streaming};
 use crate::errors::IgnorableError;
 use crate::proto::{OperationRequest, RawOp};
 use crate::proto::buffer_client::BufferClient;
-use crate::api::ControllerWorker;
+use crate::api::controller::ControllerWorker;
+use crate::api::factory::{leading_noop, tailing_noop};
 
 use super::TextChange;
 use super::controller::BufferController;
-use super::factory::{leading_noop, tailing_noop};
 
 
 pub(crate) struct BufferControllerWorker {
