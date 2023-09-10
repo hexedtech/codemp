@@ -37,3 +37,13 @@ impl CursorPosition {
 		self.end.clone().unwrap_or((0, 0).into())
 	}
 }
+
+impl PartialOrd for RowCol {
+	fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+		match self.row.partial_cmp(&other.row) {
+			Some(core::cmp::Ordering::Equal) => {}
+			ord => return ord,
+		}
+		self.col.partial_cmp(&other.col)
+	}
+}

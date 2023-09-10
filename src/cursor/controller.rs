@@ -50,7 +50,11 @@ impl Controller<CursorEvent> for CursorController {
 	type Input = CursorPosition;
 
 	/// enqueue a cursor event to be broadcast to current workspace
-	fn send(&self, cursor: CursorPosition) -> Result<(), Error> {
+	/// will automatically invert cursor start/end if they are inverted
+	fn send(&self, mut cursor: CursorPosition) -> Result<(), Error> {
+		if cursor.start() < cursor.end() {
+			std::mem::swap(&mut cursor.start, &mut cursor.end);
+		}
 		Ok(self.op.send(CursorEvent {
 			user: self.uid.clone(),
 			position: Some(cursor),
