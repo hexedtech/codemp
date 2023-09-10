@@ -24,7 +24,10 @@
 //! To generate Operation Sequences use helper methods from module [api::factory] (trait [api::OperationFactory]).
 //!
 //! ## features
+//! * `ot`    : include the underlying operational transform library (default enabled)
+//! * `api`   : include traits for core interfaces under [api] (default enabled)
 //! * `proto` : include GRCP protocol definitions under [proto] (default enabled)
+//! * `client`: include the local [client] implementation (default enabled)
 //! * `global`: provide a lazy_static global INSTANCE in [instance::global]
 //! * `sync`  : wraps the [instance::a_sync::Instance] holder into a sync variant: [instance::sync::Instance]
 //! 
