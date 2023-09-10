@@ -2,17 +2,13 @@
 //! 
 //! a controller implementation for buffer actions
 
-use std::sync::Arc;
-use std::sync::atomic::{AtomicU64, Ordering};
 
 use operational_transform::OperationSeq;
-use tokio::sync::broadcast::error::TryRecvError;
-use tokio::sync::{watch, mpsc, broadcast, Mutex};
+use tokio::sync::{watch, mpsc, Mutex, oneshot};
 use tonic::async_trait;
 
 use crate::errors::IgnorableError;
 use crate::{api::Controller, Error};
-use crate::buffer::factory::OperationFactory;
 
 use super::TextChange;
 
@@ -36,38 +32,32 @@ use super::TextChange;
 pub struct BufferController {
 	content: watch::Receiver<String>,
 	operations: mpsc::UnboundedSender<OperationSeq>,
-	last_op: Mutex<watch::Receiver<String>>,
-	stream: Mutex<broadcast::Receiver<TextChange>>,
+	last_op: Mutex<watch::Receiver<()>>,
+	stream: mpsc::UnboundedSender<oneshot::Sender<Option<TextChange>>>,
 	stop: mpsc::UnboundedSender<()>,
-	operation_tick: Arc<AtomicU64>,
 }
 
 impl BufferController {
 	pub(crate) fn new(
 		content: watch::Receiver<String>,
 		operations: mpsc::UnboundedSender<OperationSeq>,
-		stream: Mutex<broadcast::Receiver<TextChange>>,
+		stream: mpsc::UnboundedSender<oneshot::Sender<Option<TextChange>>>,
 		stop: mpsc::UnboundedSender<()>,
-		operation_tick: Arc<AtomicU64>,
+		last_op: Mutex<watch::Receiver<()>>,
 	) -> Self {
 		BufferController {
-			last_op: Mutex::new(content.clone()),
-			content, operations, stream, stop,
-			operation_tick,
+			last_op, content, operations, stream, stop,
 		}
+	}
+
+	pub fn content(&self) -> String {
+		self.content.borrow().clone()
 	}
 }
 
 impl Drop for BufferController {
 	fn drop(&mut self) {
 		self.stop.send(()).unwrap_or_warn("could not send stop message to worker");
-	}
-}
-
-#[async_trait]
-impl OperationFactory for BufferController {
-	fn content(&self) -> String {
-		self.content.borrow().clone()
 	}
 }
 
@@ -80,28 +70,25 @@ impl Controller<TextChange> for BufferController {
 	}
 
 	fn try_recv(&self) -> Result<Option<TextChange>, Error> {
-		match self.stream.blocking_lock().try_recv() {
-			Ok(op) => Ok(Some(op)),
-			Err(TryRecvError::Empty) => Ok(None),
-			Err(TryRecvError::Closed) => Err(Error::Channel { send: false }),
-			Err(TryRecvError::Lagged(n)) => {
-				tracing::warn!("buffer channel lagged, skipping {} events", n);
-				Ok(self.try_recv()?)
-			},
-		}
+		let (tx, rx) = oneshot::channel();
+		self.stream.send(tx)?;
+		rx.blocking_recv()
+			.map_err(|_| Error::Channel { send: false })
 	}
 
-	/// receive an operation seq and transform it into a TextChange from buffer content
 	async fn recv(&self) -> Result<TextChange, Error> {
-		let op = self.stream.lock().await.recv().await?;
-		Ok(op)
+		self.poll().await?;
+		let (tx, rx) = oneshot::channel();
+		self.stream.send(tx)?;
+		Ok(
+			rx.await
+				.map_err(|_| Error::Channel { send: false })?
+				.expect("empty channel after polling")
+		)
 	}
 
 	/// enqueue an opseq for processing
 	fn send(&self, op: OperationSeq) -> Result<(), Error> {
-		let tick = self.operation_tick.load(Ordering::Acquire);
-		self.operations.send(op)?;
-		self.operation_tick.store(tick + 1, Ordering::Release);
-		Ok(())
+		Ok(self.operations.send(op)?)
 	}
 }
