@@ -6,13 +6,13 @@
 //!
 //! ## structure
 //! The main entrypoint is the [Instance] object, that maintains a connection and can 
-//! be used to join workspaces or attach to buffers. It contains the underlying [Client] and 
+//! be used to join workspaces or attach to buffers. It contains the underlying [client::Client] and 
 //! stores active controllers.
 //! 
-//! Some actions will return structs implementing the [Controller] trait. These can be polled 
-//! for new stream events ([Controller::poll]/[Controller::recv]), which will be returned in order. 
-//! Blocking and callback variants are also implemented. The [Controller] can also be used to send new 
-//! events to the server ([Controller::send]).
+//! Some actions will return structs implementing the [api::Controller] trait. These can be polled 
+//! for new stream events ([api::Controller::poll]/[api::Controller::recv]), which will be returned in order. 
+//! Blocking and callback variants are also implemented. The [api::Controller] can also be used to send new 
+//! events to the server ([api::Controller::send]).
 //!
 //! Each operation on a buffer is represented as an [ot::OperationSeq].
 //! A visualization about how OperationSeqs work is available
@@ -29,7 +29,7 @@
 //! * `sync`  : wraps the [instance::a_sync::Instance] holder into a sync variant: [instance::sync::Instance]
 //! 
 //! ## examples
-//! while the [Client] itself is the core structure implementing all methods, plugins will mostly
+//! while the [client::Client] itself is the core structure implementing all methods, plugins will mostly
 //! interact with [Instance] managers.
 //!
 //! ### async
