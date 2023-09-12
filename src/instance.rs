@@ -166,7 +166,7 @@ pub mod sync {
 		}
 	
 		/// return a reference to contained tokio runtime, to spawn tasks on
-		pub fn rt(&self) -> &Handle { &self.runtime.handle() }
+		pub fn rt(&self) -> &Handle { self.runtime.handle() }
 	
 		/// connect and store a client session, threadsafe and sync version of [crate::client::Client::new]
 		pub fn connect(&self, addr: &str) -> Result<(), Error> {

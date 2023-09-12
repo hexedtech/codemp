@@ -2,7 +2,7 @@
 //!
 //! a helper trait that any string container can implement, which generates opseqs
 //!
-//! an OperationFactory trait implementation is provided for String, but plugin developers 
+//! an OperationFactory trait implementation is provided for `String` and `Arc<str>`, but plugin developers 
 //! should implement their own operation factory interfacing directly with the editor 
 //! buffer when possible.
 
@@ -93,16 +93,6 @@ pub fn op_effective_range(op: &OperationSeq) -> Range<u64> {
 /// assert_eq!(factory, "from scratch");
 /// # Ok::<(), codemp::ot::OTError>(())
 /// ```
-///
-/// use [OperationFactory::canc] to remove characters at index, but backwards
-///
-/// ```rust
-/// # use codemp::api::OperationFactory;
-/// # let mut factory = String::from("from scratch");
-/// factory = factory.canc(12, 8).apply(&factory)?;
-/// assert_eq!(factory, "from");
-/// # Ok::<(), codemp::ot::OTError>(())
-/// ```
 pub trait OperationFactory {
 	/// the current content of the buffer
 	fn content(&self) -> String;
@@ -160,20 +150,16 @@ pub trait OperationFactory {
 		out.retain(len - (pos+count));
 		out
 	}
-
-	/// delete n characters backwards at given position
-	fn canc(&self, pos: u64, count: u64) -> OperationSeq {
-		let mut out = OperationSeq::default();
-		let len = self.content().len() as u64;
-		out.retain(pos - count);
-		out.delete(count);
-		out.retain(len - pos);
-		out
-	}
 }
 
 impl OperationFactory for String {
 	fn content(&self) -> String {
 		self.clone()
+	}
+}
+
+impl OperationFactory for std::sync::Arc<str> {
+	fn content(&self) -> String {
+		self.to_string()
 	}
 }
