@@ -4,7 +4,6 @@
 //! server
 
 use crate::Result;
-use std::sync::Arc;
 
 #[async_trait::async_trait]
 pub(crate) trait ControllerWorker<T : Sized + Send + Sync> {
@@ -61,35 +60,5 @@ pub trait Controller<T : Sized + Send + Sync> : Sized + Send + Sync {
 	/// sync variant of [Self::recv], blocking invoking thread
 	fn blocking_recv(&self, rt: &tokio::runtime::Handle) -> Result<T> {
 		rt.block_on(self.recv())
-	}
-
-	/// register a callback to be called for each received stream value
-	///
-	/// this will spawn a new task on given runtime invoking [Self::recv] in loop and calling given
-	/// callback for each received value. a stop channel should be provided, and first value sent
-	/// into it will stop the worker loop.
-	///
-	/// note: creating a callback handler will hold an Arc reference to the given controller,
-	/// preventing it from being dropped (and likely disconnecting). using the stop channel is
-	/// important for proper cleanup
-	fn callback<F>(
-		self: &Arc<Self>,
-		rt: &tokio::runtime::Handle,
-		mut stop: tokio::sync::mpsc::UnboundedReceiver<()>,
-		mut cb: F
-	) where
-		Self : 'static,
-		F : FnMut(T) + Sync + Send + 'static
-	{
-		let _self = self.clone();
-		rt.spawn(async move {
-			loop {
-				tokio::select! {
-					Ok(data) = _self.recv() => cb(data),
-					Some(()) = stop.recv() => break,
-					else => break,
-				}
-			}
-		});
 	}
 }
