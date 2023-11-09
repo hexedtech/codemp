@@ -3,8 +3,9 @@
 //! a controller implementation for buffer actions
 
 
-use operational_transform::OperationSeq;
-use tokio::sync::{watch, mpsc, Mutex, oneshot};
+use std::sync::Arc;
+
+use tokio::sync::{watch, mpsc};
 use tonic::async_trait;
 
 use crate::errors::IgnorableError;
@@ -28,67 +29,50 @@ use super::TextChange;
 /// Operation Sequences easily
 ///
 /// upon dropping this handle will stop the associated worker
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct BufferController {
 	content: watch::Receiver<String>,
-	operations: mpsc::UnboundedSender<OperationSeq>,
-	last_op: Mutex<watch::Receiver<()>>,
-	stream: mpsc::UnboundedSender<oneshot::Sender<Option<TextChange>>>,
-	stop: mpsc::UnboundedSender<()>,
+	operations: mpsc::UnboundedSender<TextChange>,
+	_stop: Arc<StopOnDrop>, // just exist
 }
 
 impl BufferController {
 	pub(crate) fn new(
 		content: watch::Receiver<String>,
-		operations: mpsc::UnboundedSender<OperationSeq>,
-		stream: mpsc::UnboundedSender<oneshot::Sender<Option<TextChange>>>,
+		operations: mpsc::UnboundedSender<TextChange>,
 		stop: mpsc::UnboundedSender<()>,
-		last_op: Mutex<watch::Receiver<()>>,
 	) -> Self {
-		BufferController {
-			last_op, content, operations, stream, stop,
-		}
-	}
-
-	pub fn content(&self) -> String {
-		self.content.borrow().clone()
+		BufferController { content, operations, _stop: Arc::new(StopOnDrop(stop)) }
 	}
 }
 
-impl Drop for BufferController {
+#[derive(Debug)]
+struct StopOnDrop(mpsc::UnboundedSender<()>);
+
+impl Drop for StopOnDrop {
 	fn drop(&mut self) {
-		self.stop.send(()).unwrap_or_warn("could not send stop message to worker");
+		self.0.send(()).unwrap_or_warn("could not send stop message to worker");
 	}
 }
 
 #[async_trait]
-impl Controller<TextChange> for BufferController {
-	type Input = OperationSeq;
+impl Controller<String> for BufferController {
+	type Input = TextChange;
 
 	async fn poll(&self) -> Result<(), Error> {
-		Ok(self.last_op.lock().await.changed().await?)
+		Ok(self.content.clone().changed().await?)
 	}
 
-	fn try_recv(&self) -> Result<Option<TextChange>, Error> {
-		let (tx, rx) = oneshot::channel();
-		self.stream.send(tx)?;
-		rx.blocking_recv()
-			.map_err(|_| Error::Channel { send: false })
+	fn try_recv(&self) -> Result<Option<String>, Error> {
+		Ok(Some(self.content.borrow().clone()))
 	}
 
-	async fn recv(&self) -> Result<TextChange, Error> {
-		self.poll().await?;
-		let (tx, rx) = oneshot::channel();
-		self.stream.send(tx)?;
-		Ok(
-			rx.await
-				.map_err(|_| Error::Channel { send: false })?
-				.expect("empty channel after polling")
-		)
+	async fn recv(&self) -> Result<String, Error> {
+		Ok(self.content.borrow().clone())
 	}
 
 	/// enqueue an opseq for processing
-	fn send(&self, op: OperationSeq) -> Result<(), Error> {
+	fn send(&self, op: TextChange) -> Result<(), Error> {
 		Ok(self.operations.send(op)?)
 	}
 }

@@ -11,10 +11,7 @@ pub use crate::{
 pub use	crate::ot::OperationSeq as CodempOperationSeq;
 
 #[cfg(feature = "api")]
-pub use crate::{
-	api::Controller as CodempController,
-	api::OperationFactory as CodempOperationFactory,
-};
+pub use crate::api::Controller as CodempController;
 	
 #[cfg(feature = "client")]
 pub use crate::{
