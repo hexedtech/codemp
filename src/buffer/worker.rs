@@ -1,3 +1,6 @@
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
+
 use similar::{TextDiff, ChangeTag};
 use tokio::sync::{watch, mpsc};
 use tonic::transport::Channel;
@@ -30,13 +33,16 @@ impl BufferControllerWorker {
 		let (txt_tx, txt_rx) = watch::channel(buffer.to_string());
 		let (op_tx, op_rx) = mpsc::unbounded_channel();
 		let (end_tx, end_rx) = mpsc::unbounded_channel();
+		let mut hasher = DefaultHasher::new();
+		uid.hash(&mut hasher);
+		let site_id = hasher.finish() as usize;
 		BufferControllerWorker {
 			uid,
 			content: txt_tx,
 			operations: op_rx,
 			receiver: txt_rx,
 			sender: op_tx,
-			buffer: Woot::new(42069), // TODO initialize with buffer!
+			buffer: Woot::new(site_id, buffer), // TODO initialize with buffer!
 			path: path.to_string(),
 			stop: end_rx,
 			stop_control: end_tx,
@@ -104,7 +110,7 @@ impl ControllerWorker<String> for BufferControllerWorker {
 
 						for op in ops {
 							match self.send_op(&mut tx, &op).await {
-								Ok(()) => self.buffer.enqueue(op),
+								Ok(()) => self.buffer.merge(op),
 								Err(e) => tracing::error!("server refused to broadcast {}: {}", op, e),
 							}
 						}
@@ -117,7 +123,7 @@ impl ControllerWorker<String> for BufferControllerWorker {
 					Ok(None) => break,
 					Ok(Some(change)) => {
 						let op : Op = serde_json::from_str(&change.opseq).unwrap();
-						self.buffer.enqueue(op);
+						self.buffer.merge(op);
 						self.content.send(self.buffer.view()).unwrap();
 					},
 				},
