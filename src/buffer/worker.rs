@@ -8,6 +8,7 @@ use tonic::{async_trait, Streaming};
 use woot::crdt::{Op, CRDT, TextEditor};
 use woot::woot::Woot;
 
+use crate::errors::IgnorableError;
 use crate::proto::{OperationRequest, RawOp};
 use crate::proto::buffer_client::BufferClient;
 use crate::api::controller::ControllerWorker;
@@ -29,8 +30,8 @@ pub(crate) struct BufferControllerWorker {
 }
 
 impl BufferControllerWorker {
-	pub fn new(uid: String, buffer: &str, path: &str) -> Self {
-		let (txt_tx, txt_rx) = watch::channel(buffer.to_string());
+	pub fn new(uid: String, path: &str) -> Self {
+		let (txt_tx, txt_rx) = watch::channel("".to_string());
 		let (op_tx, op_rx) = mpsc::unbounded_channel();
 		let (end_tx, end_rx) = mpsc::unbounded_channel();
 		let mut hasher = DefaultHasher::new();
@@ -42,7 +43,7 @@ impl BufferControllerWorker {
 			operations: op_rx,
 			receiver: txt_rx,
 			sender: op_tx,
-			buffer: Woot::new(site_id, buffer), // TODO initialize with buffer!
+			buffer: Woot::new(site_id, ""), // TODO initialize with buffer!
 			path: path.to_string(),
 			stop: end_rx,
 			stop_control: end_tx,
@@ -64,7 +65,7 @@ impl BufferControllerWorker {
 }
 
 #[async_trait]
-impl ControllerWorker<String> for BufferControllerWorker {
+impl ControllerWorker<TextChange> for BufferControllerWorker {
 	type Controller = BufferController;
 	type Tx = BufferClient<Channel>;
 	type Rx = Streaming<RawOp>;
@@ -90,29 +91,43 @@ impl ControllerWorker<String> for BufferControllerWorker {
 				res = self.operations.recv() => match res {
 					None => break,
 					Some(change) => {
-						let span = &self.buffer.view()[change.span.clone()];
-						let diff = TextDiff::from_chars(span, &change.content);
+						match self.buffer.view().get(change.span.clone()) {
+							None =>  tracing::error!("received illegal span from client"),
+							Some(span) => {
+								let diff = TextDiff::from_chars(span, &change.content);
 
-						let mut i = 0;
-						let mut ops = Vec::new();
-						for diff in diff.iter_all_changes() {
-							match diff.tag() {
-								ChangeTag::Equal => i += 1,
-								ChangeTag::Delete => ops.push(self.buffer.delete(change.span.start + i).unwrap()),
-								ChangeTag::Insert => {
-									for c in diff.value().chars() {
-										ops.push(self.buffer.insert(change.span.start + i, c).unwrap());
-										i += 1;
+								let mut i = 0;
+								let mut ops = Vec::new();
+								for diff in diff.iter_all_changes() {
+									match diff.tag() {
+										ChangeTag::Equal => i += 1,
+										ChangeTag::Delete => match self.buffer.delete(change.span.start + i) {
+											Ok(op) => ops.push(op),
+											Err(e) => tracing::error!("could not apply deletion: {}", e),
+										},
+										ChangeTag::Insert => {
+											for c in diff.value().chars() {
+												match self.buffer.insert(change.span.start + i, c) {
+													Ok(op) => {
+														ops.push(op);
+														i += 1;
+													},
+													Err(e) => tracing::error!("could not apply insertion: {}", e),
+												}
+											}
+										},
 									}
-								},
-							}
-						}
+								}
 
-						for op in ops {
-							match self.send_op(&mut tx, &op).await {
-								Ok(()) => self.buffer.merge(op),
-								Err(e) => tracing::error!("server refused to broadcast {}: {}", op, e),
-							}
+								for op in ops {
+									match self.send_op(&mut tx, &op).await {
+										Err(e) => tracing::error!("server refused to broadcast {}: {}", op, e),
+										Ok(()) => {
+											self.content.send(self.buffer.view()).unwrap_or_warn("could not send buffer update");
+										},
+									}
+								}
+							},
 						}
 					}
 				},
@@ -121,10 +136,12 @@ impl ControllerWorker<String> for BufferControllerWorker {
 				res = rx.message() => match res {
 					Err(_e) => break,
 					Ok(None) => break,
-					Ok(Some(change)) => {
-						let op : Op = serde_json::from_str(&change.opseq).unwrap();
-						self.buffer.merge(op);
-						self.content.send(self.buffer.view()).unwrap();
+					Ok(Some(change)) => match serde_json::from_str::<Op>(&change.opseq) {
+						Ok(op) => {
+							self.buffer.merge(op);
+							self.content.send(self.buffer.view()).unwrap_or_warn("could not send buffer update");
+						},
+						Err(e) => tracing::error!("could not deserialize operation from server: {}", e),
 					},
 				},
 			}

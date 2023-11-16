@@ -132,11 +132,9 @@ impl Client {
 				path: path.to_string(), user: self.id.clone(), content: None
 			};
 
-			let content = client.sync(req.clone()).await?.into_inner().content;
-
 			let stream = client.attach(req).await?.into_inner();
 
-			let controller = BufferControllerWorker::new(self.id.clone(), &content, path);
+			let controller = BufferControllerWorker::new(self.id.clone(), path);
 			let handler = Arc::new(controller.subscribe());
 
 			let _path = path.to_string();

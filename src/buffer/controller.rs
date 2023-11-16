@@ -5,7 +5,7 @@
 
 use std::sync::Arc;
 
-use tokio::sync::{watch, mpsc};
+use tokio::sync::{watch, mpsc, Mutex, RwLock, TryLockError};
 use tonic::async_trait;
 
 use crate::errors::IgnorableError;
@@ -32,6 +32,7 @@ use super::TextChange;
 #[derive(Debug, Clone)]
 pub struct BufferController {
 	content: watch::Receiver<String>,
+	seen: Arc<RwLock<String>>,
 	operations: mpsc::UnboundedSender<TextChange>,
 	_stop: Arc<StopOnDrop>, // just exist
 }
@@ -42,7 +43,11 @@ impl BufferController {
 		operations: mpsc::UnboundedSender<TextChange>,
 		stop: mpsc::UnboundedSender<()>,
 	) -> Self {
-		BufferController { content, operations, _stop: Arc::new(StopOnDrop(stop)) }
+		BufferController {
+			content, operations,
+			_stop: Arc::new(StopOnDrop(stop)),
+			seen: Arc::new(RwLock::new("".into())),
+		}
 	}
 }
 
@@ -56,19 +61,56 @@ impl Drop for StopOnDrop {
 }
 
 #[async_trait]
-impl Controller<String> for BufferController {
+impl Controller<TextChange> for BufferController {
 	type Input = TextChange;
 
 	async fn poll(&self) -> Result<(), Error> {
-		Ok(self.content.clone().changed().await?)
+		let mut poller = self.content.clone();
+		loop {
+			poller.changed().await?;
+			let seen = self.seen.read().await.clone();
+			if *poller.borrow() != seen {
+				break
+			}
+		}
+		Ok(())
 	}
 
-	fn try_recv(&self) -> Result<Option<String>, Error> {
-		Ok(Some(self.content.borrow().clone()))
+	fn try_recv(&self) -> Result<Option<TextChange>, Error> {
+		let cur = match self.seen.try_read() {
+			Err(e) => {
+				tracing::error!("try_recv invoked while being mutated: {}", e);
+				return Ok(None);
+			},
+			Ok(x) => x.clone(),
+		};
+		if *self.content.borrow() != cur {
+			match self.seen.try_write() {
+				Err(e) => {
+					tracing::error!("try_recv mutating while being mutated: {}", e);
+					return Ok(None);
+				},
+				Ok(mut w) => {
+					*w = self.content.borrow().clone();
+					// TODO it's not the whole buffer that changed
+					return Ok(Some(TextChange {
+						span: 0..cur.len(),
+						content: self.content.borrow().clone(),
+						after: "".to_string(),
+					}));
+				}
+
+			}
+		}
+		return Ok(None);
 	}
 
-	async fn recv(&self) -> Result<String, Error> {
-		Ok(self.content.borrow().clone())
+	async fn recv(&self) -> Result<TextChange, Error> {
+		self.poll().await?;
+		match self.try_recv()? {
+			Some(x) => Ok(x),
+			None => Err(crate::Error::Filler { message: "wtfff".into() }),
+		}
 	}
 
 	/// enqueue an opseq for processing
