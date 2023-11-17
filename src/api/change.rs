@@ -1,20 +1,23 @@
 //! # TextChange
-//! this represent a range in the previous state of the string and a new content which should be
-//! replaced to it, allowing to represent any combination of deletions, insertions or replacements
 //!
-//! bulk and widespread operations will result in a TextChange effectively sending the whole new
-//! buffer, but small changes are efficient and easy to create or apply 
-//!
-//! ### examples
-//! to insert 'a' after 4th character we should send a
-//!     `TextChange { span: 4..4, content: "a".into() }`
-//!
-//! to delete a the fourth character we should send a
-//!     `TextChange { span: 3..4, content: "".into() }`
-//!
+//! an editor-friendly representation of a text change in a buffer
+//! to easily interface with codemp from various editors
 
 /// an editor-friendly representation of a text change in a buffer
-///  span refers to previous text content
+///
+/// this represent a range in the previous state of the string and a new content which should be
+/// replaced to it, allowing to represent any combination of deletions, insertions or replacements
+///
+/// bulk and widespread operations will result in a TextChange effectively sending the whole new
+/// buffer, but small changes are efficient and easy to create or apply 
+///
+/// ### examples
+/// to insert 'a' after 4th character we should send a
+///     `TextChange { span: 4..4, content: "a".into() }`
+///
+/// to delete a the fourth character we should send a
+///     `TextChange { span: 3..4, content: "".into() }`
+///
 #[derive(Clone, Debug, Default)]
 pub struct TextChange {
 	/// range of text change, as char indexes in buffer previous state
