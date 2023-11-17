@@ -43,7 +43,7 @@ impl BufferControllerWorker {
 			operations: op_rx,
 			receiver: txt_rx,
 			sender: op_tx,
-			buffer: Woot::new(site_id, ""), // TODO initialize with buffer!
+			buffer: Woot::new(site_id % (2<<10), ""), // TODO remove the modulo, only for debugging!
 			path: path.to_string(),
 			stop: end_rx,
 			stop_control: end_tx,
@@ -123,7 +123,7 @@ impl ControllerWorker<TextChange> for BufferControllerWorker {
 									match self.send_op(&mut tx, &op).await {
 										Err(e) => tracing::error!("server refused to broadcast {}: {}", op, e),
 										Ok(()) => {
-											self.content.send(self.buffer.view()).unwrap_or_warn("could not send buffer update");
+											// self.content.send(self.buffer.view()).unwrap_or_warn("could not send buffer update");
 										},
 									}
 								}

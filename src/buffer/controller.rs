@@ -5,7 +5,7 @@
 
 use std::sync::Arc;
 
-use tokio::sync::{watch, mpsc, Mutex, RwLock, TryLockError};
+use tokio::sync::{watch, mpsc, RwLock};
 use tonic::async_trait;
 
 use crate::errors::IgnorableError;
