@@ -24,7 +24,7 @@ pub(crate) struct BufferControllerWorker {
 	receiver: watch::Receiver<String>,
 	sender: mpsc::UnboundedSender<TextChange>,
 	buffer: Woot,
-	path: String,
+	name: String,
 	stop: mpsc::UnboundedReceiver<()>,
 	stop_control: mpsc::UnboundedSender<()>,
 }
@@ -44,7 +44,7 @@ impl BufferControllerWorker {
 			receiver: txt_rx,
 			sender: op_tx,
 			buffer: Woot::new(site_id % (2<<10), ""), // TODO remove the modulo, only for debugging!
-			path: path.to_string(),
+			name: path.to_string(),
 			stop: end_rx,
 			stop_control: end_tx,
 		}
@@ -53,7 +53,7 @@ impl BufferControllerWorker {
 	async fn send_op(&self, tx: &mut BufferClient<Channel>, outbound: &Op) -> crate::Result<()> {
 		let opseq = serde_json::to_string(outbound).expect("could not serialize opseq");
 		let req = OperationRequest {
-			path: self.path.clone(),
+			path: self.name.clone(),
 			hash: format!("{:x}", md5::compute(self.buffer.view())),
 			op: Some(RawOp {
 				opseq, user: self.uid.clone(),
@@ -72,6 +72,7 @@ impl ControllerWorker<TextChange> for BufferControllerWorker {
 
 	fn subscribe(&self) -> BufferController {
 		BufferController::new(
+			self.name.clone(),
 			self.receiver.clone(),
 			self.sender.clone(),
 			self.stop_control.clone(),

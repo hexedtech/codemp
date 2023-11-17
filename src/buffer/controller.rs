@@ -28,6 +28,8 @@ use crate::api::TextChange;
 /// upon dropping this handle will stop the associated worker
 #[derive(Debug, Clone)]
 pub struct BufferController {
+	/// unique identifier of buffer
+	pub name: String,
 	content: watch::Receiver<String>,
 	seen: Arc<RwLock<String>>,
 	operations: mpsc::UnboundedSender<TextChange>,
@@ -36,11 +38,13 @@ pub struct BufferController {
 
 impl BufferController {
 	pub(crate) fn new(
+		name: String,
 		content: watch::Receiver<String>,
 		operations: mpsc::UnboundedSender<TextChange>,
 		stop: mpsc::UnboundedSender<()>,
 	) -> Self {
 		BufferController {
+			name,
 			content, operations,
 			_stop: Arc::new(StopOnDrop(stop)),
 			seen: Arc::new(RwLock::new("".into())),
