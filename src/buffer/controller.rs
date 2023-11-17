@@ -78,23 +78,20 @@ impl Controller<TextChange> for BufferController {
 	}
 
 	fn try_recv(&self) -> crate::Result<Option<TextChange>> {
-		match self.seen.try_read() {
-			Err(_) => Err(crate::Error::Deadlocked),
-			Ok(x) => {
-				if *self.content.borrow() != *x {
-					match self.seen.try_write() {
-						Err(_) => Err(crate::Error::Deadlocked),
-						Ok(mut w) => {
-							let change = TextChange::from_diff(&w, &self.content.borrow());
-							*w = self.content.borrow().clone();
-							Ok(Some(change))
-						}
-					}
-				} else {
-					Ok(None)
-				}
-			}
+		let seen = match self.seen.try_read() {
+			Err(_) => return Err(crate::Error::Deadlocked),
+			Ok(x) => x.clone(),
+		};
+		let actual = self.content.borrow().clone();
+		if seen == actual {
+			return Ok(None);
 		}
+		let change = TextChange::from_diff(&seen, &actual);
+		match self.seen.try_write() {
+			Err(_) => return Err(crate::Error::Deadlocked),
+			Ok(mut w) => *w = actual,
+		};
+		Ok(Some(change))
 	}
 
 	async fn recv(&self) -> crate::Result<TextChange> {
