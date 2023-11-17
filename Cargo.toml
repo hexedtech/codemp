@@ -25,7 +25,6 @@ serde_json = { version = "1", optional = true }
 tokio-stream = { version = "0.1", optional = true }
 # global
 lazy_static = { version = "1.4", optional = true }
-futures = "0.3"
 
 [build-dependencies]
 tonic-build = "0.9"
