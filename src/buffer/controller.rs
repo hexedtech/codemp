@@ -9,7 +9,7 @@ use tokio::sync::{watch, mpsc, RwLock};
 use tonic::async_trait;
 
 use crate::errors::IgnorableError;
-use crate::{api::Controller, Error};
+use crate::api::Controller;
 
 use crate::api::TextChange;
 
@@ -61,7 +61,7 @@ impl Drop for StopOnDrop {
 impl Controller<TextChange> for BufferController {
 	type Input = TextChange;
 
-	async fn poll(&self) -> Result<(), Error> {
+	async fn poll(&self) -> crate::Result<()> {
 		let mut poller = self.content.clone();
 		loop {
 			poller.changed().await?;
@@ -73,45 +73,37 @@ impl Controller<TextChange> for BufferController {
 		Ok(())
 	}
 
-	fn try_recv(&self) -> Result<Option<TextChange>, Error> {
-		let cur = match self.seen.try_read() {
-			Err(e) => {
-				tracing::error!("try_recv invoked while being mutated: {}", e);
-				return Ok(None);
-			},
-			Ok(x) => x.clone(),
-		};
-		if *self.content.borrow() != cur {
-			match self.seen.try_write() {
-				Err(e) => {
-					tracing::error!("try_recv mutating while being mutated: {}", e);
-					return Ok(None);
-				},
-				Ok(mut w) => {
-					*w = self.content.borrow().clone();
-					// TODO it's not the whole buffer that changed
-					return Ok(Some(TextChange {
-						span: 0..cur.len(),
-						content: self.content.borrow().clone(),
-						after: "".to_string(),
-					}));
+	fn try_recv(&self) -> crate::Result<Option<TextChange>> {
+		match self.seen.try_read() {
+			Err(_) => Err(crate::Error::Deadlocked),
+			Ok(x) => {
+				if *self.content.borrow() != *x {
+					match self.seen.try_write() {
+						Err(_) => Err(crate::Error::Deadlocked),
+						Ok(mut w) => {
+							let change = TextChange::from_diff(&w, &self.content.borrow());
+							*w = self.content.borrow().clone();
+							Ok(Some(change))
+						}
+					}
+				} else {
+					Ok(None)
 				}
-
 			}
 		}
-		return Ok(None);
 	}
 
-	async fn recv(&self) -> Result<TextChange, Error> {
+	async fn recv(&self) -> crate::Result<TextChange> {
 		self.poll().await?;
-		match self.try_recv()? {
-			Some(x) => Ok(x),
-			None => Err(crate::Error::Filler { message: "wtfff".into() }),
-		}
+		let cur = self.seen.read().await.clone();
+		let change = TextChange::from_diff(&cur, &self.content.borrow());
+		let mut seen = self.seen.write().await;
+		*seen = self.content.borrow().clone();
+		Ok(change)
 	}
 
 	/// enqueue an opseq for processing
-	fn send(&self, op: TextChange) -> Result<(), Error> {
+	fn send(&self, op: TextChange) -> crate::Result<()> {
 		Ok(self.operations.send(op)?)
 	}
 }
