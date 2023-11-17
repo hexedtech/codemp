@@ -11,14 +11,16 @@ pub use crate::{
 pub use	crate::ot::OperationSeq as CodempOperationSeq;
 
 #[cfg(feature = "api")]
-pub use crate::api::Controller as CodempController;
+pub use crate::api::{
+	Controller as CodempController,
+	TextChange as CodempTextChange,
+};
 	
 #[cfg(feature = "client")]
 pub use crate::{
 	client::Client as CodempClient,
 	cursor::Controller as CodempCursorController,
 	buffer::Controller as CodempBufferController,
-	buffer::TextChange as CodempTextChange,
 	Instance as CodempInstance,
 };
 

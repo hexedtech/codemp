@@ -12,18 +12,3 @@ pub mod controller;
 pub(crate) mod worker;
 
 pub use controller::BufferController as Controller;
-
-
-/// an editor-friendly representation of a text change in a buffer
-///
-/// TODO move in proto
-#[derive(Clone, Debug, Default)]
-pub struct TextChange {
-	/// range of text change, as byte indexes in buffer
-	pub span: std::ops::Range<usize>,
-	/// content of text change, as string
-	pub content: String,
-	/// content after this text change
-	/// note that this field will probably be dropped, don't rely on it
-	pub after: String
-}

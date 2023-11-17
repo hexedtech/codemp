@@ -7,4 +7,8 @@
 /// a generic async provider for bidirectional communication
 pub mod controller;
 
+/// a generic representation of a text change
+pub mod change;
+
 pub use controller::Controller;
+pub use change::TextChange;

@@ -11,7 +11,7 @@ use tonic::async_trait;
 use crate::errors::IgnorableError;
 use crate::{api::Controller, Error};
 
-use super::TextChange;
+use crate::api::TextChange;
 
 /// the buffer controller implementation
 ///
