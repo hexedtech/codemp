@@ -14,17 +14,14 @@
 //! Blocking and callback variants are also implemented. The [api::Controller] can also be used to send new 
 //! events to the server ([api::Controller::send]).
 //!
-//! Each operation on a buffer is represented as an [ot::OperationSeq].
-//! A visualization about how OperationSeqs work is available
-//! [here](http://operational-transformation.github.io/index.html),
-//! but to use this library it's only sufficient to know that they can only 
-//! be applied on buffers of some length and are transformable to be able to be 
-//! applied in a different order while maintaining the same result.
-//!
-//! To generate Operation Sequences use helper methods from module [api::factory] (trait [api::OperationFactory]).
+//! Each operation on a buffer is represented as an [woot::crdt::Op]. The underlying buffer is a
+//! [WOOT CRDT](https://inria.hal.science/file/index/docid/71240/filename/RR-5580.pdf),
+//! but to use this library it's only sufficient to know that all WOOT buffers that have received
+//! the same operations converge to the same state, and that operations might not get integrated
+//! immediately but instead deferred until compatible.
 //!
 //! ## features
-//! * `ot`    : include the underlying operational transform library (default enabled)
+//! * `woot`  : include the underlying CRDT library and re-exports it (default enabled)
 //! * `api`   : include traits for core interfaces under [api] (default enabled)
 //! * `proto` : include GRCP protocol definitions under [proto] (default enabled)
 //! * `client`: include the local [client] implementation (default enabled)
@@ -40,7 +37,7 @@
 //! [instance::a_sync::Instance]
 //!
 //! ```rust,no_run
-//! use codemp::api::{Controller, OperationFactory};
+//! use codemp::api::{Controller, TextChange};
 //! # use codemp::instance::a_sync::Instance;
 //!
 //! # async fn async_example() -> codemp::Result<()> {
@@ -62,12 +59,9 @@
 //! // attach to a new buffer and execute operations on it
 //! session.create("test.txt", None).await?;   // create new buffer
 //! let buffer = session.attach("test.txt").await?; // attach to it
-//! let text = buffer.content(); // any string can be used as operation factory
-//! buffer.send(text.ins("hello", 0))?; // insert some text
-//! if let Some(operation) = text.diff(4, "o world", 5) {
-//!   buffer.send(operation)?; // replace with precision, if valid
-//! }
-//! assert_eq!(buffer.content(), "hello world");
+//! let local_change = TextChange { span: 0..0, content: "hello!".into() };
+//! buffer.send(local_change)?; // insert some text
+//! let remote_change = buffer.recv().await?;
 //! #
 //! # Ok(())
 //! # }
@@ -84,16 +78,6 @@
 //! # fn sync_example() -> codemp::Result<()> {
 //! let session = Instance::default();   // instantiate sync variant
 //! session.connect("http://alemi.dev:50051")?;   // connect to server
-//!
-//! // join remote workspace and handle cursor events with a callback
-//! let cursor = session.join("some_workspace")?;   // join workspace
-//! let (stop, stop_rx) = tokio::sync::mpsc::unbounded_channel();   // create stop channel
-//! Arc::new(cursor).callback(   // register callback
-//!   session.rt(), stop_rx,   // pass instance runtime and stop channel receiver
-//!   | cursor_event | {  
-//!     println!("received cursor event: {:?}", cursor_event);
-//!   }
-//! );
 //!
 //! // attach to buffer and blockingly receive events
 //! let buffer = session.attach("test.txt")?; // attach to buffer, must already exist

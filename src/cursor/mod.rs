@@ -26,13 +26,20 @@ impl From::<(i32, i32)> for RowCol {
 	}
 }
 
+impl RowCol {
+	/// create a RowCol and wrap into an Option, to help build protocol packets
+	pub fn wrap(row: i32, col: i32) -> Option<RowCol> {
+		Some(RowCol { row, col })
+	}
+}
+
 impl CursorPosition {
-	/// extract start position, defaulting to (0,0)
+	/// extract start position, defaulting to (0,0), to help build protocol packets
 	pub fn start(&self) -> RowCol {
 		self.start.clone().unwrap_or((0, 0).into())
 	}
 
-	/// extract end position, defaulting to (0,0)
+	/// extract end position, defaulting to (0,0), to help build protocol packets
 	pub fn end(&self) -> RowCol {
 		self.end.clone().unwrap_or((0, 0).into())
 	}

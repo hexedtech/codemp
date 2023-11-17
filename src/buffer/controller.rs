@@ -25,9 +25,6 @@ use crate::api::TextChange;
 /// queues, transforming outbound delayed ops and applying remote changes 
 /// to the local buffer
 ///
-/// this controller implements [crate::api::OperationFactory], allowing to produce
-/// Operation Sequences easily
-///
 /// upon dropping this handle will stop the associated worker
 #[derive(Debug, Clone)]
 pub struct BufferController {

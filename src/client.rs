@@ -120,11 +120,8 @@ impl Client {
 
 	/// attach to a buffer, starting a buffer controller and returning a new reference to it
 	/// 
-	/// to interact with such buffer [crate::api::Controller::send] operation sequences 
-	/// or [crate::api::Controller::recv] for text events using its [crate::buffer::Controller].
-	/// to generate operation sequences use the [crate::api::OperationFactory]
-	/// methods, which are implemented on [crate::buffer::Controller], such as
-	/// [crate::api::OperationFactory::diff].
+	/// to interact with such buffer use [crate::api::Controller::send] or 
+	/// [crate::api::Controller::recv] to exchange [crate::api::TextChange]
 	pub async fn attach(&mut self, path: &str) -> Result<Arc<BufferController>, Error> {
 		if let Some(workspace) = &mut self.workspace {
 			let mut client = self.client.buffer.clone();
