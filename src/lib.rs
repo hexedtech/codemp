@@ -2,7 +2,7 @@
 //!
 //! ![just a nice pic](https://alemi.dev/img/about-slice-1.png)
 //!
-//! This is the core library of the codemp project.
+//! > the core library of the codemp project, driving all editor plugins
 //!
 //! ## structure
 //! The main entrypoint is the [Instance] object, that maintains a connection and can 
