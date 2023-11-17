@@ -3,10 +3,13 @@
 //! codemp client manager, containing grpc services
 
 use std::{sync::Arc, collections::BTreeMap};
+use futures::stream::FuturesUnordered;
 
+use tokio_stream::StreamExt;
 use tonic::transport::Channel;
 
 use crate::{
+	api::Controller,
 	cursor::{worker::CursorControllerWorker, controller::CursorController},
 	proto::{
 		buffer_client::BufferClient, cursor_client::CursorClient, UserIdentity, BufferPayload,
@@ -76,7 +79,7 @@ impl Client {
 	/// 
 	/// to interact with such workspace [crate::api::Controller::send] cursor events or
 	/// [crate::api::Controller::recv] for events on the associated [crate::cursor::Controller].
-	pub async fn join(&mut self, _session: &str) -> Result<Arc<CursorController>, Error> {
+	pub async fn join(&mut self, _session: &str) -> crate::Result<Arc<CursorController>> {
 		// TODO there is no real workspace handling in codemp server so it behaves like one big global
 		//  session. I'm still creating this to start laying out the proper use flow
 		let stream = self.client.cursor.listen(UserIdentity { id: "".into() }).await?.into_inner();
@@ -103,7 +106,7 @@ impl Client {
 	}
 
 	/// create a new buffer in current workspace, with optional given content
-	pub async fn create(&mut self, path: &str, content: Option<&str>) -> Result<(), Error> {
+	pub async fn create(&mut self, path: &str, content: Option<&str>) -> crate::Result<()> {
 		if let Some(_workspace) = &self.workspace {
 			self.client.buffer
 				.create(BufferPayload {
@@ -122,7 +125,7 @@ impl Client {
 	/// 
 	/// to interact with such buffer use [crate::api::Controller::send] or 
 	/// [crate::api::Controller::recv] to exchange [crate::api::TextChange]
-	pub async fn attach(&mut self, path: &str) -> Result<Arc<BufferController>, Error> {
+	pub async fn attach(&mut self, path: &str) -> crate::Result<Arc<BufferController>> {
 		if let Some(workspace) = &mut self.workspace {
 			let mut client = self.client.buffer.clone();
 			let req = BufferPayload {
@@ -146,6 +149,26 @@ impl Client {
 			Ok(handler)
 		} else {
 			Err(Error::InvalidState { msg: "join a workspace first".into() })
+		}
+	}
+
+
+	pub async fn select_buffer(&self) -> crate::Result<String> {
+		let mut futures = FuturesUnordered::new();
+		match &self.workspace {
+			None => Err(Error::InvalidState { msg: "join workspace first".into() }),
+			Some(workspace) => {
+				for (id, buffer) in workspace.buffers.iter() {
+					futures.push(async move {
+						buffer.poll().await?;
+						Ok::<&String, Error>(id)
+					})
+				}
+				match futures.next().await {
+					None => Err(Error::Deadlocked), // TODO shouldn't really happen???
+					Some(x) => Ok(x?.clone()),
+				}
+			}
 		}
 	}
 }

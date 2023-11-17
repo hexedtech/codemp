@@ -46,13 +46,13 @@ pub mod a_sync {
 	
 	impl Instance {
 		/// connect to remote address instantiating a new client [crate::client::Client::new]
-		pub async fn connect(&self, addr: &str) -> Result<(), Error> {
+		pub async fn connect(&self, addr: &str) -> crate::Result<()> {
 			*self.client.lock().await = Some(Client::new(addr).await?);
 			Ok(())
 		}
 	
 		/// threadsafe version of [crate::client::Client::join]
-		pub async fn join(&self, session: &str) -> Result<Arc<CursorController>, Error> {
+		pub async fn join(&self, session: &str) -> crate::Result<Arc<CursorController>> {
 			self.client
 				.lock().await
 				.as_mut()
@@ -62,7 +62,7 @@ pub mod a_sync {
 		}
 	
 		/// threadsafe version of [crate::client::Client::create]
-		pub async fn create(&self, path: &str, content: Option<&str>) -> Result<(), Error> {
+		pub async fn create(&self, path: &str, content: Option<&str>) -> crate::Result<()> {
 			self.client
 				.lock().await
 				.as_mut()
@@ -72,7 +72,7 @@ pub mod a_sync {
 		}
 	
 		/// threadsafe version of [crate::client::Client::attach]
-		pub async fn attach(&self, path: &str) -> Result<Arc<BufferController>, Error> {
+		pub async fn attach(&self, path: &str) -> crate::Result<Arc<BufferController>> {
 			self.client
 				.lock().await
 				.as_mut()
@@ -82,7 +82,7 @@ pub mod a_sync {
 		}
 	
 		/// threadsafe version of [crate::client::Client::get_cursor]
-		pub async fn get_cursor(&self) -> Result<Arc<CursorController>, Error> {
+		pub async fn get_cursor(&self) -> crate::Result<Arc<CursorController>> {
 			self.client
 				.lock().await
 				.as_mut()
@@ -92,7 +92,7 @@ pub mod a_sync {
 		}
 	
 		/// threadsafe version of [crate::client::Client::get_buffer]
-		pub async fn get_buffer(&self, path: &str) -> Result<Arc<BufferController>, Error> {
+		pub async fn get_buffer(&self, path: &str) -> crate::Result<Arc<BufferController>> {
 			self.client
 				.lock().await
 				.as_mut()
@@ -102,7 +102,7 @@ pub mod a_sync {
 		}
 	
 		/// threadsafe version of [crate::client::Client::leave_workspace]
-		pub async fn leave_workspace(&self) -> Result<(), Error> {
+		pub async fn leave_workspace(&self) -> crate::Result<()> {
 			self.client
 				.lock().await
 				.as_mut()
@@ -112,12 +112,22 @@ pub mod a_sync {
 		}
 	
 		/// threadsafe version of [crate::client::Client::disconnect_buffer]
-		pub async fn disconnect_buffer(&self, path: &str) -> Result<bool, Error> {
+		pub async fn disconnect_buffer(&self, path: &str) -> crate::Result<bool> {
 			let res = self.client
 				.lock().await
 				.as_mut()
 				.ok_or(Error::InvalidState { msg: "connect first".into() })?
 				.disconnect_buffer(path);
+			Ok(res)
+		}
+
+		pub async fn select_buffer(&self) -> crate::Result<String> {
+			let res = self.client
+				.lock().await
+				.as_ref()
+				.ok_or(Error::InvalidState { msg: "connect first".into() })?
+				.select_buffer()
+				.await?;
 			Ok(res)
 		}
 	}
@@ -135,7 +145,7 @@ pub mod sync {
 		buffer::controller::BufferController
 	};
 
-	/// persistant session manager for codemp client
+	/// persistent session manager for codemp client
 	///
 	/// will hold a std mutex over an optional client, and drop its reference when disconnecting.
 	/// also contains a tokio runtime to execute async futures on
@@ -157,7 +167,7 @@ pub mod sync {
 	}
 	
 	impl Instance {
-		fn if_client<T>(&self, op: impl FnOnce(&mut Client) -> T) -> Result<T, Error> {
+		fn if_client<T>(&self, op: impl FnOnce(&mut Client) -> T) -> crate::Result<T> {
 			if let Some(c) = self.client.lock().expect("client mutex poisoned").as_mut() {
 				Ok(op(c))
 			} else {
@@ -175,38 +185,42 @@ pub mod sync {
 		}
 	
 		/// threadsafe and sync version of [crate::client::Client::join]
-		pub fn join(&self, session: &str) -> Result<Arc<CursorController>, Error> {
+		pub fn join(&self, session: &str) -> crate::Result<Arc<CursorController>> {
 			self.if_client(|c| self.rt().block_on(c.join(session)))?
 		}
 	
 		/// threadsafe and sync version of [crate::client::Client::create]
-		pub fn create(&self, path: &str, content: Option<&str>) -> Result<(), Error> {
+		pub fn create(&self, path: &str, content: Option<&str>) -> crate::Result<()> {
 			self.if_client(|c| self.rt().block_on(c.create(path, content)))?
 		}
 	
 		/// threadsafe and sync version of [crate::client::Client::attach]
-		pub fn attach(&self, path: &str) -> Result<Arc<BufferController>, Error> {
+		pub fn attach(&self, path: &str) -> crate::Result<Arc<BufferController>> {
 			self.if_client(|c| self.rt().block_on(c.attach(path)))?
 		}
 	
 		/// threadsafe and sync version of [crate::client::Client::get_cursor]
-		pub fn get_cursor(&self) -> Result<Arc<CursorController>, Error> {
+		pub fn get_cursor(&self) -> crate::Result<Arc<CursorController>> {
 			self.if_client(|c| c.get_cursor().ok_or(Error::InvalidState { msg: "join workspace first".into() }))?
 		}
 	
 		/// threadsafe and sync version of [crate::client::Client::get_buffer]
-		pub fn get_buffer(&self, path: &str) -> Result<Arc<BufferController>, Error> {
+		pub fn get_buffer(&self, path: &str) -> crate::Result<Arc<BufferController>> {
 			self.if_client(|c| c.get_buffer(path).ok_or(Error::InvalidState { msg: "join workspace or create requested buffer first".into() }))?
 		}
 	
 		/// threadsafe and sync version of [crate::client::Client::leave_workspace]
-		pub fn leave_workspace(&self) -> Result<(), Error> {
+		pub fn leave_workspace(&self) -> crate::Result<()> {
 			self.if_client(|c| c.leave_workspace())
 		}
 	
 		/// threadsafe and sync version of [crate::client::Client::disconnect_buffer]
-		pub fn disconnect_buffer(&self, path: &str) -> Result<bool, Error> {
+		pub fn disconnect_buffer(&self, path: &str) -> crate::Result<bool> {
 			self.if_client(|c| c.disconnect_buffer(path))
+		}
+
+		pub fn select_buffer(&self) -> crate::Result<String> {
+			self.if_client(|c| self.rt().block_on(c.select_buffer()))?
 		}
 	}
 }
