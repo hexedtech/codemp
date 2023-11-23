@@ -10,7 +10,7 @@ name = "codemp"
 # core
 tracing = "0.1"
 # woot
-codemp-woot = { git = "ssh://git@github.com/codewithotherpeopleandchangenamelater/woot.git", rev = "f971807c742579e0e89eb7ee4330f7b2edcc35c7", optional = true }
+codemp-woot = { git = "ssh://git@github.com/codewithotherpeopleandchangenamelater/woot.git", tag = "v0.1.0", optional = true }
 # proto
 tonic = { version = "0.9", features = ["tls", "tls-roots"], optional = true }
 prost = { version = "0.11.8", optional = true }
