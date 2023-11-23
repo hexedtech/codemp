@@ -4,9 +4,12 @@
 
 use std::{sync::Arc, collections::BTreeMap};
 
+use tokio::sync::mpsc;
+use tokio_stream::StreamExt;
 use tonic::transport::Channel;
 
 use crate::{
+	api::Controller,
 	cursor::{worker::CursorControllerWorker, controller::CursorController},
 	proto::{
 		buffer_client::BufferClient, cursor_client::CursorClient, UserIdentity, BufferPayload,
@@ -76,7 +79,7 @@ impl Client {
 	/// 
 	/// to interact with such workspace [crate::api::Controller::send] cursor events or
 	/// [crate::api::Controller::recv] for events on the associated [crate::cursor::Controller].
-	pub async fn join(&mut self, _session: &str) -> Result<Arc<CursorController>, Error> {
+	pub async fn join(&mut self, _session: &str) -> crate::Result<Arc<CursorController>> {
 		// TODO there is no real workspace handling in codemp server so it behaves like one big global
 		//  session. I'm still creating this to start laying out the proper use flow
 		let stream = self.client.cursor.listen(UserIdentity { id: "".into() }).await?.into_inner();
@@ -103,7 +106,7 @@ impl Client {
 	}
 
 	/// create a new buffer in current workspace, with optional given content
-	pub async fn create(&mut self, path: &str, content: Option<&str>) -> Result<(), Error> {
+	pub async fn create(&mut self, path: &str, content: Option<&str>) -> crate::Result<()> {
 		if let Some(_workspace) = &self.workspace {
 			self.client.buffer
 				.create(BufferPayload {
@@ -120,23 +123,18 @@ impl Client {
 
 	/// attach to a buffer, starting a buffer controller and returning a new reference to it
 	/// 
-	/// to interact with such buffer [crate::api::Controller::send] operation sequences 
-	/// or [crate::api::Controller::recv] for text events using its [crate::buffer::Controller].
-	/// to generate operation sequences use the [crate::api::OperationFactory]
-	/// methods, which are implemented on [crate::buffer::Controller], such as
-	/// [crate::api::OperationFactory::diff].
-	pub async fn attach(&mut self, path: &str) -> Result<Arc<BufferController>, Error> {
+	/// to interact with such buffer use [crate::api::Controller::send] or 
+	/// [crate::api::Controller::recv] to exchange [crate::api::TextChange]
+	pub async fn attach(&mut self, path: &str) -> crate::Result<Arc<BufferController>> {
 		if let Some(workspace) = &mut self.workspace {
 			let mut client = self.client.buffer.clone();
 			let req = BufferPayload {
 				path: path.to_string(), user: self.id.clone(), content: None
 			};
 
-			let content = client.sync(req.clone()).await?.into_inner().content;
-
 			let stream = client.attach(req).await?.into_inner();
 
-			let controller = BufferControllerWorker::new(self.id.clone(), &content, path);
+			let controller = BufferControllerWorker::new(self.id.clone(), path);
 			let handler = Arc::new(controller.subscribe());
 
 			let _path = path.to_string();
@@ -151,6 +149,40 @@ impl Client {
 			Ok(handler)
 		} else {
 			Err(Error::InvalidState { msg: "join a workspace first".into() })
+		}
+	}
+
+
+	pub async fn select_buffer(&self) -> crate::Result<String> {
+		match &self.workspace {
+			None => Err(Error::InvalidState { msg: "join workspace first".into() }),
+			Some(workspace) => {
+				let (tx, mut rx) = mpsc::unbounded_channel();
+				let mut tasks = Vec::new();
+				for (id, buffer) in workspace.buffers.iter() {
+					let _tx = tx.clone();
+					let _id = id.clone();
+					let _buffer = buffer.clone();
+					tasks.push(tokio::spawn(async move {
+						match _buffer.poll().await {
+							Ok(()) => _tx.send(Ok(_id)),
+							Err(_) => _tx.send(Err(Error::Channel { send: true })),
+						}
+					}))
+				}
+				loop {
+					match rx.recv().await {
+						None => return Err(Error::Channel { send: false }),
+						Some(Err(_)) => continue, // TODO log errors
+						Some(Ok(x)) => {
+							for t in tasks {
+								t.abort();
+							}
+							return Ok(x.clone());
+						},
+					}
+				}
+			}
 		}
 	}
 }

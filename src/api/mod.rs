@@ -7,8 +7,8 @@
 /// a generic async provider for bidirectional communication
 pub mod controller;
 
-/// a helper trait to generate operation sequences
-pub mod factory;
+/// a generic representation of a text change
+pub mod change;
 
 pub use controller::Controller;
-pub use factory::OperationFactory;
+pub use change::TextChange;

@@ -3,14 +3,16 @@
 //! a controller implementation for buffer actions
 
 
-use operational_transform::OperationSeq;
-use tokio::sync::{watch, mpsc, Mutex, oneshot};
+use std::sync::Arc;
+
+use tokio::sync::oneshot;
+use tokio::sync::{watch, mpsc, RwLock};
 use tonic::async_trait;
 
 use crate::errors::IgnorableError;
-use crate::{api::Controller, Error};
+use crate::api::Controller;
 
-use super::TextChange;
+use crate::api::TextChange;
 
 /// the buffer controller implementation
 ///
@@ -24,29 +26,31 @@ use super::TextChange;
 /// queues, transforming outbound delayed ops and applying remote changes 
 /// to the local buffer
 ///
-/// this controller implements [crate::api::OperationFactory], allowing to produce
-/// Operation Sequences easily
-///
 /// upon dropping this handle will stop the associated worker
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct BufferController {
+	/// unique identifier of buffer
+	pub name: String,
 	content: watch::Receiver<String>,
-	operations: mpsc::UnboundedSender<OperationSeq>,
-	last_op: Mutex<watch::Receiver<()>>,
-	stream: mpsc::UnboundedSender<oneshot::Sender<Option<TextChange>>>,
-	stop: mpsc::UnboundedSender<()>,
+	seen: Arc<RwLock<String>>,
+	operations: mpsc::UnboundedSender<TextChange>,
+	poller: mpsc::Sender<oneshot::Sender<()>>,
+	_stop: Arc<StopOnDrop>, // just exist
 }
 
 impl BufferController {
 	pub(crate) fn new(
+		name: String,
 		content: watch::Receiver<String>,
-		operations: mpsc::UnboundedSender<OperationSeq>,
-		stream: mpsc::UnboundedSender<oneshot::Sender<Option<TextChange>>>,
+		operations: mpsc::UnboundedSender<TextChange>,
+		poller: mpsc::Sender<oneshot::Sender<()>>,
 		stop: mpsc::UnboundedSender<()>,
-		last_op: Mutex<watch::Receiver<()>>,
 	) -> Self {
 		BufferController {
-			last_op, content, operations, stream, stop,
+			name,
+			content, operations, poller,
+			_stop: Arc::new(StopOnDrop(stop)),
+			seen: Arc::new(RwLock::new("".into())),
 		}
 	}
 
@@ -55,40 +59,53 @@ impl BufferController {
 	}
 }
 
-impl Drop for BufferController {
+#[derive(Debug)]
+struct StopOnDrop(mpsc::UnboundedSender<()>);
+
+impl Drop for StopOnDrop {
 	fn drop(&mut self) {
-		self.stop.send(()).unwrap_or_warn("could not send stop message to worker");
+		self.0.send(()).unwrap_or_warn("could not send stop message to worker");
 	}
 }
 
 #[async_trait]
 impl Controller<TextChange> for BufferController {
-	type Input = OperationSeq;
+	type Input = TextChange;
 
-	async fn poll(&self) -> Result<(), Error> {
-		Ok(self.last_op.lock().await.changed().await?)
+	async fn poll(&self) -> crate::Result<()> {
+		let (tx, rx) = oneshot::channel::<()>();
+		self.poller.send(tx);
+		Ok(rx.await.map_err(|_| crate::Error::Channel { send: false })?)
 	}
 
-	fn try_recv(&self) -> Result<Option<TextChange>, Error> {
-		let (tx, rx) = oneshot::channel();
-		self.stream.send(tx)?;
-		rx.blocking_recv()
-			.map_err(|_| Error::Channel { send: false })
+	fn try_recv(&self) -> crate::Result<Option<TextChange>> {
+		let seen = match self.seen.try_read() {
+			Err(_) => return Err(crate::Error::Deadlocked),
+			Ok(x) => x.clone(),
+		};
+		let actual = self.content.borrow().clone();
+		if seen == actual {
+			return Ok(None);
+		}
+		let change = TextChange::from_diff(&seen, &actual);
+		match self.seen.try_write() {
+			Err(_) => return Err(crate::Error::Deadlocked),
+			Ok(mut w) => *w = actual,
+		};
+		Ok(Some(change))
 	}
 
-	async fn recv(&self) -> Result<TextChange, Error> {
+	async fn recv(&self) -> crate::Result<TextChange> {
 		self.poll().await?;
-		let (tx, rx) = oneshot::channel();
-		self.stream.send(tx)?;
-		Ok(
-			rx.await
-				.map_err(|_| Error::Channel { send: false })?
-				.expect("empty channel after polling")
-		)
+		let cur = self.seen.read().await.clone();
+		let change = TextChange::from_diff(&cur, &self.content.borrow());
+		let mut seen = self.seen.write().await;
+		*seen = self.content.borrow().clone();
+		Ok(change)
 	}
 
 	/// enqueue an opseq for processing
-	fn send(&self, op: OperationSeq) -> Result<(), Error> {
+	fn send(&self, op: TextChange) -> crate::Result<()> {
 		Ok(self.operations.send(op)?)
 	}
 }

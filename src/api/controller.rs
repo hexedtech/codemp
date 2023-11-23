@@ -4,7 +4,6 @@
 //! server
 
 use crate::Result;
-use std::sync::Arc;
 
 #[async_trait::async_trait]
 pub(crate) trait ControllerWorker<T : Sized + Send + Sync> {
@@ -21,20 +20,22 @@ pub(crate) trait ControllerWorker<T : Sized + Send + Sync> {
 /// this generic trait is implemented by actors managing stream procedures.
 /// events can be enqueued for dispatching without blocking ([Controller::send]), and an async blocking 
 /// api ([Controller::recv]) is provided to wait for server events. Additional sync blocking
-/// ([Controller::blocking_recv]) and callback-based ([Controller::callback]) are implemented.
+/// ([Controller::blocking_recv]) is implemented if feature `sync` is enabled.
 ///
-/// * if possible, prefer a pure [Controller::recv] consumer
-/// * a second possibility in preference is using a [Controller::callback]
-/// * if neither is feasible a [Controller::poll]/[Controller::try_recv] approach is available
+/// * if possible, prefer a pure [Controller::recv] consumer, awaiting for events
+/// * if async is not feasible a [Controller::poll]/[Controller::try_recv] approach is possible
 #[async_trait::async_trait]
 pub trait Controller<T : Sized + Send + Sync> : Sized + Send + Sync {
 	/// type of upstream values, used in [Self::send]
 	type Input;
 
-	/// enqueue a new value to be sent
+	/// enqueue a new value to be sent to all other users
+	///
+	/// success or failure of this function does not imply validity of sent operation,
+	/// because it's integrated asynchronously on the background worker
 	fn send(&self, x: Self::Input) -> Result<()>;
 
-	/// get next value from stream, blocking until one is available
+	/// get next value from other users, blocking until one is available
 	///
 	/// this is just an async trait function wrapped by `async_trait`:
 	///
@@ -48,7 +49,7 @@ pub trait Controller<T : Sized + Send + Sync> : Sized + Send + Sync {
 		Ok(self.try_recv()?.expect("no message available after polling"))
 	}
 
-	/// block until next value is added to the stream without removing any element
+	/// block until next value is available without consuming it
 	///
 	/// this is just an async trait function wrapped by `async_trait`:
 	///
@@ -56,40 +57,15 @@ pub trait Controller<T : Sized + Send + Sync> : Sized + Send + Sync {
 	async fn poll(&self) -> Result<()>;
 
 	/// attempt to receive a value without blocking, return None if nothing is available
+	///
+	/// note that this function does not circumvent race conditions, returning errors if it would
+	/// block. it's usually safe to ignore such errors and retry
 	fn try_recv(&self) -> Result<Option<T>>;
 
 	/// sync variant of [Self::recv], blocking invoking thread
+	/// this calls [Controller::recv] inside a [tokio::runtime::Runtime::block_on]
+	#[cfg(feature = "sync")]
 	fn blocking_recv(&self, rt: &tokio::runtime::Handle) -> Result<T> {
 		rt.block_on(self.recv())
-	}
-
-	/// register a callback to be called for each received stream value
-	///
-	/// this will spawn a new task on given runtime invoking [Self::recv] in loop and calling given
-	/// callback for each received value. a stop channel should be provided, and first value sent
-	/// into it will stop the worker loop.
-	///
-	/// note: creating a callback handler will hold an Arc reference to the given controller,
-	/// preventing it from being dropped (and likely disconnecting). using the stop channel is
-	/// important for proper cleanup
-	fn callback<F>(
-		self: &Arc<Self>,
-		rt: &tokio::runtime::Handle,
-		mut stop: tokio::sync::mpsc::UnboundedReceiver<()>,
-		mut cb: F
-	) where
-		Self : 'static,
-		F : FnMut(T) + Sync + Send + 'static
-	{
-		let _self = self.clone();
-		rt.spawn(async move {
-			loop {
-				tokio::select! {
-					Ok(data) = _self.recv() => cb(data),
-					Some(()) = stop.recv() => break,
-					else => break,
-				}
-			}
-		});
 	}
 }
