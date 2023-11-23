@@ -5,6 +5,7 @@
 
 use std::sync::Arc;
 
+use tokio::sync::oneshot;
 use tokio::sync::{watch, mpsc, RwLock};
 use tonic::async_trait;
 
@@ -33,6 +34,7 @@ pub struct BufferController {
 	content: watch::Receiver<String>,
 	seen: Arc<RwLock<String>>,
 	operations: mpsc::UnboundedSender<TextChange>,
+	poller: mpsc::Sender<oneshot::Sender<()>>,
 	_stop: Arc<StopOnDrop>, // just exist
 }
 
@@ -41,14 +43,19 @@ impl BufferController {
 		name: String,
 		content: watch::Receiver<String>,
 		operations: mpsc::UnboundedSender<TextChange>,
+		poller: mpsc::Sender<oneshot::Sender<()>>,
 		stop: mpsc::UnboundedSender<()>,
 	) -> Self {
 		BufferController {
 			name,
-			content, operations,
+			content, operations, poller,
 			_stop: Arc::new(StopOnDrop(stop)),
 			seen: Arc::new(RwLock::new("".into())),
 		}
+	}
+
+	pub fn content(&self) -> String {
+		self.content.borrow().clone()
 	}
 }
 
@@ -66,15 +73,9 @@ impl Controller<TextChange> for BufferController {
 	type Input = TextChange;
 
 	async fn poll(&self) -> crate::Result<()> {
-		let mut poller = self.content.clone();
-		loop {
-			poller.changed().await?;
-			let seen = self.seen.read().await.clone();
-			if *poller.borrow() != seen {
-				break
-			}
-		}
-		Ok(())
+		let (tx, rx) = oneshot::channel::<()>();
+		self.poller.send(tx);
+		Ok(rx.await.map_err(|_| crate::Error::Channel { send: false })?)
 	}
 
 	fn try_recv(&self) -> crate::Result<Option<TextChange>> {

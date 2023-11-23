@@ -2,7 +2,7 @@ use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 
 use similar::{TextDiff, ChangeTag};
-use tokio::sync::{watch, mpsc};
+use tokio::sync::{watch, mpsc, oneshot};
 use tonic::transport::Channel;
 use tonic::{async_trait, Streaming};
 use woot::crdt::{Op, CRDT, TextEditor};
@@ -27,6 +27,9 @@ pub(crate) struct BufferControllerWorker {
 	name: String,
 	stop: mpsc::UnboundedReceiver<()>,
 	stop_control: mpsc::UnboundedSender<()>,
+	poller_rx: mpsc::Receiver<oneshot::Sender<()>>,
+	poller_tx: mpsc::Sender<oneshot::Sender<()>>,
+	pollers: Vec<oneshot::Sender<()>>,
 }
 
 impl BufferControllerWorker {
@@ -34,11 +37,13 @@ impl BufferControllerWorker {
 		let (txt_tx, txt_rx) = watch::channel("".to_string());
 		let (op_tx, op_rx) = mpsc::unbounded_channel();
 		let (end_tx, end_rx) = mpsc::unbounded_channel();
+		let (poller_tx, poller_rx) = mpsc::channel(10);
 		let mut hasher = DefaultHasher::new();
 		uid.hash(&mut hasher);
 		let site_id = hasher.finish() as usize;
 		BufferControllerWorker {
-			uid,
+			uid, poller_rx, poller_tx,
+			pollers: Vec::new(),
 			content: txt_tx,
 			operations: op_rx,
 			receiver: txt_rx,
@@ -75,6 +80,7 @@ impl ControllerWorker<TextChange> for BufferControllerWorker {
 			self.name.clone(),
 			self.receiver.clone(),
 			self.sender.clone(),
+			self.poller_tx.clone(),
 			self.stop_control.clone(),
 		)
 	}
@@ -87,6 +93,12 @@ impl ControllerWorker<TextChange> for BufferControllerWorker {
 
 				// received stop signal
 				_ = self.stop.recv() => break,
+
+				// received a new poller, add it to collection
+				res = self.poller_rx.recv() => match res {
+					None => break tracing::error!("poller channel closed"),
+					Some(tx) => self.pollers.push(tx),
+				},
 
 				// received a text change from editor
 				res = self.operations.recv() => match res {
@@ -133,7 +145,7 @@ impl ControllerWorker<TextChange> for BufferControllerWorker {
 					}
 				},
 
-				// received a stop request (or channel got closed)
+				// received a message from server
 				res = rx.message() => match res {
 					Err(_e) => break,
 					Ok(None) => break,
@@ -141,6 +153,9 @@ impl ControllerWorker<TextChange> for BufferControllerWorker {
 						Ok(op) => {
 							self.buffer.merge(op);
 							self.content.send(self.buffer.view()).unwrap_or_warn("could not send buffer update");
+							for tx in self.pollers.drain(0..self.pollers.len()) {
+								tx.send(()).unwrap_or_warn("could not wake up poller");
+							}
 						},
 						Err(e) => tracing::error!("could not deserialize operation from server: {}", e),
 					},
