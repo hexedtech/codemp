@@ -49,8 +49,8 @@ impl BufferController {
 		BufferController {
 			name,
 			content, operations, poller,
-			_stop: Arc::new(StopOnDrop(stop)),
 			seen: Arc::new(RwLock::new("".into())),
+			_stop: Arc::new(StopOnDrop(stop)),
 		}
 	}
 
@@ -72,12 +72,14 @@ impl Drop for StopOnDrop {
 impl Controller<TextChange> for BufferController {
 	type Input = TextChange;
 
+	// block until a new text change is available
 	async fn poll(&self) -> crate::Result<()> {
 		let (tx, rx) = oneshot::channel::<()>();
 		self.poller.send(tx).await?;
 		Ok(rx.await.map_err(|_| crate::Error::Channel { send: false })?)
 	}
 
+	// if a new text change is available, return it immediately
 	fn try_recv(&self) -> crate::Result<Option<TextChange>> {
 		let seen = match self.seen.try_read() {
 			Err(_) => return Err(crate::Error::Deadlocked),
@@ -95,6 +97,7 @@ impl Controller<TextChange> for BufferController {
 		Ok(Some(change))
 	}
 
+	// block until a new text change is available, and return it
 	async fn recv(&self) -> crate::Result<TextChange> {
 		self.poll().await?;
 		let cur = self.seen.read().await.clone();

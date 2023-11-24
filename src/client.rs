@@ -152,6 +152,14 @@ impl Client {
 	}
 
 
+	/// invoke .poll() on all buffer controllers and wait, return name of first one ready
+	///
+	/// this will spawn tasks for each buffer controller, each blocked in a poll() call. as soon as
+	/// one finishes, all other tasks will be canceled and the name of ready controller will be
+	/// returned. just do client.get_buffer(name).try_recv()
+	///
+	/// this is not super efficient as of now but has room for improvement. using this API may
+	/// provide significant improvements on editor-side
 	pub async fn select_buffer(&self) -> crate::Result<String> {
 		match &self.workspace {
 			None => Err(Error::InvalidState { msg: "join workspace first".into() }),
