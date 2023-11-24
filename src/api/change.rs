@@ -3,6 +3,8 @@
 //! an editor-friendly representation of a text change in a buffer
 //! to easily interface with codemp from various editors
 
+use crate::proto::RowCol;
+
 /// an editor-friendly representation of a text change in a buffer
 ///
 /// this represent a range in the previous state of the string and a new content which should be
@@ -55,5 +57,13 @@ impl TextChange {
 			span: start..end_before,
 			content: after[start..end_after].to_string(),
 		}
+	}
+
+	/// convert from byte index to row and column
+	/// txt must be the whole content of the buffer, in order to count lines
+	pub fn index_to_rowcol(txt: &str, index: usize) -> RowCol {
+		let row = txt[..index].matches('\n').count() as i32;
+		let col = txt[..index].split('\n').last().unwrap_or("").len() as i32;
+		RowCol { row, col }
 	}
 }
