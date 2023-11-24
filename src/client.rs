@@ -5,7 +5,6 @@
 use std::{sync::Arc, collections::BTreeMap};
 
 use tokio::sync::mpsc;
-use tokio_stream::StreamExt;
 use tonic::transport::Channel;
 
 use crate::{

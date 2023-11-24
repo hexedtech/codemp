@@ -12,11 +12,11 @@ pub trait IgnorableError {
 }
 
 impl<T, E> IgnorableError for StdResult<T, E>
-where E : std::fmt::Display {
+where E : std::fmt::Debug {
 	fn unwrap_or_warn(self, msg: &str) {
 		match self {
 			Ok(_) => {},
-			Err(e) => warn!("{}: {}", msg, e),
+			Err(e) => warn!("{}: {:?}", msg, e),
 		}
 	}
 }

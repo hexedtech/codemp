@@ -136,7 +136,7 @@ impl ControllerWorker<TextChange> for BufferControllerWorker {
 									match self.send_op(&mut tx, &op).await {
 										Err(e) => tracing::error!("server refused to broadcast {}: {}", op, e),
 										Ok(()) => {
-											// self.content.send(self.buffer.view()).unwrap_or_warn("could not send buffer update");
+											self.content.send(self.buffer.view()).unwrap_or_warn("could not send buffer update");
 										},
 									}
 								}
@@ -161,7 +161,6 @@ impl ControllerWorker<TextChange> for BufferControllerWorker {
 					},
 				},
 			}
-
 		}
 	}
 }

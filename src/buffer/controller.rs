@@ -74,7 +74,7 @@ impl Controller<TextChange> for BufferController {
 
 	async fn poll(&self) -> crate::Result<()> {
 		let (tx, rx) = oneshot::channel::<()>();
-		self.poller.send(tx);
+		self.poller.send(tx).await?;
 		Ok(rx.await.map_err(|_| crate::Error::Channel { send: false })?)
 	}
 
