@@ -148,6 +148,8 @@ pub mod errors;
 #[cfg(feature = "client")]
 pub mod client;
 
+pub mod tools;
+
 /// client wrapper to handle memory persistence
 #[cfg(feature = "client")]
 pub mod instance;

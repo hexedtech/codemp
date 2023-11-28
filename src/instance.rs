@@ -120,16 +120,6 @@ pub mod a_sync {
 				.disconnect_buffer(path);
 			Ok(res)
 		}
-
-		pub async fn select_buffer(&self) -> crate::Result<String> {
-			let res = self.client
-				.lock().await
-				.as_ref()
-				.ok_or(Error::InvalidState { msg: "connect first".into() })?
-				.select_buffer()
-				.await?;
-			Ok(res)
-		}
 	}
 }
 
@@ -217,10 +207,6 @@ pub mod sync {
 		/// threadsafe and sync version of [crate::client::Client::disconnect_buffer]
 		pub fn disconnect_buffer(&self, path: &str) -> crate::Result<bool> {
 			self.if_client(|c| c.disconnect_buffer(path))
-		}
-
-		pub fn select_buffer(&self) -> crate::Result<String> {
-			self.if_client(|c| self.rt().block_on(c.select_buffer()))?
 		}
 	}
 }
