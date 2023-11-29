@@ -59,6 +59,27 @@ impl TextChange {
 		}
 	}
 
+	/// returns true if this TextChange deletes existing text
+	pub fn is_deletion(&self) -> bool {
+		!self.span.is_empty()
+	}
+
+	// returns true if this TextChange adds new text
+	pub fn is_addition(&self) -> bool {
+		!self.content.is_empty()
+	}
+
+	/// returns true if this TextChange is effectively as no-op
+	pub fn is_empty(&self) -> bool {
+		!self.is_deletion() && !self.is_addition()
+	}
+
+	pub fn apply(&self, txt: &str) -> String {
+		let pre = txt[..self.span.start].to_string();
+		let post = txt[self.span.end..].to_string();
+		format!("{}{}{}", pre, self.content, post)
+	}
+
 	/// convert from byte index to row and column
 	/// txt must be the whole content of the buffer, in order to count lines
 	pub fn index_to_rowcol(txt: &str, index: usize) -> RowCol {
@@ -98,5 +119,26 @@ mod tests {
 		);
 		assert_eq!(change.span, 7..22);
 		assert_eq!(change.content, "who watches the desert");
+	}
+
+	#[test]
+	fn textchange_apply_works_for_insertions() {
+		let change = super::TextChange { span: 5..5, content: " cruel".to_string() };
+		let result = change.apply("hello world!");
+		assert_eq!(result, "hello cruel world!");
+	}
+
+	#[test]
+	fn textchange_apply_works_for_deletions() {
+		let change = super::TextChange { span: 5..11, content: "".to_string() };
+		let result = change.apply("hello cruel world!");
+		assert_eq!(result, "hello world!");
+	}
+
+	#[test]
+	fn textchange_apply_works_for_replacements() {
+		let change = super::TextChange { span: 5..11, content: " not very pleasant".to_string() };
+		let result = change.apply("hello cruel world!");
+		assert_eq!(result, "hello not very pleasant world!");
 	}
 }
