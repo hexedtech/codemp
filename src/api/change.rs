@@ -37,11 +37,11 @@ impl TextChange {
 		let mut from_beginning = true;
 		for op in diff.ops() {
 			match op {
-				similar::DiffOp::Equal { .. } => {
+				similar::DiffOp::Equal { len, .. } => {
 					if from_beginning {
-						start += 1
+						start += len
 					} else {
-						end += 1
+						end += len
 					}
 				},
 				_ => {
@@ -65,5 +65,38 @@ impl TextChange {
 		let row = txt[..index].matches('\n').count() as i32;
 		let col = txt[..index].split('\n').last().unwrap_or("").len() as i32;
 		RowCol { row, col }
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	#[test]
+	fn textchange_diff_works_for_deletions() {
+		let change = super::TextChange::from_diff(
+			"sphinx of black quartz, judge my vow",
+			"sphinx of quartz, judge my vow"
+		);
+		assert_eq!(change.span, 10..16);
+		assert_eq!(change.content, "");
+	}
+
+	#[test]
+	fn textchange_diff_works_for_insertions() {
+		let change = super::TextChange::from_diff(
+			"sphinx of quartz, judge my vow",
+			"sphinx of black quartz, judge my vow"
+		);
+		assert_eq!(change.span, 10..10);
+		assert_eq!(change.content, "black ");
+	}
+
+	#[test]
+	fn textchange_diff_works_for_changes() {
+		let change = super::TextChange::from_diff(
+			"sphinx of black quartz, judge my vow",
+			"sphinx who watches the desert, judge my vow"
+		);
+		assert_eq!(change.span, 7..22);
+		assert_eq!(change.content, "who watches the desert");
 	}
 }
