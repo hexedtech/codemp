@@ -23,7 +23,7 @@ pub(crate) struct BufferControllerWorker {
 	buffer: Woot,
 	content: watch::Sender<String>,
 	operations: mpsc::UnboundedReceiver<TextChange>,
-	poller: mpsc::Receiver<oneshot::Sender<()>>,
+	poller: mpsc::UnboundedReceiver<oneshot::Sender<()>>,
 	pollers: Vec<oneshot::Sender<()>>,
 	handles: ClonableHandlesForController,
 	stop: mpsc::UnboundedReceiver<()>,
@@ -31,7 +31,7 @@ pub(crate) struct BufferControllerWorker {
 
 struct ClonableHandlesForController {
 	operations: mpsc::UnboundedSender<TextChange>,
-	poller: mpsc::Sender<oneshot::Sender<()>>,
+	poller: mpsc::UnboundedSender<oneshot::Sender<()>>,
 	stop: mpsc::UnboundedSender<()>,
 	content: watch::Receiver<String>,
 }
@@ -41,7 +41,7 @@ impl BufferControllerWorker {
 		let (txt_tx, txt_rx) = watch::channel("".to_string());
 		let (op_tx, op_rx) = mpsc::unbounded_channel();
 		let (end_tx, end_rx) = mpsc::unbounded_channel();
-		let (poller_tx, poller_rx) = mpsc::channel(10);
+		let (poller_tx, poller_rx) = mpsc::unbounded_channel();
 		let mut hasher = DefaultHasher::new();
 		uid.hash(&mut hasher);
 		let site_id = hasher.finish() as usize;
