@@ -112,43 +112,46 @@ impl ControllerWorker<TextChange> for BufferControllerWorker {
 				res = self.operations.recv() => match res {
 					None => break,
 					Some(change) => {
-						match self.buffer.view().get(change.span.clone()) {
-							None =>  tracing::error!("received illegal span from client"),
-							Some(span) => {
-								let diff = TextDiff::from_chars(span, &change.content);
+						if !change.is_empty() {
+							let view = self.buffer.view();
+							match view.get(change.span.clone()) {
+								None =>  tracing::error!("received illegal span from client: {:?} but buffer is of len {}", change.span, view.len()),
+								Some(span) => {
+									let diff = TextDiff::from_chars(span, &change.content);
 
-								let mut i = 0;
-								let mut ops = Vec::new();
-								for diff in diff.iter_all_changes() {
-									match diff.tag() {
-										ChangeTag::Equal => i += 1,
-										ChangeTag::Delete => match self.buffer.delete(change.span.start + i) {
-											Ok(op) => ops.push(op),
-											Err(e) => tracing::error!("could not apply deletion: {}", e),
-										},
-										ChangeTag::Insert => {
-											for c in diff.value().chars() {
-												match self.buffer.insert(change.span.start + i, c) {
-													Ok(op) => {
-														ops.push(op);
-														i += 1;
-													},
-													Err(e) => tracing::error!("could not apply insertion: {}", e),
+									let mut i = 0;
+									let mut ops = Vec::new();
+									for diff in diff.iter_all_changes() {
+										match diff.tag() {
+											ChangeTag::Equal => i += 1,
+											ChangeTag::Delete => match self.buffer.delete(change.span.start + i) {
+												Ok(op) => ops.push(op),
+												Err(e) => tracing::error!("could not apply deletion: {}", e),
+											},
+											ChangeTag::Insert => {
+												for c in diff.value().chars() {
+													match self.buffer.insert(change.span.start + i, c) {
+														Ok(op) => {
+															ops.push(op);
+															i += 1;
+														},
+														Err(e) => tracing::error!("could not apply insertion: {}", e),
+													}
 												}
-											}
-										},
+											},
+										}
 									}
-								}
 
-								for op in ops {
-									match self.send_op(&mut tx, &op).await {
-										Err(e) => tracing::error!("server refused to broadcast {}: {}", op, e),
-										Ok(()) => {
-											self.content.send(self.buffer.view()).unwrap_or_warn("could not send buffer update");
-										},
+									for op in ops {
+										match self.send_op(&mut tx, &op).await {
+											Err(e) => tracing::error!("server refused to broadcast {}: {}", op, e),
+											Ok(()) => {
+												self.content.send(self.buffer.view()).unwrap_or_warn("could not send buffer update");
+											},
+										}
 									}
-								}
-							},
+								},
+							}
 						}
 					}
 				},
@@ -161,7 +164,7 @@ impl ControllerWorker<TextChange> for BufferControllerWorker {
 						Ok(op) => {
 							self.buffer.merge(op);
 							self.content.send(self.buffer.view()).unwrap_or_warn("could not send buffer update");
-							for tx in self.pollers.drain(0..self.pollers.len()) {
+							for tx in self.pollers.drain(..) {
 								tx.send(()).unwrap_or_warn("could not wake up poller");
 							}
 						},
