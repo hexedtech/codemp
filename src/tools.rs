@@ -2,14 +2,16 @@ use crate::{Error, api::Controller};
 use std::sync::Arc;
 use tokio::sync::mpsc;
 
-/// invoke .poll() on all buffer controllers and wait, return name of first one ready
+/// invoke .poll() on all given buffer controllers and wait, returning the first one ready
 ///
-/// this will spawn tasks for each buffer controller, each blocked in a poll() call. as soon as
-/// one finishes, all other tasks will be canceled and the name of ready controller will be
-/// returned. just do client.get_buffer(name).try_recv()
+/// this will spawn tasks blocked on .poll() for each buffer controller. as soon as
+/// one finishes, all other tasks will be canceled and the ready controller will be
+/// returned
 ///
-/// this is not super efficient as of now but has room for improvement. using this API may
-/// provide significant improvements on editor-side
+/// if timeout is None, result will never be None, otherwise returns None if no buffer
+/// is ready before timeout expires
+///
+/// returns an error if all buffers returned errors while polling.
 pub async fn select_buffer(
 	buffers: &[Arc<crate::buffer::Controller>],
 	timeout: Option<std::time::Duration>,
