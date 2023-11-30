@@ -80,9 +80,7 @@ impl Controller<TextChange> for BufferController {
 		}
 		let (tx, rx) = oneshot::channel::<()>();
 		self.poller.send(tx)?;
-		tracing::info!("polling");
 		rx.await.map_err(|_| crate::Error::Channel { send: false })?;
-		tracing::info!("polling unblocked");
 		Ok(())
 	}
 
