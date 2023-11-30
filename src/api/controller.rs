@@ -57,9 +57,6 @@ pub trait Controller<T : Sized + Send + Sync> : Sized + Send + Sync {
 	async fn poll(&self) -> Result<()>;
 
 	/// attempt to receive a value without blocking, return None if nothing is available
-	///
-	/// note that this function does not circumvent race conditions, returning errors if it would
-	/// block. it's usually safe to ignore such errors and retry
 	fn try_recv(&self) -> Result<Option<T>>;
 
 	/// sync variant of [Self::recv], blocking invoking thread

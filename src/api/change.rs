@@ -62,7 +62,7 @@ impl TextChange {
 		!self.span.is_empty()
 	}
 
-	// returns true if this TextChange adds new text
+	/// returns true if this TextChange adds new text
 	pub fn is_addition(&self) -> bool {
 		!self.content.is_empty()
 	}
@@ -72,6 +72,7 @@ impl TextChange {
 		!self.is_deletion() && !self.is_addition()
 	}
 
+	/// applies this text change to given text, returning a new string
 	pub fn apply(&self, txt: &str) -> String {
 		let pre_index = std::cmp::min(self.span.start, txt.len());
 		let pre = txt.get(..pre_index).unwrap_or("").to_string();
