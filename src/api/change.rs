@@ -73,14 +73,16 @@ impl TextChange {
 	}
 
 	pub fn apply(&self, txt: &str) -> String {
-		let pre = txt[..self.span.start].to_string();
-		let post = txt[self.span.end..].to_string();
+		let pre_index = std::cmp::min(self.span.start, txt.len());
+		let pre = txt.get(..pre_index).unwrap_or("").to_string();
+		let post = txt.get(self.span.end..).unwrap_or("").to_string();
 		format!("{}{}{}", pre, self.content, post)
 	}
 
 	/// convert from byte index to row and column
 	/// txt must be the whole content of the buffer, in order to count lines
 	pub fn index_to_rowcol(txt: &str, index: usize) -> crate::proto::RowCol {
+		// FIXME might panic, use .get()
 		let row = txt[..index].matches('\n').count() as i32;
 		let col = txt[..index].split('\n').last().unwrap_or("").len() as i32;
 		crate::proto::RowCol { row, col }
