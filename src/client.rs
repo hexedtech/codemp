@@ -4,11 +4,9 @@
 
 use std::{sync::Arc, collections::BTreeMap};
 
-use tokio::sync::mpsc;
 use tonic::transport::Channel;
 
 use crate::{
-	api::Controller,
 	cursor::{worker::CursorControllerWorker, controller::CursorController},
 	proto::{
 		buffer_client::BufferClient, cursor_client::CursorClient, UserIdentity, BufferPayload,

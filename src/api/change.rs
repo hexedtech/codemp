@@ -3,8 +3,6 @@
 //! an editor-friendly representation of a text change in a buffer
 //! to easily interface with codemp from various editors
 
-use crate::proto::RowCol;
-
 /// an editor-friendly representation of a text change in a buffer
 ///
 /// this represent a range in the previous state of the string and a new content which should be
@@ -82,10 +80,10 @@ impl TextChange {
 
 	/// convert from byte index to row and column
 	/// txt must be the whole content of the buffer, in order to count lines
-	pub fn index_to_rowcol(txt: &str, index: usize) -> RowCol {
+	pub fn index_to_rowcol(txt: &str, index: usize) -> crate::proto::RowCol {
 		let row = txt[..index].matches('\n').count() as i32;
 		let col = txt[..index].split('\n').last().unwrap_or("").len() as i32;
-		RowCol { row, col }
+		crate::proto::RowCol { row, col }
 	}
 }
 
@@ -140,5 +138,25 @@ mod tests {
 		let change = super::TextChange { span: 5..11, content: " not very pleasant".to_string() };
 		let result = change.apply("hello cruel world!");
 		assert_eq!(result, "hello not very pleasant world!");
+	}
+
+	#[test]
+	fn textchange_apply_never_panics() {
+		let change = super::TextChange { span: 100..110, content: "a very long string \n which totally matters".to_string() };
+		let result = change.apply("a short text");
+		assert_eq!(result, "a short texta very long string \n which totally matters");
+	}
+
+	#[test]
+	fn empty_diff_produces_empty_textchange() {
+		let change = super::TextChange::from_diff("same \n\n text", "same \n\n text");
+		assert!(change.is_empty());
+	}
+	
+	#[test]
+	fn empty_textchange_doesnt_alter_buffer() {
+		let change = super::TextChange { span: 42..42, content: "".to_string() };
+		let result = change.apply("some important text");
+		assert_eq!(result, "some important text");
 	}
 }
