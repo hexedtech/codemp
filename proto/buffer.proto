@@ -1,6 +1,7 @@
 syntax = "proto3";
 
-package codemp.buffer;
+package buffer;
+import "proto/user.proto";
 
 // handle buffer changes, keep in sync users
 service Buffer {
@@ -13,6 +14,20 @@ service Buffer {
 	// get contents of buffer
 	rpc Sync   (BufferPayload)    returns (BufferResponse);
 }
+
+message BufferView {
+	int32 id = 1;
+
+	BufferMetadata metadata = 2;
+}
+
+message BufferMetadata {
+	string name = 2;
+	string path = 3;
+	uint64 created = 4; // unix timestamp
+	repeated user.UserIdentity attached_users = 5;
+}
+
 
 // empty request
 message BufferCreateResponse {}
