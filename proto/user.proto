@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package user;
+
+
+// payload identifying user
+message UserIdentity {
+	// user identifier
+	string id = 1;
+}
+
+service User{
+    
+}
