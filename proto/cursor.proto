@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package codemp.cursor;
+package cursor;
 
 // handle cursor events and broadcast to all users
 service Cursor {
