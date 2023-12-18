@@ -1,0 +1,15 @@
+syntax = "proto2";
+
+package codemp.buffer_service;
+
+// handle buffer changes, keep in sync users
+service Buffer {
+  // attach to a buffer and receive operations
+  rpc Attach (stream Operation)    returns (stream Operation);
+}
+
+message Operation {
+  required bytes data = 1;
+  optional string user = 2;
+  optional string path = 3;
+}

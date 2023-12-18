@@ -1,12 +1,12 @@
-syntax = "proto3";
+syntax = "proto2";
 
-package user;
+package codemp.model.user;
 
 
 // payload identifying user
 message UserIdentity {
 	// user identifier
-	string id = 1;
+	required string id = 1;
 }
 
 service User{

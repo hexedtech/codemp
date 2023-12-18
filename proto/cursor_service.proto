@@ -1,0 +1,13 @@
+syntax = "proto2";
+
+package codemp.cursor;
+import "proto/model/cursor.proto";
+import "proto/model/user.proto";
+
+// handle cursor events and broadcast to all users
+service Cursor {
+	// send cursor movement to server
+	rpc Moved  (cursor.CursorEvent)      returns (cursor.MovedResponse);
+	// attach to a workspace and receive cursor events
+	rpc Listen (codemp.model.user.UserIdentity)     returns (stream cursor.CursorEvent);
+}
