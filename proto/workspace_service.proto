@@ -25,7 +25,6 @@
 syntax = "proto2";
 
 package codemp.workspace_service;
-import "proto/model/cursor.proto";
 import "proto/model/user.proto";
 
 
@@ -54,13 +53,15 @@ message UserListRequest{}
 service Workspace {
 
 	//
-	rpc Create (BufferPayload)    returns (Empty);
+	rpc Create (BufferPayload) returns (Empty);
 
 	rpc Attach (AttachRequest) returns (Token);
 
-	rpc ListBuffers (BufferListRequest) returns (Empty);
+	rpc ListBuffers (BufferListRequest) returns (BufferTree);
 
 	rpc ListUsers (UserListRequest) returns (UserList);
+
+	rpc ListBufferUsers (Empty) returns (Empty);
 
 	rpc Join (JoinRequest) returns (Token);
 
