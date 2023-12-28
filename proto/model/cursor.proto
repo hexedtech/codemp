@@ -2,7 +2,7 @@ syntax = "proto2";
 
 package codemp.model.cursor;
 
-import "proto/model/user.proto";
+import "model/user.proto";
 
 // empty request
 message MovedResponse {}

@@ -165,8 +165,11 @@ pub use woot;
 #[cfg(feature = "proto")]
 #[allow(non_snake_case)]
 pub mod proto {
-	tonic::include_proto!("codemp.buffer");
-	tonic::include_proto!("codemp.cursor");
+	tonic::include_proto!("codemp.model.cursor");
+	tonic::include_proto!("codemp.model.user");
+	tonic::include_proto!("codemp.buffer_service");
+	tonic::include_proto!("codemp.cursor_service");
+	tonic::include_proto!("codemp.workspace_service");
 }
 
 

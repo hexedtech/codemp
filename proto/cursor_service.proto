@@ -1,8 +1,8 @@
 syntax = "proto2";
 
 package codemp.cursor_service;
-import "proto/model/cursor.proto";
-import "proto/model/user.proto";
+import "model/cursor.proto";
+import "model/user.proto";
 
 // handle cursor events and broadcast to all users
 service Cursor {

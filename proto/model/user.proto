@@ -4,11 +4,7 @@ package codemp.model.user;
 
 
 // payload identifying user
-message UserIdentity {
+message UserIdentity{
 	// user identifier
 	required string id = 1;
-}
-
-service User{
-    
 }
