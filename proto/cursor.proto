@@ -1,8 +1,8 @@
 syntax = "proto2";
 
-package codemp.model.cursor;
+package cursor;
 
-import "model/user.proto";
+import "user.proto";
 
 // empty request
 message MovedResponse {}
@@ -26,7 +26,7 @@ message CursorPosition {
 // cursor event, with user id and cursor position
 message CursorEvent {
 	// user moving the cursor
-	required codemp.model.user.UserIdentity user = 1;
+	required user.UserIdentity user = 1;
 	// new cursor position
 	required CursorPosition position = 2;
 }

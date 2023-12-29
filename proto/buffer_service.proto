@@ -1,6 +1,6 @@
 syntax = "proto2";
 
-package codemp.buffer_service;
+package buffer_service;
 
 // handle buffer changes, keep in sync users
 service Buffer {

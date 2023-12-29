@@ -1,6 +1,6 @@
 syntax = "proto2";
 
-package codemp.model.user;
+package user;
 
 
 // payload identifying user

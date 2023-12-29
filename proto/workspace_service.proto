@@ -24,8 +24,8 @@
 
 syntax = "proto2";
 
-package codemp.workspace_service;
-import "model/user.proto";
+package workspace_service;
+import "user.proto";
 
 
 message Empty {}
@@ -37,7 +37,7 @@ message WorkspaceFileTree {
 }
 
 message WorkspaceUserList {
-	repeated codemp.model.user.UserIdentity user = 1;
+	repeated user.UserIdentity user = 1;
 }
 
 message WorkspaceMessage {
@@ -64,6 +64,8 @@ service Workspace {
 	rpc ListBufferUsers (Empty) returns (Empty);
 
 	rpc Join (JoinRequest) returns (Token);
+
+	rpc Delete (BufferPayload) returns (Empty); //deletes buffer
 
 }
 
@@ -102,7 +104,7 @@ enum UserEventType {
 }
 
 message UserEvent {
-	required codemp.model.user.UserIdentity user = 1;
+	required user.UserIdentity user = 1;
 
 	required UserEventType type = 2;
 }
@@ -114,7 +116,7 @@ message BufferPayload {
 	required string path = 1;
 
 	// user id that is requesting the operation
-	required codemp.model.user.UserIdentity user = 2;
+	required user.UserIdentity user = 2;
 
 }
 
@@ -132,5 +134,5 @@ message BufferTree{
 }
 
 message UserList{
-	repeated codemp.model.user.UserIdentity users = 1;
+	repeated user.UserIdentity users = 1;
 }
