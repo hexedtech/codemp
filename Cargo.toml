@@ -25,15 +25,17 @@ serde_json = { version = "1", optional = true }
 tokio-stream = { version = "0.1", optional = true }
 # global
 lazy_static = { version = "1.4", optional = true }
+serde = { version = "1.0.193", features = ["derive"] }
 
 [build-dependencies]
 tonic-build = "0.9"
 
 [features]
-default = ["client"]
-api     = ["woot", "dep:similar", "dep:tokio", "dep:async-trait"]
-woot    = ["dep:codemp-woot"]
-proto   = ["dep:prost", "dep:tonic"]
-client  = ["proto", "api", "dep:tokio", "dep:tokio-stream", "dep:uuid", "dep:md5", "dep:serde_json"]
-global  = ["client", "dep:lazy_static"]
-sync    = ["client"]
+default   = ["transport", "dep:serde_json"]
+api       = ["woot", "dep:similar", "dep:tokio", "dep:async-trait"]
+woot      = ["dep:codemp-woot"]
+transport = ["dep:prost", "dep:tonic"]
+client    = ["transport", "api", "dep:tokio", "dep:tokio-stream", "dep:uuid", "dep:md5", "dep:serde_json"]
+server    = ["transport"]
+global    = ["client", "dep:lazy_static"]
+sync      = ["client"]
