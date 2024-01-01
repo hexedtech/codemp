@@ -1,0 +1,83 @@
+syntax = "proto2";
+
+package workspace;
+import "user.proto";
+import "files.proto";
+
+
+message Empty {}
+
+
+message TreeRequest {} // empty
+message UserRequest {}
+message CursorResponse{}
+message UserListRequest{}
+
+message WorkspaceUserList {
+	repeated user.UserIdentity user = 1;
+}
+
+message WorkspaceMessage {
+	required int32 id = 1;
+}
+
+message JoinRequest{
+	required string username=1;
+	required string password=2;
+}
+
+message AttachRequest{
+	required string bufferAttach = 1;
+}
+
+
+
+
+message Token{
+	required string token = 1;
+}
+
+enum FileEventType {
+	CREATE = 0;
+	DELETE = 1;
+	RENAME = 2;
+}
+
+message FileEvent {
+	required string buffer = 1;
+
+	required FileEventType type = 2;
+}
+
+enum UserEventType {
+	JOIN = 0;
+	LEAVE = 1;
+}
+
+message UserEvent {
+	required user.UserIdentity user = 1;
+
+	required UserEventType type = 2;
+}
+
+
+
+message BufferPayload {
+	// buffer path to operate onto
+	required string path = 1;
+
+	// user id that is requesting the operation
+	required user.UserIdentity user = 2;
+
+}
+
+
+message BufferListRequest{
+
+}
+
+
+
+message UserList{
+	repeated user.UserIdentity users = 1;
+}

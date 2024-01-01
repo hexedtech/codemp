@@ -27,104 +27,26 @@ syntax = "proto2";
 package workspace_service;
 import "user.proto";
 import "files.proto";
+import "workspace.proto";
 
 
-message Empty {}
-
-
-
-
-message WorkspaceUserList {
-	repeated user.UserIdentity user = 1;
-}
-
-message WorkspaceMessage {
-	required int32 id = 1;
-}
-
-
-message TreeRequest {} // empty
-message UserRequest {}
-message CursorResponse{}
-message UserListRequest{}
 
 service Workspace {
 
-	//
-	rpc Create (BufferPayload) returns (Empty);
+	rpc Create (workspace.BufferPayload) returns (workspace.Empty);
 
-	rpc Attach (AttachRequest) returns (Token);
+	rpc Attach (workspace.AttachRequest) returns (workspace.Token);
 
-	rpc ListBuffers (BufferListRequest) returns (files.BufferTree);
+	rpc ListBuffers (workspace.BufferListRequest) returns (files.BufferTree);
 
-	rpc ListUsers (UserListRequest) returns (UserList);
+	rpc ListUsers (workspace.UserListRequest) returns (workspace.UserList);
 
-	rpc ListBufferUsers (Empty) returns (Empty);
+	rpc ListBufferUsers (workspace.Empty) returns (workspace.Empty);
 
-	rpc Join (JoinRequest) returns (Token);
+	rpc Join (workspace.JoinRequest) returns (workspace.Token);
 
-	rpc Delete (BufferPayload) returns (Empty); //deletes buffer
-
-}
-
-
-message JoinRequest{
-	required string username=1;
-	required string password=2;
-}
-
-message AttachRequest{
-	required string bufferAttach = 1;
-}
-
-
-
-
-message Token{
-	required string token = 1;
-}
-
-enum FileEventType {
-	CREATE = 0;
-	DELETE = 1;
-	RENAME = 2;
-}
-
-message FileEvent {
-	required string buffer = 1;
-
-	required FileEventType type = 2;
-}
-
-enum UserEventType {
-	JOIN = 0;
-	LEAVE = 1;
-}
-
-message UserEvent {
-	required user.UserIdentity user = 1;
-
-	required UserEventType type = 2;
-}
-
-
-
-message BufferPayload {
-	// buffer path to operate onto
-	required string path = 1;
-
-	// user id that is requesting the operation
-	required user.UserIdentity user = 2;
+	rpc Delete (workspace.BufferPayload) returns (workspace.Empty); //deletes buffer
 
 }
 
 
-message BufferListRequest{
-
-}
-
-
-
-message UserList{
-	repeated user.UserIdentity users = 1;
-}

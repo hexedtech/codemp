@@ -8,6 +8,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 				"proto/user.proto",
 				"proto/cursor.proto",
 				"proto/files.proto",
+				"proto/workspace.proto",
 				"proto/buffer_service.proto",
 				"proto/cursor_service.proto",
 				"proto/workspace_service.proto"

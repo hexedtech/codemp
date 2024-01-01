@@ -168,6 +168,7 @@ pub mod proto {
 	pub mod user { tonic::include_proto!("user"); }
 	pub mod cursor { tonic::include_proto!("cursor"); }
 	pub mod files { tonic::include_proto!("files"); }
+	pub mod workspace { tonic::include_proto!("workspace"); }
 	pub mod buffer_service { tonic::include_proto!("buffer_service"); }
 	pub mod cursor_service { tonic::include_proto!("cursor_service"); }
 	pub mod workspace_service { tonic::include_proto!("workspace_service"); }
