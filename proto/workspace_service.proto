@@ -26,15 +26,13 @@ syntax = "proto2";
 
 package workspace_service;
 import "user.proto";
+import "files.proto";
 
 
 message Empty {}
 
 
-message WorkspaceFileTree {
-	// list of strings may be more efficient but it's a lot more hassle
-	required string payload = 1; // spappolata di json
-}
+
 
 message WorkspaceUserList {
 	repeated user.UserIdentity user = 1;
@@ -57,7 +55,7 @@ service Workspace {
 
 	rpc Attach (AttachRequest) returns (Token);
 
-	rpc ListBuffers (BufferListRequest) returns (BufferTree);
+	rpc ListBuffers (BufferListRequest) returns (files.BufferTree);
 
 	rpc ListUsers (UserListRequest) returns (UserList);
 
@@ -125,13 +123,7 @@ message BufferListRequest{
 
 }
 
-message BufferNode{
-	required string path = 1;
-}
 
-message BufferTree{
-	repeated BufferNode buffers = 1;
-}
 
 message UserList{
 	repeated user.UserIdentity users = 1;
