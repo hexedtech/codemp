@@ -18,10 +18,10 @@ pub use crate::api::{
 	
 #[cfg(feature = "client")]
 pub use crate::{
-	Instance as CodempInstance,
+	// Instance as CodempInstance,
 	client::Client as CodempClient,
 	cursor::Controller as CodempCursorController,
-	buffer::Controller as CodempBufferController,
+	// buffer::Controller as CodempBufferController,
 };
 
 #[cfg(feature = "proto")]

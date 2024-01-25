@@ -110,6 +110,13 @@ impl<T> From<tokio::sync::mpsc::error::SendError<T>> for Error {
 }
 
 #[cfg(feature = "client")]
+impl<T> From<tokio::sync::watch::error::SendError<T>> for Error {
+	fn from(_value: tokio::sync::watch::error::SendError<T>) -> Self {
+		Error::Channel { send: true }
+	}
+}
+
+#[cfg(feature = "client")]
 impl From<tokio::sync::broadcast::error::RecvError> for Error {
 	fn from(_value: tokio::sync::broadcast::error::RecvError) -> Self {
 		Error::Channel { send: false }

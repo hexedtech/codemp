@@ -10,7 +10,7 @@ name = "codemp"
 # core
 tracing = "0.1"
 # woot
-codemp-woot = { git = "ssh://git@github.com/codewithotherpeopleandchangenamelater/woot.git", tag = "v0.1.0", optional = true }
+codemp-woot = { git = "ssh://git@github.com/codewithotherpeopleandchangenamelater/woot.git", features = ["serde"], tag = "v0.1.0", optional = true }
 # proto
 tonic = { version = "0.9", features = ["tls", "tls-roots"], optional = true }
 prost = { version = "0.11.8", optional = true }
@@ -26,12 +26,13 @@ tokio-stream = { version = "0.1", optional = true }
 # global
 lazy_static = { version = "1.4", optional = true }
 serde = { version = "1.0.193", features = ["derive"] }
+postcard = "1.0.8"
 
 [build-dependencies]
 tonic-build = "0.9"
 
 [features]
-default   = ["transport", "dep:serde_json"]
+default   = ["client"]
 api       = ["woot", "dep:similar", "dep:tokio", "dep:async-trait"]
 woot      = ["dep:codemp-woot"]
 transport = ["dep:prost", "dep:tonic"]
@@ -39,3 +40,4 @@ client    = ["transport", "api", "dep:tokio", "dep:tokio-stream", "dep:uuid", "d
 server    = ["transport"]
 global    = ["client", "dep:lazy_static"]
 sync      = ["client"]
+backport = [] # TODO remove!

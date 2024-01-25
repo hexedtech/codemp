@@ -4,8 +4,9 @@
 
 use tokio::sync::{mpsc, broadcast::{self, error::{TryRecvError, RecvError}}, Mutex, watch};
 use tonic::async_trait;
+use uuid::Uuid;
 
-use crate::{proto::{CursorPosition, CursorEvent}, Error, api::Controller, errors::IgnorableError};
+use crate::{api::Controller, errors::IgnorableError, proto::{cursor::{CursorEvent, CursorPosition}, user::UserIdentity}};
 
 /// the cursor controller implementation
 ///
@@ -20,7 +21,7 @@ use crate::{proto::{CursorPosition, CursorEvent}, Error, api::Controller, errors
 /// upon dropping this handle will stop the associated worker
 #[derive(Debug)]
 pub struct CursorController {
-	uid: String,
+	user_id: Uuid,
 	op: mpsc::UnboundedSender<CursorEvent>,
 	last_op: Mutex<watch::Receiver<CursorEvent>>,
 	stream: Mutex<broadcast::Receiver<CursorEvent>>,
@@ -35,13 +36,13 @@ impl Drop for CursorController {
 
 impl CursorController {
 	pub(crate) fn new(
-		uid: String,
+		user_id: Uuid,
 		op: mpsc::UnboundedSender<CursorEvent>,
 		last_op: Mutex<watch::Receiver<CursorEvent>>,
 		stream: Mutex<broadcast::Receiver<CursorEvent>>,
 		stop: mpsc::UnboundedSender<()>,
 	) -> Self {
-		CursorController { uid, op, last_op, stream, stop }
+		CursorController { user_id, op, last_op, stream, stop }
 	}
 }
 
@@ -51,13 +52,13 @@ impl Controller<CursorEvent> for CursorController {
 
 	/// enqueue a cursor event to be broadcast to current workspace
 	/// will automatically invert cursor start/end if they are inverted
-	fn send(&self, mut cursor: CursorPosition) -> Result<(), Error> {
+	fn send(&self, mut cursor: CursorPosition) -> crate::Result<()> {
 		if cursor.start() > cursor.end() {
 			std::mem::swap(&mut cursor.start, &mut cursor.end);
 		}
 		Ok(self.op.send(CursorEvent {
-			user: self.uid.clone(),
-			position: Some(cursor),
+			user: UserIdentity { id: self.user_id.to_string() },
+			position: cursor,
 		})?)
 	}
 
@@ -67,7 +68,7 @@ impl Controller<CursorEvent> for CursorController {
 		match stream.try_recv() {
 			Ok(x) => Ok(Some(x)),
 			Err(TryRecvError::Empty) => Ok(None),
-			Err(TryRecvError::Closed) => Err(Error::Channel { send: false }),
+			Err(TryRecvError::Closed) => Err(crate::Error::Channel { send: false }),
 			Err(TryRecvError::Lagged(n)) => {
 				tracing::warn!("cursor channel lagged, skipping {} events", n);
 				Ok(stream.try_recv().ok())
@@ -78,11 +79,11 @@ impl Controller<CursorEvent> for CursorController {
 	// TODO is this cancelable? so it can be used in tokio::select!
 	// TODO is the result type overkill? should be an option?
 	/// get next cursor event from current workspace, or block until one is available
-	async fn recv(&self) -> Result<CursorEvent, Error> {
+	async fn recv(&self) -> crate::Result<CursorEvent> {
 		let mut stream = self.stream.lock().await;
 		match stream.recv().await {
 			Ok(x) => Ok(x),
-			Err(RecvError::Closed) => Err(Error::Channel { send: false }),
+			Err(RecvError::Closed) => Err(crate::Error::Channel { send: false }),
 			Err(RecvError::Lagged(n)) => {
 				tracing::error!("cursor channel lagged behind, skipping {} events", n);
 				Ok(stream.recv().await.expect("could not receive after lagging"))

@@ -151,8 +151,10 @@ pub mod client;
 pub mod tools;
 
 /// client wrapper to handle memory persistence
-#[cfg(feature = "client")]
+#[cfg(feature = "backport")]
 pub mod instance;
+
+pub mod workspace;
 
 /// all-in-one imports : `use codemp::prelude::*;`
 pub mod prelude;
@@ -181,6 +183,6 @@ pub use errors::Result;
 #[cfg(all(feature = "client", feature = "sync"))]
 pub use instance::sync::Instance;
 
-#[cfg(all(feature = "client", not(feature = "sync")))]
+#[cfg(all(feature = "backport", not(feature = "sync")))]
 pub use instance::a_sync::Instance;
 

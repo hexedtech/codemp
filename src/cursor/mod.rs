@@ -12,7 +12,7 @@ pub mod controller;
 
 pub use controller::CursorController as Controller;
 
-use crate::proto::{RowCol, CursorPosition};
+use crate::proto::cursor::{RowCol, CursorPosition};
 
 impl From::<RowCol> for (i32, i32) {
 	fn from(pos: RowCol) -> (i32, i32) {
@@ -36,12 +36,12 @@ impl RowCol {
 impl CursorPosition {
 	/// extract start position, defaulting to (0,0), to help build protocol packets
 	pub fn start(&self) -> RowCol {
-		self.start.clone().unwrap_or((0, 0).into())
+		self.start.clone()
 	}
 
 	/// extract end position, defaulting to (0,0), to help build protocol packets
 	pub fn end(&self) -> RowCol {
-		self.end.clone().unwrap_or((0, 0).into())
+		self.end.clone()
 	}
 }
 

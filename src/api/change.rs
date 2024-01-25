@@ -3,6 +3,8 @@
 //! an editor-friendly representation of a text change in a buffer
 //! to easily interface with codemp from various editors
 
+use crate::proto::cursor::RowCol;
+
 /// an editor-friendly representation of a text change in a buffer
 ///
 /// this represent a range in the previous state of the string and a new content which should be

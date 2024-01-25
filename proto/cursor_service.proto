@@ -6,8 +6,6 @@ import "user.proto";
 
 // handle cursor events and broadcast to all users
 service Cursor {
-	// send cursor movement to server
-	rpc Moved  (cursor.CursorEvent)      returns (cursor.MovedResponse);
-	// attach to a workspace and receive cursor events
-	rpc Listen (user.UserIdentity)     returns (stream cursor.CursorEvent);
+	// subscribe to a workspace's cursor events
+	rpc Attach (stream cursor.CursorEvent) returns (stream cursor.CursorEvent);
 }
