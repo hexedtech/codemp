@@ -16,7 +16,7 @@ message WorkspaceUserList {
 }
 
 message WorkspaceMessage {
-	required int32 id = 1;
+	required int32 id = 1; //unused???
 }
 
 message JoinRequest {
@@ -65,4 +65,8 @@ message BufferListRequest{
 
 message UserList {
 	repeated user.UserIdentity users = 1;
+}
+
+message WorkspaceDetails{
+	required int32 id=1;
 }

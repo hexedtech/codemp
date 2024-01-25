@@ -33,19 +33,25 @@ import "workspace.proto";
 
 service Workspace {
 
-	rpc Create (workspace.BufferPayload) returns (workspace.Empty);
 
 	rpc Attach (workspace.AttachRequest) returns (workspace.Token);
+
+	rpc LeaveWorkspace (workspace.WorkspaceDetails) returns (workspace.Empty);
+
+	rpc CreateWorkspace (workspace.WorkspaceDetails) returns (workspace.Empty);
+
+	rpc CreateBuffer (workspace.BufferPayload) returns (workspace.Empty);
 
 	rpc ListBuffers (workspace.BufferListRequest) returns (files.BufferTree);
 
 	rpc ListUsers (workspace.UserListRequest) returns (workspace.UserList);
 
-	rpc ListBufferUsers (workspace.Empty) returns (workspace.Empty);
+	rpc ListBufferUsers (workspace.BufferPayload) returns (workspace.Empty);
 
 	rpc Join (workspace.JoinRequest) returns (workspace.Token);
 
 	rpc Delete (workspace.BufferPayload) returns (workspace.Empty); //deletes buffer
+
 
 }
 
