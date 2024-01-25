@@ -20,16 +20,15 @@ pub use crate::api::{
 pub use crate::{
 	// Instance as CodempInstance,
 	client::Client as CodempClient,
+	workspace::Workspace as CodempWorkspace,
+	workspace::UserInfo as CodempUserInfo,
 	cursor::Controller as CodempCursorController,
-	// buffer::Controller as CodempBufferController,
+	buffer::Controller as CodempBufferController,
 };
 
-#[cfg(feature = "proto")]
+#[cfg(feature = "transport")]
 pub use crate::{
-	proto::CursorPosition as CodempCursorPosition,
-	proto::CursorEvent as CodempCursorEvent,
-	proto::RowCol as CodempRowCol,
+	proto::cursor::CursorPosition as CodempCursorPosition,
+	proto::cursor::CursorEvent as CodempCursorEvent,
+	proto::cursor::RowCol as CodempRowCol,
 };
-
-#[cfg(feature = "global")]
-pub use crate::instance::global::INSTANCE as CODEMP_INSTANCE;

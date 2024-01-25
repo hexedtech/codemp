@@ -148,12 +148,11 @@ pub mod errors;
 #[cfg(feature = "client")]
 pub mod client;
 
+/// assorted helpers
 pub mod tools;
 
-/// client wrapper to handle memory persistence
-#[cfg(feature = "backport")]
-pub mod instance;
-
+/// workspace operations
+#[cfg(feature = "client")]
 pub mod workspace;
 
 /// all-in-one imports : `use codemp::prelude::*;`
@@ -176,13 +175,5 @@ pub mod proto {
 	pub mod workspace_service { tonic::include_proto!("workspace_service"); }
 }
 
-
 pub use errors::Error;
 pub use errors::Result;
-
-#[cfg(all(feature = "client", feature = "sync"))]
-pub use instance::sync::Instance;
-
-#[cfg(all(feature = "backport", not(feature = "sync")))]
-pub use instance::a_sync::Instance;
-

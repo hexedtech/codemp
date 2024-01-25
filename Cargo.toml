@@ -40,4 +40,3 @@ client    = ["transport", "api", "dep:tokio", "dep:tokio-stream", "dep:uuid", "d
 server    = ["transport"]
 global    = ["client", "dep:lazy_static"]
 sync      = ["client"]
-backport = [] # TODO remove!

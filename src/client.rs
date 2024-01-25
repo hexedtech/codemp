@@ -2,6 +2,7 @@
 //!
 //! codemp client manager, containing grpc services
 
+use std::collections::BTreeMap;
 use std::sync::Arc;
 use tokio::sync::mpsc;
 use tonic::service::interceptor::InterceptedService;
@@ -25,7 +26,7 @@ use crate::workspace::Workspace;
 pub struct Client {
 	user_id: Uuid,
 	token_tx: Arc<tokio::sync::watch::Sender<Token>>,
-	workspace: Option<Workspace>,
+	pub workspaces: BTreeMap<String, Workspace>,
 	services: Arc<Services>
 }
 
@@ -83,7 +84,7 @@ impl Client {
 		Ok(Client {
 			user_id,
 			token_tx: Arc::new(token_tx),
-			workspace: None,
+			workspaces: BTreeMap::new(),
 			services: Arc::new(Services { workspace, buffer, cursor })
 		})
 	}
@@ -111,7 +112,7 @@ impl Client {
 			tracing::debug!("controller worker stopped");
 		});
 
-		self.workspace = Some(Workspace::new(
+		self.workspaces.insert(workspace_id.to_string(), Workspace::new(
 			workspace_id.to_string(),
 			self.user_id,
 			self.token_tx.clone(),
@@ -120,5 +121,9 @@ impl Client {
 		).await?);
 
 		Ok(())
+	}
+
+	pub fn user_id(&self) -> Uuid {
+		self.user_id.clone()
 	}
 }
