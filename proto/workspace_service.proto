@@ -1,27 +1,3 @@
-// Workspace effimero: sta in /tmp o proprio in memoria
-// Workspace e` autenticato: come si decide mentre si rifa il server
-// Workspace ha id univoco (stringa), usato per connettercisi
-// Workspace implementera` access control:
-//   * accedere al workspace
-//   * i singoli buffer
-//   - i metadati maybe????
-// Workspace offre le seguenti features:
-//  * listare i buffer DONE
-//  * listare gli user connessi DONE
-//  * creare buffers DONE REPLACE THE ONE ON buffer.proto
-//  * NO ATTACH: responsabilita` del buffer service
-//  * contiene metadata dei buffers:
-//    * path
-//    * data creazione
-// Buffer id NON E` il path DONE
-// BufferService NON ha metadata:
-// Workspace tiene traccia di utenti attached (nel futuro) DONE
-
-
-
-
-
-
 syntax = "proto2";
 
 package workspace_service;
@@ -29,10 +5,7 @@ import "user.proto";
 import "files.proto";
 import "workspace.proto";
 
-
-
 service Workspace {
-
 
 	rpc Attach (workspace.AttachRequest) returns (workspace.Token);
 
@@ -46,13 +19,10 @@ service Workspace {
 
 	rpc ListUsers (workspace.UserListRequest) returns (workspace.UserList);
 
-	rpc ListBufferUsers (workspace.BufferPayload) returns (workspace.Empty);
+	rpc ListBufferUsers (workspace.BufferPayload) returns (workspace.UserList); //TODO discuss
 
 	rpc Join (workspace.JoinRequest) returns (workspace.Token);
 
 	rpc Delete (workspace.BufferPayload) returns (workspace.Empty); //deletes buffer
 
-
 }
-
-

@@ -1,4 +1,4 @@
-use std::{collections::{BTreeMap, BTreeSet}, str::FromStr, sync::Arc};
+use std::{collections::{BTreeMap, BTreeSet}, sync::Arc};
 use tokio::sync::mpsc;
 use uuid::Uuid;
 use crate::{
@@ -25,12 +25,10 @@ impl From<Uuid> for UserInfo {
 
 impl From<UserIdentity> for Uuid {
 	fn from(uid: UserIdentity) -> Uuid {
-		Uuid::from_str(&uid.id).expect("expected an uuid")
+		let b: [u8; 16] = uid.id.try_into().expect("expected an uuid");
+		Uuid::from_bytes(b)
 	}
 }
-
-/// list_users -> A() , B()
-/// get_user_info(B) -> B(cacca, pipu@piu)
 
 pub struct Workspace {
 	id: String,
@@ -68,10 +66,10 @@ impl Workspace {
 		Ok(ws)
 	}
 
-	/// create a new buffer in current workspace, with optional given content
+	/// create a new buffer in current workspace
 	pub async fn create(&mut self, path: &str) -> crate::Result<()> {
 		let mut workspace_client = self.services.workspace.clone();
-		workspace_client.create(
+		workspace_client.create_buffer(
 			tonic::Request::new(BufferPayload { path: path.to_string() })
 		).await?;
 
@@ -110,6 +108,7 @@ impl Workspace {
 		Ok(controller)
 	}
 
+	/// fetch a list of all buffers in a workspace
 	pub async fn fetch_buffers(&mut self) -> crate::Result<()> {
 		let mut workspace_client = self.services.workspace.clone();
 		let buffers = workspace_client.list_buffers(
@@ -124,6 +123,7 @@ impl Workspace {
 		Ok(())
 	}
 
+	/// fetch a list of all users in a workspace
 	pub async fn fetch_users(&mut self) -> crate::Result<()> {
 		let mut workspace_client = self.services.workspace.clone();
 		let users = BTreeSet::from_iter(workspace_client.list_users(
@@ -141,75 +141,45 @@ impl Workspace {
 		Ok(())
 	}
 
-	pub async fn list_buffer_users() {
-		todo!(); //TODO what is this
+	/// get a list of the users attached to a specific buffer
+	/// 
+	/// TODO: discuss implementation details
+	pub async fn list_buffer_users(&mut self, path: &str) -> crate::Result<Vec<UserIdentity>> {
+		let mut workspace_client = self.services.workspace.clone();
+		let buffer_users = workspace_client.list_buffer_users(
+			tonic::Request::new(BufferPayload { path: path.to_string() })
+		).await?.into_inner().users;
+
+		Ok(buffer_users)
+	}
+	
+	/// detach from a specific buffer, returns false if there
+	pub fn detach(&mut self, path: &str) -> bool {
+		match &mut self.buffers.remove(path) {
+			None => false,	
+			Some(_) => true
+		}
 	}
 
+	/// delete a buffer
 	pub async fn delete(&mut self, path: &str) -> crate::Result<()> {
 		let mut workspace_client = self.services.workspace.clone();
 		workspace_client.delete(
 			tonic::Request::new(BufferPayload { path: path.to_string() })
 		).await?;
-
+	
 		self.filetree.remove(path);
-
+	
 		Ok(())
-	}
-	
-	/// leave current workspace if in one, disconnecting buffer and cursor controllers
-	pub fn leave_workspace(&self) {
-		todo!(); //TODO need proto
-	}
-	
-	/// disconnect from a specific buffer
-	pub fn disconnect_buffer(&mut self, path: &str) -> bool {
-		match &mut self.buffers.remove(path) {
-			None => false,
-			Some(_) => true
-		}
 	}
 
 	pub fn id(&self) -> String { self.id.clone() }
+
+	/// return a reference to current cursor controller, if currently in a workspace
+	pub fn cursor(&self) -> Arc<cursor::Controller> { self.cursor.clone() }
 
 	/// get a new reference to a buffer controller, if any is active to given path
 	pub fn buffer_by_name(&self, path: &str) -> Option<Arc<buffer::Controller>> {
 		self.buffers.get(path).cloned()
 	}
-
-	/// return a reference to current cursor controller, if currently in a workspace
-	pub fn cursor(&self) -> Arc<cursor::Controller> { self.cursor.clone() }
-
 }
-
-/*
-impl Interceptor for Workspace { //TODO
-	fn call(&mut self, mut request: tonic::Request<()>) -> Result<tonic::Request<()>, tonic::Status> {
-		request.metadata_mut().insert("auth", self.token.token.parse().unwrap());
-		Ok(request)
-	}
-}
-
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub enum FSNode {
-	File(String),
-	Directory(String, Vec<FSNode>),
-}
-	fn file_tree_rec(path: &str, root: &mut Vec<FSNode>) {
-		if let Some(idx) = path.find("/") {
-			let dir = path[..idx].to_string();
-			let mut dir_node = vec![];
-			Self::file_tree_rec(&path[idx..], &mut dir_node);
-			root.push(FSNode::Directory(dir, dir_node));
-		} else {
-			root.push(FSNode::File(path.to_string()));
-		}
-	}
-	
-	fn file_tree(&self) -> Vec<FSNode> {
-		let mut root = vec![];
-		for path in &self.filetree {
-			Self::file_tree_rec(&path, &mut root);	
-		}
-		root
-	}
-*/

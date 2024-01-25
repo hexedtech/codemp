@@ -39,7 +39,7 @@ impl CursorWorker {
 }
 
 #[async_trait]
-impl ControllerWorker<CursorEvent> for CursorControllerWorker {
+impl ControllerWorker<CursorEvent> for CursorWorker {
 	type Controller = CursorController;
 	type Tx = mpsc::Sender<CursorEvent>;
 	type Rx = Streaming<CursorEvent>;
@@ -58,7 +58,7 @@ impl ControllerWorker<CursorEvent> for CursorControllerWorker {
 		loop {
 			tokio::select!{
 				Ok(Some(cur)) = rx.message() => {
-					if cur.user.id == self.user_id.to_string() { continue }
+					if Uuid::from(cur.user.clone()) == self.user_id { continue }
 					self.channel.send(cur.clone()).unwrap_or_warn("could not broadcast event");
 					self.changed.send(cur).unwrap_or_warn("could not update last event");
 				},

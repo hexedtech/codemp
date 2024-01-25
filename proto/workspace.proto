@@ -20,8 +20,8 @@ message WorkspaceMessage {
 }
 
 message JoinRequest {
-	required string username=1;
-	required string password=2;
+	required string username = 1;
+	required string password = 2;
 }
 
 message AttachRequest {
@@ -67,6 +67,6 @@ message UserList {
 	repeated user.UserIdentity users = 1;
 }
 
-message WorkspaceDetails{
-	required int32 id=1;
+message WorkspaceDetails {
+	required string id = 1;
 }

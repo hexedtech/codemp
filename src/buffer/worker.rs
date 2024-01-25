@@ -63,7 +63,7 @@ impl BufferWorker {
 }
 
 #[async_trait]
-impl ControllerWorker<TextChange> for BufferControllerWorker {
+impl ControllerWorker<TextChange> for BufferWorker {
 	type Controller = BufferController;
 	type Tx = mpsc::Sender<Operation>;
 	type Rx = Streaming<Operation>;

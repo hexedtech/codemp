@@ -4,7 +4,8 @@
 
 use std::collections::BTreeMap;
 use std::sync::Arc;
-use tokio::sync::mpsc;
+
+use tokio::sync::{mpsc, RwLock};
 use tonic::service::interceptor::InterceptedService;
 use tonic::service::Interceptor;
 use tonic::transport::{Channel, Endpoint};
@@ -14,7 +15,7 @@ use crate::api::controller::ControllerWorker;
 use crate::cursor::worker::CursorWorker;
 use crate::proto::buffer_service::buffer_client::BufferClient;
 use crate::proto::cursor_service::cursor_client::CursorClient;
-use crate::proto::workspace::{JoinRequest, Token};
+use crate::proto::workspace::{JoinRequest, Token, WorkspaceDetails};
 use crate::proto::workspace_service::workspace_client::WorkspaceClient;
 use crate::workspace::Workspace;
 
@@ -26,7 +27,7 @@ use crate::workspace::Workspace;
 pub struct Client {
 	user_id: Uuid,
 	token_tx: Arc<tokio::sync::watch::Sender<Token>>,
-	pub workspaces: BTreeMap<String, Workspace>,
+	pub workspaces: BTreeMap<String, Arc<RwLock<Workspace>>>,
 	services: Arc<Services>
 }
 
@@ -62,7 +63,7 @@ fn parse_codemp_connection_string<'a>(string: &'a str) -> (String, String) {
 
 impl Client {
 	/// instantiate and connect a new client
-	pub async fn new(dest: &str) -> crate::Result<Self> { //TODO interceptor
+	pub async fn new(dest: &str) -> crate::Result<Self> {
 		let (_host, _workspace_id) = parse_codemp_connection_string(dest);
 
 		let channel = Endpoint::from_shared(dest.to_string())?
@@ -89,11 +90,18 @@ impl Client {
 		})
 	}
 
-	/// join a workspace, starting a cursorcontroller and returning a new reference to it
-	///
-	/// to interact with such workspace [crate::api::Controller::send] cursor events or
-	/// [crate::api::Controller::recv] for events on the associated [crate::cursor::Controller].
-	pub async fn join(&mut self, workspace_id: &str) -> crate::Result<()> {
+	/// creates a new workspace (and joins it implicitly), returns an [tokio::sync::RwLock] to interact with it
+	pub async fn create_workspace(&mut self, workspace_id: &str) -> crate::Result<Arc<RwLock<Workspace>>> {
+		let mut workspace_client = self.services.workspace.clone();
+		workspace_client.create_workspace(
+			tonic::Request::new(WorkspaceDetails { id: workspace_id.to_string() })
+		).await?;
+
+		self.join_workspace(workspace_id).await
+	}
+
+	/// join a workspace, returns an [tokio::sync::RwLock] to interact with it
+	pub async fn join_workspace(&mut self, workspace_id: &str) -> crate::Result<Arc<RwLock<Workspace>>> {
 		self.token_tx.send(self.services.workspace.clone().join(
 			tonic::Request::new(JoinRequest { username: "".to_string(), password: "".to_string() }) //TODO
 		).await?.into_inner())?;
@@ -112,17 +120,32 @@ impl Client {
 			tracing::debug!("controller worker stopped");
 		});
 
-		self.workspaces.insert(workspace_id.to_string(), Workspace::new(
-			workspace_id.to_string(),
-			self.user_id,
-			self.token_tx.clone(),
-			controller,
-			self.services.clone()
-		).await?);
+		let lock = Arc::new(RwLock::new(
+			Workspace::new(
+				workspace_id.to_string(),
+				self.user_id,
+				self.token_tx.clone(),
+				controller,
+				self.services.clone()
+			).await?
+		));
 
+		self.workspaces.insert(workspace_id.to_string(), lock.clone());
+
+		Ok(lock)
+	}
+
+	/// leave given workspace, disconnecting buffer and cursor controllers
+	pub async fn leave_workspace(&self, workspace_id: &str) -> crate::Result<()> {
+		let mut workspace_client = self.services.workspace.clone();
+		workspace_client.leave_workspace(
+			tonic::Request::new(WorkspaceDetails { id: workspace_id.to_string() })
+		).await?;
+		
 		Ok(())
 	}
 
+	/// accessor for user id
 	pub fn user_id(&self) -> Uuid {
 		self.user_id.clone()
 	}

@@ -57,7 +57,7 @@ impl Controller<CursorEvent> for CursorController {
 			std::mem::swap(&mut cursor.start, &mut cursor.end);
 		}
 		Ok(self.op.send(CursorEvent {
-			user: UserIdentity { id: self.user_id.to_string() },
+			user: UserIdentity { id: self.user_id.as_bytes().to_vec() },
 			position: cursor,
 		})?)
 	}
