@@ -20,6 +20,7 @@ message Operation {
 message SnapshotRequest {
   required string path = 1;
 }
+
 message SnapshotResponse {
   required string content = 1;
 }

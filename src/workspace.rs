@@ -2,7 +2,7 @@ use std::{collections::{BTreeMap, BTreeSet}, sync::Arc};
 use tokio::sync::mpsc;
 use uuid::Uuid;
 use crate::{
-	proto::{user::UserIdentity, workspace::{AttachRequest, BufferListRequest, BufferPayload, Token, UserListRequest}},
+	proto::{buffer_service::SnapshotRequest, user::UserIdentity, workspace::{AttachRequest, BufferListRequest, BufferPayload, Token, UserListRequest}},
 	api::controller::ControllerWorker,
 	buffer::{self, worker::BufferWorker},
 	client::Services,
@@ -42,6 +42,7 @@ pub struct Workspace {
 }
 
 impl Workspace {
+	/// create a new buffer and perform initial fetch operations
 	pub(crate) async fn new(
 		id: String,
 		user_id: Uuid,
@@ -86,7 +87,7 @@ impl Workspace {
 	pub async fn attach(&mut self, path: &str) -> crate::Result<Arc<buffer::Controller>> {
 		let mut worskspace_client = self.services.workspace.clone();
 		self.token.send(worskspace_client.attach(
-			tonic::Request::new(AttachRequest { id: path.to_string() })
+			tonic::Request::new(AttachRequest { path: path.to_string() })
 		).await?.into_inner())?;
 
 		let (tx, rx) = mpsc::channel(10);
@@ -106,6 +107,16 @@ impl Workspace {
 		self.buffers.insert(path.to_string(), controller.clone());
 
 		Ok(controller)
+	}
+
+	/// get a snapshot of a buffer (meaning its contents as a flat string)
+	pub async fn snapshot(&mut self, path: &str) -> crate::Result<String> {
+		let mut buffer_client = self.services.buffer.clone();
+		let contents = buffer_client.snapshot(
+			tonic::Request::new(SnapshotRequest { path: path.to_string() })
+		).await?.into_inner().content;
+
+		Ok(contents)
 	}
 
 	/// fetch a list of all buffers in a workspace
@@ -173,6 +184,7 @@ impl Workspace {
 		Ok(())
 	}
 
+	/// get the id of the workspace
 	pub fn id(&self) -> String { self.id.clone() }
 
 	/// return a reference to current cursor controller, if currently in a workspace
@@ -182,4 +194,9 @@ impl Workspace {
 	pub fn buffer_by_name(&self, path: &str) -> Option<Arc<buffer::Controller>> {
 		self.buffers.get(path).cloned()
 	}
+
+	/// get the currently cached "filetree"
+	pub fn filetree(&self) -> Vec<String> {
+		self.filetree.iter().map(|f| f.clone()).collect()
+	} 
 }

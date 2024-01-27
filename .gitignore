@@ -8,3 +8,5 @@ Cargo.lock
 /client/vscode/codemp.node
 
 .cargo
+
+.vscode/

@@ -16,7 +16,7 @@ message WorkspaceUserList {
 }
 
 message WorkspaceMessage {
-	required int32 id = 1; //unused???
+	required string id = 1; //unused???
 }
 
 message JoinRequest {
@@ -25,7 +25,7 @@ message JoinRequest {
 }
 
 message AttachRequest {
-	required string id = 1;
+	required string path = 1;
 }
 
 message Token {
