@@ -74,8 +74,11 @@ impl Workspace {
 			tonic::Request::new(BufferPayload { path: path.to_string() })
 		).await?;
 
-		//add to filetree
+		// add to filetree
 		self.filetree.insert(path.to_string());
+
+		// fetch buffers
+		self.fetch_buffers().await?;
 
 		Ok(())
 	}
@@ -110,7 +113,7 @@ impl Workspace {
 	}
 
 	/// get a snapshot of a buffer (meaning its contents as a flat string)
-	pub async fn snapshot(&mut self, path: &str) -> crate::Result<String> {
+	pub async fn snapshot(&self, path: &str) -> crate::Result<String> {
 		let mut buffer_client = self.services.buffer.clone();
 		let contents = buffer_client.snapshot(
 			tonic::Request::new(SnapshotRequest { path: path.to_string() })
