@@ -1,4 +1,4 @@
-use std::{collections::{BTreeMap, BTreeSet}, sync::Arc};
+use std::{collections::{BTreeMap, BTreeSet}, str::FromStr, sync::Arc};
 use tokio::sync::mpsc;
 use uuid::Uuid;
 use crate::{
@@ -25,8 +25,7 @@ impl From<Uuid> for UserInfo {
 
 impl From<UserIdentity> for Uuid {
 	fn from(uid: UserIdentity) -> Uuid {
-		let b: [u8; 16] = uid.id.try_into().expect("expected an uuid");
-		Uuid::from_bytes(b)
+		Uuid::from_str(&uid.id).expect("expected an uuid")
 	}
 }
 
@@ -89,9 +88,9 @@ impl Workspace {
 	/// [crate::api::Controller::recv] to exchange [crate::api::TextChange]
 	pub async fn attach(&mut self, path: &str) -> crate::Result<Arc<buffer::Controller>> {
 		let mut worskspace_client = self.services.workspace.clone();
-		self.token.send(worskspace_client.attach(
-			tonic::Request::new(AttachRequest { path: path.to_string() })
-		).await?.into_inner())?;
+		let mut request = tonic::Request::new(AttachRequest { path: path.to_string() });
+		request.metadata_mut().insert("path", tonic::metadata::MetadataValue::try_from(path).expect("could not represent path as byte sequence"));
+		self.token.send(worskspace_client.attach(request).await?.into_inner())?;
 
 		let (tx, rx) = mpsc::channel(10);
 		let stream = self.services.buffer.clone()

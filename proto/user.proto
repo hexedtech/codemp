@@ -6,5 +6,5 @@ package user;
 // payload identifying user
 message UserIdentity {
 	// user identifier
-	required bytes id = 1; //since uuid is 8 bytes we prefer to just send the raw bytes instead of string
+	required string id = 1;
 }
