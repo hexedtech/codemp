@@ -148,9 +148,6 @@ pub mod errors;
 #[cfg(feature = "client")]
 pub mod client;
 
-/// assorted helpers
-pub mod tools;
-
 /// workspace operations
 #[cfg(feature = "client")]
 pub mod workspace;
