@@ -40,7 +40,6 @@ enum FileEventType {
 
 message FileEvent {
 	required string bufferbuffertree = 1;
-
 	required FileEventType type = 2;
 }
 
@@ -59,9 +58,7 @@ message BufferPayload {
 	required string path = 1;
 }
 
-message BufferListRequest{
-
-}
+message BufferListRequest {}
 
 message UserList {
 	repeated user.UserIdentity users = 1;

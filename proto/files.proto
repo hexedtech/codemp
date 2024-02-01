@@ -2,7 +2,6 @@ syntax = "proto2";
 
 package files;
 
-
 message BufferNode {
 	required string path = 1;
 }

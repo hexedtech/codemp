@@ -5,22 +5,11 @@ package buffer_service;
 // handle buffer changes, keep in sync users
 service Buffer {
   // attach to a buffer and receive operations
-  rpc Attach (stream Operation)    returns (stream Operation);
-
-  rpc Snapshot(SnapshotRequest) returns (SnapshotResponse);
-
+  rpc Attach (stream Operation) returns (stream Operation);
 }
 
 message Operation {
   required bytes data = 1;
   optional string user = 2;
   optional string path = 3;
-}
-
-message SnapshotRequest {
-  required string path = 1;
-}
-
-message SnapshotResponse {
-  required string content = 1;
 }

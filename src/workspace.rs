@@ -2,7 +2,7 @@ use std::{collections::{BTreeMap, BTreeSet}, sync::Arc};
 use tokio::sync::mpsc;
 use uuid::Uuid;
 use crate::{
-	proto::{buffer_service::SnapshotRequest, user::UserIdentity, workspace::{AttachRequest, BufferListRequest, BufferPayload, Token, UserListRequest}},
+	proto::{user::UserIdentity, workspace::{AttachRequest, BufferListRequest, BufferPayload, Token, UserListRequest}},
 	api::controller::ControllerWorker,
 	buffer::{self, worker::BufferWorker},
 	client::Services,
@@ -110,16 +110,6 @@ impl Workspace {
 		self.buffers.insert(path.to_string(), controller.clone());
 
 		Ok(controller)
-	}
-
-	/// get a snapshot of a buffer (meaning its contents as a flat string)
-	pub async fn snapshot(&self, path: &str) -> crate::Result<String> {
-		let mut buffer_client = self.services.buffer.clone();
-		let contents = buffer_client.snapshot(
-			tonic::Request::new(SnapshotRequest { path: path.to_string() })
-		).await?.into_inner().content;
-
-		Ok(contents)
 	}
 
 	/// fetch a list of all buffers in a workspace
