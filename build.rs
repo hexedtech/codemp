@@ -1,7 +1,7 @@
 fn main() -> Result<(), Box<dyn std::error::Error>> {
 	tonic_build::configure()
 		// .build_client(cfg!(feature = "client"))
-		//.build_server(cfg!(feature = "server")) // FIXME if false, build fails????
+		// .build_server(cfg!(feature = "server")) // FIXME if false, build fails????
 		// .build_transport(cfg!(feature = "transport"))
 		.compile(
 			&[
@@ -11,9 +11,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 				"proto/workspace.proto",
 				"proto/buffer_service.proto",
 				"proto/cursor_service.proto",
-				"proto/workspace_service.proto"
+				"proto/workspace_service.proto",
+				"proto/auth_service.proto",
 			],
-			&["proto"]
+			&["proto"],
 		)?;
 	Ok(())
  }

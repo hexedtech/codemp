@@ -173,6 +173,7 @@ pub mod proto {
 	pub mod buffer_service { tonic::include_proto!("buffer_service"); }
 	pub mod cursor_service { tonic::include_proto!("cursor_service"); }
 	pub mod workspace_service { tonic::include_proto!("workspace_service"); }
+	pub mod auth_service { tonic::include_proto!("auth_service"); }
 }
 
 pub use errors::Error;
