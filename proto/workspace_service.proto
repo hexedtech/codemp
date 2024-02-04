@@ -13,6 +13,6 @@ service Workspace {
 	rpc ListBuffers (workspace.BufferListRequest) returns (files.BufferTree);
 	rpc ListUsers (workspace.UserListRequest) returns (workspace.UserList);
 	rpc ListBufferUsers (workspace.BufferPayload) returns (workspace.UserList); //TODO discuss
-	rpc Join (workspace.JoinRequest) returns (workspace.Token);
+	rpc Join (workspace.JoinRequest) returns (stream workspace.WorkspaceEvent);
 	rpc Delete (workspace.BufferPayload) returns (workspace.Empty); //deletes buffer
 }

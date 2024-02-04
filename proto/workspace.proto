@@ -19,6 +19,20 @@ message WorkspaceMessage {
 	required string id = 1; //unused???
 }
 
+enum WorkspaceEventType {
+	USER_JOIN = 0;
+	USER_LEAVE = 1;
+	FILE_CREATE = 2;
+	FILE_DELETE = 3;
+	FILE_RENAME = 4;
+}
+
+message WorkspaceEvent {
+	required string id = 1; // the id of the user, or the path of the file
+	required WorkspaceEventType event = 2;
+	optional string extra = 3; // new name? extra info on user events etc...
+}
+
 message JoinRequest {
 	required string username = 1;
 	required string password = 2;
