@@ -1,6 +1,7 @@
 syntax = "proto2";
 
-package auth_service;
+package auth;
+
 
 // authenticates users, issuing tokens
 service Auth {
@@ -8,9 +9,11 @@ service Auth {
   rpc Login (WorkspaceJoinRequest)    returns (Token);
 }
 
+
 message Token {
 	required string token = 1;
 }
+
 
 message WorkspaceJoinRequest {
   required string workspace_id = 1;

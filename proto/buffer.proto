@@ -1,6 +1,6 @@
 syntax = "proto2";
 
-package buffer_service;
+package buffer;
 
 // handle buffer changes, keep in sync users
 service Buffer {

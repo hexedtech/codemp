@@ -1,83 +1,56 @@
 syntax = "proto2";
 
 package workspace;
-import "user.proto";
 import "files.proto";
+import "auth.proto";
+import "common.proto";
 
-message Empty {}
-
-message TreeRequest {} // empty
-message UserRequest {}
-message CursorResponse {}
-message UserListRequest {}
-
-message WorkspaceUserList {
-	repeated user.UserIdentity user = 1;
-}
-
-message WorkspaceMessage {
-	required string id = 1; //unused???
-}
-
-enum WorkspaceEventType {
-	USER_JOIN = 0;
-	USER_LEAVE = 1;
-	FILE_CREATE = 2;
-	FILE_DELETE = 3;
-	FILE_RENAME = 4;
+service Workspace {
+	rpc CreateWorkspace (workspace.WorkspaceId) returns (common.Empty);
+	
+	rpc RequestAccess (workspace.BufferPath) returns (auth.Token);
+	rpc LeaveWorkspace (workspace.WorkspaceId) returns (common.Empty);
+	rpc CreateBuffer (workspace.BufferPath) returns (common.Empty);
+	rpc ListBuffers (common.Empty) returns (files.BufferTree); 
+	rpc ListUsers (common.Empty) returns (common.UserList);
+	rpc ListBufferUsers (workspace.BufferPath) returns (common.UserList); //TODO discuss
+	rpc Attach (common.Empty) returns (stream workspace.WorkspaceEvent);
+	rpc Delete (workspace.BufferPath) returns (common.Empty); //deletes buffer
 }
 
 message WorkspaceEvent {
-	required string id = 1; // the id of the user, or the path of the file
-	required WorkspaceEventType event = 2;
-	optional string extra = 3; // new name? extra info on user events etc...
+	message UserJoin {
+		required common.UserIdentity id = 1;
+	}
+	message UserLeave {
+		required common.UserIdentity id = 1;
+	}
+	message FileCreate {
+		required string path = 1;
+	}
+	message FileRename {
+		required string before = 1;
+		required string after = 2;
+	}
+	message FileDelete {
+		required string path = 1;
+	}
+
+	oneof event {
+		UserJoin join = 1;
+		UserLeave leave = 2;
+		FileCreate create = 3;
+		FileRename rename = 4;
+		FileDelete delete = 5;
+	}
 }
 
-message JoinRequest {
-	required string username = 1;
-	required string password = 2;
-}
-
-message AttachRequest {
-	required string path = 1;
-}
-
-message Token {
-	required string token = 1;
-}
-
-enum FileEventType {
-	CREATE = 0;
-	DELETE = 1;
-	RENAME = 2;
-}
-
-message FileEvent {
-	required string bufferbuffertree = 1;
-	required FileEventType type = 2;
-}
-
-enum UserEventType {
-	JOIN = 0;
-	LEAVE = 1;
-}
-
-message UserEvent {
-	required user.UserIdentity user = 1;
-	required UserEventType type = 2;
-}
-
-message BufferPayload {
+message BufferPath {
 	// buffer path to operate onto
 	required string path = 1;
 }
 
-message BufferListRequest {}
 
-message UserList {
-	repeated user.UserIdentity users = 1;
-}
-
-message WorkspaceDetails {
+message WorkspaceId {
 	required string id = 1;
 }

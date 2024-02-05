@@ -1,0 +1,18 @@
+syntax = "proto2";
+
+package common;
+
+
+// payload identifying user
+message UserIdentity {
+	// user identifier
+	required string id = 1;
+}
+
+message UserList {
+	repeated UserIdentity users = 1;
+}
+
+message Empty{
+	//generic Empty message
+}
