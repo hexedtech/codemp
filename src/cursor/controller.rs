@@ -4,7 +4,6 @@
 
 use tokio::sync::{mpsc, broadcast::{self, error::{TryRecvError, RecvError}}, Mutex, watch};
 use tonic::async_trait;
-use uuid::Uuid;
 
 use crate::{api::Controller, errors::IgnorableError, proto::cursor::{CursorEvent, CursorPosition}};
 
@@ -21,7 +20,6 @@ use crate::{api::Controller, errors::IgnorableError, proto::cursor::{CursorEvent
 /// upon dropping this handle will stop the associated worker
 #[derive(Debug)]
 pub struct CursorController {
-	user_id: Uuid,
 	op: mpsc::UnboundedSender<CursorPosition>,
 	last_op: Mutex<watch::Receiver<CursorEvent>>,
 	stream: Mutex<broadcast::Receiver<CursorEvent>>,
@@ -36,13 +34,12 @@ impl Drop for CursorController {
 
 impl CursorController {
 	pub(crate) fn new(
-		user_id: Uuid,
 		op: mpsc::UnboundedSender<CursorPosition>,
 		last_op: Mutex<watch::Receiver<CursorEvent>>,
 		stream: Mutex<broadcast::Receiver<CursorEvent>>,
 		stop: mpsc::UnboundedSender<()>,
 	) -> Self {
-		CursorController { user_id, op, last_op, stream, stop }
+		CursorController { op, last_op, stream, stop }
 	}
 }
 

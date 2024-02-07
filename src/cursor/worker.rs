@@ -2,14 +2,12 @@ use std::sync::Arc;
 
 use tokio::sync::{mpsc, broadcast::{self}, Mutex, watch};
 use tonic::{Streaming, async_trait};
-use uuid::Uuid;
 
 use crate::{api::controller::ControllerWorker, errors::IgnorableError, proto::cursor::{CursorPosition, CursorEvent}};
 
 use super::controller::CursorController;
 
 pub(crate) struct CursorWorker {
-	user_id: Uuid,
 	producer: mpsc::UnboundedSender<CursorPosition>,
 	op: mpsc::UnboundedReceiver<CursorPosition>,
 	changed: watch::Sender<CursorEvent>,
@@ -19,14 +17,13 @@ pub(crate) struct CursorWorker {
 	stop_control: mpsc::UnboundedSender<()>,
 }
 
-impl CursorWorker {
-	pub(crate) fn new(user_id: Uuid) -> Self {
+impl Default for CursorWorker {
+	fn default() -> Self {
 		let (op_tx, op_rx) = mpsc::unbounded_channel();
 		let (cur_tx, _cur_rx) = broadcast::channel(64);
 		let (end_tx, end_rx) = mpsc::unbounded_channel();
 		let (change_tx, change_rx) = watch::channel(CursorEvent::default());
 		Self {
-			user_id,
 			producer: op_tx,
 			op: op_rx,
 			changed: change_tx,
@@ -46,7 +43,6 @@ impl ControllerWorker<CursorEvent> for CursorWorker {
 
 	fn subscribe(&self) -> CursorController {
 		CursorController::new(
-			self.user_id.clone(),
 			self.producer.clone(),
 			Mutex::new(self.last_op.clone()),
 			Mutex::new(self.channel.subscribe()),
@@ -58,7 +54,6 @@ impl ControllerWorker<CursorEvent> for CursorWorker {
 		loop {
 			tokio::select!{
 				Ok(Some(cur)) = rx.message() => {
-					if Uuid::from(cur.user.clone()) == self.user_id { continue }
 					self.channel.send(cur.clone()).unwrap_or_warn("could not broadcast event");
 					self.changed.send(cur).unwrap_or_warn("could not update last event");
 				},
