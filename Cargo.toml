@@ -27,6 +27,7 @@ tokio-stream = { version = "0.1", optional = true }
 lazy_static = { version = "1.4", optional = true }
 serde = { version = "1.0.193", features = ["derive"] }
 postcard = "1.0.8"
+dashmap = "5.5.3"
 
 [build-dependencies]
 tonic-build = "0.9"
