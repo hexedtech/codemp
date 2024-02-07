@@ -144,6 +144,10 @@ impl Client {
 		Ok(ws)
 	}
 
+	pub fn get_workspace(&self, id: &str) -> Option<Arc<Workspace>> {
+		self.workspaces.get(id).map(|x| x.clone())
+	}
+
 	/// accessor for user id
 	pub fn user_id(&self) -> Uuid {
 		self.user_id
