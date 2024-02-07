@@ -112,7 +112,7 @@ impl Client {
 	pub async fn join_workspace(&mut self, workspace: &str) -> crate::Result<Arc<Workspace>> {
 		let ws_stream = self.services.workspace.clone().attach(Empty{}.into_request()).await?.into_inner();
 
-		let (tx, rx) = mpsc::channel(10);
+		let (tx, rx) = mpsc::channel(256);
 		let cur_stream = self.services.cursor.clone()
 			.attach(tokio_stream::wrappers::ReceiverStream::new(rx))
 			.await?

@@ -94,7 +94,7 @@ impl Workspace {
 		let credentials = worskspace_client.access_buffer(request).await?.into_inner();
 		self.token.send(credentials.token)?;
 
-		let (tx, rx) = mpsc::channel(10);
+		let (tx, rx) = mpsc::channel(256);
 		let mut req = tonic::Request::new(tokio_stream::wrappers::ReceiverStream::new(rx));
 		req.metadata_mut().insert("path", tonic::metadata::MetadataValue::try_from(credentials.id.id).expect("could not represent path as byte sequence"));
 		let stream = self.services.buffer.clone().attach(req).await?.into_inner();
