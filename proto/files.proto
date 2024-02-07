@@ -9,8 +9,3 @@ message BufferNode {
 message BufferTree {
 	repeated BufferNode buffers = 1;
 }
-
-message WorkspaceFileTree {
-	// list of strings may be more efficient but it's a lot more hassle
-	required string payload = 1; // spappolata di json
-}

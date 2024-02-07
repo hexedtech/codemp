@@ -3,16 +3,16 @@ syntax = "proto2";
 package common;
 
 
-// payload identifying user
-message UserIdentity {
-	// user identifier
+// a wrapper payload representing an uuid
+message Identity {
+	// uuid bytes, as string
 	required string id = 1;
 }
 
-message UserList {
-	repeated UserIdentity users = 1;
+// a collection of identities
+message IdentityList {
+	repeated Identity users = 1;
 }
 
-message Empty{
-	//generic Empty message
-}
+//generic Empty message
+message Empty { }

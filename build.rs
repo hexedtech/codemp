@@ -5,14 +5,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 		// .build_transport(cfg!(feature = "transport"))
 		.compile(
 			&[
-				"proto/user.proto",
+				"proto/common.proto",
 				"proto/cursor.proto",
 				"proto/files.proto",
+				"proto/auth.proto",
 				"proto/workspace.proto",
-				"proto/buffer_service.proto",
-				"proto/cursor_service.proto",
-				"proto/workspace_service.proto",
-				"proto/auth_service.proto",
+				"proto/buffer.proto",
 			],
 			&["proto"],
 		)?;

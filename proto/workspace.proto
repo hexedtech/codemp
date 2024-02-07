@@ -1,29 +1,29 @@
 syntax = "proto2";
 
 package workspace;
+
+import "common.proto";
 import "files.proto";
 import "auth.proto";
-import "common.proto";
 
 service Workspace {
-	rpc CreateWorkspace (workspace.WorkspaceId) returns (common.Empty);
+	rpc Attach (common.Empty) returns (stream WorkspaceEvent);
 	
-	rpc RequestAccess (workspace.BufferPath) returns (auth.Token);
-	rpc LeaveWorkspace (workspace.WorkspaceId) returns (common.Empty);
-	rpc CreateBuffer (workspace.BufferPath) returns (common.Empty);
+	rpc CreateBuffer (files.BufferNode) returns (common.Empty);
+	rpc AccessBuffer (files.BufferNode) returns (BufferCredentials);
+	rpc DeleteBuffer (files.BufferNode) returns (common.Empty);
+
 	rpc ListBuffers (common.Empty) returns (files.BufferTree); 
-	rpc ListUsers (common.Empty) returns (common.UserList);
-	rpc ListBufferUsers (workspace.BufferPath) returns (common.UserList); //TODO discuss
-	rpc Attach (common.Empty) returns (stream workspace.WorkspaceEvent);
-	rpc Delete (workspace.BufferPath) returns (common.Empty); //deletes buffer
+	rpc ListUsers (common.Empty) returns (common.IdentityList);
+	rpc ListBufferUsers (files.BufferNode) returns (common.IdentityList); //TODO discuss
 }
 
 message WorkspaceEvent {
 	message UserJoin {
-		required common.UserIdentity id = 1;
+		required common.Identity user = 1;
 	}
 	message UserLeave {
-		required common.UserIdentity id = 1;
+		required common.Identity user = 1;
 	}
 	message FileCreate {
 		required string path = 1;
@@ -45,12 +45,7 @@ message WorkspaceEvent {
 	}
 }
 
-message BufferPath {
-	// buffer path to operate onto
-	required string path = 1;
-}
-
-
-message WorkspaceId {
-	required string id = 1;
+message BufferCredentials {
+	required common.Identity id = 1;
+	required auth.Token token = 2;
 }

@@ -2,16 +2,14 @@ syntax = "proto2";
 
 package cursor;
 import "common.proto";
+import "files.proto";
 
 // handle cursor events and broadcast to all users
 service Cursor {
 	// subscribe to a workspace's cursor events
-	rpc Attach (stream cursor.CursorEvent) returns (stream cursor.CursorEvent);
+	rpc Attach (stream cursor.CursorPosition) returns (stream cursor.CursorEvent);
 }
 
-
-// empty request
-message MovedResponse {}
 
 // a tuple indicating row and column
 message RowCol {
@@ -22,7 +20,7 @@ message RowCol {
 // cursor position object
 message CursorPosition {
 	// path of current buffer this cursor is into
-	required string buffer = 1;
+	required files.BufferNode buffer = 1;
 	// cursor start position
 	required RowCol start = 2;
 	// cursor end position
@@ -32,7 +30,7 @@ message CursorPosition {
 // cursor event, with user id and cursor position
 message CursorEvent {
 	// user moving the cursor
-	required common.UserIdentity user = 1;
+	required common.Identity user = 1;
 	// new cursor position
 	required CursorPosition position = 2;
 }

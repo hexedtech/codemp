@@ -11,13 +11,19 @@ use tonic::service::Interceptor;
 use tonic::transport::{Channel, Endpoint};
 use uuid::Uuid;
 
-use crate::api::controller::ControllerWorker;
-use crate::cursor::worker::CursorWorker;
-use crate::proto::buffer_service::buffer_client::BufferClient;
-use crate::proto::cursor_service::cursor_client::CursorClient;
-use crate::proto::workspace::{JoinRequest, Token, WorkspaceDetails};
-use crate::proto::workspace_service::workspace_client::WorkspaceClient;
-use crate::workspace::Workspace;
+use crate::proto::auth::auth_client::AuthClient;
+use crate::{
+	api::controller::ControllerWorker,
+	cursor::worker::CursorWorker,
+	proto::{
+		common::Empty,
+		buffer::buffer_client::BufferClient,
+		cursor::cursor_client::CursorClient,
+		auth::{Token, WorkspaceJoinRequest},
+		workspace::workspace_client::WorkspaceClient,
+	},
+	workspace::Workspace
+};
 
 /// codemp client manager
 ///
@@ -49,9 +55,10 @@ impl Interceptor for ClientInterceptor {
 
 #[derive(Debug, Clone)]
 pub(crate) struct Services {
-	pub(crate) workspace: crate::proto::workspace_service::workspace_client::WorkspaceClient<InterceptedService<Channel, ClientInterceptor>>,
-	pub(crate) buffer: crate::proto::buffer_service::buffer_client::BufferClient<InterceptedService<Channel, ClientInterceptor>>,
-	pub(crate) cursor: crate::proto::cursor_service::cursor_client::CursorClient<InterceptedService<Channel, ClientInterceptor>>,
+	pub(crate) workspace: WorkspaceClient<InterceptedService<Channel, ClientInterceptor>>,
+	pub(crate) buffer: BufferClient<InterceptedService<Channel, ClientInterceptor>>,
+	pub(crate) cursor: CursorClient<InterceptedService<Channel, ClientInterceptor>>,
+	pub(crate) auth: AuthClient<Channel>,
 }
 
 // TODO meno losco
@@ -90,14 +97,13 @@ impl Client {
 		})
 	}
 
-	/// creates a new workspace (and joins it implicitly), returns an [tokio::sync::RwLock] to interact with it
-	pub async fn create_workspace(&mut self, workspace_id: &str) -> crate::Result<Arc<RwLock<Workspace>>> {
-		let mut workspace_client = self.services.workspace.clone();
-		workspace_client.create_workspace(
-			tonic::Request::new(WorkspaceDetails { id: workspace_id.to_string() })
-		).await?;
-
-		self.join_workspace(workspace_id).await
+	pub async fn login(&self, username: String, password: String, workspace_id: Option<String>) -> crate::Result<()> {
+		Ok(self.token_tx.send(
+			self.services.auth.clone()
+				.login(WorkspaceJoinRequest { username, password, workspace_id})
+				.await?
+				.into_inner()
+		)?)
 	}
 
 	/// join a workspace, returns an [tokio::sync::RwLock] to interact with it

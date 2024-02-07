@@ -2,31 +2,14 @@ use std::{collections::{BTreeMap, BTreeSet}, str::FromStr, sync::Arc};
 use tokio::sync::mpsc;
 use uuid::Uuid;
 use crate::{
-	proto::{user::UserIdentity, workspace::{AttachRequest, BufferListRequest, BufferPayload, Token, UserListRequest}},
-	api::controller::ControllerWorker,
-	buffer::{self, worker::BufferWorker},
-	client::Services,
-	cursor
+	api::controller::ControllerWorker, buffer::{self, worker::BufferWorker}, client::Services, cursor,
+	proto::{auth::Token, common::{Identity, Empty}, files::BufferNode, workspace::{WorkspaceEvent, workspace_event::{Event as WorkspaceEventInner, FileCreate, FileDelete, FileRename, UserJoin, UserLeave}}}
 };
 
 //TODO may contain more info in the future
 #[derive(Debug, Clone)]
 pub struct UserInfo {
 	pub uuid: Uuid
-}
-
-impl From<Uuid> for UserInfo {
-	fn from(uuid: Uuid) -> Self {
-		UserInfo {
-			uuid
-		}
-	}
-}
-
-impl From<UserIdentity> for Uuid {
-	fn from(uid: UserIdentity) -> Uuid {
-		Uuid::from_str(&uid.id).expect("expected an uuid")
-	}
 }
 
 pub struct Workspace {
@@ -70,7 +53,7 @@ impl Workspace {
 	pub async fn create(&mut self, path: &str) -> crate::Result<()> {
 		let mut workspace_client = self.services.workspace.clone();
 		workspace_client.create_buffer(
-			tonic::Request::new(BufferPayload { path: path.to_string() })
+			tonic::Request::new(BufferNode { path: path.to_string() })
 		).await?;
 
 		// add to filetree
@@ -115,7 +98,7 @@ impl Workspace {
 	pub async fn fetch_buffers(&mut self) -> crate::Result<()> {
 		let mut workspace_client = self.services.workspace.clone();
 		let buffers = workspace_client.list_buffers(
-			tonic::Request::new(BufferListRequest {})
+			tonic::Request::new(Empty {})
 		).await?.into_inner().buffers;
 
 		self.filetree.clear();
@@ -130,7 +113,7 @@ impl Workspace {
 	pub async fn fetch_users(&mut self) -> crate::Result<()> {
 		let mut workspace_client = self.services.workspace.clone();
 		let users = BTreeSet::from_iter(workspace_client.list_users(
-			tonic::Request::new(UserListRequest {})
+			tonic::Request::new(Empty {})
 		).await?.into_inner().users.into_iter().map(Uuid::from));
 
 		// only keep userinfo for users that still exist
@@ -150,7 +133,7 @@ impl Workspace {
 	pub async fn list_buffer_users(&mut self, path: &str) -> crate::Result<Vec<UserIdentity>> {
 		let mut workspace_client = self.services.workspace.clone();
 		let buffer_users = workspace_client.list_buffer_users(
-			tonic::Request::new(BufferPayload { path: path.to_string() })
+			tonic::Request::new(BufferNode { path: path.to_string() })
 		).await?.into_inner().users;
 
 		Ok(buffer_users)
@@ -167,8 +150,8 @@ impl Workspace {
 	/// delete a buffer
 	pub async fn delete(&mut self, path: &str) -> crate::Result<()> {
 		let mut workspace_client = self.services.workspace.clone();
-		workspace_client.delete(
-			tonic::Request::new(BufferPayload { path: path.to_string() })
+		workspace_client.delete_buffer(
+			tonic::Request::new(BufferNode { path: path.to_string() })
 		).await?;
 	
 		self.filetree.remove(path);

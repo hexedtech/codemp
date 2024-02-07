@@ -11,7 +11,7 @@ use woot::woot::Woot;
 use crate::errors::IgnorableError;
 use crate::api::controller::ControllerWorker;
 use crate::api::TextChange;
-use crate::proto::buffer_service::Operation;
+use crate::proto::buffer::{BufferEvent, Operation};
 
 use super::controller::BufferController;
 
@@ -66,7 +66,7 @@ impl BufferWorker {
 impl ControllerWorker<TextChange> for BufferWorker {
 	type Controller = BufferController;
 	type Tx = mpsc::Sender<Operation>;
-	type Rx = Streaming<Operation>;
+	type Rx = Streaming<BufferEvent>;
 
 	fn subscribe(&self) -> BufferController {
 		BufferController::new(
@@ -130,8 +130,6 @@ impl ControllerWorker<TextChange> for BufferWorker {
 									for op in ops {
 										let operation = Operation { 
 											data: postcard::to_extend(&op, Vec::new()).unwrap(),
-											user: None,
-											path: Some(self.name.clone())
 										};
 	
 										match tx.send(operation).await {
@@ -151,8 +149,8 @@ impl ControllerWorker<TextChange> for BufferWorker {
 				res = rx.message() => match res {
 					Err(_e) => break,
 					Ok(None) => break,
-					Ok(Some(change)) => match postcard::from_bytes::<Op>(&change.data) {
-						Ok(op) => {
+					Ok(Some(change)) => match postcard::from_bytes::<Op>(&change.op.data) {
+						Ok(op) => { // TODO here in change we receive info about the author, maybe propagate?
 							self.buffer.merge(op);
 							self.content.send(self.buffer.view()).unwrap_or_warn("could not send buffer update");
 							for tx in self.pollers.drain(..) {

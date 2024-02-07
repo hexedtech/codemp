@@ -163,14 +163,55 @@ pub use woot;
 #[cfg(feature = "transport")]
 #[allow(non_snake_case)]
 pub mod proto {
-	pub mod user { tonic::include_proto!("user"); }
+	pub mod common {
+		tonic::include_proto!("common");
+
+		impl From<uuid::Uuid> for Identity {
+			fn from(id: uuid::Uuid) -> Self {
+				Identity { id: id.to_string() }
+			}
+		}
+
+		impl From<&uuid::Uuid> for Identity {
+			fn from(id: &uuid::Uuid) -> Self {
+				Identity { id: id.to_string() }
+			}
+		}
+	
+		impl From<Identity> for uuid::Uuid {
+			fn from(value: Identity) -> Self {
+				uuid::Uuid::parse_str(&value.id).expect("invalid uuid in identity")
+			}
+		}
+
+		impl From<&Identity> for uuid::Uuid {
+			fn from(value: &Identity) -> Self {
+				uuid::Uuid::parse_str(&value.id).expect("invalid uuid in identity")
+			}
+		}
+	}
+
+
+	pub mod files {
+		tonic::include_proto!("files");
+
+		impl From<String> for BufferNode {
+			fn from(value: String) -> Self {
+				BufferNode { path: value }
+			}
+		}
+
+		impl From<BufferNode> for String {
+			fn from(value: BufferNode) -> Self {
+				value.path
+			}
+		}
+	}
+
+	pub mod buffer { tonic::include_proto!("buffer"); }
 	pub mod cursor { tonic::include_proto!("cursor"); }
-	pub mod files { tonic::include_proto!("files"); }
 	pub mod workspace { tonic::include_proto!("workspace"); }
-	pub mod buffer_service { tonic::include_proto!("buffer_service"); }
-	pub mod cursor_service { tonic::include_proto!("cursor_service"); }
-	pub mod workspace_service { tonic::include_proto!("workspace_service"); }
-	pub mod auth_service { tonic::include_proto!("auth_service"); }
+	pub mod auth { tonic::include_proto!("auth"); }
 }
 
 pub use errors::Error;

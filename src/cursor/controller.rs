@@ -6,7 +6,7 @@ use tokio::sync::{mpsc, broadcast::{self, error::{TryRecvError, RecvError}}, Mut
 use tonic::async_trait;
 use uuid::Uuid;
 
-use crate::{api::Controller, errors::IgnorableError, proto::{cursor::{CursorEvent, CursorPosition}, user::UserIdentity}};
+use crate::{api::Controller, errors::IgnorableError, proto::cursor::{CursorEvent, CursorPosition}};
 
 /// the cursor controller implementation
 ///
@@ -22,7 +22,7 @@ use crate::{api::Controller, errors::IgnorableError, proto::{cursor::{CursorEven
 #[derive(Debug)]
 pub struct CursorController {
 	user_id: Uuid,
-	op: mpsc::UnboundedSender<CursorEvent>,
+	op: mpsc::UnboundedSender<CursorPosition>,
 	last_op: Mutex<watch::Receiver<CursorEvent>>,
 	stream: Mutex<broadcast::Receiver<CursorEvent>>,
 	stop: mpsc::UnboundedSender<()>,
@@ -37,7 +37,7 @@ impl Drop for CursorController {
 impl CursorController {
 	pub(crate) fn new(
 		user_id: Uuid,
-		op: mpsc::UnboundedSender<CursorEvent>,
+		op: mpsc::UnboundedSender<CursorPosition>,
 		last_op: Mutex<watch::Receiver<CursorEvent>>,
 		stream: Mutex<broadcast::Receiver<CursorEvent>>,
 		stop: mpsc::UnboundedSender<()>,
@@ -56,10 +56,7 @@ impl Controller<CursorEvent> for CursorController {
 		if cursor.start > cursor.end {
 			std::mem::swap(&mut cursor.start, &mut cursor.end);
 		}
-		Ok(self.op.send(CursorEvent {
-			user: UserIdentity { id: self.user_id.to_string() },
-			position: cursor,
-		})?)
+		Ok(self.op.send(cursor)?)
 	}
 
 	/// try to receive without blocking, but will still block on stream mutex

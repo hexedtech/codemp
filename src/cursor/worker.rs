@@ -4,14 +4,14 @@ use tokio::sync::{mpsc, broadcast::{self}, Mutex, watch};
 use tonic::{Streaming, async_trait};
 use uuid::Uuid;
 
-use crate::{api::controller::ControllerWorker, errors::IgnorableError, proto::cursor::CursorEvent};
+use crate::{api::controller::ControllerWorker, errors::IgnorableError, proto::cursor::{CursorPosition, CursorEvent}};
 
 use super::controller::CursorController;
 
 pub(crate) struct CursorWorker {
 	user_id: Uuid,
-	producer: mpsc::UnboundedSender<CursorEvent>,
-	op: mpsc::UnboundedReceiver<CursorEvent>,
+	producer: mpsc::UnboundedSender<CursorPosition>,
+	op: mpsc::UnboundedReceiver<CursorPosition>,
 	changed: watch::Sender<CursorEvent>,
 	last_op: watch::Receiver<CursorEvent>,
 	channel: Arc<broadcast::Sender<CursorEvent>>,
@@ -41,7 +41,7 @@ impl CursorWorker {
 #[async_trait]
 impl ControllerWorker<CursorEvent> for CursorWorker {
 	type Controller = CursorController;
-	type Tx = mpsc::Sender<CursorEvent>;
+	type Tx = mpsc::Sender<CursorPosition>;
 	type Rx = Streaming<CursorEvent>;
 
 	fn subscribe(&self) -> CursorController {
