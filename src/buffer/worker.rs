@@ -1,11 +1,10 @@
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 
-use similar::{TextDiff, ChangeTag};
 use tokio::sync::{watch, mpsc, oneshot};
 use tonic::{async_trait, Streaming};
 use uuid::Uuid;
-use woot::crdt::{Op, CRDT, TextEditor};
+use woot::crdt::{Op, CRDT};
 use woot::woot::Woot;
 
 use crate::errors::IgnorableError;
@@ -95,53 +94,22 @@ impl ControllerWorker<TextChange> for BufferWorker {
 
 				// received a text change from editor
 				res = self.operations.recv() => match res {
-					None => break,
-					Some(change) => {
-						if !change.is_empty() {
-							let view = self.buffer.view();
-							match view.get(change.span.clone()) {
-								None =>  tracing::error!("received illegal span from client: {:?} but buffer is of len {}", change.span, view.len()),
-								Some(span) => {
-									let diff = TextDiff::from_chars(span, &change.content);
-
-									let mut i = 0;
-									let mut ops = Vec::new();
-									for diff in diff.iter_all_changes() {
-										match diff.tag() {
-											ChangeTag::Equal => i += 1,
-											ChangeTag::Delete => match self.buffer.delete(change.span.start + i) {
-												Ok(op) => ops.push(op),
-												Err(e) => tracing::error!("could not apply deletion: {}", e),
-											},
-											ChangeTag::Insert => {
-												for c in diff.value().chars() {
-													match self.buffer.insert(change.span.start + i, c) {
-														Ok(op) => {
-															ops.push(op);
-															i += 1;
-														},
-														Err(e) => tracing::error!("could not apply insertion: {}", e),
-													}
-												}
-											},
-										}
-									}
-
-									for op in ops {
-										let operation = Operation { 
-											data: postcard::to_extend(&op, Vec::new()).unwrap(),
-										};
-	
-										match tx.send(operation).await {
-											Err(e) => tracing::error!("server refused to broadcast {}: {}", op, e),
-											Ok(()) => {
-												self.content.send(self.buffer.view()).unwrap_or_warn("could not send buffer update");
-											},
-										}
-									}
-								},
+					None => break tracing::debug!("stopping: editor closed channel"),
+					Some(change) => match change.transform(&self.buffer) {
+						Err(e) => break tracing::error!("could not apply operation from client: {}", e),
+						Ok(ops) => {
+							for op in ops {
+								self.buffer.merge(op.clone());
+								let operation = Operation { 
+									data: postcard::to_extend(&op, Vec::new()).unwrap(),
+								};
+								if let Err(e) = tx.send(operation).await {
+									tracing::error!("server refused to broadcast {}: {}", op, e);
+								}
 							}
-						}
+							self.content.send(self.buffer.view())
+								.unwrap_or_warn("could not send buffer update");
+						},
 					}
 				},
 

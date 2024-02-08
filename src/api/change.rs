@@ -3,7 +3,8 @@
 //! an editor-friendly representation of a text change in a buffer
 //! to easily interface with codemp from various editors
 
-use crate::proto::cursor::RowCol;
+#[cfg(feature = "woot")]
+use crate::woot::{WootResult, woot::Woot, crdt::{TextEditor, CRDT, Op}};
 
 /// an editor-friendly representation of a text change in a buffer
 ///
@@ -59,6 +60,33 @@ impl TextChange {
 		}
 	}
 
+	#[cfg(feature = "woot")]
+	pub fn transform(self, woot: &Woot) -> WootResult<Vec<Op>> {
+		let mut out = Vec::new();
+		if self.is_empty() { return Ok(out); } // no-op
+		let view = woot.view();
+		let Some(span) = view.get(self.span.clone()) else {
+			return Err(crate::woot::WootError::OutOfBounds);
+		};
+		let diff = similar::TextDiff::from_chars(span, &self.content);
+		for (i, diff) in diff.iter_all_changes().enumerate() {
+			match diff.tag() {
+				similar::ChangeTag::Equal => {},
+				similar::ChangeTag::Delete => match woot.delete_one(self.span.start + i) {
+					Err(e) => tracing::error!("could not create deletion: {}", e),
+					Ok(op) => out.push(op),
+				},
+				similar::ChangeTag::Insert => {
+					match woot.insert(self.span.start + i, diff.value()) {
+						Ok(mut op) => out.append(&mut op),
+						Err(e) => tracing::error!("could not create insertion: {}", e),
+					}
+				},
+			}
+		}
+		Ok(out)
+	}
+
 	/// returns true if this TextChange deletes existing text
 	pub fn is_deletion(&self) -> bool {
 		!self.span.is_empty()
@@ -84,11 +112,12 @@ impl TextChange {
 
 	/// convert from byte index to row and column
 	/// txt must be the whole content of the buffer, in order to count lines
-	pub fn index_to_rowcol(txt: &str, index: usize) -> RowCol {
+	#[cfg(feature = "transport")]
+	pub fn index_to_rowcol(txt: &str, index: usize) -> crate::proto::cursor::RowCol {
 		// FIXME might panic, use .get()
 		let row = txt[..index].matches('\n').count() as i32;
 		let col = txt[..index].split('\n').last().unwrap_or("").len() as i32;
-		RowCol { row, col }
+		crate::proto::cursor::RowCol { row, col }
 	}
 }
 
