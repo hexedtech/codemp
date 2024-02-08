@@ -31,9 +31,9 @@ postcard = { version = "1.0.8", optional = true }
 tonic-build = "0.9"
 
 [features]
-default   = []
-api       = ["woot", "dep:tokio", "dep:async-trait"]
-woot      = ["dep:codemp-woot", "dep:similar"]
-transport = ["dep:prost", "dep:tonic", "dep:uuid"]
-client    = ["transport", "api", "dep:tokio", "dep:tokio-stream", "dep:uuid", "dep:md5", "dep:serde_json", "dep:dashmap", "dep:postcard"]
-server    = ["transport", "woot"]
+default = []
+api     = ["woot", "dep:tokio", "dep:async-trait"]
+woot    = ["dep:codemp-woot", "dep:similar"]
+proto   = ["dep:prost", "dep:tonic", "dep:uuid"]
+client  = ["proto", "api", "dep:tokio", "dep:tokio-stream", "dep:uuid", "dep:md5", "dep:serde_json", "dep:dashmap", "dep:postcard"]
+server  = ["proto", "woot"]

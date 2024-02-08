@@ -26,7 +26,7 @@ pub use crate::{
 	buffer::Controller as CodempBufferController,
 };
 
-#[cfg(feature = "transport")]
+#[cfg(feature = "proto")]
 pub use crate::{
 	proto::cursor::CursorPosition as CodempCursorPosition,
 	proto::cursor::CursorEvent as CodempCursorEvent,

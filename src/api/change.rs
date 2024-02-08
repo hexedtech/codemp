@@ -112,7 +112,7 @@ impl TextChange {
 
 	/// convert from byte index to row and column
 	/// txt must be the whole content of the buffer, in order to count lines
-	#[cfg(feature = "transport")]
+	#[cfg(feature = "proto")]
 	pub fn index_to_rowcol(txt: &str, index: usize) -> crate::proto::cursor::RowCol {
 		// FIXME might panic, use .get()
 		let row = txt[..index].matches('\n').count() as i32;
