@@ -17,27 +17,23 @@ tonic = { version = "0.9", features = ["tls", "tls-roots"], optional = true }
 prost = { version = "0.11.8", optional = true }
 # api
 similar = { version = "2.2", features = ["inline"], optional = true }
-tokio = { version = "1.0", features = ["macros", "rt-multi-thread", "sync", "full"], optional = true }
+tokio = { version = "1.0", features = ["macros", "rt-multi-thread", "sync"], optional = true }
 async-trait = { version = "0.1", optional = true }
 # client
 md5 = { version = "0.7.0", optional = true }
 serde_json = { version = "1", optional = true }
 tokio-stream = { version = "0.1", optional = true }
-# global
-lazy_static = { version = "1.4", optional = true }
 serde = { version = "1.0.193", features = ["derive"] }
-postcard = "1.0.8"
-dashmap = "5.5.3"
+dashmap = { version = "5.5.3", optional = true }
+postcard = { version = "1.0.8", optional = true }
 
 [build-dependencies]
 tonic-build = "0.9"
 
 [features]
-default   = ["client"]
-api       = ["woot", "dep:similar", "dep:tokio", "dep:async-trait"]
-woot      = ["dep:codemp-woot"]
+default   = []
+api       = ["woot", "dep:tokio", "dep:async-trait"]
+woot      = ["dep:codemp-woot", "dep:similar"]
 transport = ["dep:prost", "dep:tonic", "dep:uuid"]
-client    = ["transport", "api", "dep:tokio", "dep:tokio-stream", "dep:uuid", "dep:md5", "dep:serde_json"]
-server    = ["transport"]
-global    = ["client", "dep:lazy_static"]
-sync      = ["client"]
+client    = ["transport", "api", "dep:tokio", "dep:tokio-stream", "dep:uuid", "dep:md5", "dep:serde_json", "dep:dashmap", "dep:postcard"]
+server    = ["transport", "woot"]
