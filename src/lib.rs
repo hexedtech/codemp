@@ -199,6 +199,12 @@ pub mod proto {
 			}
 		}
 
+		impl From<&str> for BufferNode {
+			fn from(value: &str) -> Self {
+				BufferNode { path: value.to_string() }
+			}
+		}
+
 		impl From<BufferNode> for String {
 			fn from(value: BufferNode) -> Self {
 				value.path
