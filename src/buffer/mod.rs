@@ -9,6 +9,9 @@
 /// buffer controller implementation
 pub mod controller;
 
+/// assorted helpers to handle buffer controllers
+pub mod tools;
+
 pub(crate) mod worker;
 
 pub use controller::BufferController as Controller;

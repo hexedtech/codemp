@@ -1,0 +1,54 @@
+syntax = "proto2";
+
+package workspace;
+
+import "common.proto";
+import "files.proto";
+import "auth.proto";
+
+service Workspace {
+	rpc Attach (common.Empty) returns (stream WorkspaceEvent);
+	
+	rpc CreateBuffer (files.BufferNode) returns (common.Empty);
+	rpc AccessBuffer (files.BufferNode) returns (BufferCredentials);
+	rpc DeleteBuffer (files.BufferNode) returns (common.Empty);
+
+	rpc ListBuffers (common.Empty) returns (files.BufferTree); 
+	rpc ListUsers (common.Empty) returns (common.IdentityList);
+	rpc ListBufferUsers (files.BufferNode) returns (common.IdentityList);
+}
+
+message WorkspaceEvent {
+	message UserJoin {
+		required common.Identity user = 1;
+	}
+	message UserLeave {
+		required common.Identity user = 1;
+	}
+	message FileCreate {
+		required string path = 1;
+	}
+	message FileRename {
+		required string before = 1;
+		required string after = 2;
+	}
+	message FileDelete {
+		required string path = 1;
+	}
+
+	oneof event {
+		UserJoin join = 1;
+		UserLeave leave = 2;
+		FileCreate create = 3;
+		FileRename rename = 4;
+		FileDelete delete = 5;
+	}
+}
+
+// TODO this is very ugly because we can't just return a new token (which is already smelly but whatev), we also need to tell the underlying id so that
+//      the client can put it as metadata while attaching, because it can't really know the underlying id that the server is using for each buffer without
+//      parsing the token itself. meehhhhhh, this bleeds underlying implementation to the upper levels, how can we avoid this??
+message BufferCredentials {
+	required common.Identity id = 1;
+	required auth.Token token = 2;
+}

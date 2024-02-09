@@ -5,8 +5,8 @@
 //! > the core library of the codemp project, driving all editor plugins
 //!
 //! ## structure
-//! The main entrypoint is the [Instance] object, that maintains a connection and can 
-//! be used to join workspaces or attach to buffers. It contains the underlying [client::Client] and 
+//! The main entrypoint is the [Client] object, that maintains a connection and can 
+//! be used to join workspaces or attach to buffers. It contains the underlying [Workspace] and 
 //! stores active controllers.
 //! 
 //! Some actions will return structs implementing the [api::Controller] trait. These can be polled 
@@ -21,95 +21,83 @@
 //! immediately but instead deferred until compatible.
 //!
 //! ## features
-//! * `woot`  : include the underlying CRDT library and re-exports it (default enabled)
-//! * `api`   : include traits for core interfaces under [api] (default enabled)
-//! * `proto` : include GRCP protocol definitions under [proto] (default enabled)
-//! * `client`: include the local [client] implementation (default enabled)
-//! * `global`: provide a lazy_static global INSTANCE in [instance::global]
-//! * `sync`  : wraps the [instance::a_sync::Instance] holder into a sync variant: [instance::sync::Instance]
+//! * `api`    : include traits for core interfaces under [api] (default enabled)
+//! * `woot`   : include the underlying CRDT library and re-exports it (default enabled)
+//! * `proto`  : include GRCP protocol definitions under [proto] (default enabled)
+//! * `client` : include the local [client] implementation (default enabled)
 //! 
 //! ## examples
-//! while the [client::Client] itself is the core structure implementing all methods, plugins will mostly
-//! interact with [Instance] managers.
+//! most methods are split between the [Client] itself and the current [Workspace]
 //!
 //! ### async
-//! this library is natively async and thus async usage should be preferred if possible with
-//! [instance::a_sync::Instance]
-//!
 //! ```rust,no_run
 //! use codemp::api::{Controller, TextChange};
-//! # use codemp::instance::a_sync::Instance;
 //!
 //! # async fn async_example() -> codemp::Result<()> {
-//! let session = Instance::default();   // create global session
-//! session.connect("http://alemi.dev:50051").await?;   // connect to remote server
+//! // creating a client session will immediately attempt to connect
+//! let mut session = codemp::Client::new("http://alemi.dev:50053").await?;
+//!
+//! // login first, obtaining a new token granting access to 'some_workspace'
+//! session.login(
+//!   "username".to_string(),
+//!   "password".to_string(),
+//!   Some("some_workspace".to_string())
+//! ).await?;
 //! 
-//! // join a remote workspace, obtaining a cursor controller
-//! let cursor = session.join("some_workspace").await?;
-//! cursor.send(   // move cursor
-//!   codemp::proto::CursorPosition {
+//! // join a remote workspace, obtaining a workspace handle
+//! let workspace = session.join_workspace("some_workspace").await?;
+//!
+//! workspace.cursor().send(   // move cursor
+//!   codemp::proto::cursor::CursorPosition {
 //!     buffer: "test.txt".into(),
-//!     start: Some(codemp::proto::RowCol { row: 0, col: 0 }),
-//!     end: Some(codemp::proto::RowCol { row: 0, col: 1 }),
+//!     start: codemp::proto::cursor::RowCol { row: 0, col: 0 },
+//!     end: codemp::proto::cursor::RowCol { row: 0, col: 1 },
 //!   }
 //! )?;
-//! let op = cursor.recv().await?;   // listen for event
+//! let op = workspace.cursor().recv().await?; // receive event from server
 //! println!("received cursor event: {:?}", op);
 //! 
 //! // attach to a new buffer and execute operations on it
-//! session.create("test.txt", None).await?;   // create new buffer
-//! let buffer = session.attach("test.txt").await?; // attach to it
+//! workspace.create("test.txt").await?;   // create new buffer
+//! let buffer = workspace.attach("test.txt").await?; // attach to it
 //! let local_change = TextChange { span: 0..0, content: "hello!".into() };
 //! buffer.send(local_change)?; // insert some text
-//! let remote_change = buffer.recv().await?;
+//! let remote_change = buffer.recv().await?; // await remote change
 //! #
 //! # Ok(())
 //! # }
 //! ```
 //!
+//! it's always possible to get a [Workspace] reference using [Client::get_workspace]
+//!
 //! ### sync
-//! if async is not viable, including the feature `sync` will provide a sync-only [instance::sync::Instance] variant
+//! if async is not viable, a solution might be keeping a global tokio runtime and blocking on it:
 //!
 //! ```rust,no_run
-//! # use codemp::instance::sync::Instance;
 //! # use std::sync::Arc;
 //! # use codemp::api::Controller;
 //! #
 //! # fn sync_example() -> codemp::Result<()> {
-//! let session = Instance::default();   // instantiate sync variant
-//! session.connect("http://alemi.dev:50051")?;   // connect to server
+//! let rt = tokio::runtime::Runtime::new().unwrap();
+//! let mut session = rt.block_on( // using block_on allows calling async code
+//!   codemp::Client::new("http://alemi.dev:50051")
+//! )?;
+//!
+//! rt.block_on(session.login(
+//!   "username".to_string(),
+//!   "password".to_string(),
+//!   Some("some_workspace".to_string())
+//! ))?;
+//! 
+//! let workspace = rt.block_on(session.join_workspace("some_workspace"))?;
 //!
 //! // attach to buffer and blockingly receive events
-//! let buffer = session.attach("test.txt")?; // attach to buffer, must already exist
-//! while let Ok(op) = buffer.blocking_recv(session.rt()) {   // must pass runtime
+//! let buffer = rt.block_on(workspace.attach("test.txt"))?; // attach to buffer, must already exist
+//! while let Ok(op) = rt.block_on(buffer.recv()) {   // must pass runtime
 //!   println!("received buffer event: {:?}", op);
 //! }
 //! #
 //! # Ok(())
-//! # }
-//! ```
-//!
-//! ### global
-//! if instantiating the [Instance] manager is not possible, adding the feature `global` will
-//! provide a static lazyly-allocated global reference: [struct@instance::global::INSTANCE].
-//!
-//! ```rust,no_run
-//! # use codemp::instance::sync::Instance;
-//! # use std::sync::Arc;
-//! use codemp::prelude::*;   // prelude includes everything with "Codemp" in front
-//! # fn global_example() -> codemp::Result<()> {
-//! CODEMP_INSTANCE.connect("http://alemi.dev:50051")?;   // connect to server
-//! let cursor = CODEMP_INSTANCE.join("some_workspace")?;   // join workspace
-//! std::thread::spawn(move || {
-//!   loop {
-//!     match cursor.try_recv() {
-//!       Ok(Some(event)) => println!("received cursor event: {:?}", event),  // there might be more
-//!       Ok(None) => std::thread::sleep(std::time::Duration::from_millis(10)),  // wait for more
-//!       Err(e) => break,  // channel closed
-//!     }
-//!   }
-//! });
-//! #  Ok(())
 //! # }
 //! ```
 //!
@@ -148,11 +136,9 @@ pub mod errors;
 #[cfg(feature = "client")]
 pub mod client;
 
-pub mod tools;
-
-/// client wrapper to handle memory persistence
+/// workspace operations
 #[cfg(feature = "client")]
-pub mod instance;
+pub mod workspace;
 
 /// all-in-one imports : `use codemp::prelude::*;`
 pub mod prelude;
@@ -165,17 +151,70 @@ pub use woot;
 #[cfg(feature = "proto")]
 #[allow(non_snake_case)]
 pub mod proto {
-	tonic::include_proto!("codemp.buffer");
-	tonic::include_proto!("codemp.cursor");
-}
+	pub mod common {
+		tonic::include_proto!("common");
 
+		impl From<uuid::Uuid> for Identity {
+			fn from(id: uuid::Uuid) -> Self {
+				Identity { id: id.to_string() }
+			}
+		}
+
+		impl From<&uuid::Uuid> for Identity {
+			fn from(id: &uuid::Uuid) -> Self {
+				Identity { id: id.to_string() }
+			}
+		}
+	
+		impl From<Identity> for uuid::Uuid {
+			fn from(value: Identity) -> Self {
+				uuid::Uuid::parse_str(&value.id).expect("invalid uuid in identity")
+			}
+		}
+
+		impl From<&Identity> for uuid::Uuid {
+			fn from(value: &Identity) -> Self {
+				uuid::Uuid::parse_str(&value.id).expect("invalid uuid in identity")
+			}
+		}
+	}
+
+
+	pub mod files {
+		tonic::include_proto!("files");
+
+		impl From<String> for BufferNode {
+			fn from(value: String) -> Self {
+				BufferNode { path: value }
+			}
+		}
+
+		impl From<&str> for BufferNode {
+			fn from(value: &str) -> Self {
+				BufferNode { path: value.to_string() }
+			}
+		}
+
+		impl From<BufferNode> for String {
+			fn from(value: BufferNode) -> Self {
+				value.path
+			}
+		}
+	}
+
+	pub mod buffer { tonic::include_proto!("buffer"); }
+	pub mod cursor { tonic::include_proto!("cursor"); }
+	pub mod workspace { tonic::include_proto!("workspace"); }
+	pub mod auth { tonic::include_proto!("auth"); }
+}
 
 pub use errors::Error;
 pub use errors::Result;
 
-#[cfg(all(feature = "client", feature = "sync"))]
-pub use instance::sync::Instance;
+#[cfg(feature = "client")]
+pub use client::Client;
 
-#[cfg(all(feature = "client", not(feature = "sync")))]
-pub use instance::a_sync::Instance;
+#[cfg(feature = "client")]
+pub use workspace::Workspace;
+
 

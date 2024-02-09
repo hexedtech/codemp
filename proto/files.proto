@@ -1,0 +1,11 @@
+syntax = "proto2";
+
+package files;
+
+message BufferNode {
+	required string path = 1;
+}
+
+message BufferTree {
+	repeated BufferNode buffers = 1;
+}

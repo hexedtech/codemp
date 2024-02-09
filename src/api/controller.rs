@@ -19,8 +19,7 @@ pub(crate) trait ControllerWorker<T : Sized + Send + Sync> {
 ///
 /// this generic trait is implemented by actors managing stream procedures.
 /// events can be enqueued for dispatching without blocking ([Controller::send]), and an async blocking 
-/// api ([Controller::recv]) is provided to wait for server events. Additional sync blocking
-/// ([Controller::blocking_recv]) is implemented if feature `sync` is enabled.
+/// api ([Controller::recv]) is provided to wait for server events.
 ///
 /// * if possible, prefer a pure [Controller::recv] consumer, awaiting for events
 /// * if async is not feasible a [Controller::poll]/[Controller::try_recv] approach is possible
@@ -58,11 +57,4 @@ pub trait Controller<T : Sized + Send + Sync> : Sized + Send + Sync {
 
 	/// attempt to receive a value without blocking, return None if nothing is available
 	fn try_recv(&self) -> Result<Option<T>>;
-
-	/// sync variant of [Self::recv], blocking invoking thread
-	/// this calls [Controller::recv] inside a [tokio::runtime::Runtime::block_on]
-	#[cfg(feature = "sync")]
-	fn blocking_recv(&self, rt: &tokio::runtime::Handle) -> Result<T> {
-		rt.block_on(self.recv())
-	}
 }

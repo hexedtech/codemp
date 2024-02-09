@@ -1,20 +1,30 @@
 //! ### client
-//! 
+//!
 //! codemp client manager, containing grpc services
 
-use std::{sync::Arc, collections::BTreeMap};
+use std::sync::Arc;
 
-use tonic::transport::Channel;
+use dashmap::DashMap;
+use tokio::sync::mpsc;
+use tonic::service::interceptor::InterceptedService;
+use tonic::service::Interceptor;
+use tonic::transport::{Channel, Endpoint};
+use tonic::IntoRequest;
+use uuid::Uuid;
 
+use crate::proto::auth::auth_client::AuthClient;
 use crate::{
-	cursor::{worker::CursorControllerWorker, controller::CursorController},
+	api::controller::ControllerWorker,
+	cursor::worker::CursorWorker,
 	proto::{
-		buffer_client::BufferClient, cursor_client::CursorClient, UserIdentity, BufferPayload,
+		common::Empty,
+		buffer::buffer_client::BufferClient,
+		cursor::cursor_client::CursorClient,
+		auth::{Token, WorkspaceJoinRequest},
+		workspace::workspace_client::WorkspaceClient,
 	},
-	Error, api::controller::ControllerWorker,
-	buffer::{controller::BufferController, worker::BufferControllerWorker},
+	workspace::Workspace
 };
-
 
 /// codemp client manager
 ///
@@ -22,130 +32,124 @@ use crate::{
 /// will disconnect when dropped
 /// can be used to interact with server
 pub struct Client {
-	id: String,
-	client: Services,
-	workspace: Option<Workspace>,
+	user_id: Uuid,
+	token_tx: Arc<tokio::sync::watch::Sender<Token>>,
+	workspaces: Arc<DashMap<String, Arc<Workspace>>>,
+	services: Arc<Services>
 }
 
-struct Services {
-	buffer: BufferClient<Channel>,
-	cursor: CursorClient<Channel>,
+#[derive(Clone)]
+pub(crate) struct ClientInterceptor {
+	token: tokio::sync::watch::Receiver<Token>
 }
 
-struct Workspace {
-	cursor: Arc<CursorController>,
-	buffers: BTreeMap<String, Arc<BufferController>>,
+impl Interceptor for ClientInterceptor {
+	fn call(&mut self, mut request: tonic::Request<()>) -> Result<tonic::Request<()>, tonic::Status> {
+		if let Ok(token) = self.token.borrow().token.parse() {
+			request.metadata_mut().insert("auth", token);
+		}
+		
+		Ok(request)
+	}
 }
 
+
+#[derive(Debug, Clone)]
+pub(crate) struct Services {
+	pub(crate) workspace: WorkspaceClient<InterceptedService<Channel, ClientInterceptor>>,
+	pub(crate) buffer: BufferClient<InterceptedService<Channel, ClientInterceptor>>,
+	pub(crate) cursor: CursorClient<InterceptedService<Channel, ClientInterceptor>>,
+	pub(crate) auth: AuthClient<Channel>,
+}
+
+// TODO meno losco
+fn parse_codemp_connection_string(string: &str) -> (String, String) {
+	let url = string.replace("codemp://", "");
+	let (host, workspace) = url.split_once('/').unwrap();
+	(format!("http://{}", host), workspace.to_string())
+}
 
 impl Client {
 	/// instantiate and connect a new client
-	pub async fn new(dst: &str) -> Result<Self, tonic::transport::Error> {
-		let buffer = BufferClient::connect(dst.to_string()).await?;
-		let cursor = CursorClient::connect(dst.to_string()).await?;
-		let id = uuid::Uuid::new_v4().to_string();
-		
-		Ok(Client { id, client: Services { buffer, cursor}, workspace: None })
-	}
+	pub async fn new(dest: &str) -> crate::Result<Self> {
+		let (_host, _workspace_id) = parse_codemp_connection_string(dest);
 
-	/// return a reference to current cursor controller, if currently in a workspace
-	pub fn get_cursor(&self) -> Option<Arc<CursorController>> {
-		Some(self.workspace.as_ref()?.cursor.clone())
-	}
+		let channel = Endpoint::from_shared(dest.to_string())?
+			.connect()
+			.await?;
 
-	/// leave current workspace if in one, disconnecting buffer and cursor controllers
-	pub fn leave_workspace(&mut self) {
-		// TODO need to stop tasks?
-		self.workspace = None
-	}
-
-	/// disconnect from a specific buffer
-	pub fn disconnect_buffer(&mut self, path: &str) -> bool {
-		match &mut self.workspace {
-			Some(w) => w.buffers.remove(path).is_some(),
-			None => false,
-		}
-	}
-
-	/// get a new reference to a buffer controller, if any is active to given path
-	pub fn get_buffer(&self, path: &str) -> Option<Arc<BufferController>> {
-		self.workspace.as_ref()?.buffers.get(path).cloned()
-	}
-
-	/// join a workspace, starting a cursorcontroller and returning a new reference to it
-	/// 
-	/// to interact with such workspace [crate::api::Controller::send] cursor events or
-	/// [crate::api::Controller::recv] for events on the associated [crate::cursor::Controller].
-	pub async fn join(&mut self, _session: &str) -> crate::Result<Arc<CursorController>> {
-		// TODO there is no real workspace handling in codemp server so it behaves like one big global
-		//  session. I'm still creating this to start laying out the proper use flow
-		let stream = self.client.cursor.listen(UserIdentity { id: "".into() }).await?.into_inner();
-
-		let controller = CursorControllerWorker::new(self.id.clone());
-		let client = self.client.cursor.clone();
-
-		let handle = Arc::new(controller.subscribe());
-
-		tokio::spawn(async move {
-			tracing::debug!("cursor worker started");
-			controller.work(client, stream).await;
-			tracing::debug!("cursor worker stopped");
-		});
-
-		self.workspace = Some(
-			Workspace {
-				cursor: handle.clone(),
-				buffers: BTreeMap::new()
-			}
+		let (token_tx, token_rx) = tokio::sync::watch::channel(
+			Token { token: "".to_string() }
 		);
 
-		Ok(handle)
+		let inter = ClientInterceptor { token: token_rx };
+
+		let buffer = BufferClient::with_interceptor(channel.clone(), inter.clone());
+		let cursor = CursorClient::with_interceptor(channel.clone(), inter.clone());
+		let workspace = WorkspaceClient::with_interceptor(channel.clone(), inter.clone());
+		let auth = AuthClient::new(channel);
+
+		let user_id = uuid::Uuid::new_v4();
+
+		Ok(Client {
+			user_id,
+			token_tx: Arc::new(token_tx),
+			workspaces: Arc::new(DashMap::default()),
+			services: Arc::new(Services { workspace, buffer, cursor, auth })
+		})
 	}
 
-	/// create a new buffer in current workspace, with optional given content
-	pub async fn create(&mut self, path: &str, content: Option<&str>) -> crate::Result<()> {
-		if let Some(_workspace) = &self.workspace {
-			self.client.buffer
-				.create(BufferPayload {
-					user: self.id.clone(),
-					path: path.to_string(),
-					content: content.map(|x| x.to_string()),
-				}).await?;
-
-			Ok(())
-		} else {
-			Err(Error::InvalidState { msg: "join a workspace first".into() })
-		}
+	pub async fn login(&self, username: String, password: String, workspace_id: Option<String>) -> crate::Result<()> {
+		Ok(self.token_tx.send(
+			self.services.auth.clone()
+				.login(WorkspaceJoinRequest { username, password, workspace_id})
+				.await?
+				.into_inner()
+		)?)
 	}
 
-	/// attach to a buffer, starting a buffer controller and returning a new reference to it
-	/// 
-	/// to interact with such buffer use [crate::api::Controller::send] or 
-	/// [crate::api::Controller::recv] to exchange [crate::api::TextChange]
-	pub async fn attach(&mut self, path: &str) -> crate::Result<Arc<BufferController>> {
-		if let Some(workspace) = &mut self.workspace {
-			let mut client = self.client.buffer.clone();
-			let req = BufferPayload {
-				path: path.to_string(), user: self.id.clone(), content: None
-			};
+	/// join a workspace, returns an [tokio::sync::RwLock] to interact with it
+	pub async fn join_workspace(&mut self, workspace: &str) -> crate::Result<Arc<Workspace>> {
+		let ws_stream = self.services.workspace.clone().attach(Empty{}.into_request()).await?.into_inner();
 
-			let stream = client.attach(req).await?.into_inner();
+		let (tx, rx) = mpsc::channel(256);
+		let cur_stream = self.services.cursor.clone()
+			.attach(tokio_stream::wrappers::ReceiverStream::new(rx))
+			.await?
+			.into_inner();
 
-			let controller = BufferControllerWorker::new(self.id.clone(), path);
-			let handler = Arc::new(controller.subscribe());
+		let worker = CursorWorker::default();
+		let controller = Arc::new(worker.subscribe());
+		tokio::spawn(async move {
+			tracing::debug!("controller worker started");
+			worker.work(tx, cur_stream).await;
+			tracing::debug!("controller worker stopped");
+		});
 
-			let _path = path.to_string();
-			tokio::spawn(async move {
-				tracing::debug!("buffer[{}] worker started", _path);
-				controller.work(client, stream).await;
-				tracing::debug!("buffer[{}] worker stopped", _path);
-			});
+		let ws = Arc::new(Workspace::new(
+			workspace.to_string(),
+			self.user_id,
+			self.token_tx.clone(),
+			controller,
+			self.services.clone()
+		));
 
-			workspace.buffers.insert(path.to_string(), handler.clone());
+		ws.fetch_users().await?;
+		ws.fetch_buffers().await?;
 
-			Ok(handler)
-		} else {
-			Err(Error::InvalidState { msg: "join a workspace first".into() })
-		}
+		ws.run_actor(ws_stream);
+
+		self.workspaces.insert(workspace.to_string(), ws.clone());
+
+		Ok(ws)
+	}
+
+	pub fn get_workspace(&self, id: &str) -> Option<Arc<Workspace>> {
+		self.workspaces.get(id).map(|x| x.clone())
+	}
+
+	/// accessor for user id
+	pub fn user_id(&self) -> Uuid {
+		self.user_id
 	}
 }

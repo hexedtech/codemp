@@ -1,0 +1,18 @@
+syntax = "proto2";
+
+package common;
+
+
+// a wrapper payload representing an uuid
+message Identity {
+	// uuid bytes, as string
+	required string id = 1;
+}
+
+// a collection of identities
+message IdentityList {
+	repeated Identity users = 1;
+}
+
+//generic Empty message
+message Empty { }
