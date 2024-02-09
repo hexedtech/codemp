@@ -32,7 +32,7 @@ tonic-build = "0.9"
 
 [features]
 default = []
-api     = ["woot", "dep:tokio", "dep:async-trait"]
+api     = ["dep:async-trait"]
 woot    = ["dep:codemp-woot", "dep:similar"]
 proto   = ["dep:prost", "dep:tonic", "dep:uuid"]
 client  = ["proto", "api", "dep:tokio", "dep:tokio-stream", "dep:uuid", "dep:md5", "dep:serde_json", "dep:dashmap", "dep:postcard"]

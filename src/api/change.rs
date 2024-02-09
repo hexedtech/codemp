@@ -30,6 +30,7 @@ pub struct TextChange {
 }
 
 impl TextChange {
+	#[cfg(feature = "woot")]
 	/// create a new TextChange from the difference of given strings
 	pub fn from_diff(before: &str, after: &str) -> TextChange {
 		let diff = similar::TextDiff::from_chars(before, after);
