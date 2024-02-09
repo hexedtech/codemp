@@ -19,8 +19,7 @@ pub(crate) trait ControllerWorker<T : Sized + Send + Sync> {
 ///
 /// this generic trait is implemented by actors managing stream procedures.
 /// events can be enqueued for dispatching without blocking ([Controller::send]), and an async blocking 
-/// api ([Controller::recv]) is provided to wait for server events. Additional sync blocking
-/// ([Controller::blocking_recv]) is implemented if feature `sync` is enabled.
+/// api ([Controller::recv]) is provided to wait for server events.
 ///
 /// * if possible, prefer a pure [Controller::recv] consumer, awaiting for events
 /// * if async is not feasible a [Controller::poll]/[Controller::try_recv] approach is possible

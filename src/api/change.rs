@@ -62,6 +62,7 @@ impl TextChange {
 	}
 
 	#[cfg(feature = "woot")]
+	/// consume the [TextChange], transforming it into a Vec of [woot::crdt::Op]
 	pub fn transform(self, woot: &Woot) -> WootResult<Vec<Op>> {
 		let mut out = Vec::new();
 		if self.is_empty() { return Ok(out); } // no-op

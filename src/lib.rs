@@ -5,8 +5,8 @@
 //! > the core library of the codemp project, driving all editor plugins
 //!
 //! ## structure
-//! The main entrypoint is the [Instance] object, that maintains a connection and can 
-//! be used to join workspaces or attach to buffers. It contains the underlying [client::Client] and 
+//! The main entrypoint is the [Client] object, that maintains a connection and can 
+//! be used to join workspaces or attach to buffers. It contains the underlying [Workspace] and 
 //! stores active controllers.
 //! 
 //! Some actions will return structs implementing the [api::Controller] trait. These can be polled 
@@ -21,26 +21,21 @@
 //! immediately but instead deferred until compatible.
 //!
 //! ## features
-//! * `woot`   : include the underlying CRDT library and re-exports it (default enabled)
 //! * `api`    : include traits for core interfaces under [api] (default enabled)
+//! * `woot`   : include the underlying CRDT library and re-exports it (default enabled)
 //! * `proto`  : include GRCP protocol definitions under [proto] (default enabled)
 //! * `client` : include the local [client] implementation (default enabled)
 //! 
 //! ## examples
-//! the [client::Client] itself is the core structure implementing all methods, plugins should
-//! attempt to keep a single instance at any time
-//!
-//! working sessions are [workspace::Workspace] and while managing multiple ones is in theory
-//! possible, it's not really working right now due to how authentication is managed
+//! most methods are split between the [Client] itself and the current [Workspace]
 //!
 //! ### async
 //! ```rust,no_run
 //! use codemp::api::{Controller, TextChange};
-//! # use codemp::client::Client;
 //!
 //! # async fn async_example() -> codemp::Result<()> {
 //! // creating a client session will immediately attempt to connect
-//! let mut session = Client::new("http://alemi.dev:50053").await?;
+//! let mut session = codemp::Client::new("http://alemi.dev:50053").await?;
 //!
 //! // login first, obtaining a new token granting access to 'some_workspace'
 //! session.login(
@@ -73,18 +68,19 @@
 //! # }
 //! ```
 //!
+//! it's always possible to get a [Workspace] reference using [Client::get_workspace]
+//!
 //! ### sync
 //! if async is not viable, a solution might be keeping a global tokio runtime and blocking on it:
 //!
 //! ```rust,no_run
-//! # use codemp::client::Client;
 //! # use std::sync::Arc;
 //! # use codemp::api::Controller;
 //! #
 //! # fn sync_example() -> codemp::Result<()> {
 //! let rt = tokio::runtime::Runtime::new().unwrap();
 //! let mut session = rt.block_on( // using block_on allows calling async code
-//!   Client::new("http://alemi.dev:50051")
+//!   codemp::Client::new("http://alemi.dev:50051")
 //! )?;
 //!
 //! rt.block_on(session.login(
@@ -214,3 +210,11 @@ pub mod proto {
 
 pub use errors::Error;
 pub use errors::Result;
+
+#[cfg(feature = "client")]
+pub use client::Client;
+
+#[cfg(feature = "client")]
+pub use workspace::Workspace;
+
+
