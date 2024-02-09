@@ -58,11 +58,4 @@ pub trait Controller<T : Sized + Send + Sync> : Sized + Send + Sync {
 
 	/// attempt to receive a value without blocking, return None if nothing is available
 	fn try_recv(&self) -> Result<Option<T>>;
-
-	/// sync variant of [Self::recv], blocking invoking thread
-	/// this calls [Controller::recv] inside a [tokio::runtime::Runtime::block_on]
-	#[cfg(feature = "sync")]
-	fn blocking_recv(&self, rt: &tokio::runtime::Handle) -> Result<T> {
-		rt.block_on(self.recv())
-	}
 }
