@@ -23,6 +23,9 @@ jobs:
     steps:
       - uses: arduino/setup-protoc@v2
       - uses: actions/checkout@v3
+      - uses: webfactory/ssh-agent@v0.7.0
+        with:
+          ssh-private-key: ${{ secrets.ACTIONS_SSH_DEPLOY_KEY }}
       - run: rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }}
       - run: cargo build --verbose --all-features
       - run: cargo test --verbose --all-features
