@@ -3,7 +3,6 @@
 //! an editor-friendly representation of a text change in a buffer
 //! to easily interface with codemp from various editors
 
-#[cfg(feature = "woot")]
 use crate::woot::{WootResult, woot::Woot, crdt::{TextEditor, CRDT, Op}};
 
 /// an editor-friendly representation of a text change in a buffer
@@ -30,7 +29,6 @@ pub struct TextChange {
 }
 
 impl TextChange {
-	#[cfg(feature = "woot")]
 	/// create a new TextChange from the difference of given strings
 	pub fn from_diff(before: &str, after: &str) -> TextChange {
 		let diff = similar::TextDiff::from_chars(before, after);
@@ -61,7 +59,6 @@ impl TextChange {
 		}
 	}
 
-	#[cfg(feature = "woot")]
 	/// consume the [TextChange], transforming it into a Vec of [woot::crdt::Op]
 	pub fn transform(self, woot: &Woot) -> WootResult<Vec<Op>> {
 		let mut out = Vec::new();
@@ -114,12 +111,11 @@ impl TextChange {
 
 	/// convert from byte index to row and column
 	/// txt must be the whole content of the buffer, in order to count lines
-	#[cfg(feature = "proto")]
-	pub fn index_to_rowcol(txt: &str, index: usize) -> crate::proto::cursor::RowCol {
+	pub fn index_to_rowcol(txt: &str, index: usize) -> codemp_proto::cursor::RowCol {
 		// FIXME might panic, use .get()
 		let row = txt[..index].matches('\n').count() as i32;
 		let col = txt[..index].split('\n').last().unwrap_or("").len() as i32;
-		crate::proto::cursor::RowCol { row, col }
+		codemp_proto::cursor::RowCol { row, col }
 	}
 }
 

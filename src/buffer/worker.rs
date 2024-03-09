@@ -10,7 +10,7 @@ use woot::woot::Woot;
 use crate::errors::IgnorableError;
 use crate::api::controller::ControllerWorker;
 use crate::api::TextChange;
-use crate::proto::buffer::{BufferEvent, Operation};
+use codemp_proto::buffer::{BufferEvent, Operation};
 
 use super::controller::BufferController;
 

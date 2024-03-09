@@ -5,8 +5,8 @@ use tonic::Streaming;
 use uuid::Uuid;
 use crate::{
 	api::controller::ControllerWorker, buffer::{self, worker::BufferWorker}, client::Services, cursor,
-	proto::{auth::Token, common::{Identity, Empty}, files::BufferNode, workspace::{WorkspaceEvent, workspace_event::{Event as WorkspaceEventInner, FileCreate, FileDelete, FileRename, UserJoin, UserLeave}}}
 };
+use codemp_proto::{auth::Token, common::{Identity, Empty}, files::BufferNode, workspace::{WorkspaceEvent, workspace_event::{Event as WorkspaceEventInner, FileCreate, FileDelete, FileRename, UserJoin, UserLeave}}};
 
 //TODO may contain more info in the future
 #[derive(Debug, Clone)]

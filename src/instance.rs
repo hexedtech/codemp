@@ -5,22 +5,18 @@
 //! the global instance reference is immutable and lazy-loaded, and requires `global` feature.
 
 /// static global instance, allocated only if feature `global` is active
-#[cfg(feature = "global")]
 pub mod global {
-	#[cfg(not(feature = "sync"))]
 	lazy_static::lazy_static! {
 		/// the global instance of codemp session
 		pub static ref INSTANCE : super::a_sync::Instance = super::a_sync::Instance::default();
 	}
 
-	#[cfg(feature = "sync")]
 	lazy_static::lazy_static! {
 		/// the global instance of codemp session
 		pub static ref INSTANCE : super::sync::Instance = super::sync::Instance::default();
 	}
 }
 
-#[cfg(feature = "global")]
 pub use global::INSTANCE;
 
 /// async implementation of session instance

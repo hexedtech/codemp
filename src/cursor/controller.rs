@@ -5,8 +5,8 @@
 use tokio::sync::{mpsc, broadcast::{self, error::{TryRecvError, RecvError}}, Mutex, watch};
 use tonic::async_trait;
 
-use crate::{api::Controller, errors::IgnorableError, proto::cursor::{CursorEvent, CursorPosition}};
-
+use crate::{api::Controller, errors::IgnorableError};
+use codemp_proto::cursor::{CursorEvent, CursorPosition};
 /// the cursor controller implementation
 ///
 /// this contains

@@ -12,17 +12,17 @@ use tonic::transport::{Channel, Endpoint};
 use tonic::IntoRequest;
 use uuid::Uuid;
 
-use crate::proto::auth::auth_client::AuthClient;
+use codemp_proto::auth::auth_client::AuthClient;
+use codemp_proto::{
+	common::Empty,
+	buffer::buffer_client::BufferClient,
+	cursor::cursor_client::CursorClient,
+	auth::{Token, WorkspaceJoinRequest},
+	workspace::workspace_client::WorkspaceClient,
+};
 use crate::{
 	api::controller::ControllerWorker,
 	cursor::worker::CursorWorker,
-	proto::{
-		common::Empty,
-		buffer::buffer_client::BufferClient,
-		cursor::cursor_client::CursorClient,
-		auth::{Token, WorkspaceJoinRequest},
-		workspace::workspace_client::WorkspaceClient,
-	},
 	workspace::Workspace
 };
 

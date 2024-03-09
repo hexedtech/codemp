@@ -82,7 +82,6 @@ impl Display for Error {
 	}
 }
 
-#[cfg(feature = "client")]
 impl From<tonic::Status> for Error {
 	fn from(status: tonic::Status) -> Self {
 		Error::Transport {
@@ -92,7 +91,6 @@ impl From<tonic::Status> for Error {
 	}
 }
 
-#[cfg(feature = "client")]
 impl From<tonic::transport::Error> for Error {
 	fn from(err: tonic::transport::Error) -> Self {
 		Error::Transport {
@@ -102,28 +100,24 @@ impl From<tonic::transport::Error> for Error {
 	}
 }
 
-#[cfg(feature = "client")]
 impl<T> From<tokio::sync::mpsc::error::SendError<T>> for Error {
 	fn from(_value: tokio::sync::mpsc::error::SendError<T>) -> Self {
 		Error::Channel { send: true }
 	}
 }
 
-#[cfg(feature = "client")]
 impl<T> From<tokio::sync::watch::error::SendError<T>> for Error {
 	fn from(_value: tokio::sync::watch::error::SendError<T>) -> Self {
 		Error::Channel { send: true }
 	}
 }
 
-#[cfg(feature = "client")]
 impl From<tokio::sync::broadcast::error::RecvError> for Error {
 	fn from(_value: tokio::sync::broadcast::error::RecvError) -> Self {
 		Error::Channel { send: false }
 	}
 }
 
-#[cfg(feature = "client")]
 impl From<tokio::sync::watch::error::RecvError> for Error {
 	fn from(_value: tokio::sync::watch::error::RecvError) -> Self {
 		Error::Channel { send: false }

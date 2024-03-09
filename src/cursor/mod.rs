@@ -11,27 +11,3 @@ pub(crate) mod worker;
 pub mod controller;
 
 pub use controller::CursorController as Controller;
-
-use crate::proto::cursor::RowCol;
-
-impl From::<RowCol> for (i32, i32) {
-	fn from(pos: RowCol) -> (i32, i32) {
-		(pos.row, pos.col)
-	}
-}
-
-impl From::<(i32, i32)> for RowCol {
-	fn from((row, col): (i32, i32)) -> Self {
-		RowCol { row, col }
-	}
-}
-
-impl PartialOrd for RowCol {
-	fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-		match self.row.partial_cmp(&other.row) {
-			Some(core::cmp::Ordering::Equal) => {}
-			ord => return ord,
-		}
-		self.col.partial_cmp(&other.col)
-	}
-}
