@@ -7,7 +7,7 @@ pub use crate::{
 	Result as CodempResult,
 };
 
-pub use	crate::woot::crdt::Op as CodempOp;
+pub use crate::woot::crdt::Op as CodempOp;
 
 pub use crate::api::{
 	Controller as CodempController,

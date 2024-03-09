@@ -26,3 +26,18 @@ tokio-stream = { version = "0.1" }
 serde = { version = "1.0.193", features = ["derive"] }
 dashmap = { version = "5.5.3" }
 postcard = { version = "1.0.8" }
+#java
+jni = { version = "0.21.1", features = ["invocation"], optional = true }
+jni-sys = { version = "0.3.0", optional = true }
+rifgen = { git = "https://github.com/Kofituo/rifgen.git", rev = "d27d9785b2febcf5527f1deb6a846be5d583f7d7", optional = true }
+lazy_static = {version = "1.4.0", optional = true }
+log = { version = "0.4.21", optional = true }
+
+[build-dependencies]
+# java
+flapigen = { version = "0.6.0", optional = true }
+rifgen = { git = "https://github.com/Kofituo/rifgen.git", rev = "d27d9785b2febcf5527f1deb6a846be5d583f7d7", optional = true }
+
+[features]
+default = ["java"]
+java = ["lazy_static", "jni", "jni-sys", "flapigen", "rifgen", "log"]

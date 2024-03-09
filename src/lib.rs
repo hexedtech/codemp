@@ -137,6 +137,9 @@ pub mod workspace;
 /// all-in-one imports : `use codemp::prelude::*;`
 pub mod prelude;
 
+/// language-specific ffi "glue"
+pub mod glue;
+
 /// underlying OperationalTransform library used, re-exported
 pub use woot;
 
