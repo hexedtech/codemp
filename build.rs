@@ -15,10 +15,12 @@ fn main() {
 			.generate_interface(&generated_glue_file);
 
 		// build java source path
-		let target = out_dir.parent().unwrap().parent().unwrap().parent().unwrap().to_path_buf();
-		let mut java_target = target.clone();
+		let target = out_dir.parent().unwrap().parent().unwrap().parent().unwrap().to_path_buf(); // target/debug
+
+		let mut java_target = target.clone(); // target/debug/java
 		java_target.push("java");
-		let mut pkg_path = java_target.clone(); 
+
+		let mut pkg_path = java_target.clone(); // target/debug/java/src/com/codemp/intellij
 		pkg_path.push("src");
 		pkg_path.push(pkg_folder);
 
@@ -38,26 +40,31 @@ fn main() {
 		//TODO panic if no jdk
 
 		// compile java code
-		let mut java_compiled = java_target.clone();
+		let mut java_compiled = java_target.clone(); // target/debug/java/classes
 		java_compiled.push("classes");
-		recreate_path(&java_compiled);	
+		recreate_path(&java_compiled);
 
 		let mut javac_cmd = std::process::Command::new("javac");
 		javac_cmd.arg("-d").arg(java_compiled.as_os_str());
 		for java_file in pkg_path.read_dir().unwrap().filter_map(|e| e.ok()) {
 			javac_cmd.arg(java_file.path().as_os_str());
 		}
-
-		// jar it! FIXME
-		let mut jar_file = target.clone();
+		javac_cmd.status().expect("failed to run javac");
+	
+		// jar it!
+		let mut jar_file = target.clone(); // target/debug/codemp-java.jar
 		jar_file.push("codemp-java.jar");
+
 		let mut jar_cmd = std::process::Command::new("jar");
-		jar_cmd.arg("cf").arg(jar_file.as_os_str());
-		jar_cmd.arg("-C").arg(java_compiled.as_os_str());
+		jar_cmd.current_dir(&java_compiled)
+			.arg("cf")
+			.arg(jar_file.as_os_str());
 		for java_file in java_compiled.read_dir().unwrap().filter_map(|e| e.ok()) {
-			jar_cmd.arg(java_file.path().as_os_str());
+			let relative_path = java_file.path().clone();
+			let relative_path = relative_path.strip_prefix(&java_compiled).unwrap();
+			jar_cmd.arg(relative_path.as_os_str());
 		}
-		jar_cmd.spawn().expect("failed to run jar!");
+		jar_cmd.status().expect("failed to run jar!");
 
 		println!("cargo:rerun-if-changed={}", generated_glue_file.display());
 	}
