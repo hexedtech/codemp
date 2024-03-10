@@ -138,7 +138,7 @@ pub mod workspace;
 pub mod prelude;
 
 /// language-specific ffi "glue"
-pub mod glue;
+pub mod ffi;
 
 /// underlying OperationalTransform library used, re-exported
 pub use woot;
