@@ -11,7 +11,7 @@ fn main() {
 		let out_dir = std::path::Path::new(&out_dir);
 		let generated_glue_file = out_dir.join("generated_glue.in");
 		let src_dir = std::path::Path::new("src")
-			.join("glue")
+			.join("ffi")
 			.join("java");
 		let typemap_file = src_dir.join("typemap.in");
 		rifgen::Generator::new(rifgen::TypeCases::CamelCase, rifgen::Language::Java, vec![src_dir])
