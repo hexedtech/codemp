@@ -1,3 +1,6 @@
+#[cfg(feature = "js")]
+extern crate napi_build;
+
 /// The main method of the buildscript, required by some glue modules.
 fn main() {
 	#[cfg(feature = "java")] {
@@ -73,6 +76,10 @@ fn main() {
 
 			println!("cargo:rerun-if-changed={}", generated_glue_file.display());
 		}
+	}
+
+	#[cfg(feature = "js")] {
+		napi_build::setup();
 	}
 }
 
