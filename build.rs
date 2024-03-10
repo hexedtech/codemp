@@ -37,36 +37,42 @@ fn main() {
 			out_dir.join("glue.rs")
 		);
 
-		//TODO panic if no jdk
+		#[cfg(feature = "java-artifact")] {
+			// panic if no jdk
+			std::process::Command::new("javac")
+				.arg("--version")
+				.status()
+				.expect("java not found");
 
-		// compile java code
-		let mut java_compiled = java_target.clone(); // target/debug/java/classes
-		java_compiled.push("classes");
-		recreate_path(&java_compiled);
+			// compile java code
+			let mut java_compiled = java_target.clone(); // target/debug/java/classes
+			java_compiled.push("classes");
+			recreate_path(&java_compiled);
 
-		let mut javac_cmd = std::process::Command::new("javac");
-		javac_cmd.arg("-d").arg(java_compiled.as_os_str());
-		for java_file in pkg_path.read_dir().unwrap().filter_map(|e| e.ok()) {
-			javac_cmd.arg(java_file.path().as_os_str());
-		}
-		javac_cmd.status().expect("failed to run javac");
+			let mut javac_cmd = std::process::Command::new("javac");
+			javac_cmd.arg("-d").arg(java_compiled.as_os_str());
+			for java_file in pkg_path.read_dir().unwrap().filter_map(|e| e.ok()) {
+				javac_cmd.arg(java_file.path().as_os_str());
+			}
+			javac_cmd.status().expect("failed to run javac");
 	
-		// jar it!
-		let mut jar_file = target.clone(); // target/debug/codemp-java.jar
-		jar_file.push("codemp-java.jar");
+			// jar it!
+			let mut jar_file = target.clone(); // target/debug/codemp-java.jar
+			jar_file.push("codemp-java.jar");
 
-		let mut jar_cmd = std::process::Command::new("jar");
-		jar_cmd.current_dir(&java_compiled)
-			.arg("cf")
-			.arg(jar_file.as_os_str());
-		for java_file in java_compiled.read_dir().unwrap().filter_map(|e| e.ok()) {
-			let relative_path = java_file.path().clone();
-			let relative_path = relative_path.strip_prefix(&java_compiled).unwrap();
-			jar_cmd.arg(relative_path.as_os_str());
+			let mut jar_cmd = std::process::Command::new("jar");
+			jar_cmd.current_dir(&java_compiled)
+				.arg("cf")
+				.arg(jar_file.as_os_str());
+			for java_file in java_compiled.read_dir().unwrap().filter_map(|e| e.ok()) {
+				let relative_path = java_file.path().clone();
+				let relative_path = relative_path.strip_prefix(&java_compiled).unwrap();
+				jar_cmd.arg(relative_path.as_os_str());
+			}
+			jar_cmd.status().expect("failed to run jar!");
+
+			println!("cargo:rerun-if-changed={}", generated_glue_file.display());
 		}
-		jar_cmd.status().expect("failed to run jar!");
-
-		println!("cargo:rerun-if-changed={}", generated_glue_file.display());
 	}
 }
 

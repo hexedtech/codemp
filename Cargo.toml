@@ -41,3 +41,4 @@ rifgen = { git = "https://github.com/Kofituo/rifgen.git", rev = "d27d9785b2febcf
 [features]
 default = []
 java = ["lazy_static", "jni", "jni-sys", "flapigen", "rifgen", "log"]
+java-artifact = ["java"]
