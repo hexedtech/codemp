@@ -76,6 +76,7 @@ fn main() {
 	}
 }
 
+#[cfg(feature = "java")]
 fn recreate_path(path: &std::path::PathBuf) {
 	if path.exists() {
 		std::fs::remove_dir_all(path).expect("failed to delete old dir!");
