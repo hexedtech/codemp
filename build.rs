@@ -1,24 +1,37 @@
 #[cfg(feature = "js")]
 extern crate napi_build;
 
+#[cfg(feature = "python")]
+extern crate pyo3_build_config;
+
 /// The main method of the buildscript, required by some glue modules.
 fn main() {
-	#[cfg(feature = "java")] {
+	#[cfg(feature = "java")]
+	{
 		let pkg = "com.codemp.jni".to_string();
 		let pkg_folder = pkg.replace('.', "/"); // java moment
 
 		let out_dir = std::env::var("OUT_DIR").expect("cargo did not provide OUT_DIR");
 		let out_dir = std::path::Path::new(&out_dir);
 		let generated_glue_file = out_dir.join("generated_glue.in");
-		let src_dir = std::path::Path::new("src")
-			.join("ffi")
-			.join("java");
+		let src_dir = std::path::Path::new("src").join("ffi").join("java");
 		let typemap_file = src_dir.join("typemap.in");
-		rifgen::Generator::new(rifgen::TypeCases::CamelCase, rifgen::Language::Java, vec![src_dir])
-			.generate_interface(&generated_glue_file);
+		rifgen::Generator::new(
+			rifgen::TypeCases::CamelCase,
+			rifgen::Language::Java,
+			vec![src_dir],
+		)
+		.generate_interface(&generated_glue_file);
 
 		// build java source path
-		let target = out_dir.parent().unwrap().parent().unwrap().parent().unwrap().to_path_buf(); // target/debug
+		let target = out_dir
+			.parent()
+			.unwrap()
+			.parent()
+			.unwrap()
+			.parent()
+			.unwrap()
+			.to_path_buf(); // target/debug
 
 		let mut java_target = target.clone(); // target/debug/java
 		java_target.push("java");
@@ -37,10 +50,11 @@ fn main() {
 		java_gen.expand_many(
 			"codemp-intellij",
 			&[&generated_glue_file, &typemap_file],
-			out_dir.join("glue.rs")
+			out_dir.join("glue.rs"),
 		);
 
-		#[cfg(feature = "java-artifact")] {
+		#[cfg(feature = "java-artifact")]
+		{
 			// panic if no jdk
 			std::process::Command::new("javac")
 				.arg("--version")
@@ -58,13 +72,14 @@ fn main() {
 				javac_cmd.arg(java_file.path().as_os_str());
 			}
 			javac_cmd.status().expect("failed to run javac");
-	
+
 			// jar it!
 			let mut jar_file = target.clone(); // target/debug/codemp-java.jar
 			jar_file.push("codemp-java.jar");
 
 			let mut jar_cmd = std::process::Command::new("jar");
-			jar_cmd.current_dir(&java_compiled)
+			jar_cmd
+				.current_dir(&java_compiled)
 				.arg("cf")
 				.arg(jar_file.as_os_str());
 			for java_file in java_compiled.read_dir().unwrap().filter_map(|e| e.ok()) {
@@ -78,8 +93,14 @@ fn main() {
 		}
 	}
 
-	#[cfg(feature = "js")] {
+	#[cfg(feature = "js")]
+	{
 		napi_build::setup();
+	}
+
+	#[cfg(feature = "python")]
+	{
+		pyo3_build_config::add_extension_module_link_args();
 	}
 }
 
