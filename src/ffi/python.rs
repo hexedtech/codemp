@@ -511,7 +511,7 @@ impl PyTextChange {
 
 /* ------ Python module --------*/
 #[pymodule]
-fn codemp_client(_py: Python, m: &PyModule) -> PyResult<()> {
+fn codemp(_py: Python, m: &PyModule) -> PyResult<()> {
 	m.add_function(wrap_pyfunction!(codemp_init, m)?)?;
 	m.add_function(wrap_pyfunction!(init_logger, m)?)?;
 	m.add_class::<PyClient>()?;
