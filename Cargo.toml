@@ -11,9 +11,9 @@ crate-type = ["cdylib"]
 # core
 tracing = "0.1"
 # woot
-codemp-woot = { git = "ssh://git@github.com/codewithotherpeopleandchangenamelater/woot.git", features = ["serde"], tag = "v0.1.2" }
+codemp-woot = { git = "ssh://git@github.com/hexedtech/woot.git", features = ["serde"], tag = "v0.1.2" }
 # proto
-codemp-proto = { git = "ssh://git@github.com/codewithotherpeopleandchangenamelater/codemp-proto.git", tag = "v0.6.1" }
+codemp-proto = { git = "ssh://git@github.com/hexedtech/codemp-proto.git", tag = "v0.6.1" }
 uuid = { version = "1.7", features = ["v4"] }
 tonic = { version = "0.11.0", features = ["tls", "tls-roots"] }
 # api
