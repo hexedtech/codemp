@@ -34,7 +34,7 @@ use crate::{
 pub struct Client {
 	user_id: Uuid,
 	token_tx: Arc<tokio::sync::watch::Sender<Token>>,
-	workspaces: Arc<DashMap<String, Arc<Workspace>>>,
+	workspaces: Arc<DashMap<String, Workspace>>,
 	services: Arc<Services>
 }
 
@@ -109,7 +109,7 @@ impl Client {
 	}
 
 	/// join a workspace, returns an [tokio::sync::RwLock] to interact with it
-	pub async fn join_workspace(&self, workspace: &str) -> crate::Result<Arc<Workspace>> {
+	pub async fn join_workspace(&self, workspace: &str) -> crate::Result<Workspace> {
 		let ws_stream = self.services.workspace.clone().attach(Empty{}.into_request()).await?.into_inner();
 
 		let (tx, rx) = mpsc::channel(256);
@@ -119,20 +119,20 @@ impl Client {
 			.into_inner();
 
 		let worker = CursorWorker::default();
-		let controller = Arc::new(worker.subscribe());
+		let controller = worker.subscribe();
 		tokio::spawn(async move {
 			tracing::debug!("controller worker started");
 			worker.work(tx, cur_stream).await;
 			tracing::debug!("controller worker stopped");
 		});
 
-		let ws = Arc::new(Workspace::new(
+		let ws = Workspace::new(
 			workspace.to_string(),
 			self.user_id,
 			self.token_tx.clone(),
 			controller,
 			self.services.clone()
-		));
+		);
 
 		ws.fetch_users().await?;
 		ws.fetch_buffers().await?;
@@ -144,7 +144,7 @@ impl Client {
 		Ok(ws)
 	}
 
-	pub fn get_workspace(&self, id: &str) -> Option<Arc<Workspace>> {
+	pub fn get_workspace(&self, id: &str) -> Option<Workspace> {
 		self.workspaces.get(id).map(|x| x.clone())
 	}
 
