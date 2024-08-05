@@ -3,7 +3,11 @@
 //! an editor-friendly representation of a text change in a buffer
 //! to easily interface with codemp from various editors
 
-use crate::woot::{WootResult, woot::Woot, crdt::{TextEditor, CRDT}};
+use crate::woot::{
+	crdt::{TextEditor, CRDT},
+	woot::Woot,
+	WootResult,
+};
 
 /// an atomic and orderable operation
 ///
@@ -17,7 +21,7 @@ pub struct Op(pub(crate) woot::crdt::Op);
 /// replaced to it, allowing to represent any combination of deletions, insertions or replacements
 ///
 /// bulk and widespread operations will result in a TextChange effectively sending the whole new
-/// buffer, but small changes are efficient and easy to create or apply 
+/// buffer, but small changes are efficient and easy to create or apply
 ///
 /// ### examples
 /// to insert 'a' after 4th character we should send a
@@ -27,6 +31,7 @@ pub struct Op(pub(crate) woot::crdt::Op);
 ///     `TextChange { span: 3..4, content: "".into() }`
 ///
 #[derive(Clone, Debug, Default)]
+#[cfg_attr(feature = "python", pyo3::pyclass)]
 pub struct TextChange {
 	/// range of text change, as char indexes in buffer previous state
 	pub span: std::ops::Range<usize>,
@@ -49,7 +54,7 @@ impl TextChange {
 					} else {
 						end += len
 					}
-				},
+				}
 				_ => {
 					end = 0;
 					from_beginning = false;
@@ -68,7 +73,9 @@ impl TextChange {
 	/// consume the [TextChange], transforming it into a Vec of [Op]
 	pub fn transform(self, woot: &Woot) -> WootResult<Vec<Op>> {
 		let mut out = Vec::new();
-		if self.is_empty() { return Ok(out); } // no-op
+		if self.is_empty() {
+			return Ok(out);
+		} // no-op
 		let view = woot.view();
 		let Some(span) = view.get(self.span.clone()) else {
 			return Err(crate::woot::WootError::OutOfBounds);
@@ -76,17 +83,21 @@ impl TextChange {
 		let diff = similar::TextDiff::from_chars(span, &self.content);
 		for (i, diff) in diff.iter_all_changes().enumerate() {
 			match diff.tag() {
-				similar::ChangeTag::Equal => {},
+				similar::ChangeTag::Equal => {}
 				similar::ChangeTag::Delete => match woot.delete_one(self.span.start + i) {
 					Err(e) => tracing::error!("could not create deletion: {}", e),
 					Ok(op) => out.push(Op(op)),
 				},
 				similar::ChangeTag::Insert => {
 					match woot.insert(self.span.start + i, diff.value()) {
-						Ok(ops) => for op in ops { out.push(Op(op)) },
+						Ok(ops) => {
+							for op in ops {
+								out.push(Op(op))
+							}
+						}
 						Err(e) => tracing::error!("could not create insertion: {}", e),
 					}
-				},
+				}
 			}
 		}
 		Ok(out)
@@ -131,7 +142,7 @@ mod tests {
 	fn textchange_diff_works_for_deletions() {
 		let change = super::TextChange::from_diff(
 			"sphinx of black quartz, judge my vow",
-			"sphinx of quartz, judge my vow"
+			"sphinx of quartz, judge my vow",
 		);
 		assert_eq!(change.span, 10..16);
 		assert_eq!(change.content, "");
@@ -141,7 +152,7 @@ mod tests {
 	fn textchange_diff_works_for_insertions() {
 		let change = super::TextChange::from_diff(
 			"sphinx of quartz, judge my vow",
-			"sphinx of black quartz, judge my vow"
+			"sphinx of black quartz, judge my vow",
 		);
 		assert_eq!(change.span, 10..10);
 		assert_eq!(change.content, "black ");
@@ -151,7 +162,7 @@ mod tests {
 	fn textchange_diff_works_for_changes() {
 		let change = super::TextChange::from_diff(
 			"sphinx of black quartz, judge my vow",
-			"sphinx who watches the desert, judge my vow"
+			"sphinx who watches the desert, judge my vow",
 		);
 		assert_eq!(change.span, 7..22);
 		assert_eq!(change.content, "who watches the desert");
@@ -159,30 +170,45 @@ mod tests {
 
 	#[test]
 	fn textchange_apply_works_for_insertions() {
-		let change = super::TextChange { span: 5..5, content: " cruel".to_string() };
+		let change = super::TextChange {
+			span: 5..5,
+			content: " cruel".to_string(),
+		};
 		let result = change.apply("hello world!");
 		assert_eq!(result, "hello cruel world!");
 	}
 
 	#[test]
 	fn textchange_apply_works_for_deletions() {
-		let change = super::TextChange { span: 5..11, content: "".to_string() };
+		let change = super::TextChange {
+			span: 5..11,
+			content: "".to_string(),
+		};
 		let result = change.apply("hello cruel world!");
 		assert_eq!(result, "hello world!");
 	}
 
 	#[test]
 	fn textchange_apply_works_for_replacements() {
-		let change = super::TextChange { span: 5..11, content: " not very pleasant".to_string() };
+		let change = super::TextChange {
+			span: 5..11,
+			content: " not very pleasant".to_string(),
+		};
 		let result = change.apply("hello cruel world!");
 		assert_eq!(result, "hello not very pleasant world!");
 	}
 
 	#[test]
 	fn textchange_apply_never_panics() {
-		let change = super::TextChange { span: 100..110, content: "a very long string \n which totally matters".to_string() };
+		let change = super::TextChange {
+			span: 100..110,
+			content: "a very long string \n which totally matters".to_string(),
+		};
 		let result = change.apply("a short text");
-		assert_eq!(result, "a short texta very long string \n which totally matters");
+		assert_eq!(
+			result,
+			"a short texta very long string \n which totally matters"
+		);
 	}
 
 	#[test]
@@ -190,10 +216,13 @@ mod tests {
 		let change = super::TextChange::from_diff("same \n\n text", "same \n\n text");
 		assert!(change.is_empty());
 	}
-	
+
 	#[test]
 	fn empty_textchange_doesnt_alter_buffer() {
-		let change = super::TextChange { span: 42..42, content: "".to_string() };
+		let change = super::TextChange {
+			span: 42..42,
+			content: "".to_string(),
+		};
 		let result = change.apply("some important text");
 		assert_eq!(result, "some important text");
 	}

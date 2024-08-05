@@ -4,12 +4,7 @@ use tokio::sync::{mpsc, Mutex, RwLock};
 use tracing;
 use tracing_subscriber;
 
-use crate::errors::Error as CodempError;
 use crate::prelude::*;
-use codemp_proto::{
-	common::Identity, cursor::CursorEvent as CodempCursorEvent,
-	cursor::CursorPosition as CodempCursorPosition, files::BufferNode,
-};
 
 use pyo3::{
 	exceptions::{PyBaseException, PyConnectionError, PyRuntimeError},
@@ -101,12 +96,14 @@ fn init_logger(py: Python<'_>, debug: Option<bool>) -> PyResult<Py<PyLogger>> {
 		.with_line_number(false)
 		.with_source_location(false)
 		.compact();
-	tracing_subscriber::fmt()
+
+	let _ = tracing_subscriber::fmt()
 		.with_ansi(false)
 		.event_format(format)
 		.with_max_level(level)
 		.with_writer(std::sync::Mutex::new(LoggerProducer(tx)))
-		.init();
+		.try_init();
+
 	Ok(Py::new(py, PyLogger(Arc::new(Mutex::new(rx))))?)
 }
 
@@ -171,7 +168,7 @@ impl PyClient {
 				return Err(PyConnectionError::new_err("Connect to a server first."));
 			};
 
-			let workspace: PyWorkspace = cli
+			let workspace: CodempWorkspace = cli
 				.as_mut()
 				.unwrap()
 				.join_workspace(workspace.as_str())
@@ -193,10 +190,10 @@ impl PyClient {
 			};
 
 			let Some(ws) = cli.as_ref().unwrap().get_workspace(id.as_str()) else {
-                return Ok(None)
-            };
+				return Ok(None);
+			};
 
-			Python::with_gil(|py| Ok(Some(Py::new(py, PyWorkspace(ws))?)))
+			Python::with_gil(|py| Ok(Some(Py::new(py, ws)?)))
 		})
 	}
 
@@ -217,20 +214,11 @@ impl PyClient {
 	}
 }
 
-#[pyclass]
-struct PyWorkspace(Arc<CodempWorkspace>);
-
-impl From<Arc<CodempWorkspace>> for PyWorkspace {
-	fn from(value: Arc<CodempWorkspace>) -> Self {
-		PyWorkspace(value)
-	}
-}
-
 #[pymethods]
-impl PyWorkspace {
+impl CodempWorkspace {
 	// join a workspace
-	fn create<'a>(&'a self, py: Python<'a>, path: String) -> PyResult<&'a PyAny> {
-		let ws = self.0.clone();
+	fn pycreate<'a>(&'a self, py: Python<'a>, path: String) -> PyResult<&'a PyAny> {
+		let ws = self.clone();
 
 		pyo3_asyncio::tokio::future_into_py(py, async move {
 			ws.create(path.as_str()).await?;
@@ -238,17 +226,17 @@ impl PyWorkspace {
 		})
 	}
 
-	fn attach<'a>(&'a self, py: Python<'a>, path: String) -> PyResult<&'a PyAny> {
-		let ws = self.0.clone();
+	fn pyattach<'a>(&'a self, py: Python<'a>, path: String) -> PyResult<&'a PyAny> {
+		let ws = self.clone();
 
 		pyo3_asyncio::tokio::future_into_py(py, async move {
-			let buffctl: PyBufferController = ws.attach(path.as_str()).await?.into();
+			let buffctl: CodempBufferController = ws.attach(path.as_str()).await?.into();
 			Python::with_gil(|py| Ok(Py::new(py, buffctl)?))
 		})
 	}
 
-	fn fetch_buffers<'a>(&'a self, py: Python<'a>) -> PyResult<&'a PyAny> {
-		let ws = self.0.clone();
+	fn pyfetch_buffers<'a>(&'a self, py: Python<'a>) -> PyResult<&'a PyAny> {
+		let ws = self.clone();
 
 		pyo3_asyncio::tokio::future_into_py(py, async move {
 			ws.fetch_buffers().await?;
@@ -256,8 +244,8 @@ impl PyWorkspace {
 		})
 	}
 
-	fn fetch_users<'a>(&'a self, py: Python<'a>) -> PyResult<&'a PyAny> {
-		let ws = self.0.clone();
+	fn pyfetch_users<'a>(&'a self, py: Python<'a>) -> PyResult<&'a PyAny> {
+		let ws = self.clone();
 
 		pyo3_asyncio::tokio::future_into_py(py, async move {
 			ws.fetch_users().await?;
@@ -265,23 +253,23 @@ impl PyWorkspace {
 		})
 	}
 
-	fn list_buffer_users<'a>(&'a self, py: Python<'a>, path: String) -> PyResult<&'a PyAny> {
-		let ws = self.0.clone();
+	fn pylist_buffer_users<'a>(&'a self, py: Python<'a>, path: String) -> PyResult<&'a PyAny> {
+		let ws = self.clone();
 
 		pyo3_asyncio::tokio::future_into_py(py, async move {
-			let usrlist: Vec<PyId> = ws
+			let usrlist: Vec<String> = ws
 				.list_buffer_users(path.as_str())
 				.await?
 				.into_iter()
-				.map(PyId::from)
+				.map(|e| e.id)
 				.collect();
 
 			Ok(usrlist)
 		})
 	}
 
-	fn delete<'a>(&'a self, py: Python<'a>, path: String) -> PyResult<&'a PyAny> {
-		let ws = self.0.clone();
+	fn pydelete<'a>(&'a self, py: Python<'a>, path: String) -> PyResult<&'a PyAny> {
+		let ws = self.clone();
 
 		pyo3_asyncio::tokio::future_into_py(py, async move {
 			ws.delete(path.as_str()).await?;
@@ -289,222 +277,152 @@ impl PyWorkspace {
 		})
 	}
 
-	fn id(&self, py: Python<'_>) -> Py<PyString> {
-		PyString::new(py, self.0.id().as_str()).into()
+	fn pyid(&self, py: Python<'_>) -> Py<PyString> {
+		PyString::new(py, self.id().as_str()).into()
 	}
 
-	fn cursor(&self, py: Python<'_>) -> PyResult<Py<PyCursorController>> {
-		Ok(Py::new(py, PyCursorController::from(self.0.cursor()))?)
+	fn pycursor(&self, py: Python<'_>) -> PyResult<Py<CodempCursorController>> {
+		Ok(Py::new(py, CodempCursorController::from(self.cursor()))?)
 	}
 
-	fn buffer_by_name(
+	fn pybuffer_by_name(
 		&self,
 		py: Python<'_>,
 		path: String,
-	) -> PyResult<Option<Py<PyBufferController>>> {
-		let Some(bufctl) = self.0.buffer_by_name(path.as_str()) else {
-            return Ok(None)
-        };
+	) -> PyResult<Option<Py<CodempBufferController>>> {
+		let Some(bufctl) = self.buffer_by_name(path.as_str()) else {
+			return Ok(None);
+		};
 
-		Ok(Some(Py::new(py, PyBufferController::from(bufctl))?))
+		Ok(Some(Py::new(py, CodempBufferController::from(bufctl))?))
 	}
 
-	fn filetree(&self, py: Python<'_>) -> Py<PyList> {
-		PyList::new(py, self.0.filetree()).into_py(py)
+	fn pyfiletree(&self, py: Python<'_>) -> Py<PyList> {
+		PyList::new(py, self.filetree()).into_py(py)
 	}
 }
 
 /* ########################################################################### */
 
-#[pyclass]
-struct PyCursorController(Arc<CodempCursorController>);
-
-impl From<Arc<CodempCursorController>> for PyCursorController {
-	fn from(value: Arc<CodempCursorController>) -> Self {
-		PyCursorController(value)
-	}
-}
-
 #[pymethods]
-impl PyCursorController {
-	fn send<'a>(&'a self, path: String, start: (i32, i32), end: (i32, i32)) -> PyResult<()> {
-		let pos = CodempCursorPosition {
-			buffer: BufferNode { path },
+impl CodempCursorController {
+	fn pysend<'a>(&'a self, path: String, start: (i32, i32), end: (i32, i32)) -> PyResult<()> {
+		let pos = CodempCursor {
 			start: start.into(),
 			end: end.into(),
+			buffer: path,
+			user: None,
 		};
 
-		Ok(self.0.send(pos)?)
+		Ok(self.send(pos)?)
 	}
 
-	fn try_recv(&self, py: Python<'_>) -> PyResult<PyObject> {
-		match self.0.try_recv()? {
+	fn pytry_recv(&self, py: Python<'_>) -> PyResult<PyObject> {
+		match self.try_recv()? {
 			Some(cur_event) => {
-				let evt = PyCursorEvent::from(cur_event);
+				let evt = CodempCursor::from(cur_event);
 				Ok(evt.into_py(py))
 			}
 			None => Ok(py.None()),
 		}
 	}
 
-	fn recv<'a>(&'a self, py: Python<'a>) -> PyResult<&'a PyAny> {
-		let rc = self.0.clone();
+	fn pyrecv<'a>(&'a self, py: Python<'a>) -> PyResult<&'a PyAny> {
+		let rc = self.clone();
 
 		pyo3_asyncio::tokio::future_into_py(py, async move {
-			let cur_event: PyCursorEvent = rc.recv().await?.into();
+			let cur_event: CodempCursor = rc.recv().await?.into();
 			Python::with_gil(|py| Ok(Py::new(py, cur_event)?))
 		})
 	}
 
-	fn poll<'a>(&'a self, py: Python<'a>) -> PyResult<&'a PyAny> {
-		let rc = self.0.clone();
+	fn pypoll<'a>(&'a self, py: Python<'a>) -> PyResult<&'a PyAny> {
+		let rc = self.clone();
 
 		pyo3_asyncio::tokio::future_into_py(py, async move { Ok(rc.poll().await?) })
 	}
 }
 
-#[pyclass]
-struct PyBufferController(Arc<CodempBufferController>);
-
-impl From<Arc<CodempBufferController>> for PyBufferController {
-	fn from(value: Arc<CodempBufferController>) -> Self {
-		PyBufferController(value)
-	}
-}
-
 #[pymethods]
-impl PyBufferController {
-	fn content<'a>(&self, py: Python<'a>) -> &'a PyString {
-		PyString::new(py, self.0.content().as_str())
+impl CodempBufferController {
+	fn pycontent<'a>(&self, py: Python<'a>) -> &'a PyString {
+		PyString::new(py, self.content().as_str())
 	}
 
-	fn send(&self, start: usize, end: usize, txt: String) -> PyResult<()> {
+	fn pysend(&self, start: usize, end: usize, txt: String) -> PyResult<()> {
 		let op = CodempTextChange {
 			span: start..end,
 			content: txt.into(),
 		};
-		Ok(self.0.send(op)?)
+		Ok(self.send(op)?)
 	}
 
-	fn try_recv(&self, py: Python<'_>) -> PyResult<PyObject> {
-		match self.0.try_recv()? {
+	fn pytry_recv(&self, py: Python<'_>) -> PyResult<PyObject> {
+		match self.try_recv()? {
 			Some(txt_change) => {
-				let evt = PyTextChange::from(txt_change);
+				let evt = CodempTextChange::from(txt_change);
 				Ok(evt.into_py(py))
 			}
 			None => Ok(py.None()),
 		}
 	}
 
-	fn recv<'a>(&'a self, py: Python<'a>) -> PyResult<&'a PyAny> {
-		let rc = self.0.clone();
+	fn pyrecv<'a>(&'a self, py: Python<'a>) -> PyResult<&'a PyAny> {
+		let rc = self.clone();
 
 		pyo3_asyncio::tokio::future_into_py(py, async move {
-			let txt_change: PyTextChange = rc.recv().await?.into();
+			let txt_change: CodempTextChange = rc.recv().await?.into();
 			Python::with_gil(|py| Ok(Py::new(py, txt_change)?))
 		})
 	}
 
-	fn poll<'a>(&'a self, py: Python<'a>) -> PyResult<&'a PyAny> {
-		let rc = self.0.clone();
+	fn pypoll<'a>(&'a self, py: Python<'a>) -> PyResult<&'a PyAny> {
+		let rc = self.clone();
 
 		pyo3_asyncio::tokio::future_into_py(py, async move { Ok(rc.poll().await?) })
 	}
 }
 
-/* ---------- Type Wrappers ----------*/
-// All these objects are not meant to be handled rust side.
-// Just to be sent to the python heap.
-
-#[pyclass]
-struct PyId {
-	#[pyo3(get, set)]
-	id: String,
-}
-
-impl From<Identity> for PyId {
-	fn from(value: Identity) -> Self {
-		PyId { id: value.id }
-	}
-}
-
-#[pyclass]
-struct PyCursorEvent {
-	#[pyo3(get, set)]
-	user: String,
-
-	#[pyo3(get, set)]
-	buffer: String,
-
-	#[pyo3(get, set)]
-	start: (i32, i32),
-
-	#[pyo3(get, set)]
-	end: (i32, i32),
-}
-
-impl From<CodempCursorEvent> for PyCursorEvent {
-	fn from(value: CodempCursorEvent) -> Self {
-		// todo, handle this optional better?
-		let pos = value.position;
-		PyCursorEvent {
-			user: value.user.id,
-			buffer: pos.buffer.path,
-			start: pos.start.into(),
-			end: pos.end.into(),
-		}
-	}
-}
-
-#[pyclass]
-struct PyTextChange(CodempTextChange);
-
-impl From<CodempTextChange> for PyTextChange {
-	fn from(value: CodempTextChange) -> Self {
-		PyTextChange(value)
-	}
-}
-
 #[pymethods]
-impl PyTextChange {
+impl CodempTextChange {
 	#[getter]
-	fn start_incl(&self) -> PyResult<usize> {
-		Ok(self.0.span.start)
-	}
-
-	#[getter]
-	fn end_excl(&self) -> PyResult<usize> {
-		Ok(self.0.span.end)
+	fn pystart_incl(&self) -> PyResult<usize> {
+		Ok(self.span.start)
 	}
 
 	#[getter]
-	fn content(&self) -> PyResult<String> {
-		Ok(self.0.content.clone())
+	fn pyend_excl(&self) -> PyResult<usize> {
+		Ok(self.span.end)
 	}
 
-	fn is_deletion(&self) -> bool {
-		self.0.is_deletion()
+	#[getter]
+	fn pycontent(&self) -> PyResult<String> {
+		Ok(self.content.clone())
 	}
 
-	fn is_addition(&self) -> bool {
-		self.0.is_addition()
+	fn pyis_deletion(&self) -> bool {
+		self.is_deletion()
 	}
 
-	fn is_empty(&self) -> bool {
-		self.0.is_empty()
+	fn pyis_addition(&self) -> bool {
+		self.is_addition()
 	}
 
-	fn apply(&self, txt: &str) -> String {
-		self.0.apply(txt)
+	fn pyis_empty(&self) -> bool {
+		self.is_empty()
+	}
+
+	fn pyapply(&self, txt: &str) -> String {
+		self.apply(txt)
 	}
 
 	#[classmethod]
-	fn from_diff(_cls: &PyType, before: &str, after: &str) -> PyTextChange {
-		PyTextChange(CodempTextChange::from_diff(before, after))
+	fn pyfrom_diff(_cls: &PyType, before: &str, after: &str) -> CodempTextChange {
+		CodempTextChange::from_diff(before, after)
 	}
 
 	#[classmethod]
-	fn index_to_rowcol(_cls: &PyType, txt: &str, index: usize) -> (i32, i32) {
+	fn pyindex_to_rowcol(_cls: &PyType, txt: &str, index: usize) -> (i32, i32) {
 		CodempTextChange::index_to_rowcol(txt, index).into()
 	}
 }
@@ -515,14 +433,14 @@ fn codemp(_py: Python, m: &PyModule) -> PyResult<()> {
 	m.add_function(wrap_pyfunction!(codemp_init, m)?)?;
 	m.add_function(wrap_pyfunction!(init_logger, m)?)?;
 	m.add_class::<PyClient>()?;
-	m.add_class::<PyWorkspace>()?;
-	m.add_class::<PyCursorController>()?;
-	m.add_class::<PyBufferController>()?;
 	m.add_class::<PyLogger>()?;
+	m.add_class::<CodempWorkspace>()?;
+	m.add_class::<CodempCursorController>()?;
+	m.add_class::<CodempBufferController>()?;
 
-	m.add_class::<PyId>()?;
-	m.add_class::<PyCursorEvent>()?;
-	m.add_class::<PyTextChange>()?;
+	// m.add_class::<PyId>()?;
+	m.add_class::<CodempCursor>()?;
+	m.add_class::<CodempTextChange>()?;
 
 	Ok(())
 }

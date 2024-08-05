@@ -1,27 +1,27 @@
 //! ### controller
-//! 
+//!
 //! a controller implementation for buffer actions
-
 
 use std::sync::Arc;
 
 use tokio::sync::oneshot;
-use tokio::sync::{watch, mpsc};
+use tokio::sync::{mpsc, watch};
 use tonic::async_trait;
 
-use crate::errors::IgnorableError;
 use crate::api::Controller;
+use crate::errors::IgnorableError;
 
 use crate::api::TextChange;
 
 /// the buffer controller implementation
 ///
 /// for each controller a worker exists, managing outgoing and inbound
-/// queues, transforming outbound delayed ops and applying remote changes 
+/// queues, transforming outbound delayed ops and applying remote changes
 /// to the local buffer
 ///
 /// upon dropping this handle will stop the associated worker
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "python", pyo3::pyclass)]
 pub struct BufferController(Arc<BufferControllerInner>);
 
 #[derive(Debug)]
@@ -42,14 +42,14 @@ impl BufferController {
 		poller: mpsc::UnboundedSender<oneshot::Sender<()>>,
 		stop: mpsc::UnboundedSender<()>,
 	) -> Self {
-		Self(Arc::new(
-				BufferControllerInner {
-				name,
-				content, operations, poller,
-				seen: StatusCheck::default(),
-				_stop: Arc::new(StopOnDrop(stop)),
-			}
-		))
+		Self(Arc::new(BufferControllerInner {
+			name,
+			content,
+			operations,
+			poller,
+			seen: StatusCheck::default(),
+			_stop: Arc::new(StopOnDrop(stop)),
+		}))
 	}
 
 	/// unique identifier of buffer
@@ -69,7 +69,9 @@ struct StopOnDrop(mpsc::UnboundedSender<()>);
 
 impl Drop for StopOnDrop {
 	fn drop(&mut self) {
-		self.0.send(()).unwrap_or_warn("could not send stop message to worker");
+		self.0
+			.send(())
+			.unwrap_or_warn("could not send stop message to worker");
 	}
 }
 
@@ -85,7 +87,8 @@ impl Controller<TextChange> for BufferController {
 		}
 		let (tx, rx) = oneshot::channel::<()>();
 		self.0.poller.send(tx)?;
-		rx.await.map_err(|_| crate::Error::Channel { send: false })?;
+		rx.await
+			.map_err(|_| crate::Error::Channel { send: false })?;
 		Ok(())
 	}
 
@@ -121,19 +124,22 @@ impl Controller<TextChange> for BufferController {
 }
 
 #[derive(Debug, Clone)]
-struct StatusCheck<T : Clone> {
+struct StatusCheck<T: Clone> {
 	state: watch::Receiver<T>,
 	updater: Arc<watch::Sender<T>>,
 }
 
-impl<T : Clone + Default> Default for StatusCheck<T> {
+impl<T: Clone + Default> Default for StatusCheck<T> {
 	fn default() -> Self {
 		let (tx, rx) = watch::channel(T::default());
-		StatusCheck { state: rx, updater: Arc::new(tx) }
+		StatusCheck {
+			state: rx,
+			updater: Arc::new(tx),
+		}
 	}
 }
 
-impl<T : Clone> StatusCheck<T> {
+impl<T: Clone> StatusCheck<T> {
 	fn update(&self, state: T) -> T {
 		self.updater.send_replace(state)
 	}

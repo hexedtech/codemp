@@ -1,13 +1,21 @@
 //! ### controller
-//! 
+//!
 //! a controller implementation for cursor actions
-
 use std::sync::Arc;
 
-use tokio::sync::{mpsc, broadcast::{self, error::{TryRecvError, RecvError}}, Mutex, watch};
+use tokio::sync::{
+	broadcast::{
+		self,
+		error::{RecvError, TryRecvError},
+	},
+	mpsc, watch, Mutex,
+};
 use tonic::async_trait;
 
-use crate::{api::{Cursor, Controller}, errors::IgnorableError};
+use crate::{
+	api::{Controller, Cursor},
+	errors::IgnorableError,
+};
 use codemp_proto::cursor::{CursorEvent, CursorPosition};
 /// the cursor controller implementation
 ///
@@ -17,10 +25,11 @@ use codemp_proto::cursor::{CursorEvent, CursorPosition};
 /// * a mutex over a stream of inbound cursor events
 /// * a channel to stop the associated worker
 ///
-/// for each controller a worker exists, managing outgoing and inbound event queues
+/// for each controller a worker exists , managing outgoing and inbound event queues
 ///
 /// upon dropping this handle will stop the associated worker
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "python", pyo3::pyclass)]
 pub struct CursorController(Arc<CursorControllerInner>);
 
 #[derive(Debug)]
@@ -33,7 +42,10 @@ struct CursorControllerInner {
 
 impl Drop for CursorController {
 	fn drop(&mut self) {
-		self.0.stop.send(()).unwrap_or_warn("could not stop cursor actor")
+		self.0
+			.stop
+			.send(())
+			.unwrap_or_warn("could not stop cursor actor")
 	}
 }
 
@@ -44,9 +56,12 @@ impl CursorController {
 		stream: Mutex<broadcast::Receiver<CursorEvent>>,
 		stop: mpsc::UnboundedSender<()>,
 	) -> Self {
-		Self(Arc::new(
-			CursorControllerInner { op, last_op, stream, stop }
-		))
+		Self(Arc::new(CursorControllerInner {
+			op,
+			last_op,
+			stream,
+			stop,
+		}))
 	}
 }
 
@@ -73,7 +88,7 @@ impl Controller<Cursor> for CursorController {
 			Err(TryRecvError::Lagged(n)) => {
 				tracing::warn!("cursor channel lagged, skipping {} events", n);
 				Ok(stream.try_recv().map(|x| x.into()).ok())
-			},
+			}
 		}
 	}
 
@@ -87,7 +102,11 @@ impl Controller<Cursor> for CursorController {
 			Err(RecvError::Closed) => Err(crate::Error::Channel { send: false }),
 			Err(RecvError::Lagged(n)) => {
 				tracing::error!("cursor channel lagged behind, skipping {} events", n);
-				Ok(stream.recv().await.expect("could not receive after lagging").into())
+				Ok(stream
+					.recv()
+					.await
+					.expect("could not receive after lagging")
+					.into())
 			}
 		}
 	}
@@ -96,5 +115,4 @@ impl Controller<Cursor> for CursorController {
 	async fn poll(&self) -> crate::Result<()> {
 		Ok(self.0.last_op.lock().await.changed().await?)
 	}
-
 }

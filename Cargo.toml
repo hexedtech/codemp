@@ -27,26 +27,32 @@ tokio-stream = { version = "0.1" }
 serde = { version = "1.0.193", features = ["derive"] }
 dashmap = { version = "5.5.3" }
 postcard = { version = "1.0.8" }
+
 # glue (multiple)
 lazy_static = { version = "1.4.0", optional = true }
 tracing-subscriber = { version = "0.3.18", optional = true }
+
 # glue (java)
 jni = { version = "0.21.1", features = ["invocation"], optional = true }
 jni-sys = { version = "0.3.0", optional = true }
 rifgen = { git = "https://github.com/Kofituo/rifgen.git", rev = "d27d9785b2febcf5527f1deb6a846be5d583f7d7", optional = true }
 log = { version = "0.4.21", optional = true }
+
 # glue (lua)
 mlua = { version = "0.9.6", features = ["module", "luajit", "send"], optional = true }
 thiserror = { version = "1.0.57", optional = true }
 derive_more = { version = "0.99.17", optional = true }
+
 # glue (js)
 rmpv = { version = "1", optional = true }
 napi = { version = "2", features = ["full"], optional = true } 
 napi-derive = { version="2",  optional = true}
 futures = { version = "0.3.28", optional = true }
+
 # glue (python)
 pyo3 = { version = "0.20", features = ["extension-module"], optional = true}
 pyo3-asyncio = { version = "0.20", features = ["tokio-runtime"], optional = true }
+
 [build-dependencies]
 # glue (java)
 flapigen = { version = "0.6.0", optional = true }
