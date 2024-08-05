@@ -63,11 +63,6 @@ pub enum Error {
 
 	/// errors caused by wrong interlocking, safe to retry
 	Deadlocked,
-
-	/// if you see these errors someone is being lazy (:
-	Filler { // TODO filler error, remove later
-		message: String,
-	},
 }
 
 impl StdError for Error {}
