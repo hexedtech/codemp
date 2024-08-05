@@ -4,7 +4,7 @@ use std::hash::{Hash, Hasher};
 use tokio::sync::{watch, mpsc, oneshot};
 use tonic::{async_trait, Streaming};
 use uuid::Uuid;
-use woot::crdt::{Op, CRDT};
+use woot::crdt::CRDT;
 use woot::woot::Woot;
 
 use crate::errors::IgnorableError;
@@ -99,12 +99,12 @@ impl ControllerWorker<TextChange> for BufferWorker {
 						Err(e) => break tracing::error!("could not apply operation from client: {}", e),
 						Ok(ops) => {
 							for op in ops {
-								self.buffer.merge(op.clone());
+								self.buffer.merge(op.0.clone());
 								let operation = Operation { 
-									data: postcard::to_extend(&op, Vec::new()).unwrap(),
+									data: postcard::to_extend(&op.0, Vec::new()).unwrap(),
 								};
 								if let Err(e) = tx.send(operation).await {
-									tracing::error!("server refused to broadcast {}: {}", op, e);
+									tracing::error!("server refused to broadcast {}: {}", op.0, e);
 								}
 							}
 							self.content.send(self.buffer.view())
@@ -117,7 +117,7 @@ impl ControllerWorker<TextChange> for BufferWorker {
 				res = rx.message() => match res {
 					Err(_e) => break,
 					Ok(None) => break,
-					Ok(Some(change)) => match postcard::from_bytes::<Op>(&change.op.data) {
+					Ok(Some(change)) => match postcard::from_bytes::<woot::crdt::Op>(&change.op.data) {
 						Ok(op) => { // TODO here in change we receive info about the author, maybe propagate?
 							self.buffer.merge(op);
 							self.content.send(self.buffer.view()).unwrap_or_warn("could not send buffer update");

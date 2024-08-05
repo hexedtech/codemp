@@ -3,7 +3,13 @@
 //! an editor-friendly representation of a text change in a buffer
 //! to easily interface with codemp from various editors
 
-use crate::woot::{WootResult, woot::Woot, crdt::{TextEditor, CRDT, Op}};
+use crate::woot::{WootResult, woot::Woot, crdt::{TextEditor, CRDT}};
+
+/// an atomic and orderable operation
+///
+/// this under the hood thinly wraps our CRDT operation
+#[derive(Debug, Clone)]
+pub struct Op(pub(crate) woot::crdt::Op);
 
 /// an editor-friendly representation of a text change in a buffer
 ///
@@ -59,7 +65,7 @@ impl TextChange {
 		}
 	}
 
-	/// consume the [TextChange], transforming it into a Vec of [woot::crdt::Op]
+	/// consume the [TextChange], transforming it into a Vec of [Op]
 	pub fn transform(self, woot: &Woot) -> WootResult<Vec<Op>> {
 		let mut out = Vec::new();
 		if self.is_empty() { return Ok(out); } // no-op
@@ -73,11 +79,11 @@ impl TextChange {
 				similar::ChangeTag::Equal => {},
 				similar::ChangeTag::Delete => match woot.delete_one(self.span.start + i) {
 					Err(e) => tracing::error!("could not create deletion: {}", e),
-					Ok(op) => out.push(op),
+					Ok(op) => out.push(Op(op)),
 				},
 				similar::ChangeTag::Insert => {
 					match woot.insert(self.span.start + i, diff.value()) {
-						Ok(mut op) => out.append(&mut op),
+						Ok(ops) => for op in ops { out.push(Op(op)) },
 						Err(e) => tracing::error!("could not create insertion: {}", e),
 					}
 				},

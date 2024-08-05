@@ -10,5 +10,10 @@ pub mod controller;
 /// a generic representation of a text change
 pub mod change;
 
+/// representation for an user's cursor
+pub mod cursor;
+
 pub use controller::Controller;
 pub use change::TextChange;
+pub use change::Op;
+pub use cursor::Cursor;

@@ -7,15 +7,14 @@ pub use crate::{
 	Result as CodempResult,
 };
 
-pub use crate::woot::crdt::Op as CodempOp;
-
 pub use crate::api::{
 	Controller as CodempController,
 	TextChange as CodempTextChange,
+	Cursor as CodempCursor,
+	Op as CodempOp,
 };
 	
 pub use crate::{
-	// Instance as CodempInstance,
 	client::Client as CodempClient,
 	workspace::Workspace as CodempWorkspace,
 	workspace::UserInfo as CodempUserInfo,
