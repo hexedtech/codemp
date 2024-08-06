@@ -25,6 +25,6 @@ requires = ["maturin>=1.0,<2.0"]
 build-backend = "maturin"
 
 [tool.maturin]
-features = ["python"]
+features = ["python", "pyo3/extension-module"]
 manifest-path = "../../Cargo.toml"
 
