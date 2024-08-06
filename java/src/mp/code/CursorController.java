@@ -10,9 +10,9 @@ public class CursorController {
 		this.ptr = ptr;
 	}
 
-	private static native Cursor recv(long self);
-	public Cursor recv() {
-		return recv(this.ptr);
+	private static native Cursor try_recv(long self);
+	public Cursor tryRecv() {
+		return try_recv(this.ptr);
 	}
 
 	private static native void send(long self, Cursor cursor);

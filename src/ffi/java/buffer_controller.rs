@@ -1,6 +1,6 @@
 use jni::{objects::{JClass, JObject}, sys::{jlong, jobject, jstring}, JNIEnv};
 
-use crate::{api::Controller, buffer::Controller};
+use crate::api::Controller;
 
 use super::util::JExceptable;
 
@@ -82,6 +82,6 @@ pub extern "system" fn Java_mp_code_BufferController_free<'local>(
 	_class: JClass<'local>,
 	self_ptr: jlong,
 ) {
-	unsafe { Box::from_raw(self_ptr as *mut crate::cursor::Controller) };
+	let _ = unsafe { Box::from_raw(self_ptr as *mut crate::cursor::Controller) };
 }
 

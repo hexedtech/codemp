@@ -11,7 +11,7 @@ pub extern "system" fn Java_mp_code_Workspace_free(_env: JNIEnv, _class: JClass,
 
 /// Gets the workspace id.
 #[no_mangle]
-pub extern "system" fn Java_mp_code_Client_get_1workspace_1id<'local>(
+pub extern "system" fn Java_mp_code_Workspace_get_1workspace_1id<'local>(
 	env: JNIEnv<'local>,
 	_class: JClass<'local>,
 	self_ptr: jlong
@@ -24,7 +24,7 @@ pub extern "system" fn Java_mp_code_Client_get_1workspace_1id<'local>(
 
 /// Gets a cursor controller by name and returns a pointer to it.
 #[no_mangle]
-pub extern "system" fn Java_mp_code_Client_get_1cursor<'local>(
+pub extern "system" fn Java_mp_code_Workspace_get_1cursor<'local>(
 	_env: JNIEnv<'local>,
 	_class: JClass<'local>,
 	self_ptr: jlong
@@ -35,7 +35,7 @@ pub extern "system" fn Java_mp_code_Client_get_1cursor<'local>(
 
 /// Gets a buffer controller by name and returns a pointer to it.
 #[no_mangle]
-pub extern "system" fn Java_mp_code_Client_get_1buffer<'local>(
+pub extern "system" fn Java_mp_code_Workspace_get_1buffer<'local>(
 	env: JNIEnv<'local>,
 	_class: JClass<'local>,
 	self_ptr: jlong,

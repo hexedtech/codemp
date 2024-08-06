@@ -1,5 +1,6 @@
 package mp.code;
 
+import mp.code.data.Cursor;
 import mp.code.exceptions.CodeMPLibException;
 
 import java.util.Optional;
@@ -49,11 +50,29 @@ public class Client {
 	}
 
 	// TODO - remove everything past this line
-	public static void main(String[] args) throws CodeMPLibException {
+	public static void main(String[] args) throws CodeMPLibException, InterruptedException {
 		Client c = new Client("http://alemi.dev:50053");
 		c.login(UUID.randomUUID().toString(), "lmaodefaultpassword", "glue");
-		c.joinWorkspace("glue");
-		System.out.println("Done!");
+		Workspace workspace = c.joinWorkspace("glue");
+		System.out.println(workspace.getWorkspaceId());
+		while(true) {
+			Cursor cursor = workspace.getCursor().tryRecv();
+			if(cursor == null) System.out.println("null!");
+			else {
+				System.out.printf(
+					"sr: %d, sc: %d, er: %d, ec: %d, cursor: %s, buffer: %s\n",
+					cursor.startRow,
+					cursor.startCol,
+					cursor.endRow,
+					cursor.endCol,
+					cursor.user,
+					cursor.buffer
+				);
+			}
+			Thread.sleep(100);
+		}
+
+		//System.out.println("Done!");
 	}
 	
 	static {
