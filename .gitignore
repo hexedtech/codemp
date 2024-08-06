@@ -12,3 +12,9 @@ node_modules/
 package-lock.json
 index.d.ts
 index.node
+
+# java
+java/*.iml
+java/.idea/
+java/*.h
+java/**/*.class
