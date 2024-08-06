@@ -77,8 +77,6 @@ impl Drop for StopOnDrop {
 
 #[async_trait]
 impl Controller<TextChange> for BufferController {
-	type Input = TextChange;
-
 	/// block until a text change is available
 	/// this returns immediately if one is already available
 	async fn poll(&self) -> crate::Result<()> {
