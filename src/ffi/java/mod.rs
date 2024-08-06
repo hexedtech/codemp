@@ -2,6 +2,9 @@ pub mod client;
 pub mod workspace;
 pub mod util;
 
+pub mod cursor_controller;
+pub mod buffer_controller;
+
 lazy_static::lazy_static! {
 	pub(crate) static ref RT: tokio::runtime::Runtime = tokio::runtime::Runtime::new().expect("could not create tokio runtime");
 }
