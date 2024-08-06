@@ -4,6 +4,9 @@ Cargo.lock
 .vscode/
 *.sublime-*
 
+.venv
+wheels/
+
 # js
 node_modules/
 package-lock.json

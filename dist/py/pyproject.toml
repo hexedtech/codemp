@@ -1,0 +1,30 @@
+[project]
+name = "codemp"
+version = "0.6.2"
+description = "Cooperative multi-player coding"
+requires-python = ">=3.8"
+license = {file = "../../LICENSE"}
+keywords = ["codemp", "ffi", "rust", "python"]
+authors = [
+	{email = "cschen@codemp.dev"}
+]
+maintainers = [
+	{name = "Camillo Schenone", email = "cschen@codemp.dev"}
+]
+classifiers = [
+	"Programming Language :: Python"
+]
+
+dependencies = []
+
+[project.urls]
+repository = "github.com/hexedtech/codemp.git"
+
+[build-system]
+requires = ["maturin>=1.0,<2.0"]
+build-backend = "maturin"
+
+[tool.maturin]
+features = ["python"]
+manifest-path = "../../Cargo.toml"
+

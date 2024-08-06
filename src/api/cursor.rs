@@ -4,7 +4,6 @@
 //! information about their identity
 
 use codemp_proto as proto;
-// use pyo3::prelude::*;
 use uuid::Uuid;
 
 /// user cursor position in a buffer

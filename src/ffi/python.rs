@@ -1,4 +1,4 @@
-use pyo3::types::PyList;
+use pyo3::types::{PyList, PyTuple};
 use std::{format, sync::Arc};
 use tokio::sync::{mpsc, Mutex, RwLock};
 use tracing;
@@ -73,8 +73,8 @@ impl PyLogger {
 //  5. Create a new buffer/attach to an existing one
 
 #[pyfunction]
-fn codemp_init<'a>(py: Python<'a>) -> PyResult<Py<PyClient>> {
-	Ok(Py::new(py, PyClient::default())?)
+fn codemp_init<'a>(py: Python<'a>) -> PyResult<Py<Client>> {
+	Ok(Py::new(py, Client::default())?)
 }
 
 #[pyfunction]
@@ -108,22 +108,22 @@ fn init_logger(py: Python<'_>, debug: Option<bool>) -> PyResult<Py<PyLogger>> {
 }
 
 #[pyclass]
-struct PyClient(Arc<RwLock<Option<CodempClient>>>);
+struct Client(Arc<RwLock<Option<CodempClient>>>);
 
-impl Default for PyClient {
+impl Default for Client {
 	fn default() -> Self {
-		PyClient(Arc::new(RwLock::new(None)))
+		Client(Arc::new(RwLock::new(None)))
 	}
 }
 
-impl From<CodempClient> for PyClient {
+impl From<CodempClient> for Client {
 	fn from(value: CodempClient) -> Self {
-		PyClient(RwLock::new(Some(value)).into())
+		Client(RwLock::new(Some(value)).into())
 	}
 }
 
 #[pymethods]
-impl PyClient {
+impl Client {
 	fn connect<'a>(&'a self, py: Python<'a>, dest: String) -> PyResult<&'a PyAny> {
 		let cli = self.0.clone();
 
@@ -217,6 +217,7 @@ impl PyClient {
 #[pymethods]
 impl CodempWorkspace {
 	// join a workspace
+	#[pyo3(name = "create")]
 	fn pycreate<'a>(&'a self, py: Python<'a>, path: String) -> PyResult<&'a PyAny> {
 		let ws = self.clone();
 
@@ -225,7 +226,7 @@ impl CodempWorkspace {
 			Ok(())
 		})
 	}
-
+	#[pyo3(name = "attach")]
 	fn pyattach<'a>(&'a self, py: Python<'a>, path: String) -> PyResult<&'a PyAny> {
 		let ws = self.clone();
 
@@ -235,6 +236,7 @@ impl CodempWorkspace {
 		})
 	}
 
+	#[pyo3(name = "fetch_buffers")]
 	fn pyfetch_buffers<'a>(&'a self, py: Python<'a>) -> PyResult<&'a PyAny> {
 		let ws = self.clone();
 
@@ -244,6 +246,7 @@ impl CodempWorkspace {
 		})
 	}
 
+	#[pyo3(name = "fetch_users")]
 	fn pyfetch_users<'a>(&'a self, py: Python<'a>) -> PyResult<&'a PyAny> {
 		let ws = self.clone();
 
@@ -253,6 +256,7 @@ impl CodempWorkspace {
 		})
 	}
 
+	#[pyo3(name = "list_buffer_users")]
 	fn pylist_buffer_users<'a>(&'a self, py: Python<'a>, path: String) -> PyResult<&'a PyAny> {
 		let ws = self.clone();
 
@@ -268,6 +272,7 @@ impl CodempWorkspace {
 		})
 	}
 
+	#[pyo3(name = "delete")]
 	fn pydelete<'a>(&'a self, py: Python<'a>, path: String) -> PyResult<&'a PyAny> {
 		let ws = self.clone();
 
@@ -277,14 +282,17 @@ impl CodempWorkspace {
 		})
 	}
 
+	#[pyo3(name = "id")]
 	fn pyid(&self, py: Python<'_>) -> Py<PyString> {
 		PyString::new(py, self.id().as_str()).into()
 	}
 
+	#[pyo3(name = "cursor")]
 	fn pycursor(&self, py: Python<'_>) -> PyResult<Py<CodempCursorController>> {
 		Ok(Py::new(py, CodempCursorController::from(self.cursor()))?)
 	}
 
+	#[pyo3(name = "buffer_by_name")]
 	fn pybuffer_by_name(
 		&self,
 		py: Python<'_>,
@@ -297,6 +305,7 @@ impl CodempWorkspace {
 		Ok(Some(Py::new(py, CodempBufferController::from(bufctl))?))
 	}
 
+	#[pyo3(name = "filetree")]
 	fn pyfiletree(&self, py: Python<'_>) -> Py<PyList> {
 		PyList::new(py, self.filetree()).into_py(py)
 	}
@@ -306,6 +315,7 @@ impl CodempWorkspace {
 
 #[pymethods]
 impl CodempCursorController {
+	#[pyo3(name = "send")]
 	fn pysend<'a>(&'a self, path: String, start: (i32, i32), end: (i32, i32)) -> PyResult<()> {
 		let pos = CodempCursor {
 			start: start.into(),
@@ -317,6 +327,7 @@ impl CodempCursorController {
 		Ok(self.send(pos)?)
 	}
 
+	#[pyo3(name = "try_recv")]
 	fn pytry_recv(&self, py: Python<'_>) -> PyResult<PyObject> {
 		match self.try_recv()? {
 			Some(cur_event) => {
@@ -327,6 +338,7 @@ impl CodempCursorController {
 		}
 	}
 
+	#[pyo3(name = "recv")]
 	fn pyrecv<'a>(&'a self, py: Python<'a>) -> PyResult<&'a PyAny> {
 		let rc = self.clone();
 
@@ -336,6 +348,7 @@ impl CodempCursorController {
 		})
 	}
 
+	#[pyo3(name = "poll")]
 	fn pypoll<'a>(&'a self, py: Python<'a>) -> PyResult<&'a PyAny> {
 		let rc = self.clone();
 
@@ -344,11 +357,39 @@ impl CodempCursorController {
 }
 
 #[pymethods]
+impl CodempCursor {
+	#[getter(start)]
+	fn pystart(&self, py: Python<'_>) -> Py<PyTuple> {
+		self.start.into_py(py)
+	}
+
+	#[getter(end)]
+	fn pyend(&self, py: Python<'_>) -> Py<PyTuple> {
+		self.end.into_py(py)
+	}
+
+	#[getter(buffer)]
+	fn pybuffer(&self, py: Python<'_>) -> Py<PyString> {
+		PyString::new(py, self.buffer.as_str()).into()
+	}
+
+	#[getter(user)]
+	fn pyuser(&self, py: Python<'_>) -> Py<PyString> {
+		match self.user {
+			Some(user) => PyString::new(py, user.to_string().as_str()).into(),
+			None => "".into_py(py),
+		}
+	}
+}
+
+#[pymethods]
 impl CodempBufferController {
+	#[pyo3(name = "content")]
 	fn pycontent<'a>(&self, py: Python<'a>) -> &'a PyString {
 		PyString::new(py, self.content().as_str())
 	}
 
+	#[pyo3(name = "send")]
 	fn pysend(&self, start: usize, end: usize, txt: String) -> PyResult<()> {
 		let op = CodempTextChange {
 			span: start..end,
@@ -357,6 +398,7 @@ impl CodempBufferController {
 		Ok(self.send(op)?)
 	}
 
+	#[pyo3(name = "try_recv")]
 	fn pytry_recv(&self, py: Python<'_>) -> PyResult<PyObject> {
 		match self.try_recv()? {
 			Some(txt_change) => {
@@ -367,6 +409,7 @@ impl CodempBufferController {
 		}
 	}
 
+	#[pyo3(name = "recv")]
 	fn pyrecv<'a>(&'a self, py: Python<'a>) -> PyResult<&'a PyAny> {
 		let rc = self.clone();
 
@@ -376,6 +419,7 @@ impl CodempBufferController {
 		})
 	}
 
+	#[pyo3(name = "poll")]
 	fn pypoll<'a>(&'a self, py: Python<'a>) -> PyResult<&'a PyAny> {
 		let rc = self.clone();
 
@@ -386,42 +430,51 @@ impl CodempBufferController {
 #[pymethods]
 impl CodempTextChange {
 	#[getter]
+	#[pyo3(name = "start_incl")]
 	fn pystart_incl(&self) -> PyResult<usize> {
 		Ok(self.span.start)
 	}
 
 	#[getter]
+	#[pyo3(name = "end_excl")]
 	fn pyend_excl(&self) -> PyResult<usize> {
 		Ok(self.span.end)
 	}
 
 	#[getter]
+	#[pyo3(name = "content")]
 	fn pycontent(&self) -> PyResult<String> {
 		Ok(self.content.clone())
 	}
 
+	#[pyo3(name = "is_deletion")]
 	fn pyis_deletion(&self) -> bool {
 		self.is_deletion()
 	}
 
+	#[pyo3(name = "is_addition")]
 	fn pyis_addition(&self) -> bool {
 		self.is_addition()
 	}
 
+	#[pyo3(name = "is_empty")]
 	fn pyis_empty(&self) -> bool {
 		self.is_empty()
 	}
 
+	#[pyo3(name = "apply")]
 	fn pyapply(&self, txt: &str) -> String {
 		self.apply(txt)
 	}
 
 	#[classmethod]
+	#[pyo3(name = "from_diff")]
 	fn pyfrom_diff(_cls: &PyType, before: &str, after: &str) -> CodempTextChange {
 		CodempTextChange::from_diff(before, after)
 	}
 
 	#[classmethod]
+	#[pyo3(name = "index_to_rowcol")]
 	fn pyindex_to_rowcol(_cls: &PyType, txt: &str, index: usize) -> (i32, i32) {
 		CodempTextChange::index_to_rowcol(txt, index).into()
 	}
@@ -432,13 +485,12 @@ impl CodempTextChange {
 fn codemp(_py: Python, m: &PyModule) -> PyResult<()> {
 	m.add_function(wrap_pyfunction!(codemp_init, m)?)?;
 	m.add_function(wrap_pyfunction!(init_logger, m)?)?;
-	m.add_class::<PyClient>()?;
+	m.add_class::<Client>()?;
 	m.add_class::<PyLogger>()?;
 	m.add_class::<CodempWorkspace>()?;
 	m.add_class::<CodempCursorController>()?;
 	m.add_class::<CodempBufferController>()?;
 
-	// m.add_class::<PyId>()?;
 	m.add_class::<CodempCursor>()?;
 	m.add_class::<CodempTextChange>()?;
 
