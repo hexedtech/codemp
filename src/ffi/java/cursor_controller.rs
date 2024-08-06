@@ -1,11 +1,6 @@
-use jni::{objects::{JClass, JObject, JValueGen}, sys::{jlong, jobject}, JNIEnv};
+use jni::{objects::{JClass, JObject, JString, JValueGen}, sys::{jlong, jobject}, JNIEnv};
 use crate::{api::Controller, ffi::java::util::JExceptable};
 
-/*
- * Class:     mp_code_CursorController
- * Method:    recv
- * Signature: (J)Lmp/code/data/Cursor;
- */
 #[no_mangle]
 pub extern "system" fn Java_mp_code_CursorController_try_1recv(
 	mut env: JNIEnv,
@@ -32,13 +27,7 @@ pub extern "system" fn Java_mp_code_CursorController_try_1recv(
 		}
 	}
 }
-// 	public Cursor(int startRow, int startCol, int endRow, int endCol, String buffer, String user) {
 
-/*
- * Class:     mp_code_CursorController
- * Method:    send
- * Signature: (JLmp/code/data/Cursor;)V
- */
 #[no_mangle]
 pub extern "system" fn Java_mp_code_CursorController_send<'local>(
 	mut env: JNIEnv,
@@ -46,18 +35,43 @@ pub extern "system" fn Java_mp_code_CursorController_send<'local>(
 	self_ptr: jlong,
 	input: JObject<'local>,
 ) {
-	todo!()
+	let start_row = env.get_field(&input, "startRow", "I").expect("could not get field").i().expect("field was not of expected type");
+	let start_col = env.get_field(&input, "startCol", "I").expect("could not get field").i().expect("field was not of expected type");
+	let end_row = env.get_field(&input, "endRow", "I").expect("could not get field").i().expect("field was not of expected type");
+	let end_col = env.get_field(&input, "endCol", "I").expect("could not get field").i().expect("field was not of expected type");
+
+	let buffer = env.get_field(&input, "buffer", "Ljava/lang/String;")
+		.expect("could not get field")
+		.l()
+		.expect("field was not of expected type")
+		.into();
+	let buffer = env.get_string(&buffer).expect("Failed to get String!").into();
+	
+	let user: JString = env.get_field(&input, "user", "Ljava/lang/String;")
+		.expect("could not get field")
+		.l()
+		.expect("field was not of expected type")
+		.into();
+	let user = if user.is_null() {
+		None
+	} else {
+		let jstring = env.get_string(&user).expect("Failed to get String!");
+		Some(uuid::Uuid::parse_str(jstring.to_str().expect("Not valid UTF-8")).expect("Invalid UUI!"))
+	};
+
+	let controller = unsafe { Box::leak(Box::from_raw(self_ptr as *mut crate::cursor::Controller)) };
+	controller.send(crate::api::Cursor {
+		start: (start_row, start_col),
+		end: (end_row, end_col),
+		buffer,
+		user
+	}).jexcept(&mut env);
 }
 
-/*
- * Class:     mp_code_CursorController
- * Method:    free
- * Signature: (J)V
- */
 #[no_mangle]
-pub extern "system" fn Java_mp_code_CursorController_free<'local>(
+pub extern "system" fn Java_mp_code_CursorController_free(
 	_env: JNIEnv,
-	_class: JClass<'local>,
+	_class: JClass,
 	self_ptr: jlong,
 ) {
 	let _ = unsafe { Box::from_raw(self_ptr as *mut crate::cursor::Controller) };

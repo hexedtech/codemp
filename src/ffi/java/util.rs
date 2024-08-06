@@ -1,4 +1,4 @@
-use jni::{JNIEnv, sys::jlong};
+use jni::JNIEnv;
 
 /// A trait meant for our [crate::Result] type to make converting it to Java easier.
 pub(crate) trait JExceptable<T> {

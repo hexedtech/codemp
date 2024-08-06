@@ -1,18 +1,13 @@
-use jni::{objects::{JClass, JObject}, sys::{jlong, jobject, jstring}, JNIEnv};
+use jni::{objects::{JClass, JObject, JValueGen}, sys::{jlong, jobject, jstring}, JNIEnv};
 
 use crate::api::Controller;
 
 use super::util::JExceptable;
 
-/*
- * Class:     mp_code_BufferController
- * Method:    get_name
- * Signature: (J)Ljava/lang/String;
- */
 #[no_mangle]
-pub extern "system" fn Java_mp_code_BufferController_get_1name<'local>(
+pub extern "system" fn Java_mp_code_BufferController_get_1name(
 	env: JNIEnv,
-	_class: JClass<'local>,
+	_class: JClass,
 	self_ptr: jlong,
 ) -> jstring {
 	let controller = unsafe { Box::leak(Box::from_raw(self_ptr as *mut crate::buffer::Controller)) };
@@ -22,15 +17,10 @@ pub extern "system" fn Java_mp_code_BufferController_get_1name<'local>(
 		.as_raw()
 }
 
-/*
- * Class:     mp_code_BufferController
- * Method:    get_content
- * Signature: (J)Ljava/lang/String;
- */
 #[no_mangle]
-pub extern "system" fn Java_mp_code_BufferController_get_1content<'local>(
+pub extern "system" fn Java_mp_code_BufferController_get_1content(
 	env: JNIEnv,
-	_class: JClass<'local>,
+	_class: JClass,
 	self_ptr: jlong,
 ) -> jstring {
 	let controller = unsafe { Box::leak(Box::from_raw(self_ptr as *mut crate::buffer::Controller)) };
@@ -40,27 +30,30 @@ pub extern "system" fn Java_mp_code_BufferController_get_1content<'local>(
 		.as_raw()
 }
 
-/*
- * Class:     mp_code_BufferController
- * Method:    try_recv
- * Signature: (J)Lmp/code/data/TextChange;
- */
 #[no_mangle]
-pub extern "system" fn Java_mp_code_BufferController_try_1recv<'local>(
+pub extern "system" fn Java_mp_code_BufferController_try_1recv(
 	mut env: JNIEnv,
-	_class: JClass<'local>,
+	_class: JClass,
 	self_ptr: jlong,
 ) -> jobject {
 	let controller = unsafe { Box::leak(Box::from_raw(self_ptr as *mut crate::buffer::Controller)) };
-	let change = controller.try_recv().jexcept(&mut env);
-	todo!()
+	match controller.try_recv().jexcept(&mut env) {
+		None => JObject::null().as_raw(),
+		Some(event) => {
+			let class = env.find_class("mp/code/data/TextChange").expect("Couldn't find class!");
+			env.new_object(
+				class,
+				"(JJLjava/lang/String;)V",
+				&[
+					JValueGen::Long(event.span.start.try_into().unwrap()),
+					JValueGen::Long(event.span.end.try_into().unwrap()),
+					JValueGen::Object(&env.new_string(event.content).expect("Failed to create String!")),
+				]
+			).expect("failed creating object").into_raw()
+		}
+	}
 }
 
-/*
- * Class:     mp_code_BufferController
- * Method:    send
- * Signature: (JLmp/code/data/TextChange;)V
- */
 #[no_mangle]
 pub extern "system" fn Java_mp_code_BufferController_send<'local>(
 	mut env: JNIEnv,
@@ -68,18 +61,26 @@ pub extern "system" fn Java_mp_code_BufferController_send<'local>(
 	self_ptr: jlong,
 	input: JObject<'local>
 ) {
-	todo!()
+	let start = env.get_field(&input, "start", "J").expect("could not get field").j().expect("field was not of expected type");
+	let end = env.get_field(&input, "end", "J").expect("could not get field").j().expect("field was not of expected type");
+	let content = env.get_field(&input, "content", "Ljava/lang/String;")
+		.expect("could not get field")
+		.l()
+		.expect("field was not of expected type")
+		.into();
+	let content = env.get_string(&content).expect("Failed to get String!").into();
+
+	let controller = unsafe { Box::leak(Box::from_raw(self_ptr as *mut crate::buffer::Controller)) };
+	controller.send(crate::api::TextChange {
+		span: (start as usize)..(end as usize),
+		content
+	}).jexcept(&mut env);
 }
 
-/*
- * Class:     mp_code_BufferController
- * Method:    free
- * Signature: (J)V
- */
 #[no_mangle]
-pub extern "system" fn Java_mp_code_BufferController_free<'local>(
+pub extern "system" fn Java_mp_code_BufferController_free(
 	_env: JNIEnv,
-	_class: JClass<'local>,
+	_class: JClass,
 	self_ptr: jlong,
 ) {
 	let _ = unsafe { Box::from_raw(self_ptr as *mut crate::cursor::Controller) };
