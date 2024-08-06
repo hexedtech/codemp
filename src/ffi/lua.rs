@@ -19,8 +19,9 @@ struct GlobalState {
 impl Default for GlobalState {
 	fn default() -> Self {
 		let rt = Runtime::new().expect("could not create tokio runtime");
+		let addr = std::env::var("CODEMP_SERVER_ADDRESS").unwrap_or_else(|_|"http://codemp.alemi.dev:50053".to_string());
 		let client = rt.block_on(
-			CodempClient::new("http://codemp.alemi.dev:50053")
+			CodempClient::new(&addr)
 		).expect("could not connect to codemp servers");
 		GlobalState { client: std::sync::RwLock::new(client), runtime: rt }
 	}
@@ -248,7 +249,7 @@ fn setup_tracing(_: &Lua, (debug,): (Option<bool>,)) -> LuaResult<LuaLogger> {
 
 // define module and exports
 #[mlua::lua_module]
-fn libcodemp(lua: &Lua) -> LuaResult<LuaTable> {
+fn codemp_lua(lua: &Lua) -> LuaResult<LuaTable> {
 	let exports = lua.create_table()?;
 
 	// core proto functions
