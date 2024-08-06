@@ -10,6 +10,7 @@ crate-type = ["cdylib"]
 [dependencies]
 # core
 tracing = "0.1"
+thiserror = { version = "1.0.57" }
 # woot
 codemp-woot = { git = "ssh://git@github.com/hexedtech/woot.git", features = ["serde"], tag = "v0.1.2" }
 # proto
@@ -34,13 +35,9 @@ tracing-subscriber = { version = "0.3.18", optional = true }
 
 # glue (java)
 jni = { version = "0.21.1", features = ["invocation"], optional = true }
-jni-sys = { version = "0.3.0", optional = true }
-rifgen = { git = "https://github.com/Kofituo/rifgen.git", rev = "d27d9785b2febcf5527f1deb6a846be5d583f7d7", optional = true }
-log = { version = "0.4.21", optional = true }
-
+#jni-sys = { version = "0.3.0", optional = true }
 # glue (lua)
 mlua = { version = "0.9.6", features = ["module", "luajit", "send"], optional = true }
-thiserror = { version = "1.0.57", optional = true }
 derive_more = { version = "0.99.17", optional = true }
 
 # glue (js)
@@ -64,8 +61,8 @@ pyo3-build-config = { version = "0.19.2", optional = true }
 
 [features]
 default = []
-lua = ["mlua", "thiserror", "derive_more", "lazy_static", "tracing-subscriber"]
-java = ["lazy_static", "jni", "jni-sys", "flapigen", "rifgen", "log"]
+lua = ["mlua", "derive_more", "lazy_static", "tracing-subscriber"]
+java = ["lazy_static", "jni", "tracing-subscriber"]
 java-artifact = ["java"] # also builds the jar
 js = ["napi-build", "tracing-subscriber", "rmpv", "napi", "napi-derive", "futures"]
 python = ["pyo3", "pyo3-asyncio", "tracing-subscriber", "pyo3-build-config"]
