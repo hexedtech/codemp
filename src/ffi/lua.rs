@@ -12,7 +12,6 @@ lazy_static::lazy_static!{
 	// TODO use a runtime::Builder::new_current_thread() runtime to not behave like malware
 	static ref STATE : GlobalState = GlobalState::default();
 	static ref LOG : broadcast::Sender<String> = broadcast::channel(32).0;
-	static ref ONCE : AtomicBool = AtomicBool::new(false);
 }
 
 struct GlobalState {
@@ -223,9 +222,7 @@ impl Write for LuaLoggerProducer {
 	fn flush(&mut self) -> std::io::Result<()> { Ok(()) }
 }
 
-fn setup_logger(_: &Lua, (debug, path): (Option<bool>, Option<String>)) -> LuaResult<()> {
-	if ONCE.load(std::sync::atomic::Ordering::Relaxed) { return Ok(()) }
-
+fn setup_logger(_: &Lua, (debug, path): (Option<bool>, Option<String>)) -> LuaResult<bool> {
 	let format = tracing_subscriber::fmt::format()
 		.with_level(true)
 		.with_target(true)
@@ -243,15 +240,14 @@ fn setup_logger(_: &Lua, (debug, path): (Option<bool>, Option<String>)) -> LuaRe
 		.event_format(format)
 		.with_max_level(level);
 
-	if let Some(path) = path {
+	let result = if let Some(path) = path {
 		let logfile = std::fs::File::create(path).expect("failed creating logfile");
-		builder.with_writer(Mutex::new(logfile)).init();
+		builder.with_writer(Mutex::new(logfile)).try_init().is_ok()
 	} else {
-		builder.with_writer(Mutex::new(LuaLoggerProducer)).init();
-	}
+		builder.with_writer(Mutex::new(LuaLoggerProducer)).try_init().is_ok()
+	};
 
-	ONCE.store(true, std::sync::atomic::Ordering::Relaxed);
-	Ok(())
+	Ok(result)
 }
 
 fn get_logger(_: &Lua, (): ()) -> LuaResult<LuaLogger> {
