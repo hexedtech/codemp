@@ -6,7 +6,7 @@ use super::{util::JExceptable, RT};
 /// Called by the Java GC to drop a [Client].
 #[no_mangle]
 pub extern "system" fn Java_mp_code_Client_free(_env: JNIEnv, _class: JClass, input: jlong) {
-	super::util::dereference_and_drop::<Client>(input)
+	let _ = unsafe { Box::from_raw(input as *mut Client) };
 }
 
 /// Sets up tracing subscriber
@@ -36,6 +36,21 @@ pub extern "system" fn Java_mp_code_Client_connect<'local>(
 	RT.block_on(crate::Client::new(&url))
 		.map(|client| Box::into_raw(Box::new(client)) as jlong)
 		.jexcept(&mut env)
+}
+
+/// Gets a [Workspace] by name and returns a pointer to it.
+#[no_mangle]
+pub extern "system" fn Java_mp_code_Client_get_1workspace<'local>(
+	env: JNIEnv<'local>,
+	_class: JClass<'local>,
+	self_ptr: jlong,
+	input: JString<'local>
+) -> jlong {
+	let client  = unsafe { Box::leak(Box::from_raw(self_ptr as *mut Client)) };
+	let workspace_id = unsafe { env.get_string_unchecked(&input).expect("Couldn't get java string!") };
+	client.get_workspace(workspace_id.to_str().expect("Not UTF-8"))
+		.map(|workspace| Box::into_raw(Box::new(workspace)) as jlong)
+		.unwrap_or_default()
 }
 
 /// Logs in to a specific [Workspace].

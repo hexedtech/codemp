@@ -1,11 +1,5 @@
 use jni::{JNIEnv, sys::jlong};
 
-/// A simple utility method that converts a pointer back into a [Box] and then drops it.
-pub(crate) fn dereference_and_drop<T>(ptr: jlong) {
-	let client : Box<T> = unsafe { Box::from_raw(ptr as *mut T) };
-	std::mem::drop(client)
-}
-
 /// A trait meant for our [crate::Result] type to make converting it to Java easier.
 pub(crate) trait JExceptable<T> {
 	/// Unwraps it and throws an appropriate Java exception if it's an error.
