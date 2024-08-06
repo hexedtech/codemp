@@ -1,14 +1,18 @@
 use std::io::Write;
-use std::sync::{mpsc, Arc, Mutex};
+use std::sync::atomic::AtomicBool;
+use std::sync::Mutex;
 
 use crate::api::Cursor;
 use crate::prelude::*;
 use mlua::prelude::*;
 use tokio::runtime::Runtime;
+use tokio::sync::broadcast;
 
 lazy_static::lazy_static!{
 	// TODO use a runtime::Builder::new_current_thread() runtime to not behave like malware
 	static ref STATE : GlobalState = GlobalState::default();
+	static ref LOG : broadcast::Sender<String> = broadcast::channel(32).0;
+	static ref ONCE : AtomicBool = AtomicBool::new(false);
 }
 
 struct GlobalState {
@@ -19,8 +23,9 @@ struct GlobalState {
 impl Default for GlobalState {
 	fn default() -> Self {
 		let rt = Runtime::new().expect("could not create tokio runtime");
+		let addr = std::env::var("CODEMP_SERVER_ADDRESS").unwrap_or_else(|_|"http://codemp.alemi.dev:50053".to_string());
 		let client = rt.block_on(
-			CodempClient::new("http://codemp.alemi.dev:50053")
+			CodempClient::new(&addr)
 		).expect("could not connect to codemp servers");
 		GlobalState { client: std::sync::RwLock::new(client), runtime: rt }
 	}
@@ -198,36 +203,29 @@ impl LuaUserData for CodempTextChange {
 
 // setup library logging to file
 #[derive(Debug, derive_more::From)]
-struct LuaLogger(Arc<Mutex<mpsc::Receiver<String>>>);
+struct LuaLogger(broadcast::Receiver<String>);
 impl LuaUserData for LuaLogger {
 	fn add_methods<'lua, M: LuaUserDataMethods<'lua, Self>>(methods: &mut M) {
-		methods.add_method("recv", |_, this, ()| {
-			Ok(
-				this.0
-					.lock()
-					.expect("logger mutex poisoned")
-					.recv()
-					.expect("logger channel closed")
-			)
+		methods.add_method_mut("recv", |_, this, ()| {
+			Ok(this.0.blocking_recv().expect("logger channel closed"))
 		});
 	}
 }
 
 #[derive(Debug, Clone)]
-struct LuaLoggerProducer(mpsc::Sender<String>);
+struct LuaLoggerProducer;
 impl Write for LuaLoggerProducer {
 	fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-		self.0.send(String::from_utf8_lossy(buf).to_string())
-			.expect("could not write on logger channel");
+		let _ = LOG.send(String::from_utf8_lossy(buf).to_string());
 		Ok(buf.len())
 	}
 
 	fn flush(&mut self) -> std::io::Result<()> { Ok(()) }
 }
 
-fn setup_tracing(_: &Lua, (debug,): (Option<bool>,)) -> LuaResult<LuaLogger> {
-	let (tx, rx) = mpsc::channel();
-	let level = if debug.unwrap_or(false) { tracing::Level::DEBUG } else {tracing::Level::INFO };
+fn setup_logger(_: &Lua, (debug, path): (Option<bool>, Option<String>)) -> LuaResult<()> {
+	if ONCE.load(std::sync::atomic::Ordering::Relaxed) { return Ok(()) }
+
 	let format = tracing_subscriber::fmt::format()
 		.with_level(true)
 		.with_target(true)
@@ -238,17 +236,32 @@ fn setup_tracing(_: &Lua, (debug,): (Option<bool>,)) -> LuaResult<LuaLogger> {
 		.with_line_number(false)
 		.with_source_location(false)
 		.compact();
-	tracing_subscriber::fmt()
+
+	let level = if debug.unwrap_or_default() { tracing::Level::DEBUG } else {tracing::Level::INFO };
+
+	let builder = tracing_subscriber::fmt()
 		.event_format(format)
-		.with_max_level(level)
-		.with_writer(Mutex::new(LuaLoggerProducer(tx)))
-		.init();
-	Ok(LuaLogger(Arc::new(Mutex::new(rx))))
+		.with_max_level(level);
+
+	if let Some(path) = path {
+		let logfile = std::fs::File::create(path).expect("failed creating logfile");
+		builder.with_writer(Mutex::new(logfile)).init();
+	} else {
+		builder.with_writer(Mutex::new(LuaLoggerProducer)).init();
+	}
+
+	ONCE.store(true, std::sync::atomic::Ordering::Relaxed);
+	Ok(())
+}
+
+fn get_logger(_: &Lua, (): ()) -> LuaResult<LuaLogger> {
+	let sub = LOG.subscribe();
+	Ok(LuaLogger(sub))
 }
 
 // define module and exports
 #[mlua::lua_module]
-fn libcodemp(lua: &Lua) -> LuaResult<LuaTable> {
+fn codemp_lua(lua: &Lua) -> LuaResult<LuaTable> {
 	let exports = lua.create_table()?;
 
 	// core proto functions
@@ -258,9 +271,9 @@ fn libcodemp(lua: &Lua) -> LuaResult<LuaTable> {
 	exports.set("get_workspace", lua.create_function(get_workspace)?)?;
 	// debug
 	exports.set("id", lua.create_function(id)?)?;
-	exports.set("setup_tracing", lua.create_function(setup_tracing)?)?;
+	exports.set("get_logger", lua.create_function(get_logger)?)?;
+	exports.set("setup_logger", lua.create_function(setup_logger)?)?;
 
 	Ok(exports)
 }
-
 

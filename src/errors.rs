@@ -2,7 +2,7 @@
 //! 
 //! library error helpers and types
 
-use std::{result::Result as StdResult, error::Error as StdError, fmt::Display};
+use std::result::Result as StdResult;
 
 use tracing::warn;
 
@@ -45,41 +45,30 @@ pub type Result<T> = StdResult<T, Error>;
 
 // TODO split this into specific errors for various parts of the library
 /// codemp error type for library issues
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum Error {
 	/// errors caused by tonic http layer
+	#[error("tonic error (status: {status}, message: {message})")]
 	Transport {
 		status: String,
 		message: String,
 	},
+
 	/// errors caused by async channels
+	#[error("channel error, send: {send}")]
 	Channel {
 		send: bool
 	},
+
 	/// errors caused by wrong usage of library objects
+	#[error("invalid state error: {msg}")]
 	InvalidState {
 		msg: String,
 	},
 
 	/// errors caused by wrong interlocking, safe to retry
-	Deadlocked,
-
-	/// if you see these errors someone is being lazy (:
-	Filler { // TODO filler error, remove later
-		message: String,
-	},
-}
-
-impl StdError for Error {}
-
-impl Display for Error {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		match self {
-			Self::Transport { status, message } => write!(f, "Transport error: ({}) {}", status, message),
-			Self::Channel { send } => write!(f, "Channel error (send:{})", send),
-			_ => write!(f, "Unknown error"),
-		}
-	}
+	#[error("deadlocked error")]
+	Deadlocked
 }
 
 impl From<tonic::Status> for Error {

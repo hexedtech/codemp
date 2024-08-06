@@ -25,10 +25,7 @@ impl From<CodempError> for PyErr {
 			CodempError::InvalidState { msg } => {
 				PyRuntimeError::new_err(format!("Invalid state: {}", msg))
 			}
-			CodempError::Deadlocked => PyRuntimeError::new_err(format!("Deadlock, retry.")),
-			CodempError::Filler { message } => {
-				PyBaseException::new_err(format!("Generic error: {}", message))
-			}
+			CodempError::Deadlocked => PyRuntimeError::new_err(format!("Deadlock, retry."))
 		}
 	}
 }

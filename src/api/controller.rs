@@ -25,14 +25,11 @@ pub(crate) trait ControllerWorker<T : Sized + Send + Sync> {
 /// * if async is not feasible a [Controller::poll]/[Controller::try_recv] approach is possible
 #[async_trait::async_trait]
 pub trait Controller<T : Sized + Send + Sync> : Sized + Send + Sync {
-	/// type of upstream values, used in [Self::send]
-	type Input;
-
 	/// enqueue a new value to be sent to all other users
 	///
 	/// success or failure of this function does not imply validity of sent operation,
 	/// because it's integrated asynchronously on the background worker
-	fn send(&self, x: Self::Input) -> Result<()>;
+	fn send(&self, x: T) -> Result<()>;
 
 	/// get next value from other users, blocking until one is available
 	///

@@ -67,8 +67,6 @@ impl CursorController {
 
 #[async_trait]
 impl Controller<Cursor> for CursorController {
-	type Input = Cursor;
-
 	/// enqueue a cursor event to be broadcast to current workspace
 	/// will automatically invert cursor start/end if they are inverted
 	fn send(&self, mut cursor: Cursor) -> crate::Result<()> {
