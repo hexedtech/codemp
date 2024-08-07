@@ -144,6 +144,12 @@ impl Client {
 		Ok(ws)
 	}
 
+	/// leaves a [Workspace] by name
+	pub fn leave_workspace(&self, id: &str) -> bool {
+		self.workspaces.remove(id).is_some()
+	}
+
+	/// gets a [Workspace] by name
 	pub fn get_workspace(&self, id: &str) -> Option<Workspace> {
 		self.workspaces.get(id).map(|x| x.clone())
 	}

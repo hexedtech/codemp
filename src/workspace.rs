@@ -166,6 +166,27 @@ impl Workspace {
 		Ok(controller)
 	}
 
+	/// detach from an active buffer
+	///
+	/// this option will be carried in background: [buffer::worker::BufferWorker] will be stopped and dropped. there
+	/// may still be some events enqueued in buffers to poll, but the [buffer::Controller] itself won't be
+	/// accessible anymore from [Workspace].
+	///
+	/// ### returns
+	/// [DetachResult::NotAttached] if buffer wasn't attached in the first place
+	/// [DetachResult::Detaching] if detach was correctly requested
+	/// [DetachResult::AlreadyDetached] if worker is already stopped
+	pub fn detach(&self, path: &str) -> DetachResult {
+		match self.0.buffers.remove(path) {
+			None => DetachResult::NotAttached,
+			Some((_name, controller)) => if controller.stop() {
+				DetachResult::Detaching
+			} else {
+				DetachResult::AlreadyDetached
+			}
+		}
+	}
+
 	/// fetch a list of all buffers in a workspace
 	pub async fn fetch_buffers(&self) -> crate::Result<()> {
 		let mut workspace_client = self.0.services.workspace.clone();
@@ -267,4 +288,23 @@ impl Workspace {
 	pub fn filetree(&self) -> Vec<String> {
 		self.0.filetree.iter().map(|f| f.clone()).collect()
 	}
+}
+
+impl Drop for WorkspaceInner {
+	fn drop(&mut self) {
+		for entry in self.buffers.iter() {
+			if !entry.value().stop() {
+				tracing::warn!("could not stop buffer worker {} for workspace {}", entry.value().name(), self.id);
+			}
+		}
+		if !self.cursor.stop() {
+			tracing::warn!("could not stop cursor worker for workspace {}", self.id);
+		}
+	}
+}
+
+pub enum DetachResult {
+	NotAttached,
+	Detaching,
+	AlreadyDetached,
 }
