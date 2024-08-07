@@ -1,4 +1,4 @@
-use jni::{objects::{JClass, JString}, sys::{jlong, jstring}, JNIEnv};
+use jni::{objects::{JClass, JObject, JString}, sys::{jlong, jobjectArray, jstring}, JNIEnv};
 use crate::Workspace;
 
 use super::{util::JExceptable, RT};
@@ -62,13 +62,22 @@ pub extern "system" fn Java_mp_code_Workspace_create_1buffer<'local>(
 /// Gets the filetree.
 #[no_mangle]
 pub extern "system" fn Java_mp_code_Workspace_get_1file_1tree(
-	_env: JNIEnv,
+	mut env: JNIEnv,
 	_class: JClass,
 	self_ptr: jlong,
-) {
+) -> jobjectArray {
 	let workspace  = unsafe { Box::leak(Box::from_raw(self_ptr as *mut Workspace)) };
-	let _file_tree = workspace.filetree();
-	todo!() // how to return Vec<String> ? []String ?
+	let file_tree = workspace.filetree();
+	let class = env.find_class("java/lang/String").expect("Failed to find class!");
+	let arr = env.new_object_array(file_tree.len() as i32, class, JObject::null())
+		.expect("failed creating array");
+	for (idx, path) in file_tree.iter().enumerate() {
+		let js = env.new_string(path).expect("Failed to create String!");
+		env.set_object_array_element(&arr, idx as i32, js)
+			.expect("Failed to set array element!")
+	}
+
+	arr.as_raw()
 }
 
 /// Attaches to a buffer and returns a pointer to its [crate::buffer::Controller].
@@ -115,15 +124,23 @@ pub extern "system" fn Java_mp_code_Workspace_list_1buffer_1users<'local>(
 	_class: JClass<'local>,
 	self_ptr: jlong,
 	input: JString<'local>,
-) {
+) -> jobjectArray {
 	let workspace  = unsafe { Box::leak(Box::from_raw(self_ptr as *mut Workspace)) };
 	let buffer = unsafe { env.get_string_unchecked(&input).expect("Couldn't get java string!") };
-	let _users = RT.block_on(workspace.list_buffer_users(buffer.to_str().expect("Not UTF-8!")))
-		.jexcept(&mut env)
-		.into_iter()
-		.map(|x| x.id.to_string())
-		.collect::<Vec<String>>();
-	todo!() // how to return Vec<String>?
+	let users = RT.block_on(workspace.list_buffer_users(buffer.to_str().expect("Not UTF-8!")))
+		.jexcept(&mut env);
+
+	let class = env.find_class("java/lang/String").expect("Failed to find class!");
+	let arr = env.new_object_array(users.len() as i32, class, JObject::null())
+		.expect("failed creating array");
+
+	for (idx, user) in users.iter().enumerate() {
+		let js = env.new_string(&user.id).expect("Failed to create String!");
+		env.set_object_array_element(&arr, idx as i32, js)
+			.expect("Failed to set array element!")
+	}
+
+	arr.as_raw()
 }
 
 /// Deletes a buffer.

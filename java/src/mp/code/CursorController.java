@@ -1,7 +1,7 @@
 package mp.code;
 
 import mp.code.data.Cursor;
-import mp.code.data.TextChange;
+import mp.code.exceptions.CodeMPException;
 
 public class CursorController {
 	private final long ptr;
@@ -10,20 +10,20 @@ public class CursorController {
 		this.ptr = ptr;
 	}
 
-	private static native Cursor try_recv(long self);
-	public Cursor tryRecv() {
+	private static native Cursor try_recv(long self) throws CodeMPException;
+	public Cursor tryRecv() throws CodeMPException {
 		return try_recv(this.ptr);
 	}
 
-	private static native void send(long self, Cursor cursor);
-	public void send(TextChange change, Cursor cursor) {
+	private static native void send(long self, Cursor cursor) throws CodeMPException;
+	public void send(Cursor cursor) throws CodeMPException {
 		send(this.ptr, cursor);
 	}
 
 	private static native void free(long self);
 	@Override
 	@SuppressWarnings("removal")
-	protected void finalize() throws Throwable {
+	protected void finalize() {
 		free(this.ptr);
 	}
 }

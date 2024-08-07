@@ -1,7 +1,7 @@
 package mp.code;
 
 import mp.code.data.TextChange;
-import mp.code.exceptions.CodeMPLibException;
+import mp.code.exceptions.CodeMPException;
 
 public class BufferController {
 	private final long ptr;
@@ -20,20 +20,20 @@ public class BufferController {
 		return get_content(this.ptr);
 	}
 
-	private static native TextChange try_recv(long self) throws CodeMPLibException;
-	public TextChange tryRecv() throws CodeMPLibException {
+	private static native TextChange try_recv(long self) throws CodeMPException;
+	public TextChange tryRecv() throws CodeMPException {
 		return try_recv(this.ptr);
 	}
 
-	private static native void send(long self, TextChange change) throws CodeMPLibException;
-	public void send(TextChange change) throws CodeMPLibException {
+	private static native void send(long self, TextChange change) throws CodeMPException;
+	public void send(TextChange change) throws CodeMPException {
 		send(this.ptr, change);
 	}
 
 	private static native void free(long self);
 	@Override
 	@SuppressWarnings("removal")
-	protected void finalize() throws Throwable {
+	protected void finalize() {
 		free(this.ptr);
 	}
 }
