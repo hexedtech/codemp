@@ -42,8 +42,8 @@ derive_more = { version = "0.99.17", optional = true }
 
 # glue (js)
 rmpv = { version = "1", optional = true }
-napi = { version = "2", features = ["full"], optional = true } 
-napi-derive = { version="2",  optional = true}
+napi = { version = "2.16", features = ["full"], optional = true } 
+napi-derive = { version="2.16",  optional = true}
 futures = { version = "0.3.28", optional = true }
 
 # glue (python)
@@ -60,7 +60,7 @@ napi-build = { version = "2", optional = true }
 pyo3-build-config = { version = "0.19.2", optional = true }
 
 [features]
-default = []
+default = ["js"]
 lua = ["mlua", "derive_more", "lazy_static", "tracing-subscriber"]
 java = ["lazy_static", "jni", "tracing-subscriber"]
 java-artifact = ["java"] # also builds the jar

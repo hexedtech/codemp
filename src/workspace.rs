@@ -21,6 +21,9 @@ use tokio::sync::mpsc;
 use tonic::Streaming;
 use uuid::Uuid;
 
+#[cfg(feature = "js")]
+use napi_derive::napi;
+
 //TODO may contain more info in the future
 #[derive(Debug, Clone)]
 pub struct UserInfo {
@@ -29,6 +32,7 @@ pub struct UserInfo {
 
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "python", pyo3::pyclass)]
+#[cfg_attr(feature = "js", napi)]
 pub struct Workspace(Arc<WorkspaceInner>);
 
 #[derive(Debug)]
@@ -227,26 +231,31 @@ impl Workspace {
 	}
 
 	/// get the id of the workspace
+	// #[cfg_attr(feature = "js", napi)] // https://github.com/napi-rs/napi-rs/issues/1120
 	pub fn id(&self) -> String {
 		self.0.id.clone()
 	}
 
 	/// return a reference to current cursor controller, if currently in a workspace
+	// #[cfg_attr(feature = "js", napi)] // https://github.com/napi-rs/napi-rs/issues/1120
 	pub fn cursor(&self) -> cursor::Controller {
 		self.0.cursor.clone()
 	}
 
 	/// get a new reference to a buffer controller, if any is active to given path
+	// #[cfg_attr(feature = "js", napi)] // https://github.com/napi-rs/napi-rs/issues/1120
 	pub fn buffer_by_name(&self, path: &str) -> Option<buffer::Controller> {
 		self.0.buffers.get(path).map(|x| x.clone())
 	}
 
 	/// get a list of all the currently attached to buffers
+	// #[cfg_attr(feature = "js", napi)] // https://github.com/napi-rs/napi-rs/issues/1120
 	pub fn buffer_list(&self) -> Vec<String> {
 		self.0.buffers.iter().map(|elem| elem.key().clone()).collect()
 	}
 
 	/// get the currently cached "filetree"
+	// #[cfg_attr(feature = "js", napi)] // https://github.com/napi-rs/napi-rs/issues/1120
 	pub fn filetree(&self) -> Vec<String> {
 		self.0.filetree.iter().map(|f| f.clone()).collect()
 	}

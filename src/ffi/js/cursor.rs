@@ -3,34 +3,64 @@ use napi_derive::napi;
 use uuid::Uuid;
 use napi::threadsafe_function::{ThreadsafeFunction, ThreadSafeCallContext, ThreadsafeFunctionCallMode, ErrorStrategy};
 use crate::api::Controller;
-use crate::ffi::js::JsCodempError;
+use crate::prelude::*;
 
-#[napi]
-pub struct JsCursorController(Arc<crate::cursor::Controller>);
 
-impl From::<Arc<crate::cursor::Controller>> for JsCursorController {
-	fn from(value: Arc<crate::cursor::Controller>) -> Self {
-		JsCursorController(value)
+
+
+#[napi(js_name = "Cursor")]
+pub struct JsCursor {
+	/// range of text change, as char indexes in buffer previous state
+	pub start_row: i32,
+	pub start_col: i32,
+	pub end_row: i32,
+	pub end_col: i32,
+	pub buffer: String,
+	pub user: Option<String>,
+}
+
+impl From<JsCursor> for CodempCursor {
+	fn from(value: JsCursor) -> Self {
+		CodempCursor {
+			start : (value.start_row, value.start_col),
+			end:  (value.end_row, value.end_col),
+			buffer: value.buffer,
+			user: value.user.map(|x| uuid::Uuid::parse_str(&x).expect("invalid uuid")),
+		}
+	}
+}
+impl From<CodempCursor> for JsCursor {
+	fn from(value: CodempCursor) -> Self {
+		JsCursor {
+			start_row : value.start.0,
+			start_col : value.start.1,
+			end_row : value.end.0,
+			end_col: value.end.1,
+			buffer: value.buffer,
+			user: value.user.map(|x| x.to_string())
+		}
+		
 	}
 }
 
+
 #[napi]
-impl JsCursorController {
+impl CodempCursorController {
 
 	#[napi(ts_args_type = "fun: (event: JsCursorEvent) => void")]
 	pub fn callback(&self, fun: napi::JsFunction) -> napi::Result<()>{ 
-		let tsfn : ThreadsafeFunction<codemp_proto::cursor::CursorEvent, ErrorStrategy::Fatal> = 
+		let tsfn : ThreadsafeFunction<JsCursor, ErrorStrategy::Fatal> = 
 		fun.create_threadsafe_function(0,
-			|ctx : ThreadSafeCallContext<codemp_proto::cursor::CursorEvent>| {
-				Ok(vec![JsCursorEvent::from(ctx.value)])
+			|ctx : ThreadSafeCallContext<JsCursor>| {
+				Ok(vec![ctx.value])
 			}
 		)?;
-		let _controller = self.0.clone();
+		let _controller = self.clone();
 		tokio::spawn(async move {
 			loop {
 				match _controller.recv().await {
 					Ok(event) => {
-						tsfn.call(event.clone(), ThreadsafeFunctionCallMode::NonBlocking); //check this shit with tracing also we could use Ok(event) to get the error
+						tsfn.call(event.into(), ThreadsafeFunctionCallMode::NonBlocking); //check this shit with tracing also we could use Ok(event) to get the error
 					},
 					Err(crate::Error::Deadlocked) => continue,
 					Err(e) => break tracing::warn!("error receiving: {}", e),
@@ -41,13 +71,8 @@ impl JsCursorController {
 	}
 
 	#[napi]
-	pub fn send(&self, buffer: String, start: (i32, i32), end: (i32, i32)) -> napi::Result<()> {
-		let pos = codemp_proto::cursor::CursorPosition {
-			buffer: buffer.into(),
-			start: codemp_proto::cursor::RowCol::from(start),
-			end: codemp_proto::cursor::RowCol::from(end),
-		};
-		Ok(self.0.send(pos).map_err(JsCodempError)?)
+	pub fn send(&self, pos: &CodempCursorController) -> napi::Result<()> {
+		Ok(self.send(pos)?)
 	}
 }
 

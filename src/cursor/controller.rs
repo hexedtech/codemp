@@ -30,6 +30,7 @@ use codemp_proto::cursor::{CursorEvent, CursorPosition};
 /// upon dropping this handle will stop the associated worker
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "python", pyo3::pyclass)]
+#[cfg_attr(feature = "js", napi_derive::napi)]
 pub struct CursorController(Arc<CursorControllerInner>);
 
 #[derive(Debug)]

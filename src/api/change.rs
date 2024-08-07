@@ -30,11 +30,15 @@ pub struct Op(pub(crate) woot::crdt::Op);
 /// to delete a the fourth character we should send a
 ///     `TextChange { span: 3..4, content: "".into() }`
 ///
+
 #[derive(Clone, Debug, Default)]
 #[cfg_attr(feature = "python", pyo3::pyclass)]
+#[cfg_attr(feature = "js", napi_derive::napi(object))]
 pub struct TextChange {
-	/// range of text change, as char indexes in buffer previous state
-	pub span: std::ops::Range<usize>,
+	/// range start of text change, as char indexes in buffer previous state
+	pub start: u32,
+	/// range end of text change, as char indexes in buffer previous state
+	pub end: u32,
 	/// new content of text inside span
 	pub content: String,
 }
@@ -65,9 +69,14 @@ impl TextChange {
 		let end_after = after.len() - end;
 
 		TextChange {
-			span: start..end_before,
+			start: start as u32,
+			end: end_before as u32,
 			content: after[start..end_after].to_string(),
 		}
+	}
+
+	pub fn span(&self) -> std::ops::Range<usize> {
+		self.start as usize .. self.end as usize
 	}
 
 	/// consume the [TextChange], transforming it into a Vec of [Op]
@@ -77,19 +86,19 @@ impl TextChange {
 			return Ok(out);
 		} // no-op
 		let view = woot.view();
-		let Some(span) = view.get(self.span.clone()) else {
+		let Some(span) = view.get(self.span()) else {
 			return Err(crate::woot::WootError::OutOfBounds);
 		};
 		let diff = similar::TextDiff::from_chars(span, &self.content);
 		for (i, diff) in diff.iter_all_changes().enumerate() {
 			match diff.tag() {
 				similar::ChangeTag::Equal => {}
-				similar::ChangeTag::Delete => match woot.delete_one(self.span.start + i) {
+				similar::ChangeTag::Delete => match woot.delete_one(self.span().start + i) {
 					Err(e) => tracing::error!("could not create deletion: {}", e),
 					Ok(op) => out.push(Op(op)),
 				},
 				similar::ChangeTag::Insert => {
-					match woot.insert(self.span.start + i, diff.value()) {
+					match woot.insert(self.span().start + i, diff.value()) {
 						Ok(ops) => {
 							for op in ops {
 								out.push(Op(op))
@@ -105,7 +114,7 @@ impl TextChange {
 
 	/// returns true if this TextChange deletes existing text
 	pub fn is_deletion(&self) -> bool {
-		!self.span.is_empty()
+		!self.span().is_empty()
 	}
 
 	/// returns true if this TextChange adds new text
@@ -120,9 +129,9 @@ impl TextChange {
 
 	/// applies this text change to given text, returning a new string
 	pub fn apply(&self, txt: &str) -> String {
-		let pre_index = std::cmp::min(self.span.start, txt.len());
+		let pre_index = std::cmp::min(self.span().start, txt.len());
 		let pre = txt.get(..pre_index).unwrap_or("").to_string();
-		let post = txt.get(self.span.end..).unwrap_or("").to_string();
+		let post = txt.get(self.span().end..).unwrap_or("").to_string();
 		format!("{}{}{}", pre, self.content, post)
 	}
 
@@ -144,7 +153,7 @@ mod tests {
 			"sphinx of black quartz, judge my vow",
 			"sphinx of quartz, judge my vow",
 		);
-		assert_eq!(change.span, 10..16);
+		assert_eq!(change.span(), 10..16);
 		assert_eq!(change.content, "");
 	}
 
@@ -154,7 +163,7 @@ mod tests {
 			"sphinx of quartz, judge my vow",
 			"sphinx of black quartz, judge my vow",
 		);
-		assert_eq!(change.span, 10..10);
+		assert_eq!(change.span(), 10..10);
 		assert_eq!(change.content, "black ");
 	}
 
@@ -164,14 +173,14 @@ mod tests {
 			"sphinx of black quartz, judge my vow",
 			"sphinx who watches the desert, judge my vow",
 		);
-		assert_eq!(change.span, 7..22);
+		assert_eq!(change.span(), 7..22);
 		assert_eq!(change.content, "who watches the desert");
 	}
 
 	#[test]
 	fn textchange_apply_works_for_insertions() {
 		let change = super::TextChange {
-			span: 5..5,
+			start: 5, end: 5,
 			content: " cruel".to_string(),
 		};
 		let result = change.apply("hello world!");
@@ -181,7 +190,7 @@ mod tests {
 	#[test]
 	fn textchange_apply_works_for_deletions() {
 		let change = super::TextChange {
-			span: 5..11,
+			start: 5, end: 11,
 			content: "".to_string(),
 		};
 		let result = change.apply("hello cruel world!");
@@ -191,7 +200,7 @@ mod tests {
 	#[test]
 	fn textchange_apply_works_for_replacements() {
 		let change = super::TextChange {
-			span: 5..11,
+			start: 5, end: 11,
 			content: " not very pleasant".to_string(),
 		};
 		let result = change.apply("hello cruel world!");
@@ -201,7 +210,7 @@ mod tests {
 	#[test]
 	fn textchange_apply_never_panics() {
 		let change = super::TextChange {
-			span: 100..110,
+			start: 100, end: 110,
 			content: "a very long string \n which totally matters".to_string(),
 		};
 		let result = change.apply("a short text");
@@ -220,7 +229,7 @@ mod tests {
 	#[test]
 	fn empty_textchange_doesnt_alter_buffer() {
 		let change = super::TextChange {
-			span: 42..42,
+			start: 42, end: 42,
 			content: "".to_string(),
 		};
 		let result = change.apply("some important text");
