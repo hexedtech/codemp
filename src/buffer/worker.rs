@@ -1,5 +1,6 @@
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
+use std::sync::Arc;
 
 use tokio::sync::{watch, mpsc, oneshot};
 use tonic::{async_trait, Streaming};
@@ -12,25 +13,17 @@ use crate::api::controller::ControllerWorker;
 use crate::api::TextChange;
 use codemp_proto::buffer::{BufferEvent, Operation};
 
-use super::controller::BufferController;
+use super::controller::{BufferController, BufferControllerInner};
 
 pub(crate) struct BufferWorker {
 	_user_id: Uuid,
-	name: String,
 	buffer: Woot,
 	content: watch::Sender<String>,
 	operations: mpsc::UnboundedReceiver<TextChange>,
 	poller: mpsc::UnboundedReceiver<oneshot::Sender<()>>,
 	pollers: Vec<oneshot::Sender<()>>,
-	handles: ClonableHandlesForController,
 	stop: mpsc::UnboundedReceiver<()>,
-}
-
-struct ClonableHandlesForController {
-	operations: mpsc::UnboundedSender<TextChange>,
-	poller: mpsc::UnboundedSender<oneshot::Sender<()>>,
-	stop: mpsc::UnboundedSender<()>,
-	content: watch::Receiver<String>,
+	controller: Arc<BufferControllerInner>,
 }
 
 impl BufferWorker {
@@ -42,21 +35,22 @@ impl BufferWorker {
 		let mut hasher = DefaultHasher::new();
 		user_id.hash(&mut hasher);
 		let site_id = hasher.finish() as usize;
+		let controller = BufferControllerInner::new(
+			path.to_string(),
+			txt_rx,
+			op_tx,
+			poller_tx,
+			end_tx,
+		);
 		BufferWorker {
 			_user_id: user_id,
-			name: path.to_string(),
 			buffer: Woot::new(site_id % (2<<10), ""), // TODO remove the modulo, only for debugging!
 			content: txt_tx,
 			operations: op_rx,
 			poller: poller_rx,
 			pollers: Vec::new(),
-			handles: ClonableHandlesForController {
-				operations: op_tx,
-				poller: poller_tx,
-				stop: end_tx,
-				content: txt_rx,
-			},
 			stop: end_rx,
+			controller: Arc::new(controller),
 		}
 	}
 }
@@ -68,13 +62,7 @@ impl ControllerWorker<TextChange> for BufferWorker {
 	type Rx = Streaming<BufferEvent>;
 
 	fn subscribe(&self) -> BufferController {
-		BufferController::new(
-			self.name.clone(),
-			self.handles.content.clone(),
-			self.handles.operations.clone(),
-			self.handles.poller.clone(),
-			self.handles.stop.clone(),
-		)
+		BufferController(self.controller.clone())
 	}
 
 	async fn work(mut self, tx: Self::Tx, mut rx: Self::Rx) {

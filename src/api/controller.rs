@@ -54,4 +54,13 @@ pub trait Controller<T : Sized + Send + Sync> : Sized + Send + Sync {
 
 	/// attempt to receive a value without blocking, return None if nothing is available
 	fn try_recv(&self) -> Result<Option<T>>;
+
+	/// stop underlying worker
+	///
+	/// note that this will mean no more values can be received nor sent,
+	/// but existing controllers will still be accessible until all are dropped
+	/// 
+	/// returns true if stop signal was sent, false if channel is closed
+	///  (likely if worker is already stopped)
+	fn stop(&self) -> bool;
 }

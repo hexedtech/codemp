@@ -96,6 +96,9 @@ impl Workspace {
 							}
 							WorkspaceEventInner::Delete(FileDelete { path }) => {
 								inner.filetree.remove(&path);
+								if let Some((_name, controller)) = inner.buffers.remove(&path) {
+									controller.stop();
+								}
 							}
 						}
 					},
@@ -225,6 +228,10 @@ impl Workspace {
 				path: path.to_string(),
 			}))
 			.await?;
+
+		if let Some((_name, controller)) = self.0.buffers.remove(path) {
+			controller.stop();
+		}
 
 		self.0.filetree.remove(path);
 

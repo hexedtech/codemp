@@ -12,10 +12,7 @@ use tokio::sync::{
 };
 use tonic::async_trait;
 
-use crate::{
-	api::{Controller, Cursor},
-	errors::IgnorableError,
-};
+use crate::api::{Controller, Cursor};
 use codemp_proto::cursor::{CursorEvent, CursorPosition};
 /// the cursor controller implementation
 ///
@@ -39,15 +36,6 @@ struct CursorControllerInner {
 	last_op: Mutex<watch::Receiver<CursorEvent>>,
 	stream: Mutex<broadcast::Receiver<CursorEvent>>,
 	stop: mpsc::UnboundedSender<()>,
-}
-
-impl Drop for CursorController {
-	fn drop(&mut self) {
-		self.0
-			.stop
-			.send(())
-			.unwrap_or_warn("could not stop cursor actor")
-	}
 }
 
 impl CursorController {
@@ -113,5 +101,9 @@ impl Controller<Cursor> for CursorController {
 	/// await for changed mutex and then next op change
 	async fn poll(&self) -> crate::Result<()> {
 		Ok(self.0.last_op.lock().await.changed().await?)
+	}
+
+	fn stop(&self) -> bool {
+		self.0.stop.send(()).is_ok()
 	}
 }

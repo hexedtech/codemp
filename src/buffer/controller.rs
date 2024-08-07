@@ -24,36 +24,9 @@ use super::tools::InternallyMutable;
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "python", pyo3::pyclass)]
 #[cfg_attr(feature = "js", napi_derive::napi)]
-pub struct BufferController(Arc<BufferControllerInner>);
-
-#[derive(Debug)]
-struct BufferControllerInner {
-	name: String,
-	content: watch::Receiver<String>,
-	seen: InternallyMutable<String>, // internal buffer previous state
-	operations: mpsc::UnboundedSender<TextChange>,
-	poller: mpsc::UnboundedSender<oneshot::Sender<()>>,
-	_stop: Arc<StopOnDrop>, // just exist
-}
+pub struct BufferController(pub(crate) Arc<BufferControllerInner>);
 
 impl BufferController {
-	pub(crate) fn new(
-		name: String,
-		content: watch::Receiver<String>,
-		operations: mpsc::UnboundedSender<TextChange>,
-		poller: mpsc::UnboundedSender<oneshot::Sender<()>>,
-		stop: mpsc::UnboundedSender<()>,
-	) -> Self {
-		Self(Arc::new(BufferControllerInner {
-			name,
-			content,
-			operations,
-			poller,
-			seen: StatusCheck::default(),
-			_stop: Arc::new(StopOnDrop(stop)),
-		}))
-	}
-
 	/// unique identifier of buffer
 	pub fn name(&self) -> &str {
 		&self.0.name
@@ -61,20 +34,37 @@ impl BufferController {
 
 	/// return buffer whole content, updating internal buffer previous state
 	pub fn content(&self) -> String {
-		self.0.seen.update(self.0.content.borrow().clone());
+		self.0.seen.set(self.0.content.borrow().clone());
 		self.0.content.borrow().clone()
 	}
 }
 
 #[derive(Debug)]
-struct StopOnDrop(mpsc::UnboundedSender<()>);
+pub(crate) struct BufferControllerInner {
+	name: String,
+	content: watch::Receiver<String>,
+	seen: InternallyMutable<String>, // internal buffer previous state
+	operations: mpsc::UnboundedSender<TextChange>,
+	poller: mpsc::UnboundedSender<oneshot::Sender<()>>,
+	stopper: mpsc::UnboundedSender<()>, // just exist
+}
 
-impl Drop for StopOnDrop {
-	fn drop(&mut self) {
-		self.0
-			.send(())
-			.unwrap_or_warn("could not send stop message to worker");
+impl BufferControllerInner {
+	pub(crate) fn new(
+		name: String,
+		content: watch::Receiver<String>,
+		operations: mpsc::UnboundedSender<TextChange>,
+		poller: mpsc::UnboundedSender<oneshot::Sender<()>>,
+		stop: mpsc::UnboundedSender<()>,
+	) -> Self {
+		Self {
+			name,
+			content,
+			operations,
+			poller,
 			seen: InternallyMutable::default(),
+			stopper: stop,
+		}
 	}
 }
 
@@ -123,5 +113,7 @@ impl Controller<TextChange> for BufferController {
 		Ok(self.0.operations.send(op)?)
 	}
 
+	fn stop(&self) -> bool {
+		self.0.stopper.send(()).is_ok()
 	}
 }
