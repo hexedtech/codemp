@@ -1,6 +1,6 @@
 //! # MultiPlayer Code Editing lib
 //!
-//! ![just a nice pic](https://alemi.dev/img/about-slice-1.png)
+//! ![just a nice pic](https://alemi.dev/img/about-slice-3.jpg)
 //!
 //! > the core library of the codemp project, driving all editor plugins
 //!
