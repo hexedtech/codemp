@@ -1,7 +1,10 @@
 package mp.code;
 
+import mp.code.data.Cursor;
 import mp.code.data.TextChange;
 import mp.code.exceptions.CodeMPException;
+
+import java.util.Optional;
 
 public class BufferController {
 	private final long ptr;
@@ -21,8 +24,13 @@ public class BufferController {
 	}
 
 	private static native TextChange try_recv(long self) throws CodeMPException;
-	public TextChange tryRecv() throws CodeMPException {
-		return try_recv(this.ptr);
+	public Optional<TextChange> tryRecv() throws CodeMPException {
+		return Optional.ofNullable(try_recv(this.ptr));
+	}
+
+	private static native Cursor recv(long self) throws CodeMPException;
+	public Cursor recv() throws CodeMPException {
+		return recv(this.ptr);
 	}
 
 	private static native void send(long self, TextChange change) throws CodeMPException;

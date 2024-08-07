@@ -18,3 +18,14 @@ java/*.iml
 java/.idea/
 java/*.h
 java/**/*.class
+java/build/
+java/.classpath
+java/.gradle/
+java/.project
+java/.settings/
+java/bin/
+
+# intellij insists on creating the wrapper every time even if it's not strictly necessary
+java/gradle/
+java/gradlew
+java/gradlew.bat

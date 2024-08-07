@@ -241,6 +241,11 @@ impl Workspace {
 		self.0.buffers.get(path).map(|x| x.clone())
 	}
 
+	/// get a list of all the currently attached to buffers
+	pub fn buffer_list(&self) -> Vec<String> {
+		self.0.buffers.iter().map(|elem| elem.key().clone()).collect()
+	}
+
 	/// get the currently cached "filetree"
 	pub fn filetree(&self) -> Vec<String> {
 		self.0.filetree.iter().map(|f| f.clone()).collect()

@@ -3,6 +3,8 @@ package mp.code;
 import mp.code.data.Cursor;
 import mp.code.exceptions.CodeMPException;
 
+import java.util.Optional;
+
 public class CursorController {
 	private final long ptr;
 
@@ -11,8 +13,13 @@ public class CursorController {
 	}
 
 	private static native Cursor try_recv(long self) throws CodeMPException;
-	public Cursor tryRecv() throws CodeMPException {
-		return try_recv(this.ptr);
+	public Optional<Cursor> tryRecv() throws CodeMPException {
+		return Optional.ofNullable(try_recv(this.ptr));
+	}
+
+	private static native Cursor recv(long self) throws CodeMPException;
+	public Cursor recv() throws CodeMPException {
+		return recv(this.ptr);
 	}
 
 	private static native void send(long self, Cursor cursor) throws CodeMPException;

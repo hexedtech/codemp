@@ -1,5 +1,7 @@
 package mp.code;
 
+import java.util.Optional;
+
 import mp.code.exceptions.CodeMPException;
 
 public class Workspace {
@@ -14,14 +16,14 @@ public class Workspace {
 		return get_workspace_id(this.ptr);
 	}
 
-	private static native long get_cursor(long self);
+	private static native CursorController get_cursor(long self);
 	public CursorController getCursor() {
-		return new CursorController(get_cursor(this.ptr));
+		return get_cursor(this.ptr);
 	}
 
-	private static native long get_buffer(long self, String path);
-	public BufferController getBuffer(String path) {
-		return new BufferController(get_buffer(this.ptr, path));
+	private static native BufferController get_buffer(long self, String path);
+	public Optional<BufferController> getBuffer(String path) {
+		return Optional.ofNullable(get_buffer(this.ptr, path));
 	}
 
 	private static native String[] get_file_tree(long self);
@@ -34,9 +36,9 @@ public class Workspace {
 		return new BufferController(create_buffer(path));
 	}
 
-	private static native long attach_to_buffer(long self) throws CodeMPException;
-	public BufferController attachToBuffer() throws CodeMPException {
-		return new BufferController(attach_to_buffer(ptr));
+	private static native BufferController attach_to_buffer(long self, String path) throws CodeMPException;
+	public BufferController attachToBuffer(String path) throws CodeMPException {
+		return attach_to_buffer(ptr, path);
 	}
 
 	private static native void fetch_buffers(long self) throws CodeMPException;
@@ -60,8 +62,8 @@ public class Workspace {
 	}
 
 	private static native BufferController select_buffer(long self, long timeout) throws CodeMPException;
-	public BufferController selectBuffer(long timeout) throws CodeMPException {
-		return select_buffer(this.ptr, timeout);
+	public Optional<BufferController> selectBuffer(long timeout) throws CodeMPException {
+		return Optional.ofNullable(select_buffer(this.ptr, timeout));
 	}
 
 	private static native void free(long self);

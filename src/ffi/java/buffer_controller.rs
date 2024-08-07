@@ -2,7 +2,7 @@ use jni::{objects::{JClass, JObject, JValueGen}, sys::{jlong, jobject, jstring},
 
 use crate::api::Controller;
 
-use super::util::JExceptable;
+use super::{util::JExceptable, RT};
 
 #[no_mangle]
 pub extern "system" fn Java_mp_code_BufferController_get_1name(
@@ -37,7 +37,23 @@ pub extern "system" fn Java_mp_code_BufferController_try_1recv(
 	self_ptr: jlong,
 ) -> jobject {
 	let controller = unsafe { Box::leak(Box::from_raw(self_ptr as *mut crate::buffer::Controller)) };
-	match controller.try_recv().jexcept(&mut env) {
+	let change = controller.try_recv().jexcept(&mut env);
+	recv_jni(&mut env, change)
+}
+
+#[no_mangle]
+pub extern "system" fn Java_mp_code_BufferController_recv(
+	mut env: JNIEnv,
+	_class: JClass,
+	self_ptr: jlong,
+) -> jobject {
+	let controller = unsafe { Box::leak(Box::from_raw(self_ptr as *mut crate::buffer::Controller)) };
+	let change = RT.block_on(controller.recv()).map(Some).jexcept(&mut env);
+	recv_jni(&mut env, change)
+}
+
+fn recv_jni(env: &mut JNIEnv, change: Option<crate::api::TextChange>) -> jobject {
+	match change {
 		None => JObject::null().as_raw(),
 		Some(event) => {
 			let class = env.find_class("mp/code/data/TextChange").expect("Couldn't find class!");
@@ -52,6 +68,7 @@ pub extern "system" fn Java_mp_code_BufferController_try_1recv(
 			).expect("failed creating object").into_raw()
 		}
 	}
+
 }
 
 #[no_mangle]

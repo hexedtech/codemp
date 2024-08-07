@@ -1,6 +1,8 @@
 use jni::{objects::{JClass, JObject, JString, JValueGen}, sys::{jlong, jobject}, JNIEnv};
 use crate::{api::Controller, ffi::java::util::JExceptable};
 
+use super::RT;
+
 #[no_mangle]
 pub extern "system" fn Java_mp_code_CursorController_try_1recv(
 	mut env: JNIEnv,
@@ -8,7 +10,23 @@ pub extern "system" fn Java_mp_code_CursorController_try_1recv(
 	self_ptr: jlong,
 ) -> jobject {
 	let controller = unsafe { Box::leak(Box::from_raw(self_ptr as *mut crate::cursor::Controller)) };
-	match controller.try_recv().jexcept(&mut env) {
+	let cursor = controller.try_recv().jexcept(&mut env);
+	jni_recv(&mut env, cursor)
+}
+
+#[no_mangle]
+pub extern "system" fn Java_mp_code_CursorController_recv(
+	mut env: JNIEnv,
+	_class: JClass,
+	self_ptr: jlong,
+) -> jobject {
+	let controller = unsafe { Box::leak(Box::from_raw(self_ptr as *mut crate::cursor::Controller)) };
+	let cursor = RT.block_on(controller.recv()).map(Some).jexcept(&mut env);
+	jni_recv(&mut env, cursor)
+}
+
+fn jni_recv(env: &mut JNIEnv, cursor: Option<crate::api::Cursor>) -> jobject {
+	match cursor {
 		None => JObject::null().as_raw(),
 		Some(event) => {
 			let class = env.find_class("mp/code/data/Cursor").expect("Couldn't find class!");

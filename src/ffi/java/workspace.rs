@@ -1,4 +1,4 @@
-use jni::{objects::{JClass, JObject, JString}, sys::{jlong, jobjectArray, jstring}, JNIEnv};
+use jni::{objects::{JClass, JObject, JString, JValueGen}, sys::{jlong, jobject, jobjectArray, jstring}, JNIEnv};
 use crate::Workspace;
 
 use super::{util::JExceptable, RT};
@@ -25,25 +25,35 @@ pub extern "system" fn Java_mp_code_Workspace_get_1workspace_1id<'local>(
 /// Gets a cursor controller by name and returns a pointer to it.
 #[no_mangle]
 pub extern "system" fn Java_mp_code_Workspace_get_1cursor<'local>(
-	_env: JNIEnv<'local>,
+	mut env: JNIEnv<'local>,
 	_class: JClass<'local>,
 	self_ptr: jlong
-) -> jlong {
+) -> jobject {
 	let workspace  = unsafe { Box::leak(Box::from_raw(self_ptr as *mut Workspace)) };
-	Box::into_raw(Box::new(workspace.cursor())) as jlong
+	let class = env.find_class("mp/code/CursorController").expect("Failed to find class");
+	env.new_object(class, "(J)V", &[JValueGen::Long(Box::into_raw(Box::new(workspace.cursor())) as jlong)])
+		.expect("Failed to initialise object")
+		.as_raw()
 }
 
 /// Gets a buffer controller by name and returns a pointer to it.
 #[no_mangle]
 pub extern "system" fn Java_mp_code_Workspace_get_1buffer<'local>(
-	env: JNIEnv<'local>,
+	mut env: JNIEnv<'local>,
 	_class: JClass<'local>,
 	self_ptr: jlong,
 	input: JString<'local>
-) -> jlong {
+) -> jobject {
 	let workspace  = unsafe { Box::leak(Box::from_raw(self_ptr as *mut Workspace)) };
 	let path = unsafe { env.get_string_unchecked(&input).expect("Couldn't get java string!") };
-	Box::into_raw(Box::new(workspace.buffer_by_name(path.to_str().expect("Not UTF-8")))) as jlong
+	if let Some(buf) = workspace.buffer_by_name(path.to_str().expect("Not UTF-8!")) {
+		let class = env.find_class("mp/code/BufferController").expect("Failed to find class");
+		env.new_object(class, "(J)V", &[JValueGen::Long(Box::into_raw(Box::new(buf)) as jlong)])
+			.expect("Failed to initialise object")
+			.as_raw()
+	} else {
+		JObject::null().as_raw()
+	}
 }
 
 /// Creates a new buffer.
@@ -87,12 +97,16 @@ pub extern "system" fn Java_mp_code_Workspace_attach_1to_1buffer<'local>(
 	_class: JClass<'local>,
 	self_ptr: jlong,
 	input: JString<'local>
-) -> jlong {
+) -> jobject {
 	let workspace  = unsafe { Box::leak(Box::from_raw(self_ptr as *mut Workspace)) };
 	let path = unsafe { env.get_string_unchecked(&input).expect("Couldn't get java string!") };
 	RT.block_on(workspace.attach(path.to_str().expect("Not UTF-8!")))
 		.map(|buffer| Box::into_raw(Box::new(buffer)) as jlong)
-		.jexcept(&mut env)
+		.map(|ptr| {
+			let class = env.find_class("mp/code/BufferController").expect("Failed to find class");
+			env.new_object(class, "(J)V", &[JValueGen::Long(ptr)])
+			.expect("Failed to initialise object")
+		}).jexcept(&mut env).as_raw()
 }
 
 /// Updates the local buffer list.
@@ -154,4 +168,37 @@ pub extern "system" fn Java_mp_code_Workspace_delete_1buffer<'local>(
 	let buffer = unsafe { env.get_string_unchecked(&input).expect("Couldn't get java string!") };
 	let workspace  = unsafe { Box::leak(Box::from_raw(self_ptr as *mut Workspace)) };
 	RT.block_on(workspace.delete(buffer.to_str().expect("Not UTF-8!"))).jexcept(&mut env);
+}
+
+/// Polls a list of buffers, returning the first ready one.
+#[no_mangle]
+pub extern "system" fn Java_mp_code_Workspace_select_1buffer(
+	mut env: JNIEnv,
+	_class: JClass,
+	self_ptr: jlong,
+	timeout: jlong
+) -> jobject {
+	let workspace  = unsafe { Box::leak(Box::from_raw(self_ptr as *mut Workspace)) };
+	let buffers = workspace.buffer_list();
+	let mut controllers = Vec::default();
+	for buffer in buffers {
+		if let Some(controller) = workspace.buffer_by_name(&buffer) {
+			controllers.push(controller);
+		}
+	}
+
+	let active = RT.block_on(crate::buffer::tools::select_buffer(
+		&controllers,
+		Some(std::time::Duration::from_millis(timeout as u64)),
+		&RT,
+	)).jexcept(&mut env);
+
+	if let Some(buf) = active {
+		let class = env.find_class("mp/code/BufferController").expect("Failed to find class");
+		env.new_object(class, "(J)V", &[JValueGen::Long(Box::into_raw(Box::new(buf)) as jlong)])
+			.expect("Failed to initialise object")
+			.as_raw()
+	} else {
+		JObject::null().as_raw()
+	}
 }

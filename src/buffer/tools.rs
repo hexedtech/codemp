@@ -1,5 +1,4 @@
 use crate::{Error, api::Controller};
-use std::sync::Arc;
 use tokio::sync::mpsc;
 
 /// invoke .poll() on all given buffer controllers and wait, returning the first one ready
@@ -13,15 +12,16 @@ use tokio::sync::mpsc;
 ///
 /// returns an error if all buffers returned errors while polling.
 pub async fn select_buffer(
-	buffers: &[Arc<crate::buffer::Controller>],
+	buffers: &[crate::buffer::Controller],
 	timeout: Option<std::time::Duration>,
-) -> crate::Result<Option<Arc<crate::buffer::Controller>>> {
+	runtime: &tokio::runtime::Runtime
+) -> crate::Result<Option<crate::buffer::Controller>> {
 	let (tx, mut rx) = mpsc::unbounded_channel();
 	let mut tasks = Vec::new();
 	for buffer in buffers {
 		let _tx = tx.clone();
 		let _buffer = buffer.clone();
-		tasks.push(tokio::spawn(async move {
+		tasks.push(runtime.spawn(async move {
 			match _buffer.poll().await {
 				Ok(()) => _tx.send(Ok(Some(_buffer))),
 				Err(_) => _tx.send(Err(Error::Channel { send: true })),
@@ -30,7 +30,7 @@ pub async fn select_buffer(
 	}
 	if let Some(d) = timeout {
 		let _tx = tx.clone();
-		tasks.push(tokio::spawn(async move {
+		tasks.push(runtime.spawn(async move {
 			tokio::time::sleep(d).await;
 			_tx.send(Ok(None))
 		}));

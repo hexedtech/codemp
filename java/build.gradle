@@ -1,0 +1,49 @@
+plugins {
+	id 'java'
+	id 'maven-publish'
+	id 'com.github.johnrengelman.shadow' version '8.1.1'
+	id 'com.palantir.git-version' version '3.1.0'
+}
+
+group = 'mp.code'
+version = versionDetails().lastTag
+
+repositories {
+	mavenCentral()
+	maven { url 'https://jitpack.io' }
+}
+
+sourceSets {
+	main.java.srcDirs = ['src/']
+}
+
+dependencies {
+	implementation 'com.github.adamheinrich:native-utils:master-SNAPSHOT'
+}
+
+shadowJar {
+	archiveClassifier.set('')
+	dependencies {
+		include(dependency('com.github.adamheinrich:native-utils:master-SNAPSHOT'))
+	}
+}
+
+def rustDir = projectDir.toPath()
+	.parent
+	.resolve('target')
+	.resolve('release')
+	.toFile()
+processResources {
+	from(rustDir) {
+		include('*.dll')
+		include('*.so')
+		into('natives/')
+	}
+}
+
+tasks.register('cargoBuild', Exec) {
+	workingDir '.'
+	commandLine 'cargo', 'build', '--release', '--features=java'
+}
+
+build.dependsOn cargoBuild
