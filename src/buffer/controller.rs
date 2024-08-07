@@ -9,9 +9,10 @@ use tokio::sync::{mpsc, watch};
 use tonic::async_trait;
 
 use crate::api::Controller;
-use crate::errors::IgnorableError;
 
 use crate::api::TextChange;
+
+use super::tools::InternallyMutable;
 
 /// the buffer controller implementation
 ///
@@ -29,7 +30,7 @@ pub struct BufferController(Arc<BufferControllerInner>);
 struct BufferControllerInner {
 	name: String,
 	content: watch::Receiver<String>,
-	seen: StatusCheck<String>, // internal buffer previous state
+	seen: InternallyMutable<String>, // internal buffer previous state
 	operations: mpsc::UnboundedSender<TextChange>,
 	poller: mpsc::UnboundedSender<oneshot::Sender<()>>,
 	_stop: Arc<StopOnDrop>, // just exist
@@ -73,6 +74,7 @@ impl Drop for StopOnDrop {
 		self.0
 			.send(())
 			.unwrap_or_warn("could not send stop message to worker");
+			seen: InternallyMutable::default(),
 	}
 }
 
@@ -81,7 +83,7 @@ impl Controller<TextChange> for BufferController {
 	/// block until a text change is available
 	/// this returns immediately if one is already available
 	async fn poll(&self) -> crate::Result<()> {
-		if self.0.seen.check() != *self.0.content.borrow() {
+		if self.0.seen.get() != *self.0.content.borrow() {
 			return Ok(()); // short circuit: already available!
 		}
 		let (tx, rx) = oneshot::channel::<()>();
@@ -93,57 +95,33 @@ impl Controller<TextChange> for BufferController {
 
 	/// if a text change is available, return it immediately
 	fn try_recv(&self) -> crate::Result<Option<TextChange>> {
-		let seen = self.0.seen.check();
+		let seen = self.0.seen.get();
 		let actual = self.0.content.borrow().clone();
 		if seen == actual {
 			return Ok(None);
 		}
 		let change = TextChange::from_diff(&seen, &actual);
-		self.0.seen.update(actual);
+		self.0.seen.set(actual);
 		Ok(Some(change))
 	}
 
 	/// block until a new text change is available, and return it
 	async fn recv(&self) -> crate::Result<TextChange> {
 		self.poll().await?;
-		let seen = self.0.seen.check();
+		let seen = self.0.seen.get();
 		let actual = self.0.content.borrow().clone();
 		let change = TextChange::from_diff(&seen, &actual);
-		self.0.seen.update(actual);
+		self.0.seen.set(actual);
 		Ok(change)
 	}
 
 	/// enqueue a text change for processing
 	/// this also updates internal buffer previous state
 	fn send(&self, op: TextChange) -> crate::Result<()> {
-		let before = self.0.seen.check();
-		self.0.seen.update(op.apply(&before));
+		let before = self.0.seen.get();
+		self.0.seen.set(op.apply(&before));
 		Ok(self.0.operations.send(op)?)
 	}
-}
 
-#[derive(Debug, Clone)]
-struct StatusCheck<T: Clone> {
-	state: watch::Receiver<T>,
-	updater: Arc<watch::Sender<T>>,
-}
-
-impl<T: Clone + Default> Default for StatusCheck<T> {
-	fn default() -> Self {
-		let (tx, rx) = watch::channel(T::default());
-		StatusCheck {
-			state: rx,
-			updater: Arc::new(tx),
-		}
-	}
-}
-
-impl<T: Clone> StatusCheck<T> {
-	fn update(&self, state: T) -> T {
-		self.updater.send_replace(state)
-	}
-
-	fn check(&self) -> T {
-		self.state.borrow().clone()
 	}
 }

@@ -48,3 +48,30 @@ pub async fn select_buffer(
 		}
 	}
 }
+
+/// wraps sender and receiver to allow mutable field with immutable ref
+#[derive(Debug)]
+pub struct InternallyMutable<T: Clone> {
+	getter: tokio::sync::watch::Receiver<T>,
+	setter: tokio::sync::watch::Sender<T>,
+}
+
+impl<T: Clone + Default> Default for InternallyMutable<T> {
+	fn default() -> Self {
+		let (tx, rx) = tokio::sync::watch::channel(T::default());
+		InternallyMutable {
+			getter: rx,
+			setter: tx,
+		}
+	}
+}
+
+impl<T: Clone> InternallyMutable<T> {
+	pub fn set(&self, state: T) -> T {
+		self.setter.send_replace(state)
+	}
+
+	pub fn get(&self) -> T {
+		self.getter.borrow().clone()
+	}
+}
