@@ -33,8 +33,8 @@ use crate::{
 /// can be used to interact with server
 pub struct Client {
 	user_id: Uuid,
+	workspaces: DashMap<String, Workspace>,
 	token_tx: Arc<tokio::sync::watch::Sender<Token>>,
-	workspaces: Arc<DashMap<String, Workspace>>,
 	services: Arc<Services>
 }
 
@@ -93,8 +93,8 @@ impl Client {
 
 		Ok(Client {
 			user_id,
+			workspaces: DashMap::default(),
 			token_tx: Arc::new(token_tx),
-			workspaces: Arc::new(DashMap::default()),
 			services: Arc::new(Services { workspace, buffer, cursor, auth })
 		})
 	}
@@ -129,8 +129,8 @@ impl Client {
 		let ws = Workspace::new(
 			workspace.to_string(),
 			self.user_id,
-			self.token_tx.clone(),
 			controller,
+			self.token_tx.clone(),
 			self.services.clone()
 		);
 

@@ -1,5 +1,5 @@
 use crate::{
-	api::controller::ControllerWorker,
+	api::{Controller, controller::ControllerWorker},
 	buffer::{self, worker::BufferWorker},
 	client::Services,
 	cursor,
@@ -39,12 +39,12 @@ pub struct Workspace(Arc<WorkspaceInner>);
 struct WorkspaceInner {
 	id: String,
 	user_id: Uuid, // reference to global user id
-	token: Arc<tokio::sync::watch::Sender<Token>>,
 	cursor: cursor::Controller,
-	buffers: Arc<DashMap<String, buffer::Controller>>,
-	pub(crate) filetree: Arc<DashSet<String>>,
-	pub(crate) users: Arc<DashMap<Uuid, UserInfo>>,
-	services: Arc<Services>,
+	buffers: DashMap<String, buffer::Controller>,
+	filetree: DashSet<String>,
+	users: DashMap<Uuid, UserInfo>,
+	token: Arc<tokio::sync::watch::Sender<Token>>, // shared
+	services: Arc<Services>, // shared
 }
 
 impl Workspace {
@@ -52,8 +52,8 @@ impl Workspace {
 	pub(crate) fn new(
 		id: String,
 		user_id: Uuid,
-		token: Arc<tokio::sync::watch::Sender<Token>>,
 		cursor: cursor::Controller,
+		token: Arc<tokio::sync::watch::Sender<Token>>,
 		services: Arc<Services>,
 	) -> Self {
 		Self(Arc::new(WorkspaceInner {
@@ -61,16 +61,15 @@ impl Workspace {
 			user_id,
 			token,
 			cursor,
-			buffers: Arc::new(DashMap::default()),
-			filetree: Arc::new(DashSet::default()),
-			users: Arc::new(DashMap::default()),
+			buffers: DashMap::default(),
+			filetree: DashSet::default(),
+			users: DashMap::default(),
 			services,
 		}))
 	}
 
 	pub(crate) fn run_actor(&self, mut stream: Streaming<WorkspaceEvent>) {
-		let users = self.0.users.clone();
-		let filetree = self.0.filetree.clone();
+		let inner = self.0.clone();
 		let name = self.id();
 		tokio::spawn(async move {
 			loop {
@@ -80,22 +79,24 @@ impl Workspace {
 					Ok(Some(WorkspaceEvent { event: None })) => {
 						tracing::warn!("workspace {} received empty event", name)
 					}
-					Ok(Some(WorkspaceEvent { event: Some(ev) })) => match ev {
-						WorkspaceEventInner::Join(UserJoin { user }) => {
-							users.insert(user.clone().into(), UserInfo { uuid: user.into() });
-						}
-						WorkspaceEventInner::Leave(UserLeave { user }) => {
-							users.remove(&user.into());
-						}
-						WorkspaceEventInner::Create(FileCreate { path }) => {
-							filetree.insert(path);
-						}
-						WorkspaceEventInner::Rename(FileRename { before, after }) => {
-							filetree.remove(&before);
-							filetree.insert(after);
-						}
-						WorkspaceEventInner::Delete(FileDelete { path }) => {
-							filetree.remove(&path);
+					Ok(Some(WorkspaceEvent { event: Some(ev) })) => {
+						match ev {
+							WorkspaceEventInner::Join(UserJoin { user }) => {
+								inner.users.insert(user.clone().into(), UserInfo { uuid: user.into() });
+							}
+							WorkspaceEventInner::Leave(UserLeave { user }) => {
+								inner.users.remove(&user.into());
+							}
+							WorkspaceEventInner::Create(FileCreate { path }) => {
+								inner.filetree.insert(path);
+							}
+							WorkspaceEventInner::Rename(FileRename { before, after }) => {
+								inner.filetree.remove(&before);
+								inner.filetree.insert(after);
+							}
+							WorkspaceEventInner::Delete(FileDelete { path }) => {
+								inner.filetree.remove(&path);
+							}
 						}
 					},
 				}
