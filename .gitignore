@@ -14,18 +14,18 @@ index.d.ts
 index.node
 
 # java
-java/*.iml
-java/.idea/
-java/*.h
-java/**/*.class
-java/build/
-java/.classpath
-java/.gradle/
-java/.project
-java/.settings/
-java/bin/
+dist/java/*.iml
+dist/java/.idea/
+dist/java/*.h
+dist/java/**/*.class
+dist/java/build/
+dist/java/.classpath
+dist/java/.gradle/
+dist/java/.project
+dist/java/.settings/
+dist/java/bin/
 
 # intellij insists on creating the wrapper every time even if it's not strictly necessary
-java/gradle/
-java/gradlew
-java/gradlew.bat
+dist/java/gradle/
+dist/java/gradlew
+dist/java/gradlew.bat

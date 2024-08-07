@@ -4,6 +4,7 @@ use crate::api::Controller;
 
 use super::{util::JExceptable, RT};
 
+/// Gets the name of the buffer. 
 #[no_mangle]
 pub extern "system" fn Java_mp_code_BufferController_get_1name(
 	env: JNIEnv,
@@ -17,6 +18,7 @@ pub extern "system" fn Java_mp_code_BufferController_get_1name(
 		.as_raw()
 }
 
+/// Gets the contents of the buffers.
 #[no_mangle]
 pub extern "system" fn Java_mp_code_BufferController_get_1content(
 	env: JNIEnv,
@@ -30,6 +32,7 @@ pub extern "system" fn Java_mp_code_BufferController_get_1content(
 		.as_raw()
 }
 
+/// Tries to fetch a [crate::api::TextChange], or returns null if there's nothing.
 #[no_mangle]
 pub extern "system" fn Java_mp_code_BufferController_try_1recv(
 	mut env: JNIEnv,
@@ -41,6 +44,7 @@ pub extern "system" fn Java_mp_code_BufferController_try_1recv(
 	recv_jni(&mut env, change)
 }
 
+/// Blocks until it receives a [crate::api::TextChange].
 #[no_mangle]
 pub extern "system" fn Java_mp_code_BufferController_recv(
 	mut env: JNIEnv,
@@ -52,6 +56,7 @@ pub extern "system" fn Java_mp_code_BufferController_recv(
 	recv_jni(&mut env, change)
 }
 
+/// Utility method to convert a [crate::api::TextChange] to its Java equivalent.
 fn recv_jni(env: &mut JNIEnv, change: Option<crate::api::TextChange>) -> jobject {
 	match change {
 		None => JObject::null().as_raw(),
@@ -61,16 +66,16 @@ fn recv_jni(env: &mut JNIEnv, change: Option<crate::api::TextChange>) -> jobject
 				class,
 				"(JJLjava/lang/String;)V",
 				&[
-					JValueGen::Long(event.span.start.try_into().unwrap()),
-					JValueGen::Long(event.span.end.try_into().unwrap()),
+					JValueGen::Long(jlong::from(event.start)),
+					JValueGen::Long(jlong::from(event.end)),
 					JValueGen::Object(&env.new_string(event.content).expect("Failed to create String!")),
 				]
 			).expect("failed creating object").into_raw()
 		}
 	}
-
 }
 
+/// Receives from Java, converts and sends a [crate::api::TextChange].
 #[no_mangle]
 pub extern "system" fn Java_mp_code_BufferController_send<'local>(
 	mut env: JNIEnv,
@@ -89,11 +94,13 @@ pub extern "system" fn Java_mp_code_BufferController_send<'local>(
 
 	let controller = unsafe { Box::leak(Box::from_raw(self_ptr as *mut crate::buffer::Controller)) };
 	controller.send(crate::api::TextChange {
-		span: (start as usize)..(end as usize),
+		start: start as u32,
+		end: end as u32
 		content
 	}).jexcept(&mut env);
 }
 
+/// Called by the Java GC to drop a [crate::buffer::Controller].
 #[no_mangle]
 pub extern "system" fn Java_mp_code_BufferController_free(
 	_env: JNIEnv,

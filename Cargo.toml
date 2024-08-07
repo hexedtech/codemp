@@ -60,9 +60,8 @@ napi-build = { version = "2", optional = true }
 pyo3-build-config = { version = "0.19.2", optional = true }
 
 [features]
-default = ["js"]
+default = []
 lua = ["mlua", "derive_more", "lazy_static", "tracing-subscriber"]
 java = ["lazy_static", "jni", "tracing-subscriber"]
-java-artifact = ["java"] # also builds the jar
 js = ["napi-build", "tracing-subscriber", "rmpv", "napi", "napi-derive", "futures"]
 python = ["pyo3", "pyo3-asyncio", "tracing-subscriber", "pyo3-build-config"]

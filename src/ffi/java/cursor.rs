@@ -3,6 +3,7 @@ use crate::{api::Controller, ffi::java::util::JExceptable};
 
 use super::RT;
 
+/// Tries to fetch a [crate::api::Cursor], or returns null if there's nothing.
 #[no_mangle]
 pub extern "system" fn Java_mp_code_CursorController_try_1recv(
 	mut env: JNIEnv,
@@ -14,6 +15,7 @@ pub extern "system" fn Java_mp_code_CursorController_try_1recv(
 	jni_recv(&mut env, cursor)
 }
 
+/// Blocks until it receives a [crate::api::Cursor].
 #[no_mangle]
 pub extern "system" fn Java_mp_code_CursorController_recv(
 	mut env: JNIEnv,
@@ -25,6 +27,7 @@ pub extern "system" fn Java_mp_code_CursorController_recv(
 	jni_recv(&mut env, cursor)
 }
 
+/// Utility method to convert a [crate::api::Cursor] to its Java equivalent.
 fn jni_recv(env: &mut JNIEnv, cursor: Option<crate::api::Cursor>) -> jobject {
 	match cursor {
 		None => JObject::null().as_raw(),
@@ -46,6 +49,7 @@ fn jni_recv(env: &mut JNIEnv, cursor: Option<crate::api::Cursor>) -> jobject {
 	}
 }
 
+/// Receives from Java, converts and sends a [crate::api::Cursor].
 #[no_mangle]
 pub extern "system" fn Java_mp_code_CursorController_send<'local>(
 	mut env: JNIEnv,
@@ -86,6 +90,7 @@ pub extern "system" fn Java_mp_code_CursorController_send<'local>(
 	}).jexcept(&mut env);
 }
 
+/// Called by the Java GC to drop a [crate::cursor::Controller].
 #[no_mangle]
 pub extern "system" fn Java_mp_code_CursorController_free(
 	_env: JNIEnv,

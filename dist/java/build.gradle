@@ -1,12 +1,16 @@
 plugins {
-	id 'java'
+	id 'java-library'
 	id 'maven-publish'
 	id 'com.github.johnrengelman.shadow' version '8.1.1'
 	id 'com.palantir.git-version' version '3.1.0'
 }
 
 group = 'mp.code'
-version = versionDetails().lastTag
+version = versionDetails().lastTag.substring(1)
+
+java {
+	sourceCompatibility = targetCompatibility = JavaVersion.VERSION_1_8
+}
 
 repositories {
 	mavenCentral()
@@ -29,6 +33,7 @@ shadowJar {
 }
 
 def rustDir = projectDir.toPath()
+	.parent
 	.parent
 	.resolve('target')
 	.resolve('release')

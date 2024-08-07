@@ -1,14 +1,14 @@
 pub mod client;
 pub mod workspace;
 pub mod util;
-
-pub mod cursor_controller;
-pub mod buffer_controller;
+pub mod cursor;
+pub mod buffer;
 
 lazy_static::lazy_static! {
 	pub(crate) static ref RT: tokio::runtime::Runtime = tokio::runtime::Runtime::new().expect("could not create tokio runtime");
 }
 
+/// Sets up logging. Useful for debugging.
 pub(crate) fn setup_logger(debug: bool, path: Option<String>) {
 	let format = tracing_subscriber::fmt::format()
 		.with_level(true)

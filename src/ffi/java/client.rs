@@ -3,12 +3,6 @@ use crate::{client::Client, Workspace};
 
 use super::{util::JExceptable, RT};
 
-/// Called by the Java GC to drop a [Client].
-#[no_mangle]
-pub extern "system" fn Java_mp_code_Client_free(_env: JNIEnv, _class: JClass, input: jlong) {
-	let _ = unsafe { Box::from_raw(input as *mut Client) };
-}
-
 /// Connects to a given URL and returns a [Client] to interact with that server.
 #[no_mangle]
 pub extern "system" fn Java_mp_code_Client_connect<'local>(
@@ -109,4 +103,10 @@ pub extern "system" fn Java_mp_code_Client_setup_1tracing<'local>(
 			.filter(|p| p.is_null())
 			.map(|p| env.get_string(&p).expect("couldn't get java string").into())
 	);
+}
+
+/// Called by the Java GC to drop a [Client].
+#[no_mangle]
+pub extern "system" fn Java_mp_code_Client_free(_env: JNIEnv, _class: JClass, input: jlong) {
+	let _ = unsafe { Box::from_raw(input as *mut Client) };
 }

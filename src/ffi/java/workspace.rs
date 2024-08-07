@@ -3,12 +3,6 @@ use crate::Workspace;
 
 use super::{util::JExceptable, RT};
 
-/// Called by the Java GC to drop a [Workspace].
-#[no_mangle]
-pub extern "system" fn Java_mp_code_Workspace_free(_env: JNIEnv, _class: JClass, input: jlong) {
-	let _ = unsafe { Box::from_raw(input as *mut Workspace) };
-}
-
 /// Gets the workspace id.
 #[no_mangle]
 pub extern "system" fn Java_mp_code_Workspace_get_1workspace_1id<'local>(
@@ -201,4 +195,10 @@ pub extern "system" fn Java_mp_code_Workspace_select_1buffer(
 	} else {
 		JObject::null().as_raw()
 	}
+}
+
+/// Called by the Java GC to drop a [Workspace].
+#[no_mangle]
+pub extern "system" fn Java_mp_code_Workspace_free(_env: JNIEnv, _class: JClass, input: jlong) {
+	let _ = unsafe { Box::from_raw(input as *mut Workspace) };
 }
