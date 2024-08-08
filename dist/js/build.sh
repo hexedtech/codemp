@@ -1,0 +1,1 @@
+npx napi build --cargo-cwd ../..
