@@ -2,6 +2,8 @@
 //!
 //! codemp client manager, containing grpc services
 
+use std::sync::Arc;
+
 use dashmap::DashMap;
 use tonic::transport::{Channel, Endpoint};
 use uuid::Uuid;
@@ -10,7 +12,7 @@ use codemp_proto::auth::auth_client::AuthClient;
 use codemp_proto::auth::{Token, WorkspaceJoinRequest};
 use crate::workspace::Workspace;
 
-#[derive(Clone)]
+#[derive(Debug)]
 pub struct AuthWrap {
 	username: String,
 	password: String,
@@ -49,7 +51,11 @@ impl AuthWrap {
 /// contains all required grpc services and the unique user id
 /// will disconnect when dropped
 /// can be used to interact with server
-pub struct Client {
+#[derive(Debug, Clone)]
+pub struct Client(Arc<ClientInner>);
+
+#[derive(Debug)]
+struct ClientInner {
 	user_id: Uuid,
 	host: String,
 	workspaces: DashMap<String, Workspace>,
@@ -72,42 +78,42 @@ impl Client {
 		let user_id = uuid::Uuid::new_v4();
 		let auth = AuthWrap::try_new(username.as_ref(), password.as_ref(), &host).await?;
 
-		Ok(Client {
+		Ok(Client(Arc::new(ClientInner {
 			user_id,
 			host,
 			workspaces: DashMap::default(),
 			auth,
-		})
+		})))
 	}
 
 	/// join a workspace, returns an [tokio::sync::RwLock] to interact with it
 	pub async fn join_workspace(&self, workspace: impl AsRef<str>) -> crate::Result<Workspace> {
-		let token = self.auth.login_workspace(workspace.as_ref()).await?;
+		let token = self.0.auth.login_workspace(workspace.as_ref()).await?;
 
 		let ws = Workspace::try_new(
 			workspace.as_ref().to_string(),
-			self.user_id,
-			&self.host,
+			self.0.user_id,
+			&self.0.host,
 			token.clone()
 		).await?;
 
-		self.workspaces.insert(workspace.as_ref().to_string(), ws.clone());
+		self.0.workspaces.insert(workspace.as_ref().to_string(), ws.clone());
 
 		Ok(ws)
 	}
 
 	/// leaves a [Workspace] by name
 	pub fn leave_workspace(&self, id: &str) -> bool {
-		self.workspaces.remove(id).is_some()
+		self.0.workspaces.remove(id).is_some()
 	}
 
 	/// gets a [Workspace] by name
 	pub fn get_workspace(&self, id: &str) -> Option<Workspace> {
-		self.workspaces.get(id).map(|x| x.clone())
+		self.0.workspaces.get(id).map(|x| x.clone())
 	}
 
 	/// accessor for user id
 	pub fn user_id(&self) -> Uuid {
-		self.user_id
+		self.0.user_id
 	}
 }
