@@ -39,6 +39,7 @@ struct WorkspaceInner {
 	user_id: Uuid, // reference to global user id
 	cursor: cursor::Controller,
 	buffers: DashMap<String, buffer::Controller>,
+	event: InternallyMutable<WorkspaceEventInner>,
 	filetree: DashSet<String>,
 	users: DashMap<Uuid, User>,
 	services: Services
@@ -76,6 +77,7 @@ impl Workspace {
 			id,
 			user_id,
 			cursor: controller,
+			event: InternallyMutable::new(WorkspaceEventInner::Join(UserJoin { user: Identity { id: user_id.to_string() } })),
 			buffers: DashMap::default(),
 			filetree: DashSet::default(),
 			users: DashMap::default(),
@@ -101,6 +103,7 @@ impl Workspace {
 						tracing::warn!("workspace {} received empty event", name)
 					}
 					Ok(Some(WorkspaceEvent { event: Some(ev) })) => {
+						let _ev = ev.clone();
 						match ev {
 							WorkspaceEventInner::Join(UserJoin { user }) => {
 								inner.users.insert(user.clone().into(), User { id: user.into() });
@@ -122,6 +125,7 @@ impl Workspace {
 								}
 							}
 						}
+						inner.event.set(_ev);
 					},
 				}
 			}
@@ -202,6 +206,16 @@ impl Workspace {
 				DetachResult::AlreadyDetached
 			}
 		}
+	}
+
+	/// await and return next workspace event
+	///
+	/// TODO dont use inner proto type
+	/// TODO can it fail? are we just masking?
+	/// TODO tiemout i guess
+	pub async fn poll(&self) -> WorkspaceEventInner {
+		self.0.event.wait().await;
+		self.0.event.get()
 	}
 
 	/// fetch a list of all buffers in a workspace
