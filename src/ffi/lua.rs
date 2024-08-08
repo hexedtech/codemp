@@ -10,6 +10,7 @@ lazy_static::lazy_static!{
 	// TODO use a runtime::Builder::new_current_thread() runtime to not behave like malware
 	static ref RT : tokio::runtime::Runtime = tokio::runtime::Builder::new_current_thread().enable_all().build().expect("could not create tokio runtime");
 	static ref LOG : broadcast::Sender<String> = broadcast::channel(32).0;
+	static ref STORE : dashmap::DashMap<String, CodempClient> = dashmap::DashMap::default();
 }
 
 fn runtime_drive_forever(_: &Lua, ():()) -> LuaResult<()> {
@@ -24,7 +25,13 @@ impl From::<CodempError> for LuaError {
 }
 
 fn connect(_: &Lua, (host, username, password): (String, String, String)) -> LuaResult<CodempClient> {
-	Ok(RT.block_on(CodempClient::new(host, username, password))?)
+	let client = RT.block_on(CodempClient::new(host, username, password))?;
+	STORE.insert(client.user_id().to_string(), client.clone());
+	Ok(client)
+}
+
+fn get_client(_: &Lua, (id,): (String,)) -> LuaResult<Option<CodempClient>> {
+	Ok(STORE.get(&id).map(|x| x.value().clone()))
 }
 
 impl LuaUserData for CodempClient {
@@ -240,9 +247,10 @@ fn codemp_lua(lua: &Lua) -> LuaResult<LuaTable> {
 
 	// entrypoint
 	exports.set("connect", lua.create_function(connect)?)?;
+	exports.set("get_client", lua.create_function(get_client)?)?;
 
 	// runtime
-	exports.set("spawn_runtime_driver", lua.create_function(runtime_drive_forever)?)?;
+	exports.set("runtime_drive_forever", lua.create_function(runtime_drive_forever)?)?;
 
 	// logging
 	exports.set("setup_logger", lua.create_function(setup_logger)?)?;
