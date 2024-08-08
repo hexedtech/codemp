@@ -1,84 +1,60 @@
 use std::io::Write;
-use std::sync::atomic::AtomicBool;
 use std::sync::Mutex;
 
 use crate::api::Cursor;
 use crate::prelude::*;
 use mlua::prelude::*;
-use tokio::runtime::Runtime;
 use tokio::sync::broadcast;
 
 lazy_static::lazy_static!{
 	// TODO use a runtime::Builder::new_current_thread() runtime to not behave like malware
-	static ref STATE : GlobalState = GlobalState::default();
+	static ref RT : tokio::runtime::Runtime = tokio::runtime::Builder::new_current_thread().enable_all().build().expect("could not create tokio runtime");
 	static ref LOG : broadcast::Sender<String> = broadcast::channel(32).0;
 }
 
-struct GlobalState {
-	client: std::sync::RwLock<CodempClient>,
-	runtime: Runtime,
-}
-
-impl Default for GlobalState {
-	fn default() -> Self {
-		let rt = Runtime::new().expect("could not create tokio runtime");
-		let addr = std::env::var("CODEMP_SERVER_ADDRESS").unwrap_or_else(|_|"http://codemp.alemi.dev:50053".to_string());
-		let client = rt.block_on(
-			CodempClient::new(&addr)
-		).expect("could not connect to codemp servers");
-		GlobalState { client: std::sync::RwLock::new(client), runtime: rt }
-	}
-}
-
-impl GlobalState {
-	fn client(&self) -> std::sync::RwLockReadGuard<CodempClient> {
-		self.client.read().unwrap()
-	}
-
-	fn client_mut(&self) -> std::sync::RwLockWriteGuard<CodempClient> {
-		self.client.write().unwrap()
-	}
-
-	fn rt(&self) -> &Runtime {
-		&self.runtime
-	}
+fn runtime_drive_forever(_: &Lua, ():()) -> LuaResult<()> {
+	std::thread::spawn(|| RT.block_on(std::future::pending::<()>()));
+	Ok(())
 }
 
 impl From::<CodempError> for LuaError {
 	fn from(value: CodempError) -> Self {
-		LuaError::external(value)
+		LuaError::RuntimeError(value.to_string())
 	}
 }
 
-fn id(_: &Lua, (): ()) -> LuaResult<String> {
-	Ok(STATE.client().user_id().to_string())
+fn connect(_: &Lua, (host, username, password): (String, String, String)) -> LuaResult<CodempClient> {
+	Ok(RT.block_on(CodempClient::new(host, username, password))?)
 }
 
+impl LuaUserData for CodempClient {
+	fn add_fields<'lua, F: LuaUserDataFields<'lua, Self>>(fields: &mut F) {
+		fields.add_field_method_get("id", |_, this| Ok(this.user_id().to_string()));
+	}
 
-/// join a remote workspace and start processing cursor events
-fn join_workspace(_: &Lua, (session,): (String,)) -> LuaResult<CodempCursorController> {
-	tracing::info!("joining workspace {}", session);
-	let ws = STATE.rt().block_on(async { STATE.client_mut().join_workspace(&session).await })?;
-	let cursor = ws.cursor();
-	Ok(cursor.into())
+	fn add_methods<'lua, M: LuaUserDataMethods<'lua, Self>>(methods: &mut M) {
+		// join a remote workspace and start processing cursor events
+		methods.add_method("join_workspace", |_, this, (session,):(String,)| {
+			tracing::info!("joining workspace {}", session);
+			let ws = RT.block_on(async { this.join_workspace(&session).await })?;
+			let cursor = ws.cursor();
+			Ok(cursor)
+		});
+		
+		methods.add_method("get_workspace", |_, this, (session,):(String,)| Ok(this.get_workspace(&session)));
+	}
+
 }
 
-fn login(_: &Lua, (username, password, workspace_id):(String, String, String)) -> LuaResult<()> {
-	Ok(STATE.rt().block_on(STATE.client().login(username, password, Some(workspace_id)))?)
-}
-
-fn get_workspace(_: &Lua, (session,): (String,)) -> LuaResult<Option<CodempWorkspace>> {
-	Ok(STATE.client().get_workspace(&session))
-}
 
 impl LuaUserData for CodempWorkspace {
 	fn add_methods<'lua, M: LuaUserDataMethods<'lua, Self>>(methods: &mut M) {
 		methods.add_method("create_buffer", |_, this, (name,):(String,)| {
-			Ok(STATE.rt().block_on(async { this.create(&name).await })?)
+			Ok(RT.block_on(async { this.create(&name).await })?)
 		});
 
 		methods.add_method("attach_buffer", |_, this, (name,):(String,)| {
-			Ok(STATE.rt().block_on(async { this.attach(&name).await })?)
+			Ok(RT.block_on(async { this.attach(&name).await })?)
 		});
 
 		// TODO disconnect_buffer
@@ -107,7 +83,7 @@ impl LuaUserData for CodempCursorController {
 			}
 		});
 		methods.add_method("poll", |_, this, ()| {
-			STATE.rt().block_on(this.poll())?;
+			RT.block_on(this.poll())?;
 			Ok(())
 		});
 	}
@@ -122,9 +98,9 @@ impl LuaUserData for Cursor {
 	}
 }
 
-pub struct RowCol {
-	pub row: i32,
-	pub col: i32,
+struct RowCol {
+	row: i32,
+	col: i32,
 }
 
 impl From<(i32, i32)> for RowCol {
@@ -147,7 +123,8 @@ impl LuaUserData for CodempBufferController {
 			Ok(
 				this.send(
 					CodempTextChange {
-						span: start..end,
+						start: start as u32,
+						end: end as u32,
 						content: text,
 					}
 				)?
@@ -167,7 +144,7 @@ impl LuaUserData for CodempBufferController {
 			}
 		});
 		methods.add_method("poll", |_, this, ()| {
-			STATE.rt().block_on(this.poll())?;
+			RT.block_on(this.poll())?;
 			Ok(())
 		});
 	}
@@ -182,14 +159,15 @@ impl LuaUserData for CodempOp { }
 impl LuaUserData for CodempTextChange {
 	fn add_fields<'lua, F: LuaUserDataFields<'lua, Self>>(fields: &mut F) {
 		fields.add_field_method_get("content", |_, this| Ok(this.content.clone()));
-		fields.add_field_method_get("first",   |_, this| Ok(this.span.start));
-		fields.add_field_method_get("last",  |_, this| Ok(this.span.end));
+		fields.add_field_method_get("first",   |_, this| Ok(this.start));
+		fields.add_field_method_get("last",  |_, this| Ok(this.end));
 	}
 
 	fn add_methods<'lua, M: LuaUserDataMethods<'lua, Self>>(methods: &mut M) {
 		methods.add_meta_function(LuaMetaMethod::Call, |_, (start, end, txt): (usize, usize, String)| {
 			Ok(CodempTextChange {
-				span: start..end,
+				start: start as u32,
+				end: end as u32,
 				content: txt,
 			})
 		});
@@ -260,15 +238,15 @@ fn get_logger(_: &Lua, (): ()) -> LuaResult<LuaLogger> {
 fn codemp_lua(lua: &Lua) -> LuaResult<LuaTable> {
 	let exports = lua.create_table()?;
 
-	// core proto functions
-	exports.set("login", lua.create_function(login)?)?;
-	exports.set("join_workspace", lua.create_function(join_workspace)?)?;
-	// state helpers
-	exports.set("get_workspace", lua.create_function(get_workspace)?)?;
-	// debug
-	exports.set("id", lua.create_function(id)?)?;
-	exports.set("get_logger", lua.create_function(get_logger)?)?;
+	// entrypoint
+	exports.set("connect", lua.create_function(connect)?)?;
+
+	// runtime
+	exports.set("spawn_runtime_driver", lua.create_function(runtime_drive_forever)?)?;
+
+	// logging
 	exports.set("setup_logger", lua.create_function(setup_logger)?)?;
+	exports.set("get_logger", lua.create_function(get_logger)?)?;
 
 	Ok(exports)
 }
