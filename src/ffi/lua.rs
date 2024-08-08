@@ -3,6 +3,7 @@ use std::sync::Mutex;
 
 use crate::api::Cursor;
 use crate::prelude::*;
+use crate::workspace::DetachResult;
 use mlua::prelude::*;
 use tokio::sync::broadcast;
 
@@ -60,6 +61,10 @@ impl LuaUserData for CodempClient {
 			let cursor = ws.cursor();
 			Ok(cursor)
 		});
+
+		methods.add_method("leave_workspace", |_, this, (session,):(String,)| {
+			Ok(this.leave_workspace(&session))
+		});
 		
 		methods.add_method("get_workspace", |_, this, (session,):(String,)| Ok(this.get_workspace(&session)));
 	}
@@ -73,12 +78,17 @@ impl LuaUserData for CodempWorkspace {
 			Ok(RT.block_on(async { this.create(&name).await })?)
 		});
 
-		methods.add_method("attach_buffer", |_, this, (name,):(String,)| {
+		methods.add_method("attach", |_, this, (name,):(String,)| {
 			Ok(RT.block_on(async { this.attach(&name).await })?)
 		});
 
-		// TODO disconnect_buffer
-		// TODO leave_workspace:w
+		methods.add_method("detach", |_, this, (name,):(String,)| {
+			Ok(matches!(this.detach(&name), DetachResult::Detaching | DetachResult::AlreadyDetached))
+		});
+
+		methods.add_method("delete_buffer", |_, this, (name,):(String,)| {
+			Ok(RT.block_on(this.delete(&name))?)
+		});
 
 		methods.add_method("get_buffer", |_, this, (name,):(String,)| Ok(this.buffer_by_name(&name)));
 	}
