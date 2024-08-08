@@ -6,12 +6,13 @@ pub mod cursor;
 pub mod buffer;
 pub mod op_cache;
 
-#[derive(Debug)]
-struct JsCodempError(crate::Error);
-
-impl From::<JsCodempError> for napi::Error {
-	fn from(value: JsCodempError) -> Self {
-		napi::Error::new(napi::Status::GenericFailure, &format!("CodempError: {:?}", value))
+impl From<crate::Error> for napi::Error {
+	fn from(value: crate::Error) -> Self {
+		let msg = format!("{value}");
+		match value {
+			crate::Error::Deadlocked => napi::Error::new(napi::Status::WouldDeadlock, msg),
+			_ => napi::Error::new(napi::Status::GenericFailure, msg),
+		}
 	}
 }
 
@@ -36,11 +37,12 @@ impl JsLogger {
 			.with_line_number(false)
 			.with_source_location(false)
 			.compact();
-		tracing_subscriber::fmt()
+		let _initialized = tracing_subscriber::fmt()
 			.event_format(format)
 			.with_max_level(level)
 			.with_writer(std::sync::Mutex::new(JsLoggerProducer(tx)))
-			.init();
+			.try_init()
+			.is_ok();
 		JsLogger(std::sync::Arc::new(tokio::sync::Mutex::new(rx)))
 	}
 

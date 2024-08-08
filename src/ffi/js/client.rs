@@ -1,43 +1,37 @@
 use napi_derive::napi;
-use crate::ffi::js::JsCodempError;
-
-#[napi]
-/// main codemp client session
-pub struct JsCodempClient(tokio::sync::RwLock<crate::Client>);
+use crate::prelude::*;
 
 #[napi]
 /// connect to codemp servers and return a client session
-pub async fn connect(addr: Option<String>) -> napi::Result<JsCodempClient>{
-	let client = crate::Client::new(addr.as_deref().unwrap_or("http://codemp.alemi.dev:50053"))
+pub async fn connect(addr: Option<String>, username: String, password: String) -> napi::Result<CodempClient>{
+	let client = crate::Client::new(addr.as_deref().unwrap_or("http://codemp.alemi.dev:50053"), username, password)
 		.await?;
 
-	Ok(JsCodempClient(tokio::sync::RwLock::new(client)))
+	Ok(client)
 }
 
 #[napi]
-impl JsCodempClient {
-	#[napi]
-	/// login against AuthService with provided credentials, optionally requesting access to a workspace
-	pub async fn login(&self, username: String, password: String, workspace_id: Option<String>) -> napi::Result<()> {
-		self.0.read().await.login(username, password, workspace_id).await?;
-		Ok(())
-	}
-
-	#[napi]
+impl CodempClient {
+	#[napi(js_name = "join_workspace")]
 	/// join workspace with given id (will start its cursor controller)
-	pub async fn join_workspace(&self, workspace: String) -> napi::Result<JsWorkspace> {
-		Ok(JsWorkspace::from(self.0.write().await.join_workspace(&workspace).await?))
+	pub async fn js_join_workspace(&self, workspace: String) -> napi::Result<CodempWorkspace> {
+		Ok(self.join_workspace(workspace).await?)
 	}
 
-	#[napi]
+	#[napi(js_name = "get_workspace")]
 	/// get workspace with given id, if it exists
-	pub async fn get_workspace(&self, workspace: String) -> Option<JsWorkspace> {
-		self.0.read().await.get_workspace(&workspace).map(|w| JsWorkspace::from(w))
+	pub fn js_get_workspace(&self, workspace: String) -> Option<CodempWorkspace> {
+		self.get_workspace(&workspace)
 	}
 
-	#[napi]
+	#[napi(js_name = "user_id")]
 	/// return current sessions's user id
-	pub async fn user_id(&self) -> String {
-		self.0.read().await.user_id().to_string()
+	pub fn js_user_id(&self) -> String {
+		self.user_id().to_string()
+	}
+
+	#[napi(js_name = "active_workspaces")]
+	pub fn js_active_workspaces(&self) -> Vec<String> {
+		self.active_workspaces()
 	}
 }

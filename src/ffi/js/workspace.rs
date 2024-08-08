@@ -36,9 +36,9 @@ impl CodempWorkspace {
 		Ok(self.attach(&path).await?)
 	}
 	
-	/*#[napi]
-	pub async fn delete(&self, path: String) -> napi::Result<>{
-		self.0.delete(&path)
-	}*/
+	#[napi(js_name = "delete")]
+	pub async fn js_delete(&self, path: String) -> napi::Result<()> {
+		Ok(self.delete(&path).await?)
+	}
 
 }

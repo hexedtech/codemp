@@ -52,6 +52,7 @@ impl AuthWrap {
 /// will disconnect when dropped
 /// can be used to interact with server
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "js", napi_derive::napi)]
 pub struct Client(Arc<ClientInner>);
 
 #[derive(Debug)]

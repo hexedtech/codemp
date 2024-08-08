@@ -1,27 +1,11 @@
-use std::sync::Arc;
 use napi::threadsafe_function::{ErrorStrategy::Fatal, ThreadSafeCallContext, ThreadsafeFunction, ThreadsafeFunctionCallMode};
 use napi_derive::napi;
 use crate::api::TextChange;
-use crate::ffi::js::JsCodempError;
 use crate::api::Controller;
 use crate::prelude::*;
 
-
-
-impl From<crate::Error> for napi::Error {
-	fn from(value: crate::Error) -> Self {
-		let msg = format!("{value}");
-		match value {
-			crate::Error::Deadlocked => napi::Error::new(napi::Status::WouldDeadlock, msg),
-			_ => napi::Error::new(napi::Status::GenericFailure, msg),
-		}
-	}
-}
-
 #[napi]
 impl CodempBufferController {
-
-
 	#[napi(ts_args_type = "fun: (event: JsTextChange) => void")]
 	pub fn callback(&self, fun: napi::JsFunction) -> napi::Result<()>{ 
 		let tsfn : ThreadsafeFunction<crate::api::TextChange, Fatal> = 
@@ -47,14 +31,13 @@ impl CodempBufferController {
 		Ok(())
 	}
 
-
 	#[napi(js_name = "recv")]
-	pub async fn jsrecv(&self) -> napi::Result<TextChange> {
+	pub async fn js_recv(&self) -> napi::Result<TextChange> {
 		Ok(self.recv().await?.into())
 	}
 
-	#[napi]
-	pub fn send(&self, op: TextChange) -> napi::Result<()> {
+	#[napi(js_name = "send")]
+	pub fn js_send(&self, op: TextChange) -> napi::Result<()> {
 		Ok(self.send(op)?)
 	}
 }
