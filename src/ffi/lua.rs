@@ -34,6 +34,19 @@ fn get_client(_: &Lua, (id,): (String,)) -> LuaResult<Option<CodempClient>> {
 	Ok(STORE.get(&id).map(|x| x.value().clone()))
 }
 
+fn close_client(_: &Lua, (id,): (String,)) -> LuaResult<bool> {
+	if let Some((_id, client)) = STORE.remove(&id) {
+		for ws in client.active_workspaces() {
+			if !client.leave_workspace(&ws) {
+				tracing::warn!("could not leave workspace {ws}");
+			}
+		}
+		Ok(true)
+	} else {
+		Ok(false)
+	}
+}
+
 impl LuaUserData for CodempClient {
 	fn add_fields<'lua, F: LuaUserDataFields<'lua, Self>>(fields: &mut F) {
 		fields.add_field_method_get("id", |_, this| Ok(this.user_id().to_string()));
@@ -248,6 +261,7 @@ fn codemp_lua(lua: &Lua) -> LuaResult<LuaTable> {
 	// entrypoint
 	exports.set("connect", lua.create_function(connect)?)?;
 	exports.set("get_client", lua.create_function(get_client)?)?;
+	exports.set("close_client", lua.create_function(close_client)?)?;
 
 	// runtime
 	exports.set("runtime_drive_forever", lua.create_function(runtime_drive_forever)?)?;
