@@ -1,4 +1,4 @@
-use jni::{objects::{JClass, JObject, JString, JValueGen}, sys::{jlong, jobject}, JNIEnv};
+use jni::{objects::{JClass, JObject, JString, JValueGen}, sys::{jboolean, jlong, jobject}, JNIEnv};
 use crate::{client::Client, Workspace};
 
 use super::{util::JExceptable, RT};
@@ -8,34 +8,20 @@ use super::{util::JExceptable, RT};
 pub extern "system" fn Java_mp_code_Client_connect<'local>(
 	mut env: JNIEnv,
 	_class: JClass<'local>,
-	input: JString<'local>
+	url: JString<'local>,
+	user: JString<'local>,
+	pwd: JString<'local>
 ) -> jobject {
-	let url: String = env.get_string(&input).expect("Couldn't get java string!").into();
-	RT.block_on(crate::Client::new(&url))
+	let url: String = env.get_string(&url).expect("Couldn't get java string!").into();
+	let user: String = env.get_string(&user).expect("Couldn't get java string!").into();
+	let pwd: String = env.get_string(&pwd).expect("Couldn't get java string!").into();
+	RT.block_on(crate::Client::new(&url, &user, &pwd))
 		.map(|client| Box::into_raw(Box::new(client)) as jlong)
 		.map(|ptr| {
 			let class = env.find_class("mp/code/Client").expect("Failed to find class");
 			env.new_object(class, "(J)V", &[JValueGen::Long(ptr)])
 			.expect("Failed to initialise object")
 		}).jexcept(&mut env).as_raw()
-}
-
-/// Logs in to a specific [Workspace].
-#[no_mangle]
-pub extern "system" fn Java_mp_code_Client_login<'local>(
-	mut env: JNIEnv<'local>,
-	_class: JClass<'local>,
-	self_ptr: jlong,
-	user: JString<'local>,
-	pwd: JString<'local>,
-	workspace: JString<'local>
-) {
-	let client = unsafe { Box::leak(Box::from_raw(self_ptr as *mut Client)) };
-	let user: String = env.get_string(&user).expect("Couldn't get java string!").into();
-	let pwd: String = env.get_string(&pwd).expect("Couldn't get java string!").into();
-	let workspace: String = env.get_string(&workspace).expect("Couldn't get java string!").into();
-	RT.block_on(client.login(user, pwd, Some(workspace)))
-		.jexcept(&mut env)
 }
 
 /// Joins a [Workspace] and returns a pointer to it.
@@ -71,6 +57,18 @@ fn spawn_updater(workspace: Workspace) -> Workspace {
 	workspace
 }
 
+/// Leaves a [Workspace] and returns whether or not the client was in such workspace.
+#[no_mangle]
+pub extern "system" fn Java_mp_code_Client_leave_1workspace<'local>(
+	env: JNIEnv<'local>,
+	_class: JClass<'local>,
+	self_ptr: jlong,
+	input: JString<'local>
+) -> jboolean {
+	let client  = unsafe { Box::leak(Box::from_raw(self_ptr as *mut Client)) };
+	let workspace_id = unsafe { env.get_string_unchecked(&input).expect("Couldn't get java string!") };
+	client.leave_workspace(workspace_id.to_str().expect("Not UTF-8")) as jboolean
+}
 /// Gets a [Workspace] by name and returns a pointer to it.
 #[no_mangle]
 pub extern "system" fn Java_mp_code_Client_get_1workspace<'local>(

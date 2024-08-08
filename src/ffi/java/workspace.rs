@@ -103,6 +103,29 @@ pub extern "system" fn Java_mp_code_Workspace_attach_1to_1buffer<'local>(
 		}).jexcept(&mut env).as_raw()
 }
 
+#[no_mangle]
+pub extern "system" fn Java_mp_code_Workspace_detach_1from_1buffer<'local>(
+	mut env: JNIEnv,
+	_class: JClass<'local>,
+	self_ptr: jlong,
+	input: JString<'local>
+) -> jobject {
+	let workspace  = unsafe { Box::leak(Box::from_raw(self_ptr as *mut Workspace)) };
+	let path = unsafe { env.get_string_unchecked(&input).expect("Couldn't get java string!") };
+	let name = match workspace.detach(path.to_str().expect("Not UTF-8")) {
+		crate::workspace::DetachResult::NotAttached => "NOT_ATTACHED",
+		crate::workspace::DetachResult::Detaching => "DETACHED",
+		crate::workspace::DetachResult::AlreadyDetached => "ALREADY_DETACHED"
+	};
+
+	let class = env.find_class("mp/code/data/DetachResult").expect("Failed to find class!");
+	env.get_static_field(class, name, "Lmp/code/data/DetachResult;")
+		.expect("Failed to get field!")
+		.l()
+		.expect("Field was of wrong type!")
+		.as_raw()
+}
+
 /// Updates the local buffer list.
 #[no_mangle]
 pub extern "system" fn Java_mp_code_Workspace_fetch_1buffers(

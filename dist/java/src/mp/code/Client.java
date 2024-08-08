@@ -9,7 +9,7 @@ import java.util.Optional;
 public class Client {
 	private final long ptr;
 
-	public static native Client connect(String url) throws CodeMPException;
+	public static native Client connect(String url, String username, String password) throws CodeMPException;
 	Client(long ptr) {
 		this.ptr = ptr;
 	}
@@ -19,14 +19,14 @@ public class Client {
 		return get_url(this.ptr);
 	}
 
-	private static native void login(long self, String username, String password, String workspace) throws CodeMPException;
-	public void login(String username, String password, String workspace) throws CodeMPException {
-		login(this.ptr, username, password, workspace);
-	}
-
 	private static native Workspace join_workspace(long self, String id) throws CodeMPException;
 	public Workspace joinWorkspace(String id) throws CodeMPException {
 		return join_workspace(this.ptr, id);
+	}
+
+	private static native boolean leave_workspace(long self, String id);
+	public boolean leaveWorkspace(String id) {
+		return leave_workspace(this.ptr, id);
 	}
 
 	private static native Workspace get_workspace(long self);

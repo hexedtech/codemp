@@ -2,6 +2,7 @@ package mp.code;
 
 import java.util.Optional;
 
+import mp.code.data.DetachResult;
 import mp.code.exceptions.CodeMPException;
 
 public class Workspace {
@@ -39,6 +40,11 @@ public class Workspace {
 	private static native BufferController attach_to_buffer(long self, String path) throws CodeMPException;
 	public BufferController attachToBuffer(String path) throws CodeMPException {
 		return attach_to_buffer(ptr, path);
+	}
+
+	private static native DetachResult detach_from_buffer(long self, String path);
+	public DetachResult detachFromBuffer(String path) {
+		return detach_from_buffer(this.ptr, path);
 	}
 
 	private static native void fetch_buffers(long self) throws CodeMPException;
