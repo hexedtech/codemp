@@ -1,12 +1,16 @@
 use crate::{
-	api::{Controller, controller::ControllerWorker},
+	api::{controller::ControllerWorker, Controller},
 	buffer::{self, worker::BufferWorker},
-	client::Services,
-	cursor,
+	cursor::{self, worker::CursorWorker},
 };
+
 use codemp_proto::{
+	common::Empty,
+	buffer::buffer_client::BufferClient,
+	cursor::cursor_client::CursorClient,
 	auth::Token,
-	common::{Empty, Identity},
+	workspace::workspace_client::WorkspaceClient,
+	common::Identity,
 	files::BufferNode,
 	workspace::{
 		workspace_event::{
@@ -15,10 +19,11 @@ use codemp_proto::{
 		WorkspaceEvent,
 	},
 };
+
 use dashmap::{DashMap, DashSet};
 use std::{collections::BTreeSet, sync::Arc};
 use tokio::sync::mpsc;
-use tonic::Streaming;
+use tonic::{service::{interceptor::InterceptedService, Interceptor}, transport::{Channel, Endpoint}, Streaming};
 use uuid::Uuid;
 
 #[cfg(feature = "js")]
@@ -28,6 +33,47 @@ use napi_derive::napi;
 #[derive(Debug, Clone)]
 pub struct UserInfo {
 	pub uuid: Uuid,
+}
+
+#[derive(Clone)]
+struct WorkspaceInterceptor {
+	token: tokio::sync::watch::Receiver<Token>
+}
+
+impl Interceptor for WorkspaceInterceptor {
+	fn call(&mut self, mut request: tonic::Request<()>) -> Result<tonic::Request<()>, tonic::Status> {
+		if let Ok(token) = self.token.borrow().token.parse() {
+			request.metadata_mut().insert("auth", token);
+		}
+		
+		Ok(request)
+	}
+}
+
+type AuthedService = InterceptedService<Channel, WorkspaceInterceptor>;
+
+#[derive(Debug)]
+struct Services {
+	token: tokio::sync::watch::Sender<Token>,
+	workspace: WorkspaceClient<AuthedService>,
+	buffer: BufferClient<AuthedService>,
+	cursor: CursorClient<AuthedService>,
+}
+
+impl Services {
+	async fn try_new(dest: &str, token: Token) -> crate::Result<Self> {
+		let channel = Endpoint::from_shared(dest.to_string())?
+			.connect()
+			.await?;
+		let (token_tx, token_rx) = tokio::sync::watch::channel(token);
+		let inter = WorkspaceInterceptor { token: token_rx };
+		Ok(Self {
+			token: token_tx,
+			buffer: BufferClient::with_interceptor(channel.clone(), inter.clone()),
+			cursor: CursorClient::with_interceptor(channel.clone(), inter.clone()),
+			workspace: WorkspaceClient::with_interceptor(channel.clone(), inter.clone()),
+		})
+	}
 }
 
 #[derive(Debug, Clone)]
@@ -43,29 +89,52 @@ struct WorkspaceInner {
 	buffers: DashMap<String, buffer::Controller>,
 	filetree: DashSet<String>,
 	users: DashMap<Uuid, UserInfo>,
-	token: Arc<tokio::sync::watch::Sender<Token>>, // shared
-	services: Arc<Services>, // shared
+	services: Services
 }
 
 impl Workspace {
 	/// create a new buffer and perform initial fetch operations
-	pub(crate) fn new(
+	pub(crate) async fn try_new(
 		id: String,
 		user_id: Uuid,
-		cursor: cursor::Controller,
-		token: Arc<tokio::sync::watch::Sender<Token>>,
-		services: Arc<Services>,
-	) -> Self {
-		Self(Arc::new(WorkspaceInner {
+		dest: &str,
+		token: Token,
+	) -> crate::Result<Self> {
+		let services = Services::try_new(dest, token).await?;
+		let ws_stream = services.workspace.clone()
+			.attach(Empty{})
+			.await?
+			.into_inner();
+
+		let (tx, rx) = mpsc::channel(256);
+		let cur_stream = services.cursor.clone()
+			.attach(tokio_stream::wrappers::ReceiverStream::new(rx))
+			.await?
+			.into_inner();
+
+		let worker = CursorWorker::default();
+		let controller = worker.controller();
+		tokio::spawn(async move {
+			tracing::debug!("controller worker started");
+			worker.work(tx, cur_stream).await;
+			tracing::debug!("controller worker stopped");
+		});
+
+		let ws = Self(Arc::new(WorkspaceInner {
 			id,
 			user_id,
-			token,
-			cursor,
+			cursor: controller,
 			buffers: DashMap::default(),
 			filetree: DashSet::default(),
 			users: DashMap::default(),
 			services,
-		}))
+		}));
+
+		ws.fetch_users().await?;
+		ws.fetch_buffers().await?;
+		ws.run_actor(ws_stream);
+
+		Ok(ws)
 	}
 
 	pub(crate) fn run_actor(&self, mut stream: Streaming<WorkspaceEvent>) {
@@ -135,7 +204,7 @@ impl Workspace {
 			path: path.to_string(),
 		});
 		let credentials = worskspace_client.access_buffer(request).await?.into_inner();
-		self.0.token.send(credentials.token)?;
+		self.0.services.token.send(credentials.token)?;
 
 		let (tx, rx) = mpsc::channel(256);
 		let mut req = tonic::Request::new(tokio_stream::wrappers::ReceiverStream::new(rx));
@@ -154,7 +223,7 @@ impl Workspace {
 			.into_inner();
 
 		let worker = BufferWorker::new(self.0.user_id, path);
-		let controller = worker.subscribe();
+		let controller = worker.controller();
 		tokio::spawn(async move {
 			tracing::debug!("controller worker started");
 			worker.work(tx, stream).await;
