@@ -3,26 +3,39 @@ use std::sync::Mutex;
 
 use crate::api::Cursor;
 use crate::prelude::*;
-use crate::workspace::DetachResult;
+use crate::workspace::worker::DetachResult;
 use mlua::prelude::*;
 use tokio::sync::broadcast;
-
-lazy_static::lazy_static!{
-	// TODO use a runtime::Builder::new_current_thread() runtime to not behave like malware
-	static ref RT : tokio::runtime::Runtime = tokio::runtime::Builder::new_current_thread().enable_all().build().expect("could not create tokio runtime");
-	static ref LOG : broadcast::Sender<String> = broadcast::channel(32).0;
-	static ref STORE : dashmap::DashMap<String, CodempClient> = dashmap::DashMap::default();
-}
-
-fn runtime_drive_forever(_: &Lua, ():()) -> LuaResult<()> {
-	std::thread::spawn(|| RT.block_on(std::future::pending::<()>()));
-	Ok(())
-}
 
 impl From::<CodempError> for LuaError {
 	fn from(value: CodempError) -> Self {
 		LuaError::RuntimeError(value.to_string())
 	}
+}
+
+lazy_static::lazy_static!{
+	static ref RT : tokio::runtime::Runtime = tokio::runtime::Builder::new_current_thread().enable_all().build().expect("could not create tokio runtime");
+	static ref LOG : broadcast::Sender<String> = broadcast::channel(32).0;
+	static ref STORE : dashmap::DashMap<String, CodempClient> = dashmap::DashMap::default();
+}
+
+#[derive(Debug, Clone)]
+struct Driver(tokio::sync::mpsc::UnboundedSender<()>);
+impl LuaUserData for Driver {
+	fn add_methods<'lua, M: LuaUserDataMethods<'lua, Self>>(methods: &mut M) {
+		methods.add_method("stop", |_, this, ()| Ok(this.0.send(()).is_ok()));
+	}
+}
+
+fn runtime_drive_forever(_: &Lua, ():()) -> LuaResult<Driver> {
+	let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
+	std::thread::spawn(move || RT.block_on(async move {
+		tokio::select! {
+			() = std::future::pending::<()>() => {},
+			_ = rx.recv() => {},
+		}
+	}));
+	Ok(Driver(tx))
 }
 
 fn connect(_: &Lua, (host, username, password): (String, String, String)) -> LuaResult<CodempClient> {
@@ -128,6 +141,7 @@ impl LuaUserData for Cursor {
 	}
 }
 
+#[derive(Debug, Clone, Copy)]
 struct RowCol {
 	row: i32,
 	col: i32,
@@ -184,8 +198,6 @@ impl LuaUserData for CodempBufferController {
 	}
 }
 
-impl LuaUserData for CodempOp { }
-
 impl LuaUserData for CodempTextChange {
 	fn add_fields<'lua, F: LuaUserDataFields<'lua, Self>>(fields: &mut F) {
 		fields.add_field_method_get("content", |_, this| Ok(this.content.clone()));
@@ -209,7 +221,7 @@ impl LuaUserData for CodempTextChange {
 
 
 // setup library logging to file
-#[derive(Debug, derive_more::From)]
+#[derive(Debug)]
 struct LuaLogger(broadcast::Receiver<String>);
 impl LuaUserData for LuaLogger {
 	fn add_methods<'lua, M: LuaUserDataMethods<'lua, Self>>(methods: &mut M) {
