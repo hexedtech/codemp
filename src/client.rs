@@ -112,6 +112,11 @@ impl Client {
 		self.0.workspaces.get(id).map(|x| x.clone())
 	}
 
+	/// get name of all active [Workspace]s
+	pub fn active_workspaces(&self) -> Vec<String> {
+		self.0.workspaces.iter().map(|x| x.key().to_string()).collect()
+	}
+
 	/// accessor for user id
 	pub fn user_id(&self) -> Uuid {
 		self.0.user_id
