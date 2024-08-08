@@ -23,7 +23,7 @@ pub(crate) struct BufferWorker {
 	poller: mpsc::UnboundedReceiver<oneshot::Sender<()>>,
 	pollers: Vec<oneshot::Sender<()>>,
 	stop: mpsc::UnboundedReceiver<()>,
-	controller: Arc<BufferControllerInner>,
+	controller: BufferController,
 }
 
 impl BufferWorker {
@@ -50,7 +50,7 @@ impl BufferWorker {
 			poller: poller_rx,
 			pollers: Vec::new(),
 			stop: end_rx,
-			controller: Arc::new(controller),
+			controller: BufferController(Arc::new(controller)),
 		}
 	}
 }
@@ -61,8 +61,8 @@ impl ControllerWorker<TextChange> for BufferWorker {
 	type Tx = mpsc::Sender<Operation>;
 	type Rx = Streaming<BufferEvent>;
 
-	fn subscribe(&self) -> BufferController {
-		BufferController(self.controller.clone())
+	fn controller(&self) -> BufferController {
+		self.controller.clone()
 	}
 
 	async fn work(mut self, tx: Self::Tx, mut rx: Self::Rx) {

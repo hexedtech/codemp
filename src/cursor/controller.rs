@@ -28,29 +28,29 @@ use codemp_proto::cursor::{CursorEvent, CursorPosition};
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "python", pyo3::pyclass)]
 #[cfg_attr(feature = "js", napi_derive::napi)]
-pub struct CursorController(Arc<CursorControllerInner>);
+pub struct CursorController(pub(crate) Arc<CursorControllerInner>);
 
 #[derive(Debug)]
-struct CursorControllerInner {
+pub(crate) struct CursorControllerInner {
 	op: mpsc::UnboundedSender<CursorPosition>,
 	last_op: Mutex<watch::Receiver<CursorEvent>>,
 	stream: Mutex<broadcast::Receiver<CursorEvent>>,
 	stop: mpsc::UnboundedSender<()>,
 }
 
-impl CursorController {
+impl CursorControllerInner {
 	pub(crate) fn new(
 		op: mpsc::UnboundedSender<CursorPosition>,
 		last_op: Mutex<watch::Receiver<CursorEvent>>,
 		stream: Mutex<broadcast::Receiver<CursorEvent>>,
 		stop: mpsc::UnboundedSender<()>,
 	) -> Self {
-		Self(Arc::new(CursorControllerInner {
+		Self {
 			op,
 			last_op,
 			stream,
 			stop,
-		}))
+		}
 	}
 }
 

@@ -11,7 +11,7 @@ pub(crate) trait ControllerWorker<T : Sized + Send + Sync> {
 	type Tx;
 	type Rx;
 
-	fn subscribe(&self) -> Self::Controller;
+	fn controller(&self) -> Self::Controller;
 	async fn work(self, tx: Self::Tx, rx: Self::Rx);
 }
 
