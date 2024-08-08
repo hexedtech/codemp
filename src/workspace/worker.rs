@@ -1,6 +1,6 @@
 use crate::{
 	api::{controller::ControllerWorker, Controller, User},
-	buffer::{self, tools::InternallyMutable, worker::BufferWorker},
+	buffer::{self, worker::BufferWorker},
 	cursor::{self, worker::CursorWorker},
 	workspace::service::Services,
 };
