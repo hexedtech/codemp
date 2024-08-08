@@ -74,12 +74,6 @@ impl<T> InternallyMutable<T> {
 	pub fn set(&self, state: T) -> T {
 		self.setter.send_replace(state)
 	}
-
-	pub async fn wait(&self) {
-		let mut new = self.getter.clone();
-		new.changed().await; // first time unlocks immediately
-		new.changed().await;
-	}
 }
 
 impl<T: Clone> InternallyMutable<T> {
