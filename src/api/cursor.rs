@@ -6,9 +6,13 @@
 use codemp_proto as proto;
 use uuid::Uuid;
 
+#[cfg(feature = "python")]
+use pyo3::prelude::*;
+
 /// user cursor position in a buffer
 #[derive(Clone, Debug, Default)]
-#[cfg_attr(feature = "python", pyo3::pyclass)]
+#[cfg_attr(feature = "python", pyclass)]
+// #[cfg_attr(feature = "python", pyo3(crate = "reexported::pyo3"))]
 pub struct Cursor {
 	/// range of text change, as char indexes in buffer previous state
 	pub start: (i32, i32),
