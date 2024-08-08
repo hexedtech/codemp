@@ -32,8 +32,9 @@ pub struct Op(pub(crate) woot::crdt::Op);
 ///
 
 #[derive(Clone, Debug, Default)]
-#[cfg_attr(feature = "python", pyo3::pyclass)]
 #[cfg_attr(feature = "js", napi_derive::napi(object))]
+#[cfg_attr(feature = "python", pyo3::pyclass)]
+#[cfg_attr(feature = "python", pyo3(get_all))]
 pub struct TextChange {
 	/// range start of text change, as char indexes in buffer previous state
 	pub start: u32,
@@ -76,11 +77,11 @@ impl TextChange {
 	}
 
 	pub fn span(&self) -> std::ops::Range<usize> {
-		self.start as usize .. self.end as usize
+		self.start as usize..self.end as usize
 	}
 
 	/// consume the [TextChange], transforming it into a Vec of [Op]
-	pub fn transform(self, woot: &Woot) -> WootResult<Vec<Op>> {
+	pub fn transform(&self, woot: &Woot) -> WootResult<Vec<Op>> {
 		let mut out = Vec::new();
 		if self.is_empty() {
 			return Ok(out);
@@ -180,7 +181,8 @@ mod tests {
 	#[test]
 	fn textchange_apply_works_for_insertions() {
 		let change = super::TextChange {
-			start: 5, end: 5,
+			start: 5,
+			end: 5,
 			content: " cruel".to_string(),
 		};
 		let result = change.apply("hello world!");
@@ -190,7 +192,8 @@ mod tests {
 	#[test]
 	fn textchange_apply_works_for_deletions() {
 		let change = super::TextChange {
-			start: 5, end: 11,
+			start: 5,
+			end: 11,
 			content: "".to_string(),
 		};
 		let result = change.apply("hello cruel world!");
@@ -200,7 +203,8 @@ mod tests {
 	#[test]
 	fn textchange_apply_works_for_replacements() {
 		let change = super::TextChange {
-			start: 5, end: 11,
+			start: 5,
+			end: 11,
 			content: " not very pleasant".to_string(),
 		};
 		let result = change.apply("hello cruel world!");
@@ -210,7 +214,8 @@ mod tests {
 	#[test]
 	fn textchange_apply_never_panics() {
 		let change = super::TextChange {
-			start: 100, end: 110,
+			start: 100,
+			end: 110,
 			content: "a very long string \n which totally matters".to_string(),
 		};
 		let result = change.apply("a short text");
@@ -229,7 +234,8 @@ mod tests {
 	#[test]
 	fn empty_textchange_doesnt_alter_buffer() {
 		let change = super::TextChange {
-			start: 42, end: 42,
+			start: 42,
+			end: 42,
 			content: "".to_string(),
 		};
 		let result = change.apply("some important text");

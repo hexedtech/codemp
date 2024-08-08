@@ -1,4 +1,3 @@
-use pyo3::types::{PyList, PyTuple};
 use std::{format, sync::Arc};
 use tokio::sync::{mpsc, Mutex, RwLock};
 use tracing;
@@ -7,9 +6,9 @@ use tracing_subscriber;
 use crate::prelude::*;
 
 use pyo3::{
-	exceptions::{PyBaseException, PyConnectionError, PyRuntimeError},
+	exceptions::{PyConnectionError, PyRuntimeError},
 	prelude::*,
-	types::{PyString, PyType},
+	types::{PyList, PyString, PyTuple, PyType},
 };
 
 // ERRORS And LOGGING ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -25,7 +24,7 @@ impl From<CodempError> for PyErr {
 			CodempError::InvalidState { msg } => {
 				PyRuntimeError::new_err(format!("Invalid state: {}", msg))
 			}
-			CodempError::Deadlocked => PyRuntimeError::new_err(format!("Deadlock, retry."))
+			CodempError::Deadlocked => PyRuntimeError::new_err(format!("Deadlock, retry.")),
 		}
 	}
 }

@@ -8,9 +8,12 @@ use dashmap::DashMap;
 use tonic::transport::{Channel, Endpoint};
 use uuid::Uuid;
 
+use crate::workspace::Workspace;
 use codemp_proto::auth::auth_client::AuthClient;
 use codemp_proto::auth::{Token, WorkspaceJoinRequest};
-use crate::workspace::Workspace;
+
+#[cfg(feature = "python")]
+use pyo3::prelude::*;
 
 #[derive(Debug)]
 pub struct AuthWrap {
@@ -21,9 +24,7 @@ pub struct AuthWrap {
 
 impl AuthWrap {
 	async fn try_new(username: &str, password: &str, host: &str) -> crate::Result<Self> {
-		let channel = Endpoint::from_shared(host.to_string())?
-			.connect()
-			.await?;
+		let channel = Endpoint::from_shared(host.to_string())?.connect().await?;
 
 		Ok(AuthWrap {
 			username: username.to_string(),
@@ -33,16 +34,16 @@ impl AuthWrap {
 	}
 
 	async fn login_workspace(&self, ws: &str) -> crate::Result<Token> {
-		Ok(
-			self.service.clone()
-				.login(WorkspaceJoinRequest {
-					username: self.username.clone(),
-					password: self.password.clone(),
-					workspace_id: Some(ws.to_string())
-				})
-				.await?
-				.into_inner()
-		)
+		Ok(self
+			.service
+			.clone()
+			.login(WorkspaceJoinRequest {
+				username: self.username.clone(),
+				password: self.password.clone(),
+				workspace_id: Some(ws.to_string()),
+			})
+			.await?
+			.into_inner())
 	}
 }
 
@@ -53,6 +54,7 @@ impl AuthWrap {
 /// can be used to interact with server
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "js", napi_derive::napi)]
+#[cfg_attr(feature = "python", pyclass)]
 pub struct Client(Arc<ClientInner>);
 
 #[derive(Debug)]
@@ -68,7 +70,7 @@ impl Client {
 	pub async fn new(
 		host: impl AsRef<str>,
 		username: impl AsRef<str>,
-		password: impl AsRef<str>
+		password: impl AsRef<str>,
 	) -> crate::Result<Self> {
 		let host = if host.as_ref().starts_with("http") {
 			host.as_ref().to_string()
@@ -95,10 +97,13 @@ impl Client {
 			workspace.as_ref().to_string(),
 			self.0.user_id,
 			&self.0.host,
-			token.clone()
-		).await?;
+			token.clone(),
+		)
+		.await?;
 
-		self.0.workspaces.insert(workspace.as_ref().to_string(), ws.clone());
+		self.0
+			.workspaces
+			.insert(workspace.as_ref().to_string(), ws.clone());
 
 		Ok(ws)
 	}
@@ -115,7 +120,11 @@ impl Client {
 
 	/// get name of all active [Workspace]s
 	pub fn active_workspaces(&self) -> Vec<String> {
-		self.0.workspaces.iter().map(|x| x.key().to_string()).collect()
+		self.0
+			.workspaces
+			.iter()
+			.map(|x| x.key().to_string())
+			.collect()
 	}
 
 	/// accessor for user id
