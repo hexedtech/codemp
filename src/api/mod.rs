@@ -13,6 +13,9 @@ pub mod change;
 /// representation for an user's cursor
 pub mod cursor;
 
+/// workspace events
+pub mod event;
+
 /// data structure for service users
 pub mod user;
 
@@ -20,4 +23,5 @@ pub use controller::Controller;
 pub use change::TextChange;
 pub use change::Op;
 pub use cursor::Cursor;
+pub use event::Event;
 pub use user::User;
