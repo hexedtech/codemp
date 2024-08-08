@@ -13,7 +13,11 @@ pub mod change;
 /// representation for an user's cursor
 pub mod cursor;
 
+/// data structure for service users
+pub mod user;
+
 pub use controller::Controller;
 pub use change::TextChange;
 pub use change::Op;
 pub use cursor::Cursor;
+pub use user::User;

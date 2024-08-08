@@ -12,12 +12,15 @@ pub use crate::api::{
 	TextChange as CodempTextChange,
 	Cursor as CodempCursor,
 	Op as CodempOp,
+	User as CodempUser,
 };
 	
 pub use crate::{
 	client::Client as CodempClient,
 	workspace::Workspace as CodempWorkspace,
-	workspace::UserInfo as CodempUserInfo,
 	cursor::Controller as CodempCursorController,
 	buffer::Controller as CodempBufferController,
 };
+
+#[deprecated = "use CodempUser instead"]
+pub use crate::api::user::User as CodempUserInfo;
