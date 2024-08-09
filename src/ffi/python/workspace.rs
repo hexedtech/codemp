@@ -1,11 +1,11 @@
-use crate::buffer::Controller as CodempBufferController;
-use crate::cursor::Controller as CodempCursorController;
-use crate::workspace::Workspace as CodempWorkspace;
+use crate::buffer::Controller as BufferController;
+use crate::cursor::Controller as CursorController;
+use crate::workspace::Workspace;
 use pyo3::prelude::*;
 use pyo3::types::PyString;
 
 #[pymethods]
-impl CodempWorkspace {
+impl Workspace {
 	// join a workspace
 	#[pyo3(name = "create")]
 	fn pycreate<'p>(&'p self, py: Python<'p>, path: String) -> PyResult<&'p PyAny> {
@@ -21,7 +21,7 @@ impl CodempWorkspace {
 		let ws = self.clone();
 
 		pyo3_asyncio::tokio::future_into_py(py, async move {
-			let buffctl: CodempBufferController = ws.attach(path.as_str()).await?;
+			let buffctl: BufferController = ws.attach(path.as_str()).await?;
 			Python::with_gil(|py| Py::new(py, buffctl))
 		})
 	}
@@ -29,9 +29,9 @@ impl CodempWorkspace {
 	#[pyo3(name = "detach")]
 	fn pydetach(&self, path: String) -> bool {
 		match self.detach(path.as_str()) {
-			crate::workspace::DetachResult::NotAttached => false,
-			crate::workspace::DetachResult::Detaching => true,
-			crate::workspace::DetachResult::AlreadyDetached => true,
+			crate::workspace::worker::DetachResult::NotAttached => false,
+			crate::workspace::worker::DetachResult::Detaching => true,
+			crate::workspace::worker::DetachResult::AlreadyDetached => true,
 		}
 	}
 
@@ -87,7 +87,7 @@ impl CodempWorkspace {
 	}
 
 	#[pyo3(name = "cursor")]
-	fn pycursor(&self, py: Python<'_>) -> PyResult<Py<CodempCursorController>> {
+	fn pycursor(&self, py: Python<'_>) -> PyResult<Py<CursorController>> {
 		Py::new(py, self.cursor())
 	}
 
@@ -96,7 +96,7 @@ impl CodempWorkspace {
 		&self,
 		py: Python<'_>,
 		path: String,
-	) -> PyResult<Option<Py<CodempBufferController>>> {
+	) -> PyResult<Option<Py<BufferController>>> {
 		let Some(bufctl) = self.buffer_by_name(path.as_str()) else {
 			return Ok(None);
 		};

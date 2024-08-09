@@ -5,8 +5,10 @@ pub mod workspace;
 use std::sync::Arc;
 
 use crate::{
-	api::Cursor, api::TextChange, buffer::Controller as BufferController,
-	cursor::Controller as CursorController, Client, Workspace,
+	api::{Cursor, TextChange},
+	buffer::Controller as BufferController,
+	cursor::Controller as CursorController,
+	Client, Workspace,
 };
 use pyo3::exceptions::{PyConnectionError, PyRuntimeError, PySystemError};
 use pyo3::prelude::*;
@@ -88,14 +90,16 @@ impl PyLogger {
 
 #[pymodule]
 fn codemp(_py: Python, m: &PyModule) -> PyResult<()> {
-	m.add_class::<Client>()?;
 	m.add_class::<PyLogger>()?;
-	m.add_class::<Workspace>()?;
-	m.add_class::<CursorController>()?;
+
+	m.add_class::<TextChange>()?;
 	m.add_class::<BufferController>()?;
 
 	m.add_class::<Cursor>()?;
-	m.add_class::<TextChange>()?;
+	m.add_class::<CursorController>()?;
+
+	m.add_class::<Workspace>()?;
+	m.add_class::<Client>()?;
 
 	Ok(())
 }

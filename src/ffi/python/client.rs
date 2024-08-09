@@ -1,7 +1,6 @@
 use crate::workspace::Workspace;
 use crate::Client;
 use pyo3::prelude::*;
-use pyo3::types::{PyBool, PyList, PyString};
 
 // #[pyfunction]
 // pub fn codemp_init<'a>(py: Python<'a>) -> PyResult<Py<Client>> {
@@ -28,8 +27,8 @@ impl Client {
 	}
 
 	#[pyo3(name = "leave_workspace")]
-	fn pyleave_workspace<'p>(&'p self, py: Python<'p>, id: String) -> &PyBool {
-		PyBool::new(py, self.leave_workspace(id.as_str()))
+	fn pyleave_workspace(&self, id: String) -> bool {
+		self.leave_workspace(id.as_str())
 	}
 
 	// join a workspace
@@ -42,12 +41,12 @@ impl Client {
 	}
 
 	#[pyo3(name = "active_workspaces")]
-	fn pyactive_workspaces<'p>(&'p self, py: Python<'p>) -> &PyList {
-		PyList::new(py, self.active_workspaces())
+	fn pyactive_workspaces(&self) -> Vec<String> {
+		self.active_workspaces()
 	}
 
 	#[pyo3(name = "user_id")]
-	fn pyuser_id<'p>(&'p self, py: Python<'p>) -> &PyString {
-		PyString::new(py, self.user_id().to_string().as_str())
+	fn pyuser_id(&self) -> String {
+		self.user_id().to_string()
 	}
 }
