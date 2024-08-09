@@ -62,9 +62,14 @@ public class Workspace {
 		return list_buffer_users(this.ptr, path);
 	}
 
-			private static native void delete_buffer(long self, String path) throws CodeMPException;
+	private static native void delete_buffer(long self, String path) throws CodeMPException;
 	public void deleteBuffer(String path) throws CodeMPException {
 		delete_buffer(this.ptr, path);
+	}
+
+	private static native Event event(long self) throws CodeMPException;
+	public Event event() throws CodeMPException {
+		return event(this.ptr);
 	}
 
 	private static native BufferController select_buffer(long self, long timeout) throws CodeMPException;
@@ -77,5 +82,37 @@ public class Workspace {
 	@SuppressWarnings("removal")
 	protected void finalize() {
 		free(this.ptr);
+	}
+	
+	public static class Event {
+		private final Type type;
+		private final String argument;
+
+		Event(Type type, String argument) {
+			this.type = type;
+			this.argument = argument;
+		}
+
+		public Optional<String> getUserJoined() {
+			if(this.type == Type.USER_JOIN) {
+				return Optional.of(this.argument);
+			} else return Optional.empty();
+		}
+
+		public Optional<String> getUserLeft() {
+			if(this.type == Type.USER_LEAVE) {
+				return Optional.of(this.argument);
+			} else return Optional.empty();
+		}
+
+		public boolean hasFileTreeUpdated() {
+			return type == Type.FILE_TREE_UPDATED;
+		}
+
+		private enum Type {
+			USER_JOIN,
+			USER_LEAVE,
+			FILE_TREE_UPDATED
+		}
 	}
 }

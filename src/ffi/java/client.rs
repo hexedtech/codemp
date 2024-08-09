@@ -32,7 +32,7 @@ pub extern "system" fn Java_mp_code_Client_join_1workspace<'local>(
 	self_ptr: jlong,
 	input: JString<'local>
 ) -> jobject {
-	let client  = unsafe { Box::leak(Box::from_raw(self_ptr as *mut Client)) };
+	let client = unsafe { Box::leak(Box::from_raw(self_ptr as *mut Client)) };
 	let workspace_id = unsafe { env.get_string_unchecked(&input).expect("Couldn't get java string!") };
 	RT.block_on(client.join_workspace(workspace_id.to_str().expect("Not UTF-8")))
 		.map(|workspace| spawn_updater(workspace.clone()))
@@ -65,7 +65,7 @@ pub extern "system" fn Java_mp_code_Client_leave_1workspace<'local>(
 	self_ptr: jlong,
 	input: JString<'local>
 ) -> jboolean {
-	let client  = unsafe { Box::leak(Box::from_raw(self_ptr as *mut Client)) };
+	let client = unsafe { Box::leak(Box::from_raw(self_ptr as *mut Client)) };
 	let workspace_id = unsafe { env.get_string_unchecked(&input).expect("Couldn't get java string!") };
 	client.leave_workspace(workspace_id.to_str().expect("Not UTF-8")) as jboolean
 }
@@ -77,7 +77,7 @@ pub extern "system" fn Java_mp_code_Client_get_1workspace<'local>(
 	self_ptr: jlong,
 	input: JString<'local>
 ) -> jobject {
-	let client  = unsafe { Box::leak(Box::from_raw(self_ptr as *mut Client)) };
+	let client = unsafe { Box::leak(Box::from_raw(self_ptr as *mut Client)) };
 	let workspace_id = unsafe { env.get_string_unchecked(&input).expect("Couldn't get java string!") };
 	client.get_workspace(workspace_id.to_str().expect("Not UTF-8"))
 		.map(|workspace| Box::into_raw(Box::new(workspace)) as jlong)
