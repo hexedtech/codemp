@@ -13,6 +13,7 @@ pub use crate::api::{
 	Cursor as CodempCursor,
 	Op as CodempOp,
 	User as CodempUser,
+	Event as CodempEvent,
 };
 	
 pub use crate::{
