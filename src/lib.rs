@@ -140,6 +140,9 @@ pub mod prelude;
 /// language-specific ffi "glue"
 pub mod ffi;
 
+/// common utils used in this library and re-exposed
+pub mod ext;
+
 /// underlying OperationalTransform library used, re-exported
 pub use woot;
 

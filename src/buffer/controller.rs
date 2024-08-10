@@ -12,7 +12,7 @@ use crate::api::Controller;
 
 use crate::api::TextChange;
 
-use super::tools::InternallyMutable;
+use crate::ext::InternallyMutable;
 
 /// the buffer controller implementation
 ///
