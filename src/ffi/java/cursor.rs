@@ -1,7 +1,7 @@
 use jni::{objects::{JClass, JObject, JString, JValueGen}, sys::{jlong, jobject}, JNIEnv};
-use crate::{api::Controller, ffi::java::util::JExceptable};
+use crate::api::Controller;
 
-use super::RT;
+use super::{JExceptable, RT};
 
 /// Tries to fetch a [crate::api::Cursor], or returns null if there's nothing.
 #[no_mangle]
@@ -30,23 +30,30 @@ pub extern "system" fn Java_mp_code_CursorController_recv(
 /// Utility method to convert a [crate::api::Cursor] to its Java equivalent.
 fn jni_recv(env: &mut JNIEnv, cursor: Option<crate::api::Cursor>) -> jobject {
 	match cursor {
-		None => JObject::null().as_raw(),
+		None => JObject::default(),
 		Some(event) => {
-			let class = env.find_class("mp/code/data/Cursor").expect("Couldn't find class!");
-			env.new_object(
-				class,
-				"(IIIILjava/lang/String;Ljava/lang/String;)V",
-				&[
-					JValueGen::Int(event.start.0),
-					JValueGen::Int(event.start.1),
-					JValueGen::Int(event.end.0),
-					JValueGen::Int(event.end.1),
-					JValueGen::Object(&env.new_string(event.buffer).expect("Failed to create String!")),
-					JValueGen::Object(&env.new_string(event.user.map(|x| x.to_string()).unwrap_or_default()).expect("Failed to create String!"))
-				]
-			).expect("failed creating object").into_raw()
+			env.find_class("mp/code/data/Cursor")
+				.and_then(|class| {
+					let buffer = env.new_string(&event.buffer).jexcept(env);
+					let user = event.user
+						.map(|uuid| uuid.to_string())
+						.map(|user| env.new_string(user).jexcept(env))
+						.unwrap_or_default();
+					env.new_object(
+						class,
+						"(IIIILjava/lang/String;Ljava/lang/String;)V",
+						&[
+							JValueGen::Int(event.start.0),
+							JValueGen::Int(event.start.1),
+							JValueGen::Int(event.end.0),
+							JValueGen::Int(event.end.1),
+							JValueGen::Object(&buffer),
+							JValueGen::Object(&user)
+						]
+					)
+				}).jexcept(env)
 		}
-	}
+	}.as_raw()
 }
 
 /// Receives from Java, converts and sends a [crate::api::Cursor].
@@ -57,28 +64,38 @@ pub extern "system" fn Java_mp_code_CursorController_send<'local>(
 	self_ptr: jlong,
 	input: JObject<'local>,
 ) {
-	let start_row = env.get_field(&input, "startRow", "I").expect("could not get field").i().expect("field was not of expected type");
-	let start_col = env.get_field(&input, "startCol", "I").expect("could not get field").i().expect("field was not of expected type");
-	let end_row = env.get_field(&input, "endRow", "I").expect("could not get field").i().expect("field was not of expected type");
-	let end_col = env.get_field(&input, "endCol", "I").expect("could not get field").i().expect("field was not of expected type");
+	let start_row = env.get_field(&input, "startRow", "I")
+		.and_then(|sr| sr.i())
+		.jexcept(&mut env);
+	let start_col = env.get_field(&input, "startCol", "I")
+		.and_then(|sc| sc.i())
+		.jexcept(&mut env);
+	let end_row = env.get_field(&input, "endRow", "I")
+		.and_then(|er| er.i())
+		.jexcept(&mut env);
+	let end_col = env.get_field(&input, "endCol", "I")
+		.and_then(|ec| ec.i())
+		.jexcept(&mut env);
 
 	let buffer = env.get_field(&input, "buffer", "Ljava/lang/String;")
-		.expect("could not get field")
-		.l()
-		.expect("field was not of expected type")
-		.into();
-	let buffer = env.get_string(&buffer).expect("Failed to get String!").into();
-	
+		.and_then(|b| b.l())
+		.map(|b| b.into())
+		.jexcept(&mut env);
+	let buffer = env.get_string(&buffer)
+		.map(|b| b.into())
+		.jexcept(&mut env);
+
 	let user: JString = env.get_field(&input, "user", "Ljava/lang/String;")
-		.expect("could not get field")
-		.l()
-		.expect("field was not of expected type")
-		.into();
+		.and_then(|u| u.l())
+		.map(|u| u.into())
+		.jexcept(&mut env);
 	let user = if user.is_null() {
 		None
 	} else {
-		let jstring = env.get_string(&user).expect("Failed to get String!");
-		Some(uuid::Uuid::parse_str(jstring.to_str().expect("Not valid UTF-8")).expect("Invalid UUI!"))
+		let user: String = env.get_string(&user)
+			.map(|u| u.into())
+			.jexcept(&mut env);
+		Some(uuid::Uuid::parse_str(&user).jexcept(&mut env))
 	};
 
 	let controller = unsafe { Box::leak(Box::from_raw(self_ptr as *mut crate::cursor::Controller)) };

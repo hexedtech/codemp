@@ -1,19 +1,17 @@
 use jni::{objects::{JClass, JObject, JString, JValueGen}, sys::{jlong, jobject, jobjectArray, jstring}, JNIEnv};
 use crate::Workspace;
 
-use super::{util::JExceptable, RT};
+use super::{JExceptable, RT};
 
 /// Gets the workspace id.
 #[no_mangle]
 pub extern "system" fn Java_mp_code_Workspace_get_1workspace_1id<'local>(
-	env: JNIEnv<'local>,
+	mut env: JNIEnv<'local>,
 	_class: JClass<'local>,
 	self_ptr: jlong
 ) -> jstring {
 	let workspace = unsafe { Box::leak(Box::from_raw(self_ptr as *mut Workspace)) };
-	env.new_string(workspace.id())
-		.expect("Failed to convert to Java String!")
-		.as_raw()
+	env.new_string(workspace.id()).jexcept(&mut env).as_raw()
 }
 
 /// Gets a cursor controller by name and returns a pointer to it.
@@ -24,10 +22,9 @@ pub extern "system" fn Java_mp_code_Workspace_get_1cursor<'local>(
 	self_ptr: jlong
 ) -> jobject {
 	let workspace = unsafe { Box::leak(Box::from_raw(self_ptr as *mut Workspace)) };
-	let class = env.find_class("mp/code/CursorController").expect("Failed to find class");
-	env.new_object(class, "(J)V", &[JValueGen::Long(Box::into_raw(Box::new(workspace.cursor())) as jlong)])
-		.expect("Failed to initialise object")
-		.as_raw()
+	env.find_class("mp/code/CursorController").and_then(|class|
+		env.new_object(class, "(J)V", &[JValueGen::Long(Box::into_raw(Box::new(workspace.cursor())) as jlong)])
+	).jexcept(&mut env).as_raw()
 }
 
 /// Gets a buffer controller by name and returns a pointer to it.
@@ -39,15 +36,15 @@ pub extern "system" fn Java_mp_code_Workspace_get_1buffer<'local>(
 	input: JString<'local>
 ) -> jobject {
 	let workspace = unsafe { Box::leak(Box::from_raw(self_ptr as *mut Workspace)) };
-	let path = unsafe { env.get_string_unchecked(&input).expect("Couldn't get java string!") };
-	if let Some(buf) = workspace.buffer_by_name(path.to_str().expect("Not UTF-8!")) {
-		let class = env.find_class("mp/code/BufferController").expect("Failed to find class");
-		env.new_object(class, "(J)V", &[JValueGen::Long(Box::into_raw(Box::new(buf)) as jlong)])
-			.expect("Failed to initialise object")
-			.as_raw()
-	} else {
-		JObject::null().as_raw()
-	}
+	let path = unsafe { env.get_string_unchecked(&input) }
+		.map(|path| path.to_string_lossy().to_string())
+		.jexcept(&mut env);
+	
+	workspace.buffer_by_name(&path).map(|buf| {
+		env.find_class("mp/code/BufferController").and_then(|class|
+			env.new_object(class, "(J)V", &[JValueGen::Long(Box::into_raw(Box::new(buf)) as jlong)])
+		).jexcept(&mut env)
+	}).unwrap_or_default().as_raw()
 }
 
 /// Creates a new buffer.
@@ -59,8 +56,11 @@ pub extern "system" fn Java_mp_code_Workspace_create_1buffer<'local>(
 	input: JString<'local>
 ) {
 	let ws = unsafe { Box::leak(Box::from_raw(self_ptr as *mut Workspace)) };
-	let path = unsafe { env.get_string_unchecked(&input).expect("Couldn't get java string!") };
-	RT.block_on(ws.create(path.to_str().expect("Not UTF-8"))).jexcept(&mut env);
+	let path = unsafe { env.get_string_unchecked(&input) }
+		.map(|path| path.to_string_lossy().to_string())
+		.jexcept(&mut env);
+	RT.block_on(ws.create(&path))
+		.jexcept(&mut env);
 }
 
 /// Gets the filetree.
@@ -72,16 +72,16 @@ pub extern "system" fn Java_mp_code_Workspace_get_1file_1tree(
 ) -> jobjectArray {
 	let workspace = unsafe { Box::leak(Box::from_raw(self_ptr as *mut Workspace)) };
 	let file_tree = workspace.filetree();
-	let class = env.find_class("java/lang/String").expect("Failed to find class!");
-	let arr = env.new_object_array(file_tree.len() as i32, class, JObject::null())
-		.expect("failed creating array");
-	for (idx, path) in file_tree.iter().enumerate() {
-		let js = env.new_string(path).expect("Failed to create String!");
-		env.set_object_array_element(&arr, idx as i32, js)
-			.expect("Failed to set array element!")
-	}
-
-	arr.as_raw()
+	env.find_class("java/lang/String")
+		.and_then(|class| env.new_object_array(file_tree.len() as i32, class, JObject::null()))
+		.map(|arr| {
+			for (idx, path) in file_tree.iter().enumerate() {
+				env.new_string(path)
+					.and_then(|path| env.set_object_array_element(&arr, idx as i32, path))
+					.jexcept(&mut env)
+			}
+			arr
+		}).jexcept(&mut env).as_raw()
 }
 
 /// Attaches to a buffer and returns a pointer to its [crate::buffer::Controller].
@@ -93,13 +93,15 @@ pub extern "system" fn Java_mp_code_Workspace_attach_1to_1buffer<'local>(
 	input: JString<'local>
 ) -> jobject {
 	let workspace = unsafe { Box::leak(Box::from_raw(self_ptr as *mut Workspace)) };
-	let path = unsafe { env.get_string_unchecked(&input).expect("Couldn't get java string!") };
-	RT.block_on(workspace.attach(path.to_str().expect("Not UTF-8!")))
+	let path = unsafe { env.get_string_unchecked(&input) }
+		.map(|path| path.to_string_lossy().to_string())
+		.jexcept(&mut env);
+	RT.block_on(workspace.attach(&path))
 		.map(|buffer| Box::into_raw(Box::new(buffer)) as jlong)
 		.map(|ptr| {
-			let class = env.find_class("mp/code/BufferController").expect("Failed to find class");
-			env.new_object(class, "(J)V", &[JValueGen::Long(ptr)])
-			.expect("Failed to initialise object")
+			env.find_class("mp/code/BufferController")
+				.and_then(|class| env.new_object(class, "(J)V", &[JValueGen::Long(ptr)]))
+				.jexcept(&mut env)
 		}).jexcept(&mut env).as_raw()
 }
 
@@ -111,18 +113,19 @@ pub extern "system" fn Java_mp_code_Workspace_detach_1from_1buffer<'local>(
 	input: JString<'local>
 ) -> jobject {
 	let workspace = unsafe { Box::leak(Box::from_raw(self_ptr as *mut Workspace)) };
-	let path = unsafe { env.get_string_unchecked(&input).expect("Couldn't get java string!") };
-	let name = match workspace.detach(path.to_str().expect("Not UTF-8")) {
+	let path = unsafe { env.get_string_unchecked(&input) }
+		.map(|path| path.to_string_lossy().to_string())
+		.jexcept(&mut env);
+	let name = match workspace.detach(&path) {
 		crate::workspace::worker::DetachResult::NotAttached => "NOT_ATTACHED",
 		crate::workspace::worker::DetachResult::Detaching => "DETACHED",
 		crate::workspace::worker::DetachResult::AlreadyDetached => "ALREADY_DETACHED"
 	};
 
-	let class = env.find_class("mp/code/data/DetachResult").expect("Failed to find class!");
-	env.get_static_field(class, name, "Lmp/code/data/DetachResult;")
-		.expect("Failed to get field!")
-		.l()
-		.expect("Field was of wrong type!")
+	env.find_class("mp/code/data/DetachResult")
+		.and_then(|class| env.get_static_field(class, name, "Lmp/code/data/DetachResult;"))
+		.and_then(|res| res.l())
+		.jexcept(&mut env)
 		.as_raw()
 }
 
@@ -157,21 +160,22 @@ pub extern "system" fn Java_mp_code_Workspace_list_1buffer_1users<'local>(
 	input: JString<'local>,
 ) -> jobjectArray {
 	let workspace = unsafe { Box::leak(Box::from_raw(self_ptr as *mut Workspace)) };
-	let buffer = unsafe { env.get_string_unchecked(&input).expect("Couldn't get java string!") };
-	let users = RT.block_on(workspace.list_buffer_users(buffer.to_str().expect("Not UTF-8!")))
+	let buffer = unsafe { env.get_string_unchecked(&input) }
+		.map(|buffer| buffer.to_string_lossy().to_string())
+		.jexcept(&mut env);
+	let users = RT.block_on(workspace.list_buffer_users(&buffer))
 		.jexcept(&mut env);
 
-	let class = env.find_class("java/lang/String").expect("Failed to find class!");
-	let arr = env.new_object_array(users.len() as i32, class, JObject::null())
-		.expect("failed creating array");
-
-	for (idx, user) in users.iter().enumerate() {
-		let js = env.new_string(&user.id).expect("Failed to create String!");
-		env.set_object_array_element(&arr, idx as i32, js)
-			.expect("Failed to set array element!")
-	}
-
-	arr.as_raw()
+	env.find_class("java/lang/String")
+		.and_then(|class| env.new_object_array(users.len() as i32, class, JObject::null()))
+		.map(|arr| {
+			for (idx, user) in users.iter().enumerate() {
+				env.new_string(&user.id)
+					.and_then(|id| env.set_object_array_element(&arr, idx as i32, id))
+					.jexcept(&mut env);
+			}
+			arr
+		}).jexcept(&mut env).as_raw()
 }
 
 /// Deletes a buffer.
@@ -182,9 +186,11 @@ pub extern "system" fn Java_mp_code_Workspace_delete_1buffer<'local>(
 	self_ptr: jlong,
 	input: JString<'local>,
 ) {
-	let buffer = unsafe { env.get_string_unchecked(&input).expect("Couldn't get java string!") };
 	let workspace = unsafe { Box::leak(Box::from_raw(self_ptr as *mut Workspace)) };
-	RT.block_on(workspace.delete(buffer.to_str().expect("Not UTF-8!"))).jexcept(&mut env);
+	let buffer = unsafe { env.get_string_unchecked(&input) }
+		.map(|buffer| buffer.to_string_lossy().to_string())
+		.jexcept(&mut env);
+	RT.block_on(workspace.delete(&buffer)).jexcept(&mut env);
 }
 
 /// Receives a workspace event if present.
@@ -197,29 +203,28 @@ pub extern "system" fn Java_mp_code_Workspace_event(
 	let workspace = unsafe { Box::leak(Box::from_raw(self_ptr as *mut Workspace)) };
 	RT.block_on(workspace.event())
 		.map(|event| {
-			let type_class = env.find_class("mp/code/Workspace$Event$Type").expect("Failed to find class!");
 			let (name, arg) = match event {
 				crate::api::Event::FileTreeUpdated => ("FILE_TREE_UPDATED", None),
 				crate::api::Event::UserJoin(arg) => ("USER_JOIN", Some(arg)),
 				crate::api::Event::UserLeave(arg) => ("USER_LEAVE", Some(arg)),
 			};
-			let event_type = env.get_static_field(type_class, name, "Lmp/code/Workspace/Event/Type;")
-				.expect("Failed to get field!")
-				.l()
-				.expect("Field was not of expected type!");
-
-			let arg = arg.map(|s| env.new_string(s).expect("Failed to create String!"))
+			let event_type = env.find_class("mp/code/Workspace$Event$Type")
+				.and_then(|class| env.get_static_field(class, name, "Lmp/code/Workspace/Event/Type;"))
+				.and_then(|f| f.l())
+				.jexcept(&mut env);
+			let arg = arg.map(|s| env.new_string(s).jexcept(&mut env))
 				.unwrap_or_default();
 
-			let event_class = env.find_class("mp/code/Workspace$Event").expect("Failed to find class!");
-			env.new_object(
-				event_class,
-				"(Lmp/code/Workspace/Event/Type;Ljava/lang/String;)V",
-				&[
-					JValueGen::Object(&event_type),
-					JValueGen::Object(&arg)
-				]
-			).expect("Failed to create object!")
+			env.find_class("mp/code/Workspace$Event").and_then(|class|
+				env.new_object(
+					class,
+					"(Lmp/code/Workspace/Event/Type;Ljava/lang/String;)V",
+					&[
+						JValueGen::Object(&event_type),
+						JValueGen::Object(&arg)
+					]
+				)
+			).jexcept(&mut env)
 		}).jexcept(&mut env).as_raw()
 }
 
@@ -240,20 +245,16 @@ pub extern "system" fn Java_mp_code_Workspace_select_1buffer(
 		}
 	}
 
-	let active = RT.block_on(crate::buffer::tools::select_buffer(
+	RT.block_on(crate::buffer::tools::select_buffer(
 		&controllers,
 		Some(std::time::Duration::from_millis(timeout as u64)),
 		&RT,
-	)).jexcept(&mut env);
-
-	if let Some(buf) = active {
-		let class = env.find_class("mp/code/BufferController").expect("Failed to find class");
-		env.new_object(class, "(J)V", &[JValueGen::Long(Box::into_raw(Box::new(buf)) as jlong)])
-			.expect("Failed to initialise object")
-			.as_raw()
-	} else {
-		JObject::null().as_raw()
-	}
+	)).jexcept(&mut env)
+		.map(|buf| {
+			env.find_class("mp/code/BufferController").and_then(|class|
+				env.new_object(class, "(J)V", &[JValueGen::Long(Box::into_raw(Box::new(buf)) as jlong)])
+			).jexcept(&mut env)
+		}).unwrap_or_default().as_raw()
 }
 
 /// Called by the Java GC to drop a [Workspace].
