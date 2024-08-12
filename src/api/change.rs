@@ -3,17 +3,12 @@
 //! an editor-friendly representation of a text change in a buffer
 //! to easily interface with codemp from various editors
 
-use crate::woot::{
-	crdt::{TextEditor, CRDT},
-	woot::Woot,
-	WootResult,
-};
-
 /// an atomic and orderable operation
 ///
 /// this under the hood thinly wraps our CRDT operation
 #[derive(Debug, Clone)]
-pub struct Op(pub(crate) woot::crdt::Op);
+pub struct Op(pub(crate) diamond_types::list::operation::Operation);
+// Do we need this in the api? why not just have a TextChange, which already covers as operation.
 
 /// an editor-friendly representation of a text change in a buffer
 ///
@@ -44,6 +39,28 @@ pub struct TextChange {
 	pub content: String,
 }
 
+impl TextChange {
+	pub fn span(&self) -> std::ops::Range<usize> {
+		self.start as usize..self.end as usize
+	}
+
+	/// returns true if this TextChange deletes existing text
+	pub fn is_delete(&self) -> bool {
+		self.start < self.end
+	}
+
+	/// returns true if this TextChange adds new text
+	pub fn is_insert(&self) -> bool {
+		!self.content.is_empty()
+	}
+
+	/// returns true if this TextChange is effectively as no-op
+	pub fn is_empty(&self) -> bool {
+		!self.is_delete() && !self.is_insert()
+	}
+}
+
+/*
 impl TextChange {
 	/// create a new TextChange from the difference of given strings
 	pub fn from_diff(before: &str, after: &str) -> TextChange {
@@ -240,5 +257,16 @@ mod tests {
 		};
 		let result = change.apply("some important text");
 		assert_eq!(result, "some important text");
+	}
+}*/
+
+// TODO: properly implement this for diamond types directly
+impl From<Op> for TextChange {
+	fn from(value: Op) -> Self {
+		Self {
+			start: value.0.start() as u32,
+			end: value.0.end() as u32,
+			content: value.0.content_as_str().unwrap_or_default().to_string(),
+		}
 	}
 }

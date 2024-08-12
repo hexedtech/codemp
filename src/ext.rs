@@ -82,10 +82,11 @@ impl<T: Clone> InternallyMutable<T> {
 	}
 }
 
+/*
 pub(crate) struct CallbackHandleWatch<T>(pub(crate) tokio::sync::watch::Sender<Option<T>>);
 
 impl<T> crate::api::controller::CallbackHandle for CallbackHandleWatch<T> {
 	fn unregister(self) {
 		self.0.send_replace(None);
 	}
-}
+}*/
