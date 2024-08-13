@@ -1,5 +1,3 @@
-use std::collections::hash_map::DefaultHasher;
-use std::hash::{Hash, Hasher};
 use std::sync::Arc;
 
 use diamond_types::LocalVersion;
@@ -18,31 +16,27 @@ use super::controller::{BufferController, BufferControllerInner};
 
 pub(crate) struct BufferWorker {
 	user_id: Uuid,
-	buffer: diamond_types::list::ListCRDT,
 	latest_version: watch::Sender<diamond_types::LocalVersion>,
 	ops_in: mpsc::UnboundedReceiver<TextChange>,
 	ops_out: mpsc::UnboundedSender<(LocalVersion, Option<Op>)>,
 	poller: mpsc::UnboundedReceiver<oneshot::Sender<()>>,
 	pollers: Vec<oneshot::Sender<()>>,
+	content_checkout: mpsc::Receiver<oneshot::Sender<String>>,
 	stop: mpsc::UnboundedReceiver<()>,
 	controller: BufferController,
 }
 
 impl BufferWorker {
 	pub fn new(user_id: Uuid, path: &str) -> Self {
-		//let (txt_tx, txt_rx) = watch::channel("".to_string());
 		let init = diamond_types::LocalVersion::default();
-		let buffer = diamond_types::list::ListCRDT::default();
 
 		let (latest_version_tx, latest_version_rx) = watch::channel(init.clone());
 		let (opin_tx, opin_rx) = mpsc::unbounded_channel();
 		let (opout_tx, opout_rx) = mpsc::unbounded_channel();
 
-		let (poller_tx, poller_rx) = mpsc::unbounded_channel();
+		let (req_tx, req_rx) = mpsc::channel(1);
 
-		let mut hasher = DefaultHasher::new();
-		user_id.hash(&mut hasher);
-		let _site_id = hasher.finish() as usize;
+		let (poller_tx, poller_rx) = mpsc::unbounded_channel();
 
 		let (end_tx, end_rx) = mpsc::unbounded_channel();
 
@@ -53,11 +47,11 @@ impl BufferWorker {
 			opout_rx,
 			poller_tx,
 			end_tx,
+			req_tx,
 		);
 
 		BufferWorker {
 			user_id,
-			buffer,
 			latest_version: latest_version_tx,
 			ops_in: opin_rx,
 			ops_out: opout_tx,
@@ -65,6 +59,7 @@ impl BufferWorker {
 			pollers: Vec::new(),
 			stop: end_rx,
 			controller: BufferController(Arc::new(controller)),
+			content_checkout: req_rx,
 		}
 	}
 }
@@ -80,6 +75,8 @@ impl ControllerWorker<TextChange> for BufferWorker {
 	}
 
 	async fn work(mut self, tx: Self::Tx, mut rx: Self::Rx) {
+		let mut branch = diamond_types::list::Branch::new();
+		let mut oplog = diamond_types::list::OpLog::new();
 		loop {
 			// block until one of these is ready
 			tokio::select! {
@@ -98,18 +95,19 @@ impl ControllerWorker<TextChange> for BufferWorker {
 				res = self.ops_in.recv() => match res {
 					None => break tracing::debug!("stopping: editor closed channel"),
 					Some(change) => {
-
-						let agent_id = self.buffer.get_or_create_agent_id(&self.user_id.to_string());
-						let lastver = self.buffer.oplog.local_version_ref();
+						let agent_id = oplog.get_or_create_agent_id(&self.user_id.to_string());
+						let last_ver = oplog.local_version();
 
 						if change.is_insert() {
-							self.buffer.insert(agent_id, change.start as usize, &change.content) // TODO da vedere il cast
+							oplog.add_insert(agent_id, change.start as usize, &change.content)
 						} else if change.is_delete() {
-							self.buffer.delete_without_content(1, change.span())
+							oplog.add_delete_without_content(1, change.span())
 						} else { continue; };
 
-						tx.send(Operation { data: self.buffer.oplog.encode_from(Default::default(), lastver) });
-						self.latest_version.send(self.buffer.oplog.local_version());
+						tx.send(Operation { data: oplog.encode_from(Default::default(), &last_ver) }).await
+							.unwrap_or_warn("failed to send change!");
+						self.latest_version.send(oplog.local_version())
+							.unwrap_or_warn("failed to update latest version!");
 
 					},
 				},
@@ -119,30 +117,41 @@ impl ControllerWorker<TextChange> for BufferWorker {
 					Err(_e) => break,
 					Ok(None) => break,
 					Ok(Some(change)) => {
-						let lastver = self.buffer.oplog.local_version_ref();
-
-						match self.buffer.merge_data_and_ff(&change.op.data) {
+						let last_ver = oplog.local_version();
+						match oplog.decode_and_add(&change.op.data) {
 							Ok(local_version) => {
-
 								// give all the changes needed to the controller in a channel.
-								for (lv, Some(dtop)) in self.buffer.oplog.iter_xf_operations_from(lastver, &local_version) {
-									// x.0.start should always be after lastver!
-									// this step_ver will be the version after we apply the operation
-									// we give it to the controller so that he knows where it's at.
-									let step_ver = self.buffer.oplog.version_union(&[lv.start], lastver);
-									let opout = (step_ver, Some(Op(dtop)));
+								for (lv, dtop) in oplog.iter_xf_operations_from(&last_ver, &local_version) {
+									if let Some(dtop) = dtop {
+										// x.0.start should always be after lastver!
+										// this step_ver will be the version after we apply the operation
+										// we give it to the controller so that he knows where it's at.
+										let step_ver = oplog.version_union(&[lv.start], &last_ver);
+										let opout = (step_ver, Some(Op(dtop)));
 
-									self.ops_out.send(opout).unwrap(); //TODO ERRORS
+										self.ops_out.send(opout).unwrap_or_warn("could not update ops channel -- is controller dead?");
+									}
 								}
 
-								// finally we send the
-								self.latest_version.send(local_version);
+								// finally we send the 
+								self.latest_version.send(local_version)
+									.unwrap_or_warn("failed to update latest version!");
+
 								for tx in self.pollers.drain(..) {
 									tx.send(()).unwrap_or_warn("could not wake up poller");
 								}
 							},
 							Err(e) => tracing::error!("could not deserialize operation from server: {}", e),
 						}
+					},
+				},
+
+				res = self.content_checkout.recv() => match res {
+					None => break tracing::error!("no more active controllers"),
+					Some(tx) => {
+						branch.merge(&oplog, oplog.local_version_ref());
+						let content = branch.content().to_string();
+						tx.send(content).unwrap_or_warn("checkout request dropped");
 					},
 				}
 			}

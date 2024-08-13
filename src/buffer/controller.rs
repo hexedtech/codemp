@@ -5,7 +5,7 @@
 use std::sync::Arc;
 
 use diamond_types::LocalVersion;
-use tokio::sync::oneshot;
+use tokio::sync::{oneshot, Mutex};
 use tokio::sync::{mpsc, watch};
 use tonic::async_trait;
 
@@ -36,11 +36,10 @@ impl BufferController {
 	}
 
 	/// return buffer whole content, updating internal buffer previous state
-	pub fn content(&self) -> String {
-		// this function either needs a ref to the worker
-		// or needs to basically mirror all the operations that go through it.
-		// yikes.
-		todo!() // TODO ouch
+	pub async fn content(&self) -> crate::Result<String> {
+		let (tx, rx) = oneshot::channel();
+		self.0.content_request.send(tx).await?;
+		Ok(rx.await?)
 	}
 }
 
@@ -50,9 +49,10 @@ pub(crate) struct BufferControllerInner {
 	latest_version: watch::Receiver<diamond_types::LocalVersion>,
 	last_update: InternallyMutable<diamond_types::LocalVersion>,
 	ops_in: mpsc::UnboundedSender<TextChange>,
-	ops_out: mpsc::UnboundedReceiver<(LocalVersion, Option<Op>)>,
+	ops_out: Mutex<mpsc::UnboundedReceiver<(LocalVersion, Option<Op>)>>,
 	poller: mpsc::UnboundedSender<oneshot::Sender<()>>,
 	stopper: mpsc::UnboundedSender<()>, // just exist
+	content_request: mpsc::Sender<oneshot::Sender<String>>,
 }
 
 impl BufferControllerInner {
@@ -63,15 +63,19 @@ impl BufferControllerInner {
 		ops_out: mpsc::UnboundedReceiver<(LocalVersion, Option<Op>)>,
 		poller: mpsc::UnboundedSender<oneshot::Sender<()>>,
 		stopper: mpsc::UnboundedSender<()>,
+		content_request: mpsc::Sender<oneshot::Sender<String>>,
+		// TODO we're getting too much stuff via constructor, maybe make everything pub(crate)
+		// instead?? or maybe builder, or maybe defaults
 	) -> Self {
 		Self {
 			name,
 			latest_version,
 			last_update: InternallyMutable::new(diamond_types::LocalVersion::default()),
 			ops_in,
-			ops_out,
+			ops_out: Mutex::new(ops_out),
 			poller,
 			stopper,
+			content_request,
 		}
 	}
 }
@@ -104,21 +108,24 @@ impl Controller<TextChange> for BufferController {
 			return Ok(None);
 		}
 
-		if let Ok((lv, Some(op))) = self.0.ops_out.try_recv() {
-			// if the current change has
-			self.0.last_update.set(lv);
-			return Ok(Some(TextChange::from(op)));
+		match self.0.ops_out.try_lock() {
+			Err(_) => Ok(None),
+			Ok(mut ops) => match ops.try_recv() {
+				Ok((lv, Some(op))) => {
+					self.0.last_update.set(lv);
+					Ok(Some(TextChange::from(op)))
+				},
+				Ok((_lv, None)) => Ok(None), // TODO what is going on here?
+				Err(mpsc::error::TryRecvError::Empty) => Ok(None),
+				Err(mpsc::error::TryRecvError::Disconnected) =>
+					Err(crate::Error::Channel { send: false }),
+			},
 		}
-
-		return Err(crate::Error::Channel { send: false });
 	}
 
 	/// block until a new text change is available, and return it
 	async fn recv(&self) -> crate::Result<TextChange> {
-		let last_update = self.0.last_update.get();
-
-		// no need to poll here? as soon as we have new changes we return them!
-		if let Some((lv, Some(op))) = self.0.ops_out.recv().await {
+		if let Some((lv, Some(op))) = self.0.ops_out.lock().await.recv().await {
 			self.0.last_update.set(lv);
 			Ok(TextChange::from(op))
 		} else {
