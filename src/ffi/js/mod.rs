@@ -1,5 +1,3 @@
-#![deny(clippy::all)]
-
 pub mod client;
 pub mod workspace;
 pub mod cursor;

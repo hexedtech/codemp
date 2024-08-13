@@ -3,13 +3,7 @@
 //! a controller implementation for cursor actions
 use std::sync::Arc;
 
-use tokio::sync::{
-	broadcast::{
-		self,
-		error::{RecvError, TryRecvError},
-	},
-	mpsc, watch, Mutex,
-};
+use tokio::sync::{broadcast::{self, error::TryRecvError}, mpsc, watch, Mutex};
 use tonic::async_trait;
 
 use crate::api::{Controller, Cursor};
@@ -66,36 +60,15 @@ impl Controller<Cursor> for CursorController {
 	}
 
 	/// try to receive without blocking, but will still block on stream mutex
-	fn try_recv(&self) -> crate::Result<Option<Cursor>> {
-		match self.0.stream.try_lock() {
-			Err(_) => Ok(None),
-			Ok(mut stream) => match stream.try_recv() {
-				Ok(x) => Ok(Some(x.into())),
-				Err(TryRecvError::Empty) => Ok(None),
-				Err(TryRecvError::Closed) => Err(crate::Error::Channel { send: false }),
-				Err(TryRecvError::Lagged(n)) => {
-					tracing::warn!("cursor channel lagged, skipping {} events", n);
-					Ok(stream.try_recv().map(|x| x.into()).ok())
-				}
-			}
-		}
-	}
-
-	// TODO is this cancelable? so it can be used in tokio::select!
-	// TODO is the result type overkill? should be an option?
-	/// get next cursor event from current workspace, or block until one is available
-	async fn recv(&self) -> crate::Result<Cursor> {
+	async fn try_recv(&self) -> crate::Result<Option<Cursor>> {
 		let mut stream = self.0.stream.lock().await;
-		match stream.recv().await {
-			Ok(x) => Ok(x.into()),
-			Err(RecvError::Closed) => Err(crate::Error::Channel { send: false }),
-			Err(RecvError::Lagged(n)) => {
-				tracing::error!("cursor channel lagged behind, skipping {} events", n);
-				Ok(stream
-					.recv()
-					.await
-					.expect("could not receive after lagging")
-					.into())
+		match stream.try_recv() {
+			Ok(x) => Ok(Some(x.into())),
+			Err(TryRecvError::Empty) => Ok(None),
+			Err(TryRecvError::Closed) => Err(crate::Error::Channel { send: false }),
+			Err(TryRecvError::Lagged(n)) => {
+				tracing::warn!("cursor channel lagged, skipping {} events", n);
+				Ok(stream.try_recv().map(|x| x.into()).ok())
 			}
 		}
 	}

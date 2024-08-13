@@ -37,12 +37,12 @@ pub trait Controller<T : Sized + Send + Sync> : Sized + Send + Sync {
 	///
 	/// `async fn recv(&self) -> codemp::Result<T>;`
 	async fn recv(&self) -> Result<T> {
-		if let Some(x) = self.try_recv()? {
-			return Ok(x); // short circuit if already available
+		loop {
+			self.poll().await?;
+			if let Some(x) = self.try_recv().await? {
+				break Ok(x);
+			}
 		}
-
-		self.poll().await?;
-		Ok(self.try_recv()?.expect("no message available after polling"))
 	}
 
 	/// block until next value is available without consuming it
@@ -53,7 +53,7 @@ pub trait Controller<T : Sized + Send + Sync> : Sized + Send + Sync {
 	async fn poll(&self) -> Result<()>;
 
 	/// attempt to receive a value without blocking, return None if nothing is available
-	fn try_recv(&self) -> Result<Option<T>>;
+	async fn try_recv(&self) -> Result<Option<T>>;
 
 	/// stop underlying worker
 	///

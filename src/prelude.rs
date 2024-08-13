@@ -11,7 +11,6 @@ pub use crate::api::{
 	Controller as CodempController,
 	TextChange as CodempTextChange,
 	Cursor as CodempCursor,
-	Op as CodempOp,
 	User as CodempUser,
 	Event as CodempEvent,
 };

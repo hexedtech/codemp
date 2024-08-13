@@ -12,17 +12,15 @@ crate-type = ["cdylib"]
 tracing = "0.1"
 thiserror = "1.0"
 async-trait = "0.1"
-# woot
-codemp-woot = { git = "ssh://git@github.com/hexedtech/woot.git", features = ["serde"], tag = "v0.1.2" }
-diamond-types="1.0"
+# crdt
+diamond-types = "1.0"
 # proto
 codemp-proto = { git = "ssh://git@github.com/hexedtech/codemp-proto.git", tag = "v0.6.1" }
 uuid = { version = "1.7", features = ["v4"] }
 tonic = { version = "0.11", features = ["tls", "tls-roots"] }
-postcard = "1.0"
 # api
-similar = { version = "2.2", features = ["inline"] }
 tokio = { version = "1.0", features = ["macros", "rt-multi-thread", "sync"] }
+xxhash-rust = { version = "0.8", features = ["xxh3"] }
 # client
 tokio-stream = "0.1"
 dashmap = "5.5"

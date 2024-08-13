@@ -21,7 +21,6 @@ pub mod user;
 
 pub use controller::Controller;
 pub use change::TextChange;
-pub use change::Op;
 pub use cursor::Cursor;
 pub use event::Event;
 pub use user::User;
