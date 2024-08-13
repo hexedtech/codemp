@@ -11,7 +11,7 @@ pub extern "system" fn Java_mp_code_CursorController_try_1recv(
 	self_ptr: jlong,
 ) -> jobject {
 	let controller = unsafe { Box::leak(Box::from_raw(self_ptr as *mut crate::cursor::Controller)) };
-	let cursor = controller.try_recv().jexcept(&mut env);
+	let cursor = RT.block_on(controller.try_recv()).jexcept(&mut env);
 	jni_recv(&mut env, cursor)
 }
 

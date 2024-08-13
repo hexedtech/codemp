@@ -41,7 +41,7 @@ pub extern "system" fn Java_mp_code_BufferController_try_1recv(
 	self_ptr: jlong,
 ) -> jobject {
 	let controller = unsafe { Box::leak(Box::from_raw(self_ptr as *mut crate::buffer::Controller)) };
-	let change = controller.try_recv().jexcept(&mut env);
+	let change = RT.block_on(controller.try_recv()).jexcept(&mut env);
 	recv_jni(&mut env, change)
 }
 
@@ -101,7 +101,8 @@ pub extern "system" fn Java_mp_code_BufferController_send<'local>(
 	controller.send(crate::api::TextChange {
 		start: start as u32,
 		end: end as u32,
-		content
+		content,
+		hash: None
 	}).jexcept(&mut env);
 }
 
