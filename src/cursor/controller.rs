@@ -67,14 +67,16 @@ impl Controller<Cursor> for CursorController {
 
 	/// try to receive without blocking, but will still block on stream mutex
 	fn try_recv(&self) -> crate::Result<Option<Cursor>> {
-		let mut stream = self.0.stream.blocking_lock();
-		match stream.try_recv() {
-			Ok(x) => Ok(Some(x.into())),
-			Err(TryRecvError::Empty) => Ok(None),
-			Err(TryRecvError::Closed) => Err(crate::Error::Channel { send: false }),
-			Err(TryRecvError::Lagged(n)) => {
-				tracing::warn!("cursor channel lagged, skipping {} events", n);
-				Ok(stream.try_recv().map(|x| x.into()).ok())
+		match self.0.stream.try_lock() {
+			Err(_) => Ok(None),
+			Ok(mut stream) => match stream.try_recv() {
+				Ok(x) => Ok(Some(x.into())),
+				Err(TryRecvError::Empty) => Ok(None),
+				Err(TryRecvError::Closed) => Err(crate::Error::Channel { send: false }),
+				Err(TryRecvError::Lagged(n)) => {
+					tracing::warn!("cursor channel lagged, skipping {} events", n);
+					Ok(stream.try_recv().map(|x| x.into()).ok())
+				}
 			}
 		}
 	}
