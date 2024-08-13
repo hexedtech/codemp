@@ -107,6 +107,12 @@ impl From<tokio::sync::broadcast::error::RecvError> for Error {
 	}
 }
 
+impl From<tokio::sync::oneshot::error::RecvError> for Error {
+	fn from(_value: tokio::sync::oneshot::error::RecvError) -> Self {
+		Error::Channel { send: false }
+	}
+}
+
 impl From<tokio::sync::watch::error::RecvError> for Error {
 	fn from(_value: tokio::sync::watch::error::RecvError) -> Self {
 		Error::Channel { send: false }
