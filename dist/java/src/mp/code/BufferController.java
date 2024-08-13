@@ -18,8 +18,8 @@ public class BufferController {
 		return get_name(this.ptr);
 	}
 
-	public static native String get_content(long self);
-	public String getContent() {
+	public static native String get_content(long self) throws CodeMPException;
+	public String getContent() throws CodeMPException {
 		return get_content(this.ptr);
 	}
 

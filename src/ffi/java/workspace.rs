@@ -245,7 +245,7 @@ pub extern "system" fn Java_mp_code_Workspace_select_1buffer(
 		}
 	}
 
-	RT.block_on(crate::buffer::tools::select_buffer(
+	RT.block_on(crate::ext::select_buffer(
 		&controllers,
 		Some(std::time::Duration::from_millis(timeout as u64)),
 		&RT,

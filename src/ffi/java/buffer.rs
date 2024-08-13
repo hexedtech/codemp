@@ -26,7 +26,8 @@ pub extern "system" fn Java_mp_code_BufferController_get_1content(
 	self_ptr: jlong,
 ) -> jstring {
 	let controller = unsafe { Box::leak(Box::from_raw(self_ptr as *mut crate::buffer::Controller)) };
-	let content = controller.content();
+	let content = RT.block_on(controller.content())
+		.jexcept(&mut env);
 	env.new_string(content)
 		.jexcept(&mut env)
 		.as_raw()
