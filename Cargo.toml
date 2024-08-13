@@ -52,7 +52,7 @@ napi-build = { version = "2", optional = true }
 pyo3-build-config = { version = "0.19", optional = true }
 
 [features]
-default = ["lua"]
+default = []
 lua = ["mlua", "lazy_static", "tracing-subscriber"]
 java = ["lazy_static", "jni", "tracing-subscriber"]
 js = ["napi-build", "tracing-subscriber", "napi", "napi-derive"]
