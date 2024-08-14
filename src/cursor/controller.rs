@@ -26,7 +26,7 @@ pub struct CursorController(pub(crate) Arc<CursorControllerInner>);
 
 #[derive(Debug)]
 pub(crate) struct CursorControllerInner {
-	op: mpsc::UnboundedSender<CursorPosition>,
+	op: mpsc::Sender<CursorPosition>,
 	last_op: Mutex<watch::Receiver<CursorEvent>>,
 	stream: Mutex<broadcast::Receiver<CursorEvent>>,
 	stop: mpsc::UnboundedSender<()>,
@@ -34,7 +34,7 @@ pub(crate) struct CursorControllerInner {
 
 impl CursorControllerInner {
 	pub(crate) fn new(
-		op: mpsc::UnboundedSender<CursorPosition>,
+		op: mpsc::Sender<CursorPosition>,
 		last_op: Mutex<watch::Receiver<CursorEvent>>,
 		stream: Mutex<broadcast::Receiver<CursorEvent>>,
 		stop: mpsc::UnboundedSender<()>,
@@ -52,11 +52,11 @@ impl CursorControllerInner {
 impl Controller<Cursor> for CursorController {
 	/// enqueue a cursor event to be broadcast to current workspace
 	/// will automatically invert cursor start/end if they are inverted
-	fn send(&self, mut cursor: Cursor) -> crate::Result<()> {
+	async fn send(&self, mut cursor: Cursor) -> crate::Result<()> {
 		if cursor.start > cursor.end {
 			std::mem::swap(&mut cursor.start, &mut cursor.end);
 		}
-		Ok(self.0.op.send(cursor.into())?)
+		Ok(self.0.op.send(cursor.into()).await?)
 	}
 
 	/// try to receive without blocking, but will still block on stream mutex

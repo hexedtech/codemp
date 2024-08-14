@@ -9,7 +9,7 @@ use codemp_proto::cursor::{CursorPosition, CursorEvent};
 use super::controller::{CursorController, CursorControllerInner};
 
 pub(crate) struct CursorWorker {
-	op: mpsc::UnboundedReceiver<CursorPosition>,
+	op: mpsc::Receiver<CursorPosition>,
 	changed: watch::Sender<CursorEvent>,
 	channel: broadcast::Sender<CursorEvent>,
 	stop: mpsc::UnboundedReceiver<()>,
@@ -18,7 +18,7 @@ pub(crate) struct CursorWorker {
 
 impl Default for CursorWorker {
 	fn default() -> Self {
-		let (op_tx, op_rx) = mpsc::unbounded_channel();
+		let (op_tx, op_rx) = mpsc::channel(8);
 		let (cur_tx, _cur_rx) = broadcast::channel(64);
 		let (end_tx, end_rx) = mpsc::unbounded_channel();
 		let (change_tx, change_rx) = watch::channel(CursorEvent::default());
