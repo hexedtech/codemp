@@ -142,9 +142,8 @@ impl ControllerWorker<TextChange> for BufferWorker {
 							// we give it to the controller so that he knows where it's at.
 							let step_ver = oplog.version_union(&[lv.start], &last_ver);
 
-							// if you merge up until the oplog.local_version_ref()
-							// it's as if you are merging the whole iterator.
-							// Not just this change...
+							// moved the merging inside as we only need
+							// an up to date content when we hash the content.
 							let hash = if timer.step() {
 								branch.merge(&oplog, &step_ver);
 								let hash = xxhash_rust::xxh3::xxh3_64(branch.content().to_string().as_bytes());
