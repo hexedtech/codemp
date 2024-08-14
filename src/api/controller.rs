@@ -29,7 +29,7 @@ pub trait Controller<T : Sized + Send + Sync> : Sized + Send + Sync {
 	///
 	/// success or failure of this function does not imply validity of sent operation,
 	/// because it's integrated asynchronously on the background worker
-	fn send(&self, x: T) -> Result<()>;
+	async fn send(&self, x: T) -> Result<()>;
 
 	/// get next value from other users, blocking until one is available
 	///
