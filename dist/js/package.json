@@ -1,4 +1,7 @@
 {
+  "name": "@codemp/codemp",
+  "version": "0.0.1", 
+
   "dependencies": {
     "@napi-rs/cli": "^2.18.0",
     "npx": "^10.2.2"

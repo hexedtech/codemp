@@ -2,11 +2,12 @@ use napi::threadsafe_function::{ErrorStrategy::Fatal, ThreadSafeCallContext, Thr
 use napi_derive::napi;
 use crate::api::TextChange;
 use crate::api::Controller;
-use crate::prelude::*;
+use crate::buffer::controller::BufferController;
+
 
 #[napi]
-impl CodempBufferController {
-	#[napi(ts_args_type = "fun: (event: JsTextChange) => void")]
+impl BufferController {
+	#[napi(ts_args_type = "fun: (event: TextChange) => void")]
 	pub fn callback(&self, fun: napi::JsFunction) -> napi::Result<()>{ 
 		let tsfn : ThreadsafeFunction<crate::api::TextChange, Fatal> = 
 		fun.create_threadsafe_function(0,

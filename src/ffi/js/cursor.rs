@@ -1,7 +1,7 @@
 use napi_derive::napi;
 use napi::threadsafe_function::{ThreadsafeFunction, ThreadSafeCallContext, ThreadsafeFunctionCallMode, ErrorStrategy};
 use crate::api::Controller;
-use crate::prelude::*;
+use crate::cursor::controller::CursorController;
 
 
 #[napi(object, js_name = "Cursor")]
@@ -15,9 +15,9 @@ pub struct JsCursor {
 	pub user: Option<String>,
 }
 
-impl From<JsCursor> for CodempCursor {
+impl From<JsCursor> for crate::api::Cursor {
 	fn from(value: JsCursor) -> Self {
-		CodempCursor {
+		crate::api::Cursor {
 			start : (value.start_row, value.start_col),
 			end:  (value.end_row, value.end_col),
 			buffer: value.buffer,
@@ -25,8 +25,8 @@ impl From<JsCursor> for CodempCursor {
 		}
 	}
 }
-impl From<CodempCursor> for JsCursor {
-	fn from(value: CodempCursor) -> Self {
+impl From<crate::api::Cursor> for JsCursor {
+	fn from(value: crate::api::Cursor) -> Self {
 		JsCursor {
 			start_row : value.start.0,
 			start_col : value.start.1,
@@ -41,8 +41,8 @@ impl From<CodempCursor> for JsCursor {
 
 
 #[napi]
-impl CodempCursorController {
-	#[napi(ts_args_type = "fun: (event: JsCursorEvent) => void")]
+impl CursorController {
+	#[napi(ts_args_type = "fun: (event: Cursor) => void")]
 	pub fn callback(&self, fun: napi::JsFunction) -> napi::Result<()>{ 
 		let tsfn : ThreadsafeFunction<JsCursor, ErrorStrategy::Fatal> = 
 		fun.create_threadsafe_function(0,

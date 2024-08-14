@@ -1,11 +1,11 @@
-use std::sync::Arc;
-
 use napi_derive::napi;
-use crate::prelude::*;
+use crate::Workspace;
+use crate::buffer::controller::BufferController;
+use crate::cursor::controller::CursorController;
 
 
 #[napi]
-impl CodempWorkspace {
+impl Workspace {
 	#[napi(js_name = "id")]
 	pub fn js_id(&self) -> String {
 		self.id()
@@ -17,12 +17,12 @@ impl CodempWorkspace {
 	}
 
 	#[napi(js_name = "cursor")]
-	pub fn js_cursor(&self) -> CodempCursorController {
+	pub fn js_cursor(&self) -> CursorController {
 		self.cursor()
 	}
 
 	#[napi(js_name = "buffer_by_name")]
-	pub fn js_buffer_by_name(&self, path: String) -> Option<CodempBufferController> {
+	pub fn js_buffer_by_name(&self, path: String) -> Option<BufferController> {
 		self.buffer_by_name(&path)
 	}
 
@@ -32,7 +32,7 @@ impl CodempWorkspace {
 	}
 
 	#[napi(js_name = "attach")]
-	pub async fn js_attach(&self, path: String) -> napi::Result<CodempBufferController> {
+	pub async fn js_attach(&self, path: String) -> napi::Result<BufferController> {
 		Ok(self.attach(&path).await?)
 	}
 	
