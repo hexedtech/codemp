@@ -148,11 +148,27 @@ impl ControllerWorker<TextChange> for BufferWorker {
 								Some(crate::hash(branch.content().to_string()))
 							} else { None };
 
-							let tc = crate::api::change::TextChange {
-								start: dtop.start() as u32,
-								end: dtop.end() as u32,
-								content: dtop.content_as_str().unwrap_or_default().to_string(),
-								hash
+							let tc = match dtop.kind {
+								diamond_types::list::operation::OpKind::Ins => {
+									if dtop.end() - dtop.start() != dtop.content_as_str().unwrap_or_default().len() {
+										tracing::error!("[?!?!] Insert span differs from effective content len (TODO remove this error after a bit)");
+									}
+									crate::api::change::TextChange {
+										start: dtop.start() as u32,
+										end: dtop.start() as u32,
+										content: dtop.content_as_str().unwrap_or_default().to_string(),
+										hash
+									}
+								},
+
+								diamond_types::list::operation::OpKind::Del => {
+									crate::api::change::TextChange {
+										start: dtop.start() as u32,
+										end: dtop.end() as u32,
+										content: dtop.content_as_str().unwrap_or_default().to_string(),
+										hash
+									}
+								}
 							};
 							tx.send((new_local_v, tc)).unwrap_or_warn("could not update ops channel -- is controller dead?");
 						}
