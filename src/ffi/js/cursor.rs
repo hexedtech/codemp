@@ -66,13 +66,14 @@ impl CodempCursorController {
 	}
 
 	#[napi(js_name = "send")]
-	pub fn js_send(&self, pos: JsCursor) -> napi::Result<()> {
-		Ok(self.send(crate::api::Cursor::from(pos))?)
+	pub async fn js_send(&self, pos: JsCursor) -> napi::Result<()> {
+		Ok(self.send(crate::api::Cursor::from(pos)).await?)
 	}
 
 
 	#[napi(js_name= "try_recv")]
-	pub fn js_try_recv(&self) -> napi::Result<Option<JsCursor>> {
-		Ok(self.try_recv()?.map(|x| JsCursor::from(x)))
+	pub async fn js_try_recv(&self) -> napi::Result<Option<JsCursor>> {
+		Ok(self.try_recv().await?
+		.map(|x| JsCursor::from(x)))
 	}
 }

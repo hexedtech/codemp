@@ -37,7 +37,7 @@ impl CodempBufferController {
 	}
 
 	#[napi(js_name = "send")]
-	pub fn js_send(&self, op: TextChange) -> napi::Result<()> {
-		Ok(self.send(op)?)
+	pub async fn js_send(&self, op: TextChange) -> napi::Result<()> {
+		Ok(self.send(op).await?)
 	}
 }
