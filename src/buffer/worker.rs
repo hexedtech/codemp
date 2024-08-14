@@ -108,10 +108,12 @@ impl ControllerWorker<TextChange> for BufferWorker {
 							branch.insert(&mut oplog, agent_id, change.start as usize, &change.content);
 						}
 
-						tx.send(Operation { data: oplog.encode_from(Default::default(), &last_ver) }).await
-							.unwrap_or_warn("failed to send change!");
-						self.latest_version.send(oplog.local_version())
-							.unwrap_or_warn("failed to update latest version!");
+						if change.is_delete() || change.is_insert() {
+							tx.send(Operation { data: oplog.encode_from(Default::default(), &last_ver) }).await
+								.unwrap_or_warn("failed to send change!");
+							self.latest_version.send(oplog.local_version())
+								.unwrap_or_warn("failed to update latest version!");
+						}
 						ack.send(branch.local_version()).unwrap_or_warn("controller didn't wait for ack");
 					},
 				},
