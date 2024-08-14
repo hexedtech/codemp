@@ -117,10 +117,10 @@ impl LuaUserData for CodempCursorController {
 	fn add_methods<'lua, M: LuaUserDataMethods<'lua, Self>>(methods: &mut M) {
 		methods.add_meta_method(LuaMetaMethod::ToString, |_, this, ()| Ok(format!("{:?}", this)));
 		methods.add_method("send", |_, this, (buffer, start_row, start_col, end_row, end_col):(String, i32, i32, i32, i32)| {
-			Ok(this.send(CodempCursor { buffer, start: (start_row, start_col), end: (end_row, end_col), user: None })?)
+			Ok(RT.block_on(this.send(CodempCursor { buffer, start: (start_row, start_col), end: (end_row, end_col), user: None }))?)
 		});
 		methods.add_method("try_recv", |_, this, ()| {
-			match this.try_recv()? {
+			match RT.block_on(this.try_recv())? {
 				Some(x) => Ok(Some(x)),
 				None => Ok(None),
 			}
@@ -165,24 +165,18 @@ impl LuaUserData for CodempBufferController {
 		methods.add_meta_method(LuaMetaMethod::ToString, |_, this, ()| Ok(format!("{:?}", this)));
 		methods.add_method("send", |_, this, (start, end, text): (usize, usize, String)| {
 			Ok(
-				this.send(
+				RT.block_on(this.send(
 					CodempTextChange {
 						start: start as u32,
 						end: end as u32,
 						content: text,
+						hash: None,
 					}
-				)?
-			)
-		});
-		methods.add_method("send_diff", |_, this, (content,):(String,)| {
-			Ok(
-				this.send(
-					CodempTextChange::from_diff(&this.content(), &content)
-				)?
+				))?
 			)
 		});
 		methods.add_method("try_recv", |_, this, ()| {
-			match this.try_recv()? {
+			match RT.block_on(this.try_recv())? {
 				Some(x) => Ok(Some(x)),
 				None => Ok(None),
 			}
@@ -191,10 +185,9 @@ impl LuaUserData for CodempBufferController {
 			RT.block_on(this.poll())?;
 			Ok(())
 		});
-	}
-
-	fn add_fields<'lua, F: LuaUserDataFields<'lua, Self>>(fields: &mut F) {
-		fields.add_field_method_get("content", |_, this| Ok(this.content()));
+		methods.add_method("content", |_, this, ()|
+			Ok(RT.block_on(this.content())?)
+		);
 	}
 }
 
@@ -206,11 +199,12 @@ impl LuaUserData for CodempTextChange {
 	}
 
 	fn add_methods<'lua, M: LuaUserDataMethods<'lua, Self>>(methods: &mut M) {
-		methods.add_meta_function(LuaMetaMethod::Call, |_, (start, end, txt): (usize, usize, String)| {
+		methods.add_meta_function(LuaMetaMethod::Call, |_, (start, end, txt, hash): (usize, usize, String, Option<i64>)| {
 			Ok(CodempTextChange {
 				start: start as u32,
 				end: end as u32,
 				content: txt,
+				hash,
 			})
 		});
 		methods.add_meta_method(LuaMetaMethod::ToString, |_, this, ()| Ok(format!("{:?}", this)));
