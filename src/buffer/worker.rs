@@ -100,11 +100,13 @@ impl ControllerWorker<TextChange> for BufferWorker {
 						let agent_id = oplog.get_or_create_agent_id(&self.user_id.to_string());
 						let last_ver = oplog.local_version();
 
+						if change.is_delete() {
+							branch.delete_without_content(&mut oplog, 1, change.span());
+						}
+
 						if change.is_insert() {
-							branch.insert(&mut oplog, agent_id, change.start as usize, &change.content)
-						} else if change.is_delete() {
-							branch.delete_without_content(&mut oplog, 1, change.span())
-						} else { continue; };
+							branch.insert(&mut oplog, agent_id, change.start as usize, &change.content);
+						}
 
 						tx.send(Operation { data: oplog.encode_from(Default::default(), &last_ver) }).await
 							.unwrap_or_warn("failed to send change!");
