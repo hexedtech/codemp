@@ -49,6 +49,11 @@ pub async fn select_buffer(
 	}
 }
 
+pub fn hash(data: impl AsRef<[u8]>) -> i64 {
+	let hash = xxhash_rust::xxh3::xxh3_64(data.as_ref());
+	i64::from_ne_bytes(hash.to_ne_bytes())
+}
+
 /// wraps sender and receiver to allow mutable field with immutable ref
 #[derive(Debug)]
 pub struct InternallyMutable<T> {

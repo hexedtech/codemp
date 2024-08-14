@@ -149,3 +149,5 @@ pub use errors::Result;
 pub use client::Client;
 
 pub use workspace::Workspace;
+
+pub use ext::hash;

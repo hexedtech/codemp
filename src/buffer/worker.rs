@@ -145,8 +145,7 @@ impl ControllerWorker<TextChange> for BufferWorker {
 							let new_local_v = branch.local_version();
 
 							let hash = if timer.step() {
-								let hash = xxhash_rust::xxh3::xxh3_64(branch.content().to_string().as_bytes());
-								Some(i64::from_ne_bytes(hash.to_ne_bytes()))
+								Some(crate::hash(branch.content().to_string()))
 							} else { None };
 
 							let tc = crate::api::change::TextChange {
