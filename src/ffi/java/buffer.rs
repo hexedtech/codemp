@@ -1,5 +1,4 @@
 use jni::{objects::{JClass, JObject, JString, JValueGen}, sys::{jlong, jobject, jstring}, JNIEnv};
-use xxhash_rust::xxh3::xxh3_64;
 
 use crate::api::Controller;
 
@@ -129,7 +128,6 @@ pub extern "system" fn Java_mp_code_data_TextChange_hash<'local>(
 	let content: String = env.get_string(&content)
 		.map(|s| s.into())
 		.jexcept(&mut env);
-
-	let hash = xxh3_64(content.as_bytes());
+	let hash = crate::ext::hash(content.as_bytes());
 	i64::from_ne_bytes(hash.to_ne_bytes())
 }
