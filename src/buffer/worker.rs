@@ -140,7 +140,7 @@ impl ControllerWorker<TextChange> for BufferWorker {
 							// x.0.start should always be after lastver!
 							// this step_ver will be the version after we apply the operation
 							// we give it to the controller so that he knows where it's at.
-							let step_ver = oplog.version_union(&[lv.end], &last_ver);
+							let step_ver = oplog.version_union(&[lv.start], &last_ver);
 							branch.merge(&oplog, &step_ver);
 							let new_local_v = branch.local_version();
 
