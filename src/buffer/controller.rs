@@ -36,7 +36,9 @@ impl BufferController {
 	pub async fn content(&self) -> crate::Result<String> {
 		let (tx, rx) = oneshot::channel();
 		self.0.content_request.send(tx).await?;
-		Ok(rx.await?)
+		let content = rx.await?;
+		self.0.last_update.set(self.0.latest_version.borrow().clone());
+		Ok(content)
 	}
 }
 
@@ -45,7 +47,7 @@ pub(crate) struct BufferControllerInner {
 	pub(crate) name: String,
 	pub(crate) latest_version: watch::Receiver<diamond_types::LocalVersion>,
 	pub(crate) last_update: InternallyMutable<diamond_types::LocalVersion>,
-	pub(crate) ops_in: mpsc::UnboundedSender<TextChange>,
+	pub(crate) ops_in: mpsc::UnboundedSender<(TextChange, oneshot::Sender<LocalVersion>)>,
 	pub(crate) poller: mpsc::UnboundedSender<oneshot::Sender<()>>,
 	pub(crate) stopper: mpsc::UnboundedSender<()>, // just exist
 	pub(crate) content_request: mpsc::Sender<oneshot::Sender<String>>,
@@ -86,9 +88,12 @@ impl Controller<TextChange> for BufferController {
 
 	/// enqueue a text change for processing
 	/// this also updates internal buffer previous state
-	fn send(&self, op: TextChange) -> crate::Result<()> {
+	async fn send(&self, op: TextChange) -> crate::Result<()> {
 		// we let the worker do the updating to the last version and send it back.
-		Ok(self.0.ops_in.send(op)?)
+		let (tx, rx) = oneshot::channel();
+		self.0.ops_in.send((op, tx))?;
+		self.0.last_update.set(rx.await?);
+		Ok(())
 	}
 
 	fn stop(&self) -> bool {
