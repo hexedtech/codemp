@@ -269,6 +269,10 @@ fn get_logger(_: &Lua, (): ()) -> LuaResult<LuaLogger> {
 	Ok(LuaLogger(sub))
 }
 
+fn hash(_: &Lua, (txt,): (String,)) -> LuaResult<i64> {
+	Ok(crate::hash(txt))
+}
+
 // define module and exports
 #[mlua::lua_module]
 fn codemp_lua(lua: &Lua) -> LuaResult<LuaTable> {
@@ -278,6 +282,9 @@ fn codemp_lua(lua: &Lua) -> LuaResult<LuaTable> {
 	exports.set("connect", lua.create_function(connect)?)?;
 	exports.set("get_client", lua.create_function(get_client)?)?;
 	exports.set("close_client", lua.create_function(close_client)?)?;
+
+	// utils
+	exports.set("hash", lua.create_function(hash)?)?;
 
 	// runtime
 	exports.set("runtime_drive_forever", lua.create_function(runtime_drive_forever)?)?;
