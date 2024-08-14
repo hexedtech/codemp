@@ -141,12 +141,16 @@ impl ControllerWorker<TextChange> for BufferWorker {
 							// this step_ver will be the version after we apply the operation
 							// we give it to the controller so that he knows where it's at.
 							let step_ver = oplog.version_union(&[lv.start], &last_ver);
-							
-							branch.merge(&oplog, oplog.local_version_ref());
+
+							// if you merge up until the oplog.local_version_ref()
+							// it's as if you are merging the whole iterator.
+							// Not just this change...
 							let hash = if timer.step() {
+								branch.merge(&oplog, &step_ver);
 								let hash = xxhash_rust::xxh3::xxh3_64(branch.content().to_string().as_bytes());
 								Some(i64::from_ne_bytes(hash.to_ne_bytes()))
 							} else { None };
+
 							let tc = crate::api::change::TextChange {
 								start: dtop.start() as u32,
 								end: dtop.end() as u32,
@@ -174,7 +178,9 @@ impl ControllerWorker<TextChange> for BufferWorker {
 
 struct Timer(u32, u32);
 impl Timer {
-	fn new(period: u32) -> Self { Timer(0, period) }
+	fn new(period: u32) -> Self {
+		Timer(0, period)
+	}
 	fn step(&mut self) -> bool {
 		self.0 += 1;
 		if self.0 >= self.1 {
