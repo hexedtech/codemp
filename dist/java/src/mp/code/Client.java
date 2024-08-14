@@ -36,7 +36,6 @@ public class Client {
 	
 	private static native void free(long self);
 	@Override
-	@SuppressWarnings("removal") // muh java 8
 	protected void finalize() {
 		free(this.ptr);
 	}

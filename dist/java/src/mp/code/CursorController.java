@@ -29,7 +29,6 @@ public class CursorController {
 
 	private static native void free(long self);
 	@Override
-	@SuppressWarnings("removal")
 	protected void finalize() {
 		free(this.ptr);
 	}

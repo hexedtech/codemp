@@ -1,4 +1,5 @@
-use jni::{objects::{JClass, JObject, JValueGen}, sys::{jlong, jobject, jstring}, JNIEnv};
+use jni::{objects::{JClass, JObject, JString, JValueGen}, sys::{jlong, jobject, jstring}, JNIEnv};
+use xxhash_rust::xxh3::xxh3_64;
 
 use crate::api::Controller;
 
@@ -67,11 +68,12 @@ fn recv_jni(env: &mut JNIEnv, change: Option<crate::api::TextChange>) -> jobject
 				.and_then(|class| {
 					env.new_object(
 						class,
-						"(JJLjava/lang/String;)V",
+						"(JJLjava/lang/String;J)V",
 						&[
 							JValueGen::Long(jlong::from(event.start)),
 							JValueGen::Long(jlong::from(event.end)),
 							JValueGen::Object(&content),
+							JValueGen::Long(event.hash.unwrap_or_default())
 						]
 					)
 				}).jexcept(env)
@@ -116,3 +118,18 @@ pub extern "system" fn Java_mp_code_BufferController_free(
 	let _ = unsafe { Box::from_raw(self_ptr as *mut crate::cursor::Controller) };
 }
 
+
+/// Calculates the XXH3 hash for a given String.
+#[no_mangle]
+pub extern "system" fn Java_mp_code_data_TextChange_hash<'local>(
+	mut env: JNIEnv,
+	_class: JClass<'local>,
+	content: JString<'local>,
+) -> jlong {
+	let content: String = env.get_string(&content)
+		.map(|s| s.into())
+		.jexcept(&mut env);
+
+	let hash = xxh3_64(content.as_bytes());
+	i64::from_ne_bytes(hash.to_ne_bytes())
+}

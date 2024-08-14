@@ -13,12 +13,12 @@ public class BufferController {
 		this.ptr = ptr;
 	}
 
-	public static native String get_name(long self);
+	private static native String get_name(long self);
 	public String getName() {
 		return get_name(this.ptr);
 	}
 
-	public static native String get_content(long self) throws CodeMPException;
+	private static native String get_content(long self) throws CodeMPException;
 	public String getContent() throws CodeMPException {
 		return get_content(this.ptr);
 	}
@@ -40,7 +40,6 @@ public class BufferController {
 
 	private static native void free(long self);
 	@Override
-	@SuppressWarnings("removal")
 	protected void finalize() {
 		free(this.ptr);
 	}
