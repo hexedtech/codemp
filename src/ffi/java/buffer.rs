@@ -98,12 +98,12 @@ pub extern "system" fn Java_mp_code_BufferController_send<'local>(
 		.jexcept(&mut env);
 
 	let controller = unsafe { Box::leak(Box::from_raw(self_ptr as *mut crate::buffer::Controller)) };
-	controller.send(crate::api::TextChange {
+	RT.block_on(controller.send(crate::api::TextChange {
 		start: start as u32,
 		end: end as u32,
 		content,
 		hash: None
-	}).jexcept(&mut env);
+	})).jexcept(&mut env);
 }
 
 /// Called by the Java GC to drop a [crate::buffer::Controller].

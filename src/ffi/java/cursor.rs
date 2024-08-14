@@ -99,12 +99,12 @@ pub extern "system" fn Java_mp_code_CursorController_send<'local>(
 	};
 
 	let controller = unsafe { Box::leak(Box::from_raw(self_ptr as *mut crate::cursor::Controller)) };
-	controller.send(crate::api::Cursor {
+	RT.block_on(controller.send(crate::api::Cursor {
 		start: (start_row, start_col),
 		end: (end_row, end_col),
 		buffer,
 		user
-	}).jexcept(&mut env);
+	})).jexcept(&mut env);
 }
 
 /// Called by the Java GC to drop a [crate::cursor::Controller].
