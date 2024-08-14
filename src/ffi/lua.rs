@@ -196,6 +196,7 @@ impl LuaUserData for CodempTextChange {
 		fields.add_field_method_get("content", |_, this| Ok(this.content.clone()));
 		fields.add_field_method_get("first",   |_, this| Ok(this.start));
 		fields.add_field_method_get("last",  |_, this| Ok(this.end));
+		fields.add_field_method_get("hash",  |_, this| Ok(this.hash));
 	}
 
 	fn add_methods<'lua, M: LuaUserDataMethods<'lua, Self>>(methods: &mut M) {
