@@ -1,5 +1,6 @@
 use codemp_proto::workspace::workspace_event::Event as WorkspaceEventInner;
 
+#[derive(Debug, Clone)]
 pub enum Event {
 	FileTreeUpdated,
 	UserJoin(String),
