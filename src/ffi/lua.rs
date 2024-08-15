@@ -104,12 +104,27 @@ impl LuaUserData for CodempWorkspace {
 		});
 
 		methods.add_method("get_buffer", |_, this, (name,):(String,)| Ok(this.buffer_by_name(&name)));
+
+		methods.add_method("event", |_, this, ()| Ok(RT.block_on(this.event())?));
 	}
 
 	fn add_fields<'lua, F: LuaUserDataFields<'lua, Self>>(fields: &mut F) {
 		fields.add_field_method_get("cursor", |_, this| Ok(this.cursor()));
 		fields.add_field_method_get("filetree", |_, this| Ok(this.filetree()));
 		// fields.add_field_method_get("users", |_, this| Ok(this.0.users())); // TODO
+	}
+}
+
+impl LuaUserData for CodempEvent {
+	fn add_fields<'lua, F: LuaUserDataFields<'lua, Self>>(fields: &mut F) {
+		fields.add_field_method_get("type", |_, this| match this {
+			CodempEvent::FileTreeUpdated => Ok("filetree"),
+			CodempEvent::UserJoin(_) | CodempEvent::UserLeave(_) => Ok("user"),
+		});
+		fields.add_field_method_get("value", |_, this| match this {
+			CodempEvent::FileTreeUpdated => Ok(None),
+			CodempEvent::UserJoin(x) | CodempEvent::UserLeave(x) => Ok(Some(x.clone())),
+		});
 	}
 }
 
