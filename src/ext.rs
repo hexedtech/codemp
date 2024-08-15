@@ -43,7 +43,7 @@ pub async fn select_buffer(
 				for t in tasks {
 					t.abort();
 				}
-				return Ok(x.clone());
+				return Ok(x);
 			},
 		}
 	}
