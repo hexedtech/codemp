@@ -13,8 +13,7 @@ impl From<&WorkspaceEventInner> for Event {
 			WorkspaceEventInner::Leave(e) => Self::UserLeave(e.user.id.clone()),
 			WorkspaceEventInner::Create(_)
 			| WorkspaceEventInner::Rename(_)
-			| WorkspaceEventInner::Delete(_)
-			=> Self::FileTreeUpdated,
+			| WorkspaceEventInner::Delete(_) => Self::FileTreeUpdated,
 		}
 	}
 }

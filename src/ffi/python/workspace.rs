@@ -3,6 +3,7 @@ use crate::cursor::Controller as CursorController;
 use crate::workspace::Workspace;
 use pyo3::prelude::*;
 use pyo3::types::PyString;
+use pyo3_asyncio::generic::future_into_py;
 
 #[pymethods]
 impl Workspace {
@@ -22,7 +23,8 @@ impl Workspace {
 
 		pyo3_asyncio::tokio::future_into_py(py, async move {
 			let buffctl: BufferController = ws.attach(path.as_str()).await?;
-			Python::with_gil(|py| Py::new(py, buffctl))
+			Ok(buffctl)
+			// Python::with_gil(|py| Py::new(py, buffctl))
 		})
 	}
 
@@ -34,6 +36,12 @@ impl Workspace {
 			crate::workspace::worker::DetachResult::AlreadyDetached => true,
 		}
 	}
+
+	// #[pyo3(name = "event")]
+	// fn pyevent(&self, py: Python<'_>, path: String) -> PyResult<&PyAny> {
+	// 	let rc = self.clone();
+	// 	future_into_py(py, async move { Ok(rc.event().await?) })
+	// }
 
 	#[pyo3(name = "fetch_buffers")]
 	fn pyfetch_buffers<'p>(&'p self, py: Python<'p>) -> PyResult<&PyAny> {
@@ -114,3 +122,10 @@ impl Workspace {
 		self.filetree()
 	}
 }
+
+// #[pyclass]
+// enum PyEvent {
+// 	FileTreeUpdated,
+// 	UserJoin { name: String },
+// 	UserLeave { name: String },
+// }

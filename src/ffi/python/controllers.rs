@@ -4,37 +4,44 @@ use crate::api::TextChange;
 use crate::buffer::Controller as BufferController;
 use crate::cursor::Controller as CursorController;
 use pyo3::prelude::*;
-use pyo3::types::PyType;
+use pyo3_asyncio::tokio::future_into_py;
 
 // use super::CodempController;
 
 #[pymethods]
 impl CursorController {
 	#[pyo3(name = "send")]
-	pub fn pysend(&self, path: String, start: (i32, i32), end: (i32, i32)) -> PyResult<()> {
+	pub fn pysend<'p>(
+		&self,
+		py: Python<'p>,
+		path: String,
+		start: (i32, i32),
+		end: (i32, i32),
+	) -> PyResult<&'p PyAny> {
+		let rc = self.clone();
 		let pos = Cursor {
 			start,
 			end,
 			buffer: path,
 			user: None,
 		};
-
-		Ok(self.send(pos)?)
+		let rc = self.clone();
+		future_into_py(py, async move { Ok(rc.send(pos).await?) })
 	}
 
 	#[pyo3(name = "try_recv")]
-	pub fn pytry_recv(&self, py: Python<'_>) -> PyResult<Option<Py<Cursor>>> {
-		match self.try_recv()? {
-			Some(cur_event) => Ok(Some(Py::new(py, cur_event)?)),
-			None => Ok(None),
-		}
+	pub fn pytry_recv<'p>(&self, py: Python<'p>) -> PyResult<&'p PyAny> {
+		//PyResult<Option<Py<Cursor>>>
+		let rc = self.clone();
+
+		future_into_py(py, async move { Ok(rc.try_recv().await?) })
 	}
 
 	#[pyo3(name = "recv")]
 	pub fn pyrecv<'p>(&'p self, py: Python<'p>) -> PyResult<&'p PyAny> {
 		let rc = self.clone();
 
-		pyo3_asyncio::tokio::future_into_py(py, async move {
+		future_into_py(py, async move {
 			let cur_event: Cursor = rc.recv().await?;
 			Python::with_gil(|py| Py::new(py, cur_event))
 		})
@@ -44,7 +51,7 @@ impl CursorController {
 	pub fn pypoll<'p>(&'p self, py: Python<'p>) -> PyResult<&'p PyAny> {
 		let rc = self.clone();
 
-		pyo3_asyncio::tokio::future_into_py(py, async move { Ok(rc.poll().await?) })
+		future_into_py(py, async move { Ok(rc.poll().await?) })
 	}
 
 	#[pyo3(name = "stop")]
@@ -82,36 +89,42 @@ impl Cursor {
 #[pymethods]
 impl BufferController {
 	#[pyo3(name = "content")]
-	fn pycontent(&self) -> String {
-		self.content().clone()
+	fn pycontent<'p>(&self, py: Python<'p>) -> PyResult<&'p PyAny> {
+		let rc = self.clone();
+		future_into_py(py, async move { Ok(rc.content().await?) })
 	}
 
 	#[pyo3(name = "send")]
-	fn pysend(&self, start: u32, end: u32, txt: String) -> PyResult<()> {
+	fn pysend<'p>(&self, py: Python<'p>, start: u32, end: u32, txt: String) -> PyResult<&'p PyAny> {
 		let op = TextChange {
 			start,
 			end,
 			content: txt,
+			hash: None,
 		};
-		Ok(self.send(op)?)
+		let rc = self.clone();
+		future_into_py(py, async move { Ok(rc.send(op).await?) })
 	}
 
 	#[pyo3(name = "try_recv")]
-	fn pytry_recv(&self, py: Python<'_>) -> PyResult<PyObject> {
-		match self.try_recv()? {
-			Some(txt_change) => {
-				let evt = txt_change;
-				Ok(evt.into_py(py))
-			}
-			None => Ok(py.None()),
-		}
+	fn pytry_recv<'p>(&self, py: Python<'p>) -> PyResult<&'p PyAny> {
+		// match self.try_recv()? {
+		// 	Some(txt_change) => {
+		// 		let evt = txt_change;
+		// 		Ok(evt.into_py(py))
+		// 	}
+		// 	None => Ok(py.None()),
+		// }
+		let rc = self.clone();
+
+		future_into_py(py, async move { Ok(rc.try_recv().await?) })
 	}
 
 	#[pyo3(name = "recv")]
 	fn pyrecv<'p>(&'p self, py: Python<'p>) -> PyResult<&'p PyAny> {
 		let rc = self.clone();
 
-		pyo3_asyncio::tokio::future_into_py(py, async move {
+		future_into_py(py, async move {
 			let txt_change: TextChange = rc.recv().await?;
 			Python::with_gil(|py| Py::new(py, txt_change))
 		})
@@ -129,12 +142,12 @@ impl BufferController {
 impl TextChange {
 	#[pyo3(name = "is_deletion")]
 	fn pyis_deletion(&self) -> bool {
-		self.is_deletion()
+		self.is_delete()
 	}
 
 	#[pyo3(name = "is_addition")]
 	fn pyis_addition(&self) -> bool {
-		self.is_addition()
+		self.is_insert()
 	}
 
 	#[pyo3(name = "is_empty")]
@@ -145,17 +158,5 @@ impl TextChange {
 	#[pyo3(name = "apply")]
 	fn pyapply(&self, txt: &str) -> String {
 		self.apply(txt)
-	}
-
-	#[classmethod]
-	#[pyo3(name = "from_diff")]
-	fn pyfrom_diff(_cls: &PyType, before: &str, after: &str) -> TextChange {
-		TextChange::from_diff(before, after)
-	}
-
-	#[classmethod]
-	#[pyo3(name = "index_to_rowcol")]
-	fn pyindex_to_rowcol(_cls: &PyType, txt: &str, index: usize) -> (i32, i32) {
-		TextChange::index_to_rowcol(txt, index).into()
 	}
 }
