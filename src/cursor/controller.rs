@@ -6,7 +6,7 @@ use std::sync::Arc;
 use tokio::sync::{broadcast::{self, error::TryRecvError}, mpsc, watch, Mutex};
 use tonic::async_trait;
 
-use crate::api::{Controller, Cursor};
+use crate::api::{controller::ControllerCallback, Controller, Cursor};
 use codemp_proto::cursor::{CursorEvent, CursorPosition};
 /// the cursor controller implementation
 ///
@@ -61,6 +61,19 @@ impl Controller<Cursor> for CursorController {
 	/// await for changed mutex and then next op change
 	async fn poll(&self) -> crate::Result<()> {
 		Ok(self.0.last_op.lock().await.changed().await?)
+	}
+
+	fn callback(&self, cb: ControllerCallback) {
+		if self.0.callback.send(Some(cb)).is_err() {
+			// TODO should we panic? we failed what we were supposed to do
+			tracing::error!("no active cursor worker to run registered callback!");
+		}
+	}
+
+	fn clear_callback(&self) {
+		if self.0.callback.send(None).is_err() {
+			tracing::warn!("no active cursor worker to clear callback");
+		}
 	}
 
 	fn stop(&self) -> bool {

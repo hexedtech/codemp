@@ -45,6 +45,10 @@ pub trait Controller<T : Sized + Send + Sync> : Sized + Send + Sync {
 		}
 	}
 
+	fn callback(&self, cb: ControllerCallback);
+
+	fn clear_callback(&self);
+
 	/// block until next value is available without consuming it
 	///
 	/// this is just an async trait function wrapped by `async_trait`:
@@ -64,3 +68,11 @@ pub trait Controller<T : Sized + Send + Sync> : Sized + Send + Sync {
 	///  (likely if worker is already stopped)
 	fn stop(&self) -> bool;
 }
+
+
+/// type alias for Boxed dyn callback
+pub type ControllerCallback = Box<dyn ControllerCallbackTrait>;
+
+/// underlying trait for controller callback: must be a threadsafe repeatable non-mut closure which
+/// can be debug printed
+pub trait ControllerCallbackTrait : Sync + Send + std::fmt::Debug + Fn() {}

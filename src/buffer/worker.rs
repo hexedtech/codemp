@@ -5,7 +5,7 @@ use tokio::sync::{mpsc, oneshot, watch};
 use tonic::{async_trait, Streaming};
 use uuid::Uuid;
 
-use crate::api::controller::ControllerWorker;
+use crate::api::controller::{ControllerCallback, ControllerWorker};
 use crate::api::TextChange;
 
 use crate::errors::IgnorableError;
@@ -24,6 +24,7 @@ pub(crate) struct BufferWorker {
 	delta_req: mpsc::Receiver<(LocalVersion, oneshot::Sender<(LocalVersion, TextChange)>)>,
 	stop: mpsc::UnboundedReceiver<()>,
 	controller: BufferController,
+	callback: watch::Receiver<Option<ControllerCallback>>,
 }
 
 impl BufferWorker {
@@ -35,6 +36,7 @@ impl BufferWorker {
 
 		let (req_tx, req_rx) = mpsc::channel(1);
 		let (recv_tx, recv_rx) = mpsc::channel(1);
+		let (cb_tx, cb_rx) = watch::channel(None);
 
 		let (poller_tx, poller_rx) = mpsc::unbounded_channel();
 
@@ -49,6 +51,7 @@ impl BufferWorker {
 			stopper: end_tx,
 			content_request: req_tx,
 			delta_request: recv_tx,
+			callback: cb_tx,
 		};
 
 		BufferWorker {
@@ -61,6 +64,7 @@ impl BufferWorker {
 			controller: BufferController(Arc::new(controller)),
 			content_checkout: req_rx,
 			delta_req: recv_rx,
+			callback: cb_rx,
 		}
 	}
 }
@@ -129,6 +133,9 @@ impl ControllerWorker<TextChange> for BufferWorker {
 									.unwrap_or_warn("failed to update latest version!");
 								for tx in self.pollers.drain(..) {
 									tx.send(()).unwrap_or_warn("could not wake up poller");
+								}
+								if let Some(cb) = self.callback.borrow().as_ref() {
+									cb(); // TODO should we run this on another task/thread?
 								}
 							},
 							Err(e) => tracing::error!("could not deserialize operation from server: {}", e),

@@ -8,6 +8,7 @@ use diamond_types::LocalVersion;
 use tokio::sync::{oneshot, mpsc, watch};
 use tonic::async_trait;
 
+use crate::api::controller::ControllerCallback;
 use crate::api::Controller;
 
 use crate::api::TextChange;
@@ -52,6 +53,7 @@ pub(crate) struct BufferControllerInner {
 	pub(crate) stopper: mpsc::UnboundedSender<()>, // just exist
 	pub(crate) content_request: mpsc::Sender<oneshot::Sender<String>>,
 	pub(crate) delta_request: mpsc::Sender<(LocalVersion, oneshot::Sender<(LocalVersion, TextChange)>)>,
+	pub(crate) callback: watch::Sender<Option<ControllerCallback>>,
 }
 
 #[async_trait]
@@ -94,6 +96,19 @@ impl Controller<TextChange> for BufferController {
 		self.0.ops_in.send((op, tx))?;
 		self.0.last_update.set(rx.await?);
 		Ok(())
+	}
+
+	fn callback(&self, cb: ControllerCallback) {
+		if self.0.callback.send(Some(cb)).is_err() {
+			// TODO should we panic? we failed what we were supposed to do
+			tracing::error!("no active buffer worker to run registered callback!");
+		}
+	}
+
+	fn clear_callback(&self) {
+		if self.0.callback.send(None).is_err() {
+			tracing::warn!("no active buffer worker to clear callback");
+		}
 	}
 
 	fn stop(&self) -> bool {
