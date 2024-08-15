@@ -98,8 +98,8 @@ impl Controller<TextChange> for BufferController {
 		Ok(())
 	}
 
-	fn callback(&self, cb: ControllerCallback<BufferController>) {
-		if self.0.callback.send(Some(cb)).is_err() {
+	fn callback(&self, cb: impl Into<ControllerCallback<BufferController>>) {
+		if self.0.callback.send(Some(cb.into())).is_err() {
 			// TODO should we panic? we failed what we were supposed to do
 			tracing::error!("no active buffer worker to run registered callback!");
 		}

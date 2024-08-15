@@ -63,8 +63,8 @@ impl Controller<Cursor> for CursorController {
 		Ok(self.0.last_op.lock().await.changed().await?)
 	}
 
-	fn callback(&self, cb: ControllerCallback<CursorController>) {
-		if self.0.callback.send(Some(cb)).is_err() {
+	fn callback(&self, cb: impl Into<ControllerCallback<CursorController>>) {
+		if self.0.callback.send(Some(cb.into())).is_err() {
 			// TODO should we panic? we failed what we were supposed to do
 			tracing::error!("no active cursor worker to run registered callback!");
 		}

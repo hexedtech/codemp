@@ -45,8 +45,12 @@ pub trait Controller<T : Sized + Send + Sync> : Sized + Send + Sync {
 		}
 	}
 
-	fn callback(&self, cb: ControllerCallback<Self>);
+	/// registers a callback to be called on receive.
+	///
+	/// there can only be one callback at any given time.
+	fn callback(&self, cb: impl Into<ControllerCallback<Self>>);
 
+	/// clears the currently registered callback.
 	fn clear_callback(&self);
 
 	/// block until next value is available without consuming it

@@ -207,12 +207,12 @@ impl LuaUserData for CodempBufferController {
 
 		methods.add_method("clear_callback", |_, this, ()| Ok(this.clear_callback()));
 		methods.add_method("callback", |_, this, (cb,):(LuaFunction,)| {
-			this.callback(ControllerCallback::from(move |controller: CodempBufferController| {
+			this.callback(move |controller: CodempBufferController| {
 				let _c = controller.clone();
 				if let Err(e) = cb.call::<(CodempBufferController,), ()>((controller,)) {
 					tracing::error!("error running buffer#{} callback: {e}", _c.name());
 				}
-			}));
+			});
 			Ok(())
 		});
 	}
