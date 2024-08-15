@@ -53,7 +53,7 @@ pub(crate) struct BufferControllerInner {
 	pub(crate) stopper: mpsc::UnboundedSender<()>, // just exist
 	pub(crate) content_request: mpsc::Sender<oneshot::Sender<String>>,
 	pub(crate) delta_request: mpsc::Sender<(LocalVersion, oneshot::Sender<(LocalVersion, TextChange)>)>,
-	pub(crate) callback: watch::Sender<Option<ControllerCallback>>,
+	pub(crate) callback: watch::Sender<Option<ControllerCallback<BufferController>>>,
 }
 
 #[async_trait]
@@ -98,7 +98,7 @@ impl Controller<TextChange> for BufferController {
 		Ok(())
 	}
 
-	fn callback(&self, cb: ControllerCallback) {
+	fn callback(&self, cb: ControllerCallback<BufferController>) {
 		if self.0.callback.send(Some(cb)).is_err() {
 			// TODO should we panic? we failed what we were supposed to do
 			tracing::error!("no active buffer worker to run registered callback!");

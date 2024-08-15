@@ -29,7 +29,7 @@ pub(crate) struct CursorControllerInner {
 	pub(crate) op: mpsc::Sender<CursorPosition>,
 	pub(crate) last_op: Mutex<watch::Receiver<CursorEvent>>,
 	pub(crate) stream: Mutex<broadcast::Receiver<CursorEvent>>,
-	pub(crate) callback: watch::Sender<Option<ControllerCallback>>,
+	pub(crate) callback: watch::Sender<Option<ControllerCallback<CursorController>>>,
 	pub(crate) stop: mpsc::UnboundedSender<()>,
 }
 
@@ -63,7 +63,7 @@ impl Controller<Cursor> for CursorController {
 		Ok(self.0.last_op.lock().await.changed().await?)
 	}
 
-	fn callback(&self, cb: ControllerCallback) {
+	fn callback(&self, cb: ControllerCallback<CursorController>) {
 		if self.0.callback.send(Some(cb)).is_err() {
 			// TODO should we panic? we failed what we were supposed to do
 			tracing::error!("no active cursor worker to run registered callback!");

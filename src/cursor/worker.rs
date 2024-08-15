@@ -14,7 +14,7 @@ pub(crate) struct CursorWorker {
 	channel: broadcast::Sender<CursorEvent>,
 	stop: mpsc::UnboundedReceiver<()>,
 	controller: CursorController,
-	callback: watch::Receiver<Option<ControllerCallback>>,
+	callback: watch::Receiver<Option<ControllerCallback<CursorController>>>,
 }
 
 impl Default for CursorWorker {
@@ -62,7 +62,7 @@ impl ControllerWorker<Cursor> for CursorWorker {
 					self.channel.send(cur.clone()).unwrap_or_warn("could not broadcast event");
 					self.changed.send(cur).unwrap_or_warn("could not update last event");
 					if let Some(cb) = self.callback.borrow().as_ref() {
-						cb.call(); // TODO should this run in its own task/thread?
+						cb.call(self.controller.clone()); // TODO should this run in its own task/thread?
 					}
 				},
 				else => break,

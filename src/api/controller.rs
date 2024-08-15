@@ -45,7 +45,7 @@ pub trait Controller<T : Sized + Send + Sync> : Sized + Send + Sync {
 		}
 	}
 
-	fn callback(&self, cb: ControllerCallback);
+	fn callback(&self, cb: ControllerCallback<Self>);
 
 	fn clear_callback(&self);
 
@@ -71,22 +71,22 @@ pub trait Controller<T : Sized + Send + Sync> : Sized + Send + Sync {
 
 
 /// type wrapper for Boxed dyn callback
-pub struct ControllerCallback(Box<dyn Sync + Send + Fn()>);
+pub struct ControllerCallback<T>(Box<dyn Sync + Send + Fn(T)>);
 
-impl ControllerCallback {
-	pub fn call(&self) {
-		self.0() // lmao at this syntax
+impl<T> ControllerCallback<T> {
+	pub fn call(&self, x: T) {
+		self.0(x) // lmao at this syntax
 	}
 }
 
-impl std::fmt::Debug for ControllerCallback {
+impl<T> std::fmt::Debug for ControllerCallback<T> {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		write!(f, "ControllerCallback {{ {:p} }}", self.0)
 	}
 }
 
-impl<T: Sync + Send + Fn() + 'static> From<T> for ControllerCallback {
-	fn from(value: T) -> Self {
+impl<T, X: Sync + Send + Fn(T) + 'static> From<X> for ControllerCallback<T> {
+	fn from(value: X) -> Self {
 		Self(Box::new(value))
 	}
 }
