@@ -135,7 +135,7 @@ impl ControllerWorker<TextChange> for BufferWorker {
 									tx.send(()).unwrap_or_warn("could not wake up poller");
 								}
 								if let Some(cb) = self.callback.borrow().as_ref() {
-									cb(); // TODO should we run this on another task/thread?
+									cb.call(); // TODO should we run this on another task/thread?
 								}
 							},
 							Err(e) => tracing::error!("could not deserialize operation from server: {}", e),

@@ -70,9 +70,23 @@ pub trait Controller<T : Sized + Send + Sync> : Sized + Send + Sync {
 }
 
 
-/// type alias for Boxed dyn callback
-pub type ControllerCallback = Box<dyn ControllerCallbackTrait>;
+/// type wrapper for Boxed dyn callback
+pub struct ControllerCallback(Box<dyn Sync + Send + Fn()>);
 
-/// underlying trait for controller callback: must be a threadsafe repeatable non-mut closure which
-/// can be debug printed
-pub trait ControllerCallbackTrait : Sync + Send + std::fmt::Debug + Fn() {}
+impl ControllerCallback {
+	pub fn call(&self) {
+		self.0() // lmao at this syntax
+	}
+}
+
+impl std::fmt::Debug for ControllerCallback {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(f, "ControllerCallback {{ {:p} }}", self.0)
+	}
+}
+
+impl<T: Sync + Send + Fn() + 'static> From<T> for ControllerCallback {
+	fn from(value: T) -> Self {
+		Self(Box::new(value))
+	}
+}
