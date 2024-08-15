@@ -22,12 +22,12 @@ impl Default for CursorWorker {
 		let (cur_tx, _cur_rx) = broadcast::channel(64);
 		let (end_tx, end_rx) = mpsc::unbounded_channel();
 		let (change_tx, change_rx) = watch::channel(CursorEvent::default());
-		let controller = CursorControllerInner::new(
-			op_tx,
-			Mutex::new(change_rx),
-			Mutex::new(cur_tx.subscribe()),
-			end_tx
-		);
+		let controller = CursorControllerInner {
+			op: op_tx,
+			last_op: Mutex::new(change_rx),
+			stream: Mutex::new(cur_tx.subscribe()),
+			stop: end_tx,
+		};
 		Self {
 			op: op_rx,
 			changed: change_tx,

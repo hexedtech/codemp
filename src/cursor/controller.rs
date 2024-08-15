@@ -26,26 +26,11 @@ pub struct CursorController(pub(crate) Arc<CursorControllerInner>);
 
 #[derive(Debug)]
 pub(crate) struct CursorControllerInner {
-	op: mpsc::Sender<CursorPosition>,
-	last_op: Mutex<watch::Receiver<CursorEvent>>,
-	stream: Mutex<broadcast::Receiver<CursorEvent>>,
-	stop: mpsc::UnboundedSender<()>,
-}
-
-impl CursorControllerInner {
-	pub(crate) fn new(
-		op: mpsc::Sender<CursorPosition>,
-		last_op: Mutex<watch::Receiver<CursorEvent>>,
-		stream: Mutex<broadcast::Receiver<CursorEvent>>,
-		stop: mpsc::UnboundedSender<()>,
-	) -> Self {
-		Self {
-			op,
-			last_op,
-			stream,
-			stop,
-		}
-	}
+	pub(crate) op: mpsc::Sender<CursorPosition>,
+	pub(crate) last_op: Mutex<watch::Receiver<CursorEvent>>,
+	pub(crate) stream: Mutex<broadcast::Receiver<CursorEvent>>,
+	pub(crate) callback: watch::Sender<Option<ControllerCallback>>,
+	pub(crate) stop: mpsc::UnboundedSender<()>,
 }
 
 #[async_trait]
