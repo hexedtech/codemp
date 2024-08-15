@@ -9,7 +9,10 @@ use tokio::sync::broadcast;
 
 impl From::<CodempError> for LuaError {
 	fn from(value: CodempError) -> Self {
-		LuaError::RuntimeError(value.to_string())
+		LuaError::WithContext {
+			context: value.to_string(),
+			cause: std::sync::Arc::new(LuaError::external(value)),
+		}
 	}
 }
 
