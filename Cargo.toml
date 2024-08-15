@@ -33,7 +33,7 @@ tracing-subscriber = { version = "0.3", optional = true }
 jni = { version = "0.21", features = ["invocation"], optional = true }
 
 # glue (lua)
-mlua = { version = "0.9", features = ["module", "luajit", "send"], optional = true }
+mlua = { version = "0.10.0-beta.1", features = ["module", "luajit", "send"], optional = true }
 
 # glue (js)
 napi = { version = "2.16", features = ["full"], optional = true } 

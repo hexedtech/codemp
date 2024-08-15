@@ -1,11 +1,12 @@
 use std::io::Write;
 use std::sync::Mutex;
 
+use crate::api::controller::ControllerCallback;
 use crate::api::Cursor;
 use crate::prelude::*;
 use crate::workspace::worker::DetachResult;
 use mlua::prelude::*;
-use tokio::sync::broadcast;
+use tokio::sync::mpsc;
 
 impl From::<CodempError> for LuaError {
 	fn from(value: CodempError) -> Self {
@@ -18,16 +19,6 @@ impl From::<CodempError> for LuaError {
 
 lazy_static::lazy_static!{
 	static ref RT : tokio::runtime::Runtime = tokio::runtime::Builder::new_current_thread().enable_all().build().expect("could not create tokio runtime");
-	static ref LOG : broadcast::Sender<String> = broadcast::channel(32).0;
-	static ref STORE : dashmap::DashMap<String, CodempClient> = dashmap::DashMap::default();
-}
-
-#[derive(Debug, Clone)]
-struct Driver(tokio::sync::mpsc::UnboundedSender<()>);
-impl LuaUserData for Driver {
-	fn add_methods<'lua, M: LuaUserDataMethods<'lua, Self>>(methods: &mut M) {
-		methods.add_method("stop", |_, this, ()| Ok(this.0.send(()).is_ok()));
-	}
 }
 
 fn runtime_drive_forever(_: &Lua, ():()) -> LuaResult<Driver> {
@@ -41,28 +32,15 @@ fn runtime_drive_forever(_: &Lua, ():()) -> LuaResult<Driver> {
 	Ok(Driver(tx))
 }
 
-fn connect(_: &Lua, (host, username, password): (String, String, String)) -> LuaResult<CodempClient> {
-	let client = RT.block_on(CodempClient::new(host, username, password))?;
-	STORE.insert(client.user_id().to_string(), client.clone());
-	Ok(client)
-}
-
-fn get_client(_: &Lua, (id,): (String,)) -> LuaResult<Option<CodempClient>> {
-	Ok(STORE.get(&id).map(|x| x.value().clone()))
-}
-
-fn close_client(_: &Lua, (id,): (String,)) -> LuaResult<bool> {
-	if let Some((_id, client)) = STORE.remove(&id) {
-		for ws in client.active_workspaces() {
-			if !client.leave_workspace(&ws) {
-				tracing::warn!("could not leave workspace {ws}");
-			}
-		}
-		Ok(true)
-	} else {
-		Ok(false)
+#[derive(Debug, Clone)]
+struct Driver(tokio::sync::mpsc::UnboundedSender<()>);
+impl LuaUserData for Driver {
+	fn add_methods<'lua, M: LuaUserDataMethods<'lua, Self>>(methods: &mut M) {
+		methods.add_meta_method(LuaMetaMethod::ToString, |_, this, ()| Ok(format!("{:?}", this)));
+		methods.add_method("stop", |_, this, ()| Ok(this.0.send(()).is_ok()));
 	}
 }
+
 
 impl LuaUserData for CodempClient {
 	fn add_fields<'lua, F: LuaUserDataFields<'lua, Self>>(fields: &mut F) {
@@ -70,19 +48,19 @@ impl LuaUserData for CodempClient {
 	}
 
 	fn add_methods<'lua, M: LuaUserDataMethods<'lua, Self>>(methods: &mut M) {
+		methods.add_meta_method(LuaMetaMethod::ToString, |_, this, ()| Ok(format!("{:?}", this)));
+
 		// join a remote workspace and start processing cursor events
-		methods.add_method("join_workspace", |_, this, (session,):(String,)| {
-			tracing::info!("joining workspace {}", session);
-			let ws = RT.block_on(async { this.join_workspace(&session).await })?;
-			let cursor = ws.cursor();
-			Ok(cursor)
-		});
+		methods.add_method("join_workspace", |_, this, (session,):(String,)|
+			Ok(RT.block_on(async { this.join_workspace(&session).await })?)
+		);
 
 		methods.add_method("leave_workspace", |_, this, (session,):(String,)| {
 			Ok(this.leave_workspace(&session))
 		});
 		
 		methods.add_method("get_workspace", |_, this, (session,):(String,)| Ok(this.get_workspace(&session)));
+		methods.add_method("active_workspaces", |_, this, ()| Ok(this.active_workspaces()));
 	}
 
 }
@@ -90,6 +68,7 @@ impl LuaUserData for CodempClient {
 
 impl LuaUserData for CodempWorkspace {
 	fn add_methods<'lua, M: LuaUserDataMethods<'lua, Self>>(methods: &mut M) {
+		methods.add_meta_method(LuaMetaMethod::ToString, |_, this, ()| Ok(format!("{:?}", this)));
 		methods.add_method("create_buffer", |_, this, (name,):(String,)| {
 			Ok(RT.block_on(async { this.create(&name).await })?)
 		});
@@ -109,16 +88,25 @@ impl LuaUserData for CodempWorkspace {
 		methods.add_method("get_buffer", |_, this, (name,):(String,)| Ok(this.buffer_by_name(&name)));
 
 		methods.add_method("event", |_, this, ()| Ok(RT.block_on(this.event())?));
+
+		methods.add_method("fetch_buffers", |_, this, ()| Ok(RT.block_on(this.fetch_buffers())?));
+		methods.add_method("fetch_users", |_, this, ()| Ok(RT.block_on(this.fetch_users())?));
 	}
 
 	fn add_fields<'lua, F: LuaUserDataFields<'lua, Self>>(fields: &mut F) {
+		fields.add_field_method_get("id", |_, this| Ok(this.id()));
 		fields.add_field_method_get("cursor", |_, this| Ok(this.cursor()));
 		fields.add_field_method_get("filetree", |_, this| Ok(this.filetree()));
+		fields.add_field_method_get("active_buffers", |_, this| Ok(this.buffer_list()));
 		// fields.add_field_method_get("users", |_, this| Ok(this.0.users())); // TODO
 	}
 }
 
 impl LuaUserData for CodempEvent {
+	fn add_methods<'lua, M: LuaUserDataMethods<'lua, Self>>(methods: &mut M) {
+		methods.add_meta_method(LuaMetaMethod::ToString, |_, this, ()| Ok(format!("{:?}", this)));
+	}
+
 	fn add_fields<'lua, F: LuaUserDataFields<'lua, Self>>(fields: &mut F) {
 		fields.add_field_method_get("type", |_, this| match this {
 			CodempEvent::FileTreeUpdated => Ok("filetree"),
@@ -134,23 +122,33 @@ impl LuaUserData for CodempEvent {
 impl LuaUserData for CodempCursorController {
 	fn add_methods<'lua, M: LuaUserDataMethods<'lua, Self>>(methods: &mut M) {
 		methods.add_meta_method(LuaMetaMethod::ToString, |_, this, ()| Ok(format!("{:?}", this)));
+
 		methods.add_method("send", |_, this, (buffer, start_row, start_col, end_row, end_col):(String, i32, i32, i32, i32)| {
 			Ok(RT.block_on(this.send(CodempCursor { buffer, start: (start_row, start_col), end: (end_row, end_col), user: None }))?)
 		});
-		methods.add_method("try_recv", |_, this, ()| {
-			match RT.block_on(this.try_recv())? {
-				Some(x) => Ok(Some(x)),
-				None => Ok(None),
-			}
-		});
-		methods.add_method("poll", |_, this, ()| {
-			RT.block_on(this.poll())?;
+		methods.add_method("try_recv", |_, this, ()| Ok(RT.block_on(this.try_recv())?));
+		methods.add_method("recv", |_, this, ()| Ok(RT.block_on(this.recv())?));
+		methods.add_method("poll", |_, this, ()| Ok(RT.block_on(this.poll())?));
+
+		methods.add_method("stop", |_, this, ()| Ok(this.stop()));
+
+		methods.add_method("clear_callback", |_, this, ()| Ok(this.clear_callback()));
+		methods.add_method("callback", |_, this, (cb,):(LuaFunction,)| {
+			this.callback(ControllerCallback::from(move |controller| {
+				if let Err(e) = cb.call::<(CodempCursorController,), ()>((controller,)) {
+					tracing::error!("error running cursor callback: {e}");
+				}
+			}));
 			Ok(())
 		});
 	}
 }
 
 impl LuaUserData for Cursor {
+	fn add_methods<'lua, M: LuaUserDataMethods<'lua, Self>>(methods: &mut M) {
+		methods.add_meta_method(LuaMetaMethod::ToString, |_, this, ()| Ok(format!("{:?}", this)));
+	}
+
 	fn add_fields<'lua, F: LuaUserDataFields<'lua, Self>>(fields: &mut F) {
 		fields.add_field_method_get("user", |_, this| Ok(this.user.map(|x| x.to_string())));
 		fields.add_field_method_get("buffer", |_, this| Ok(this.buffer.clone()));
@@ -172,6 +170,10 @@ impl From<(i32, i32)> for RowCol {
 }
 
 impl LuaUserData for RowCol {
+	fn add_methods<'lua, M: LuaUserDataMethods<'lua, Self>>(methods: &mut M) {
+		methods.add_meta_method(LuaMetaMethod::ToString, |_, this, ()| Ok(format!("{:?}", this)));
+	}
+
 	fn add_fields<'lua, F: LuaUserDataFields<'lua, Self>>(fields: &mut F) {
 		fields.add_field_method_get("row",  |_, this| Ok(this.row));
 		fields.add_field_method_get("col",  |_, this| Ok(this.col));
@@ -181,6 +183,7 @@ impl LuaUserData for RowCol {
 impl LuaUserData for CodempBufferController {
 	fn add_methods<'lua, M: LuaUserDataMethods<'lua, Self>>(methods: &mut M) {
 		methods.add_meta_method(LuaMetaMethod::ToString, |_, this, ()| Ok(format!("{:?}", this)));
+
 		methods.add_method("send", |_, this, (start, end, text): (usize, usize, String)| {
 			Ok(
 				RT.block_on(this.send(
@@ -193,19 +196,25 @@ impl LuaUserData for CodempBufferController {
 				))?
 			)
 		});
-		methods.add_method("try_recv", |_, this, ()| {
-			match RT.block_on(this.try_recv())? {
-				Some(x) => Ok(Some(x)),
-				None => Ok(None),
-			}
-		});
-		methods.add_method("poll", |_, this, ()| {
-			RT.block_on(this.poll())?;
+
+		methods.add_method("try_recv", |_, this, ()| Ok(RT.block_on(this.try_recv())?));
+		methods.add_method("recv", |_, this, ()| Ok(RT.block_on(this.recv())?));
+		methods.add_method("poll", |_, this, ()| Ok(RT.block_on(this.poll())?));
+
+		methods.add_method("stop", |_, this, ()| Ok(this.stop()));
+
+		methods.add_method("content", |_, this, ()| Ok(RT.block_on(this.content())?));
+
+		methods.add_method("clear_callback", |_, this, ()| Ok(this.clear_callback()));
+		methods.add_method("callback", |_, this, (cb,):(LuaFunction,)| {
+			this.callback(ControllerCallback::from(move |controller: CodempBufferController| {
+				let _c = controller.clone();
+				if let Err(e) = cb.call::<(CodempBufferController,), ()>((controller,)) {
+					tracing::error!("error running buffer#{} callback: {e}", _c.name());
+				}
+			}));
 			Ok(())
 		});
-		methods.add_method("content", |_, this, ()|
-			Ok(RT.block_on(this.content())?)
-		);
 	}
 }
 
@@ -218,79 +227,11 @@ impl LuaUserData for CodempTextChange {
 	}
 
 	fn add_methods<'lua, M: LuaUserDataMethods<'lua, Self>>(methods: &mut M) {
-		methods.add_meta_function(LuaMetaMethod::Call, |_, (start, end, txt, hash): (usize, usize, String, Option<i64>)| {
-			Ok(CodempTextChange {
-				start: start as u32,
-				end: end as u32,
-				content: txt,
-				hash,
-			})
-		});
 		methods.add_meta_method(LuaMetaMethod::ToString, |_, this, ()| Ok(format!("{:?}", this)));
 		methods.add_method("apply", |_, this, (txt,):(String,)| Ok(this.apply(&txt)));
 	}
 }
 
-
-
-// setup library logging to file
-#[derive(Debug)]
-struct LuaLogger(broadcast::Receiver<String>);
-impl LuaUserData for LuaLogger {
-	fn add_methods<'lua, M: LuaUserDataMethods<'lua, Self>>(methods: &mut M) {
-		methods.add_method_mut("recv", |_, this, ()| {
-			Ok(this.0.blocking_recv().expect("logger channel closed"))
-		});
-	}
-}
-
-#[derive(Debug, Clone)]
-struct LuaLoggerProducer;
-impl Write for LuaLoggerProducer {
-	fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-		let _ = LOG.send(String::from_utf8_lossy(buf).to_string());
-		Ok(buf.len())
-	}
-
-	fn flush(&mut self) -> std::io::Result<()> { Ok(()) }
-}
-
-fn setup_logger(_: &Lua, (debug, path): (Option<bool>, Option<String>)) -> LuaResult<bool> {
-	let format = tracing_subscriber::fmt::format()
-		.with_level(true)
-		.with_target(true)
-		.with_thread_ids(false)
-		.with_thread_names(false)
-		.with_ansi(false)
-		.with_file(false)
-		.with_line_number(false)
-		.with_source_location(false)
-		.compact();
-
-	let level = if debug.unwrap_or_default() { tracing::Level::DEBUG } else {tracing::Level::INFO };
-
-	let builder = tracing_subscriber::fmt()
-		.event_format(format)
-		.with_max_level(level);
-
-	let result = if let Some(path) = path {
-		let logfile = std::fs::File::create(path).expect("failed creating logfile");
-		builder.with_writer(Mutex::new(logfile)).try_init().is_ok()
-	} else {
-		builder.with_writer(Mutex::new(LuaLoggerProducer)).try_init().is_ok()
-	};
-
-	Ok(result)
-}
-
-fn get_logger(_: &Lua, (): ()) -> LuaResult<LuaLogger> {
-	let sub = LOG.subscribe();
-	Ok(LuaLogger(sub))
-}
-
-fn hash(_: &Lua, (txt,): (String,)) -> LuaResult<i64> {
-	Ok(crate::hash(txt))
-}
 
 // define module and exports
 #[mlua::lua_module]
@@ -298,20 +239,95 @@ fn codemp_lua(lua: &Lua) -> LuaResult<LuaTable> {
 	let exports = lua.create_table()?;
 
 	// entrypoint
-	exports.set("connect", lua.create_function(connect)?)?;
-	exports.set("get_client", lua.create_function(get_client)?)?;
-	exports.set("close_client", lua.create_function(close_client)?)?;
+	exports.set("connect", lua.create_function(|_, (host, username, password):(String,String,String)|
+		Ok(RT.block_on(CodempClient::new(host, username, password))?)
+	)?)?;
 
 	// utils
-	exports.set("hash", lua.create_function(hash)?)?;
+	exports.set("hash", lua.create_function(|_, (txt,):(String,)|
+		Ok(crate::hash(txt))
+	)?)?;
 
 	// runtime
 	exports.set("runtime_drive_forever", lua.create_function(runtime_drive_forever)?)?;
 
 	// logging
-	exports.set("setup_logger", lua.create_function(setup_logger)?)?;
-	exports.set("get_logger", lua.create_function(get_logger)?)?;
+	exports.set("logger", lua.create_function(logger)?)?;
 
 	Ok(exports)
 }
 
+
+#[derive(Debug, Clone)]
+struct LuaLoggerProducer(mpsc::UnboundedSender<String>);
+impl Write for LuaLoggerProducer {
+	fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+		let _ = self.0.send(String::from_utf8_lossy(buf).to_string());
+		Ok(buf.len())
+	}
+
+	fn flush(&mut self) -> std::io::Result<()> { Ok(()) }
+}
+
+// TODO can we make this less verbose?
+fn logger(_: &Lua, (printer, debug): (LuaValue, Option<bool>)) -> LuaResult<bool> {
+	let level = if debug.unwrap_or_default() { tracing::Level::DEBUG } else {tracing::Level::INFO };
+	let success = match printer {
+		LuaNil
+		| LuaValue::Boolean(_)
+		| LuaValue::LightUserData(_)
+		| LuaValue::Integer(_)
+		| LuaValue::Number(_)
+		| LuaValue::Table(_)
+		| LuaValue::Thread(_)
+		| LuaValue::UserData(_)
+		| LuaValue::Error(_) => return Err(LuaError::BindError), // TODO full BadArgument type??
+		LuaValue::String(path) => {
+			let logfile = std::fs::File::create(path.to_string_lossy()).map_err(|e| LuaError::RuntimeError(e.to_string()))?;
+			let format = tracing_subscriber::fmt::format()
+				.with_level(true)
+				.with_target(true)
+				.with_thread_ids(true)
+				.with_thread_names(true)
+				.with_ansi(false)
+				.with_file(false)
+				.with_line_number(false)
+				.with_source_location(false);
+			tracing_subscriber::fmt()
+				.event_format(format)
+				.with_max_level(level)
+				.with_writer(Mutex::new(logfile))
+				.try_init()
+				.is_ok()
+		},
+		LuaValue::Function(cb) => {
+			let (tx, mut rx) = mpsc::unbounded_channel();
+			let format = tracing_subscriber::fmt::format()
+				.with_level(true)
+				.with_target(true)
+				.with_thread_ids(false)
+				.with_thread_names(false)
+				.with_ansi(false)
+				.with_file(false)
+				.with_line_number(false)
+				.with_source_location(false);
+			let res = tracing_subscriber::fmt()
+				.event_format(format)
+				.with_max_level(level)
+				.with_writer(Mutex::new(LuaLoggerProducer(tx)))
+				.try_init()
+				.is_ok();
+			if res {
+				RT.spawn(async move {
+					while let Some(msg) = rx.recv().await {
+						let _ = cb.call::<(String,),()>((msg,));
+						// if the logger fails logging who logs it?
+					}
+				});
+			}
+			res
+		},
+	};
+
+	Ok(success)
+}
