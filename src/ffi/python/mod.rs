@@ -31,6 +31,12 @@ impl From<crate::Error> for PyErr {
 	}
 }
 
+impl IntoPy<PyObject> for crate::api::User {
+	fn into_py(self, py: Python<'_>) -> PyObject {
+		self.id.to_string().into_py(py)
+	}
+}
+
 #[derive(Debug, Clone)]
 struct LoggerProducer(mpsc::Sender<String>);
 
@@ -83,12 +89,12 @@ impl PyLogger {
 	}
 
 	async fn listen(&self) -> Option<String> {
-		self.0.lock().await.recv().await
+		AllowThreads(Box::pin(self.0.lock().await.recv())).await
 	}
 }
 
 #[pymodule]
-fn codemp(_py: Python, m: &PyModule) -> PyResult<()> {
+fn codemp(m: &Bound<'_, PyModule>) -> PyResult<()> {
 	m.add_class::<PyLogger>()?;
 
 	m.add_class::<TextChange>()?;
