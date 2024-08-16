@@ -20,8 +20,7 @@
 ///
 #[derive(Clone, Debug, Default)]
 #[cfg_attr(feature = "js", napi_derive::napi(object))]
-#[cfg_attr(feature = "python", pyo3::pyclass)]
-#[cfg_attr(feature = "python", pyo3(get_all))]
+#[cfg_attr(feature = "python", pyo3::pyclass(get_all))]
 pub struct TextChange {
 	/// range start of text change, as char indexes in buffer previous state
 	pub start: u32,
@@ -37,7 +36,10 @@ impl TextChange {
 	pub fn span(&self) -> std::ops::Range<usize> {
 		self.start as usize..self.end as usize
 	}
+}
 
+#[cfg_attr(feature = "python", pyo3::pymethods)]
+impl TextChange {
 	/// returns true if this TextChange deletes existing text
 	pub fn is_delete(&self) -> bool {
 		self.start < self.end
@@ -52,12 +54,12 @@ impl TextChange {
 	pub fn is_empty(&self) -> bool {
 		!self.is_delete() && !self.is_insert()
 	}
-	
+
 	/// applies this text change to given text, returning a new string
 	pub fn apply(&self, txt: &str) -> String {
-		let pre_index = std::cmp::min(self.span().start, txt.len());
+		let pre_index = std::cmp::min(self.start as usize, txt.len());
 		let pre = txt.get(..pre_index).unwrap_or("").to_string();
-		let post = txt.get(self.span().end..).unwrap_or("").to_string();
+		let post = txt.get(self.end as usize..).unwrap_or("").to_string();
 		format!("{}{}{}", pre, self.content, post)
 	}
 }
@@ -70,7 +72,7 @@ mod tests {
 			start: 5,
 			end: 5,
 			content: " cruel".to_string(),
-			hash: None
+			hash: None,
 		};
 		let result = change.apply("hello world!");
 		assert_eq!(result, "hello cruel world!");
@@ -82,7 +84,7 @@ mod tests {
 			start: 5,
 			end: 11,
 			content: "".to_string(),
-			hash: None
+			hash: None,
 		};
 		let result = change.apply("hello cruel world!");
 		assert_eq!(result, "hello world!");
@@ -94,7 +96,7 @@ mod tests {
 			start: 5,
 			end: 11,
 			content: " not very pleasant".to_string(),
-			hash: None
+			hash: None,
 		};
 		let result = change.apply("hello cruel world!");
 		assert_eq!(result, "hello not very pleasant world!");
@@ -106,7 +108,7 @@ mod tests {
 			start: 100,
 			end: 110,
 			content: "a very long string \n which totally matters".to_string(),
-			hash: None
+			hash: None,
 		};
 		let result = change.apply("a short text");
 		assert_eq!(
@@ -121,7 +123,7 @@ mod tests {
 			start: 42,
 			end: 42,
 			content: "".to_string(),
-			hash: None
+			hash: None,
 		};
 		let result = change.apply("some important text");
 		assert_eq!(result, "some important text");

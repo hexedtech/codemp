@@ -10,10 +10,8 @@ use pyo3::prelude::*;
 #[pymethods]
 impl Client {
 	#[new]
-	fn pyconnect(host: String, username: String, password: String) -> PyResult<Self> {
-		let cli =
-			pyo3_asyncio::tokio::get_runtime().block_on(Client::new(host, username, password));
-		Ok(cli?)
+	async fn pyconnect(host: String, username: String, password: String) -> PyResult<Self> {
+		Ok(Client::new(host, username, password));
 	}
 
 	#[pyo3(name = "join_workspace")]

@@ -101,7 +101,7 @@ impl ControllerWorker<TextChange> for BufferWorker {
 						let last_ver = oplog.local_version();
 
 						if change.is_delete() {
-							branch.delete_without_content(&mut oplog, 1, change.span());
+							branch.delete_without_content(&mut oplog, 1, change.start as usize..change.end as usize);
 						}
 
 						if change.is_insert() {

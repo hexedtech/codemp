@@ -5,7 +5,7 @@
 use std::sync::Arc;
 
 use diamond_types::LocalVersion;
-use tokio::sync::{oneshot, mpsc, watch};
+use tokio::sync::{mpsc, oneshot, watch};
 use tonic::async_trait;
 
 use crate::api::Controller;
@@ -37,7 +37,9 @@ impl BufferController {
 		let (tx, rx) = oneshot::channel();
 		self.0.content_request.send(tx).await?;
 		let content = rx.await?;
-		self.0.last_update.set(self.0.latest_version.borrow().clone());
+		self.0
+			.last_update
+			.set(self.0.latest_version.borrow().clone());
 		Ok(content)
 	}
 }
@@ -51,7 +53,8 @@ pub(crate) struct BufferControllerInner {
 	pub(crate) poller: mpsc::UnboundedSender<oneshot::Sender<()>>,
 	pub(crate) stopper: mpsc::UnboundedSender<()>, // just exist
 	pub(crate) content_request: mpsc::Sender<oneshot::Sender<String>>,
-	pub(crate) delta_request: mpsc::Sender<(LocalVersion, oneshot::Sender<(LocalVersion, TextChange)>)>,
+	pub(crate) delta_request:
+		mpsc::Sender<(LocalVersion, oneshot::Sender<(LocalVersion, TextChange)>)>,
 }
 
 #[async_trait]

@@ -82,9 +82,8 @@ impl PyLogger {
 		}
 	}
 
-	fn listen<'p>(&'p self, py: Python<'p>) -> PyResult<&'p PyAny> {
-		let rc = self.0.clone();
-		pyo3_asyncio::tokio::future_into_py(py, async move { Ok(rc.lock().await.recv().await) })
+	async fn listen(&self) -> Option<String> {
+		self.0.lock().await.recv().await
 	}
 }
 

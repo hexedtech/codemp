@@ -6,9 +6,8 @@ use crate::{
 };
 
 use codemp_proto::{
-	common::Empty,
 	auth::Token,
-	common::Identity,
+	common::Empty,
 	files::BufferNode,
 	workspace::{
 		workspace_event::{
@@ -54,14 +53,12 @@ impl Workspace {
 		token: Token,
 	) -> crate::Result<Self> {
 		let services = Services::try_new(dest, token).await?;
-		let ws_stream = services.ws()
-			.attach(Empty{})
-			.await?
-			.into_inner();
+		let ws_stream = services.ws().attach(Empty {}).await?.into_inner();
 
 		let (tx, rx) = mpsc::channel(256);
 		let (ev_tx, ev_rx) = mpsc::unbounded_channel();
-		let cur_stream = services.cur()
+		let cur_stream = services
+			.cur()
 			.attach(tokio_stream::wrappers::ReceiverStream::new(rx))
 			.await?
 			.into_inner();
@@ -92,7 +89,11 @@ impl Workspace {
 		Ok(ws)
 	}
 
-	pub(crate) fn run_actor(&self, mut stream: Streaming<WorkspaceEvent>, tx: mpsc::UnboundedSender<crate::api::Event>) {
+	pub(crate) fn run_actor(
+		&self,
+		mut stream: Streaming<WorkspaceEvent>,
+		tx: mpsc::UnboundedSender<crate::api::Event>,
+	) {
 		// TODO for buffer and cursor controller we invoke the tokio::spawn outside, but here inside..?
 		let inner = self.0.clone();
 		let name = self.id();
@@ -109,7 +110,9 @@ impl Workspace {
 						match ev {
 							// user
 							WorkspaceEventInner::Join(UserJoin { user }) => {
-								inner.users.insert(user.clone().into(), User { id: user.into() });
+								inner
+									.users
+									.insert(user.clone().into(), User { id: user.into() });
 							}
 							WorkspaceEventInner::Leave(UserLeave { user }) => {
 								inner.users.remove(&user.into());
@@ -132,12 +135,15 @@ impl Workspace {
 						if tx.send(update).is_err() {
 							tracing::warn!("no active controller to receive workspace event");
 						}
-					},
+					}
 				}
 			}
 		});
 	}
+}
 
+#[cfg_attr(feature = "python", pyo3::pymethods)] //LMAO it works
+impl Workspace {
 	/// create a new buffer in current workspace
 	pub async fn create(&self, path: &str) -> crate::Result<()> {
 		let mut workspace_client = self.0.services.ws();
@@ -175,10 +181,7 @@ impl Workspace {
 			tonic::metadata::MetadataValue::try_from(credentials.id.id)
 				.expect("could not represent path as byte sequence"),
 		);
-		let stream = self.0.services.buf()
-			.attach(req)
-			.await?
-			.into_inner();
+		let stream = self.0.services.buf().attach(req).await?.into_inner();
 
 		let worker = BufferWorker::new(self.0.user_id, path);
 		let controller = worker.controller();
@@ -206,17 +209,24 @@ impl Workspace {
 	pub fn detach(&self, path: &str) -> DetachResult {
 		match self.0.buffers.remove(path) {
 			None => DetachResult::NotAttached,
-			Some((_name, controller)) => if controller.stop() {
-				DetachResult::Detaching
-			} else {
-				DetachResult::AlreadyDetached
+			Some((_name, controller)) => {
+				if controller.stop() {
+					DetachResult::Detaching
+				} else {
+					DetachResult::AlreadyDetached
+				}
 			}
 		}
 	}
 
 	/// await next workspace [crate::api::Event] and return it
 	pub async fn event(&self) -> crate::Result<crate::api::Event> {
-		self.0.events.lock().await.recv().await
+		self.0
+			.events
+			.lock()
+			.await
+			.recv()
+			.await
 			.ok_or(crate::Error::Channel { send: false })
 	}
 
@@ -261,7 +271,7 @@ impl Workspace {
 	/// get a list of the users attached to a specific buffer
 	///
 	/// TODO: discuss implementation details
-	pub async fn list_buffer_users(&self, path: &str) -> crate::Result<Vec<Identity>> {
+	pub async fn list_buffer_users(&self, path: &str) -> crate::Result<Vec<String>> {
 		let mut workspace_client = self.0.services.ws();
 		let buffer_users = workspace_client
 			.list_buffer_users(tonic::Request::new(BufferNode {
@@ -269,7 +279,10 @@ impl Workspace {
 			}))
 			.await?
 			.into_inner()
-			.users;
+			.users
+			.into_iter()
+			.map(|u| u.id)
+			.collect();
 
 		Ok(buffer_users)
 	}
@@ -313,7 +326,11 @@ impl Workspace {
 	/// get a list of all the currently attached to buffers
 	// #[cfg_attr(feature = "js", napi)] // https://github.com/napi-rs/napi-rs/issues/1120
 	pub fn buffer_list(&self) -> Vec<String> {
-		self.0.buffers.iter().map(|elem| elem.key().clone()).collect()
+		self.0
+			.buffers
+			.iter()
+			.map(|elem| elem.key().clone())
+			.collect()
 	}
 
 	/// get the currently cached "filetree"
@@ -327,7 +344,11 @@ impl Drop for WorkspaceInner {
 	fn drop(&mut self) {
 		for entry in self.buffers.iter() {
 			if !entry.value().stop() {
-				tracing::warn!("could not stop buffer worker {} for workspace {}", entry.value().name(), self.id);
+				tracing::warn!(
+					"could not stop buffer worker {} for workspace {}",
+					entry.value().name(),
+					self.id
+				);
 			}
 		}
 		if !self.cursor.stop() {
@@ -336,6 +357,8 @@ impl Drop for WorkspaceInner {
 	}
 }
 
+#[cfg_attr(feature = "python", pyo3::pyclass(eq, eq_int))]
+#[cfg_attr(feature = "python", derive(PartialEq))]
 pub enum DetachResult {
 	NotAttached,
 	Detaching,
