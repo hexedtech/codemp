@@ -15,6 +15,8 @@ use crate::api::TextChange;
 
 use crate::ext::InternallyMutable;
 
+use super::worker::DeltaRequest;
+
 /// the buffer controller implementation
 ///
 /// for each controller a worker exists, managing outgoing and inbound
@@ -52,7 +54,7 @@ pub(crate) struct BufferControllerInner {
 	pub(crate) poller: mpsc::UnboundedSender<oneshot::Sender<()>>,
 	pub(crate) stopper: mpsc::UnboundedSender<()>, // just exist
 	pub(crate) content_request: mpsc::Sender<oneshot::Sender<String>>,
-	pub(crate) delta_request: mpsc::Sender<(LocalVersion, oneshot::Sender<(LocalVersion, TextChange)>)>,
+	pub(crate) delta_request: mpsc::Sender<DeltaRequest>,
 	pub(crate) callback: watch::Sender<Option<ControllerCallback<BufferController>>>,
 }
 
@@ -85,7 +87,7 @@ impl Controller<TextChange> for BufferController {
 		self.0.delta_request.send((last_update, tx)).await?;
 		let (v, change) = rx.await?;
 		self.0.last_update.set(v);
-		Ok(Some(change))
+		Ok(change)
 	}
 
 	/// enqueue a text change for processing
