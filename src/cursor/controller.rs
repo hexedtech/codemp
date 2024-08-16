@@ -3,7 +3,10 @@
 //! a controller implementation for cursor actions
 use std::sync::Arc;
 
-use tokio::sync::{broadcast::{self, error::TryRecvError}, mpsc, watch, Mutex};
+use tokio::sync::{
+	broadcast::{self, error::TryRecvError},
+	mpsc, watch, Mutex,
+};
 use tonic::async_trait;
 
 use crate::api::{controller::ControllerCallback, Controller, Cursor};
