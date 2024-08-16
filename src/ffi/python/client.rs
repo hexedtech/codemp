@@ -10,18 +10,13 @@ use pyo3::prelude::*;
 #[pymethods]
 impl Client {
 	#[new]
-	async fn pyconnect(host: String, username: String, password: String) -> PyResult<Self> {
-		Ok(Client::new(host, username, password));
+	fn pyconnect(host: String, username: String, password: String) -> crate::Result<Self> {
+		super::tokio().block_on(async move { Client::new(host, username, password).await })
 	}
 
 	#[pyo3(name = "join_workspace")]
-	fn pyjoin_workspace<'a>(&'a self, py: Python<'a>, workspace: String) -> PyResult<&PyAny> {
-		let rc = self.clone();
-
-		pyo3_asyncio::tokio::future_into_py(py, async move {
-			let workspace: Workspace = rc.join_workspace(workspace.as_str()).await?;
-			Python::with_gil(|py| Py::new(py, workspace))
-		})
+	async fn pyjoin_workspace(&self, workspace: String) -> crate::Result<Workspace> {
+		self.join_workspace(workspace).await
 	}
 
 	#[pyo3(name = "leave_workspace")]
@@ -31,11 +26,8 @@ impl Client {
 
 	// join a workspace
 	#[pyo3(name = "get_workspace")]
-	fn pyget_workspace(&self, py: Python<'_>, id: String) -> PyResult<Option<Py<Workspace>>> {
-		match self.get_workspace(id.as_str()) {
-			Some(ws) => Ok(Some(Py::new(py, ws)?)),
-			None => Ok(None),
-		}
+	fn pyget_workspace(&self, id: String) -> Option<Workspace> {
+		self.get_workspace(id.as_str())
 	}
 
 	#[pyo3(name = "active_workspaces")]
