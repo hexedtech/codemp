@@ -3,6 +3,11 @@ pub mod controllers;
 pub mod workspace;
 
 use std::sync::Arc;
+use std::{
+	future::Future,
+	pin::{pin, Pin},
+	task::{Context, Poll},
+};
 
 use crate::{
 	api::{Cursor, TextChange},
@@ -13,6 +18,30 @@ use crate::{
 use pyo3::exceptions::{PyConnectionError, PyRuntimeError, PySystemError};
 use pyo3::prelude::*;
 use tokio::sync::{mpsc, Mutex};
+
+fn tokio() -> &'static tokio::runtime::Runtime {
+	use std::sync::OnceLock;
+	static RT: OnceLock<tokio::runtime::Runtime> = OnceLock::new();
+	RT.get_or_init(|| tokio::runtime::Runtime::new().unwrap())
+}
+
+// workaround to allow the GIL to be released across awaits
+struct AllowThreads<F>(F);
+
+impl<F> Future for AllowThreads<F>
+where
+	F: Future + Unpin + Send,
+	F::Output: Send,
+{
+	type Output = F::Output;
+
+	fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+		let waker = cx.waker();
+		Python::with_gil(|gil| {
+			gil.allow_threads(|| pin!(&mut self.0).poll(&mut Context::from_waker(waker)))
+		})
+	}
+}
 
 impl From<crate::Error> for PyErr {
 	fn from(value: crate::Error) -> Self {

@@ -16,22 +16,22 @@ impl CursorController {
 			buffer: path,
 			user: None,
 		};
-		self.send(pos).await
+		super::AllowThreads(self.send(pos)).await
 	}
 
 	#[pyo3(name = "try_recv")]
 	async fn pytry_recv(&self) -> crate::Result<Option<Cursor>> {
-		self.try_recv().await
+		super::AllowThreads(self.try_recv()).await
 	}
 
 	#[pyo3(name = "recv")]
 	async fn pyrecv(&self) -> crate::Result<Cursor> {
-		self.recv().await
+		super::AllowThreads(self.recv()).await
 	}
 
 	#[pyo3(name = "poll")]
 	async fn pypoll(&self) -> crate::Result<()> {
-		self.poll().await
+		super::AllowThreads(self.poll()).await
 	}
 
 	#[pyo3(name = "stop")]
@@ -45,7 +45,7 @@ impl CursorController {
 impl BufferController {
 	#[pyo3(name = "content")]
 	async fn pycontent(&self) -> crate::Result<String> {
-		self.content().await
+		super::AllowThreads(Box::pin(self.content())).await
 	}
 
 	#[pyo3(name = "send")]
@@ -56,22 +56,22 @@ impl BufferController {
 			content: txt,
 			hash: None,
 		};
-		self.send(op).await
+		super::AllowThreads(self.send(op)).await
 	}
 
 	#[pyo3(name = "try_recv")]
 	async fn pytry_recv(&self) -> crate::Result<Option<TextChange>> {
-		self.try_recv().await
+		super::AllowThreads(self.try_recv()).await
 	}
 
 	#[pyo3(name = "recv")]
 	async fn pyrecv(&self) -> crate::Result<TextChange> {
-		self.recv().await
+		super::AllowThreads(self.recv()).await
 	}
 
 	#[pyo3(name = "poll")]
 	async fn pypoll(&self) -> crate::Result<()> {
-		self.poll().await
+		super::AllowThreads(self.poll()).await
 	}
 }
 
