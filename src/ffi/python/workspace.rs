@@ -1,30 +1,24 @@
+// We no can simply define decorate the pub impl block of workspace with
+// #[pymethods], which means that this module is not really necessary anymore.
+// In any case we will leave it here for the time being in case we need to come back to
+// the manual version.
+
 // use crate::buffer::Controller as BufferController;
 // use crate::cursor::Controller as CursorController;
 // use crate::workspace::Workspace;
 // use pyo3::prelude::*;
-// use pyo3::types::PyString;
 
 // #[pymethods]
 // impl Workspace {
 // 	// join a workspace
 // 	#[pyo3(name = "create")]
-// 	fn pycreate<'p>(&'p self, py: Python<'p>, path: String) -> PyResult<&'p PyAny> {
-// 		let ws = self.clone();
-
-// 		pyo3_asyncio::tokio::future_into_py(py, async move {
-// 			ws.create(path.as_str()).await?;
-// 			Ok(())
-// 		})
+// 	async fn pycreate(&self, path: String) -> crate::Result<()> {
+// 		self.create(path.as_str()).await
 // 	}
-// 	#[pyo3(name = "attach")]
-// 	fn pyattach<'p>(&'p self, py: Python<'p>, path: String) -> PyResult<&PyAny> {
-// 		let ws = self.clone();
 
-// 		pyo3_asyncio::tokio::future_into_py(py, async move {
-// 			let buffctl: BufferController = ws.attach(path.as_str()).await?;
-// 			Ok(buffctl)
-// 			// Python::with_gil(|py| Py::new(py, buffctl))
-// 		})
+// 	#[pyo3(name = "attach")]
+// 	async fn pyattach(&self, path: String) -> crate::Result<BufferController> {
+// 		Ok(self.attach(path.as_str()).await?)
 // 	}
 
 // 	#[pyo3(name = "detach")]
@@ -36,79 +30,44 @@
 // 		}
 // 	}
 
-// 	// #[pyo3(name = "event")]
-// 	// fn pyevent(&self, py: Python<'_>, path: String) -> PyResult<&PyAny> {
-// 	// 	let rc = self.clone();
-// 	// 	future_into_py(py, async move { Ok(rc.event().await?) })
-// 	// }
+// 	#[pyo3(name = "event")]
+// 	async fn pyevent(&self) -> crate::Result<crate::api::Event> {
+// 		self.event().await
+// 	}
 
 // 	#[pyo3(name = "fetch_buffers")]
-// 	fn pyfetch_buffers<'p>(&'p self, py: Python<'p>) -> PyResult<&PyAny> {
-// 		let ws = self.clone();
-
-// 		pyo3_asyncio::tokio::future_into_py(py, async move {
-// 			ws.fetch_buffers().await?;
-// 			Ok(())
-// 		})
+// 	async fn pyfetch_buffers(&self) -> crate::Result<()> {
+// 		self.fetch_buffers().await
 // 	}
 
 // 	#[pyo3(name = "fetch_users")]
-// 	fn pyfetch_users<'p>(&'p self, py: Python<'p>) -> PyResult<&PyAny> {
-// 		let ws = self.clone();
-
-// 		pyo3_asyncio::tokio::future_into_py(py, async move {
-// 			ws.fetch_users().await?;
-// 			Ok(())
-// 		})
+// 	async fn pyfetch_users(&self) -> crate::Result<()> {
+// 		self.fetch_users().await
 // 	}
 
 // 	#[pyo3(name = "list_buffer_users")]
-// 	fn pylist_buffer_users<'p>(&'p self, py: Python<'p>, path: String) -> PyResult<&PyAny> {
-// 		let ws = self.clone();
-
-// 		pyo3_asyncio::tokio::future_into_py(py, async move {
-// 			let usrlist: Vec<String> = ws
-// 				.list_buffer_users(path.as_str())
-// 				.await?
-// 				.into_iter()
-// 				.map(|e| e.id)
-// 				.collect();
-
-// 			Ok(usrlist)
-// 		})
+// 	async fn pylist_buffer_users(&self, path: String) -> crate::Result<Vec<crate::api::User>> {
+// 		self.list_buffer_users(path.as_str()).await
 // 	}
 
 // 	#[pyo3(name = "delete")]
-// 	fn pydelete<'p>(&'p self, py: Python<'p>, path: String) -> PyResult<&PyAny> {
-// 		let ws = self.clone();
-
-// 		pyo3_asyncio::tokio::future_into_py(py, async move {
-// 			ws.delete(path.as_str()).await?;
-// 			Ok(())
-// 		})
+// 	async fn pydelete(&self, path: String) -> crate::Result<()> {
+// 		self.delete(path.as_str()).await
 // 	}
 
 // 	#[pyo3(name = "id")]
-// 	fn pyid(&self, py: Python<'_>) -> Py<PyString> {
-// 		PyString::new(py, self.id().as_str()).into()
+// 	fn pyid(&self) -> String {
+// 		self.id()
 // 	}
 
 // 	#[pyo3(name = "cursor")]
-// 	fn pycursor(&self, py: Python<'_>) -> PyResult<Py<CursorController>> {
-// 		Py::new(py, self.cursor())
+// 	fn pycursor(&self) -> CursorController {
+// 		self.cursor()
 // 	}
 
 // 	#[pyo3(name = "buffer_by_name")]
-// 	fn pybuffer_by_name(
-// 		&self,
-// 		py: Python<'_>,
-// 		path: String,
-// 	) -> PyResult<Option<Py<BufferController>>> {
-// 		let Some(bufctl) = self.buffer_by_name(path.as_str()) else {
-// 			return Ok(None);
-// 		};
-
-// 		Ok(Some(Py::new(py, bufctl)?))
+// 	fn pybuffer_by_name(&self, path: String) -> Option<BufferController> {
+// 		self.buffer_by_name(path.as_str())
 // 	}
 
 // 	#[pyo3(name = "buffer_list")]
@@ -120,11 +79,4 @@
 // 	fn pyfiletree(&self) -> Vec<String> {
 // 		self.filetree()
 // 	}
-// }
-
-// #[pyclass]
-// enum PyEvent {
-// 	FileTreeUpdated,
-// 	UserJoin { name: String },
-// 	UserLeave { name: String },
 // }
