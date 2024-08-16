@@ -45,6 +45,14 @@ pub trait Controller<T : Sized + Send + Sync> : Sized + Send + Sync {
 		}
 	}
 
+	/// registers a callback to be called on receive.
+	///
+	/// there can only be one callback at any given time.
+	fn callback(&self, cb: impl Into<ControllerCallback<Self>>);
+
+	/// clears the currently registered callback.
+	fn clear_callback(&self);
+
 	/// block until next value is available without consuming it
 	///
 	/// this is just an async trait function wrapped by `async_trait`:
@@ -63,4 +71,26 @@ pub trait Controller<T : Sized + Send + Sync> : Sized + Send + Sync {
 	/// returns true if stop signal was sent, false if channel is closed
 	///  (likely if worker is already stopped)
 	fn stop(&self) -> bool;
+}
+
+
+/// type wrapper for Boxed dyn callback
+pub struct ControllerCallback<T>(Box<dyn Sync + Send + Fn(T)>);
+
+impl<T> ControllerCallback<T> {
+	pub fn call(&self, x: T) {
+		self.0(x) // lmao at this syntax
+	}
+}
+
+impl<T> std::fmt::Debug for ControllerCallback<T> {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(f, "ControllerCallback {{ {:p} }}", self.0)
+	}
+}
+
+impl<T, X: Sync + Send + Fn(T) + 'static> From<X> for ControllerCallback<T> {
+	fn from(value: X) -> Self {
+		Self(Box::new(value))
+	}
 }

@@ -1,18 +1,26 @@
-use codemp_proto::{auth::Token, buffer::buffer_client::BufferClient, cursor::cursor_client::CursorClient, workspace::workspace_client::WorkspaceClient};
-use tonic::{service::{interceptor::InterceptedService, Interceptor}, transport::{Channel, Endpoint}};
-
+use codemp_proto::{
+	auth::Token, buffer::buffer_client::BufferClient, cursor::cursor_client::CursorClient,
+	workspace::workspace_client::WorkspaceClient,
+};
+use tonic::{
+	service::{interceptor::InterceptedService, Interceptor},
+	transport::{Channel, Endpoint},
+};
 
 #[derive(Clone)]
 pub struct WorkspaceInterceptor {
-	token: tokio::sync::watch::Receiver<Token>
+	token: tokio::sync::watch::Receiver<Token>,
 }
 
 impl Interceptor for WorkspaceInterceptor {
-	fn call(&mut self, mut request: tonic::Request<()>) -> Result<tonic::Request<()>, tonic::Status> {
+	fn call(
+		&mut self,
+		mut request: tonic::Request<()>,
+	) -> Result<tonic::Request<()>, tonic::Status> {
 		if let Ok(token) = self.token.borrow().token.parse() {
 			request.metadata_mut().insert("auth", token);
 		}
-		
+
 		Ok(request)
 	}
 }
@@ -29,9 +37,7 @@ pub struct Services {
 
 impl Services {
 	pub async fn try_new(dest: &str, token: Token) -> crate::Result<Self> {
-		let channel = Endpoint::from_shared(dest.to_string())?
-			.connect()
-			.await?;
+		let channel = Endpoint::from_shared(dest.to_string())?.connect().await?;
 		let (token_tx, token_rx) = tokio::sync::watch::channel(token);
 		let inter = WorkspaceInterceptor { token: token_rx };
 		Ok(Self {
@@ -61,5 +67,4 @@ impl Services {
 	pub fn cur(&self) -> CursorClient<AuthedService> {
 		self.cursor.clone()
 	}
-
 }

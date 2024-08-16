@@ -63,71 +63,27 @@ fn recv_jni(env: &mut JNIEnv, change: Option<crate::api::TextChange>) -> jobject
 		None => JObject::default(),
 		Some(event) => {
 			let content = env.new_string(event.content).jexcept(env);
+
+			let hash = env.find_class("java/util/OptionalLong").and_then(|class| {
+				if let Some(h) = event.hash {
+					env.call_static_method(class, "of", "(J)Ljava/util/OptionalLong;", &[JValueGen::Long(h)])
+				} else {
+					env.call_static_method(class, "empty", "()Ljava/util/OptionalLong;", &[])
+				}
+			}).and_then(|o| o.l()).jexcept(env);
 			env.find_class("mp/code/data/TextChange")
 				.and_then(|class| {
 					env.new_object(
 						class,
-						"(JJLjava/lang/String;J)V",
+						"(JJLjava/lang/String;Ljava/util/OptionalLong;)V",
 						&[
 							JValueGen::Long(jlong::from(event.start)),
 							JValueGen::Long(jlong::from(event.end)),
 							JValueGen::Object(&content),
-							JValueGen::Long(event.hash.unwrap_or_default())
+							JValueGen::Object(&hash)
 						]
 					)
 				}).jexcept(env)
 		}
 	}.as_raw()
-}
-
-/// Receives from Java, converts and sends a [crate::api::TextChange].
-#[no_mangle]
-pub extern "system" fn Java_mp_code_BufferController_send<'local>(
-	mut env: JNIEnv,
-	_class: JClass<'local>,
-	self_ptr: jlong,
-	input: JObject<'local>
-) {
-	let start = env.get_field(&input, "start", "J").and_then(|s| s.j()).jexcept(&mut env);
-	let end = env.get_field(&input, "end", "J").and_then(|e| e.j()).jexcept(&mut env);
-	let content = env.get_field(&input, "content", "Ljava/lang/String;")
-		.and_then(|c| c.l())
-		.map(|c| c.into())
-		.jexcept(&mut env);
-	let content = unsafe { env.get_string_unchecked(&content) }
-		.map(|c| c.to_string_lossy().to_string())
-		.jexcept(&mut env);
-
-	let controller = unsafe { Box::leak(Box::from_raw(self_ptr as *mut crate::buffer::Controller)) };
-	RT.block_on(controller.send(crate::api::TextChange {
-		start: start as u32,
-		end: end as u32,
-		content,
-		hash: None
-	})).jexcept(&mut env);
-}
-
-/// Called by the Java GC to drop a [crate::buffer::Controller].
-#[no_mangle]
-pub extern "system" fn Java_mp_code_BufferController_free(
-	_env: JNIEnv,
-	_class: JClass,
-	self_ptr: jlong,
-) {
-	let _ = unsafe { Box::from_raw(self_ptr as *mut crate::cursor::Controller) };
-}
-
-
-/// Calculates the XXH3 hash for a given String.
-#[no_mangle]
-pub extern "system" fn Java_mp_code_data_TextChange_hash<'local>(
-	mut env: JNIEnv,
-	_class: JClass<'local>,
-	content: JString<'local>,
-) -> jlong {
-	let content: String = env.get_string(&content)
-		.map(|s| s.into())
-		.jexcept(&mut env);
-	let hash = crate::ext::hash(content.as_bytes());
-	i64::from_ne_bytes(hash.to_ne_bytes())
 }

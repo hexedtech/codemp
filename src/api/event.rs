@@ -1,5 +1,6 @@
 use codemp_proto::workspace::workspace_event::Event as WorkspaceEventInner;
 
+#[derive(Debug, Clone)]
 #[cfg_attr(feature = "python", pyo3::pyclass)]
 pub enum Event {
 	FileTreeUpdated(String),

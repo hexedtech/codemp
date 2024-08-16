@@ -3,10 +3,13 @@
 //! a controller implementation for cursor actions
 use std::sync::Arc;
 
-use tokio::sync::{broadcast::{self, error::TryRecvError}, mpsc, watch, Mutex};
+use tokio::sync::{
+	broadcast::{self, error::TryRecvError},
+	mpsc, watch, Mutex,
+};
 use tonic::async_trait;
 
-use crate::api::{Controller, Cursor};
+use crate::api::{controller::ControllerCallback, Controller, Cursor};
 use codemp_proto::cursor::{CursorEvent, CursorPosition};
 /// the cursor controller implementation
 ///
@@ -26,26 +29,11 @@ pub struct CursorController(pub(crate) Arc<CursorControllerInner>);
 
 #[derive(Debug)]
 pub(crate) struct CursorControllerInner {
-	op: mpsc::Sender<CursorPosition>,
-	last_op: Mutex<watch::Receiver<CursorEvent>>,
-	stream: Mutex<broadcast::Receiver<CursorEvent>>,
-	stop: mpsc::UnboundedSender<()>,
-}
-
-impl CursorControllerInner {
-	pub(crate) fn new(
-		op: mpsc::Sender<CursorPosition>,
-		last_op: Mutex<watch::Receiver<CursorEvent>>,
-		stream: Mutex<broadcast::Receiver<CursorEvent>>,
-		stop: mpsc::UnboundedSender<()>,
-	) -> Self {
-		Self {
-			op,
-			last_op,
-			stream,
-			stop,
-		}
-	}
+	pub(crate) op: mpsc::Sender<CursorPosition>,
+	pub(crate) last_op: Mutex<watch::Receiver<CursorEvent>>,
+	pub(crate) stream: Mutex<broadcast::Receiver<CursorEvent>>,
+	pub(crate) callback: watch::Sender<Option<ControllerCallback<CursorController>>>,
+	pub(crate) stop: mpsc::UnboundedSender<()>,
 }
 
 #[async_trait]
@@ -76,6 +64,19 @@ impl Controller<Cursor> for CursorController {
 	/// await for changed mutex and then next op change
 	async fn poll(&self) -> crate::Result<()> {
 		Ok(self.0.last_op.lock().await.changed().await?)
+	}
+
+	fn callback(&self, cb: impl Into<ControllerCallback<CursorController>>) {
+		if self.0.callback.send(Some(cb.into())).is_err() {
+			// TODO should we panic? we failed what we were supposed to do
+			tracing::error!("no active cursor worker to run registered callback!");
+		}
+	}
+
+	fn clear_callback(&self) {
+		if self.0.callback.send(None).is_err() {
+			tracing::warn!("no active cursor worker to clear callback");
+		}
 	}
 
 	fn stop(&self) -> bool {

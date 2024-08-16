@@ -1,5 +1,5 @@
 use crate::{
-	api::{controller::ControllerWorker, Controller, User},
+	api::{controller::ControllerWorker, Controller, Event, User},
 	buffer::{self, worker::BufferWorker},
 	cursor::{self, worker::CursorWorker},
 	workspace::service::Services,
@@ -220,7 +220,7 @@ impl Workspace {
 	}
 
 	/// await next workspace [crate::api::Event] and return it
-	pub async fn event(&self) -> crate::Result<crate::api::Event> {
+	pub async fn event(&self) -> crate::Result<Event> {
 		self.0
 			.events
 			.lock()
@@ -271,7 +271,7 @@ impl Workspace {
 	/// get a list of the users attached to a specific buffer
 	///
 	/// TODO: discuss implementation details
-	pub async fn list_buffer_users(&self, path: &str) -> crate::Result<Vec<String>> {
+	pub async fn list_buffer_users(&self, path: &str) -> crate::Result<Vec<User>> {
 		let mut workspace_client = self.0.services.ws();
 		let buffer_users = workspace_client
 			.list_buffer_users(tonic::Request::new(BufferNode {
@@ -281,7 +281,7 @@ impl Workspace {
 			.into_inner()
 			.users
 			.into_iter()
-			.map(|u| u.id)
+			.map(|id| id.into())
 			.collect();
 
 		Ok(buffer_users)

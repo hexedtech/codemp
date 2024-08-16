@@ -3,7 +3,7 @@ use std::sync::Arc;
 use tokio::sync::{mpsc, broadcast::{self}, Mutex, watch};
 use tonic::{Streaming, async_trait};
 
-use crate::{api::{controller::ControllerWorker, Cursor}, errors::IgnorableError};
+use crate::{api::{controller::{ControllerCallback, ControllerWorker}, Cursor}, errors::IgnorableError};
 use codemp_proto::cursor::{CursorPosition, CursorEvent};
 
 use super::controller::{CursorController, CursorControllerInner};
@@ -14,6 +14,7 @@ pub(crate) struct CursorWorker {
 	channel: broadcast::Sender<CursorEvent>,
 	stop: mpsc::UnboundedReceiver<()>,
 	controller: CursorController,
+	callback: watch::Receiver<Option<ControllerCallback<CursorController>>>,
 }
 
 impl Default for CursorWorker {
@@ -22,18 +23,21 @@ impl Default for CursorWorker {
 		let (cur_tx, _cur_rx) = broadcast::channel(64);
 		let (end_tx, end_rx) = mpsc::unbounded_channel();
 		let (change_tx, change_rx) = watch::channel(CursorEvent::default());
-		let controller = CursorControllerInner::new(
-			op_tx,
-			Mutex::new(change_rx),
-			Mutex::new(cur_tx.subscribe()),
-			end_tx
-		);
+		let (cb_tx, cb_rx) = watch::channel(None);
+		let controller = CursorControllerInner {
+			op: op_tx,
+			last_op: Mutex::new(change_rx),
+			stream: Mutex::new(cur_tx.subscribe()),
+			stop: end_tx,
+			callback: cb_tx,
+		};
 		Self {
 			op: op_rx,
 			changed: change_tx,
 			channel: cur_tx,
 			stop: end_rx,
 			controller: CursorController(Arc::new(controller)),
+			callback: cb_rx,
 		}
 	}
 }
@@ -57,6 +61,9 @@ impl ControllerWorker<Cursor> for CursorWorker {
 				Ok(Some(cur)) = rx.message() => {
 					self.channel.send(cur.clone()).unwrap_or_warn("could not broadcast event");
 					self.changed.send(cur).unwrap_or_warn("could not update last event");
+					if let Some(cb) = self.callback.borrow().as_ref() {
+						cb.call(self.controller.clone()); // TODO should this run in its own task/thread?
+					}
 				},
 				else => break,
 			}
