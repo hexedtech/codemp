@@ -10,7 +10,7 @@ use pyo3::prelude::*;
 #[pymethods]
 impl Client {
 	#[new]
-	fn pyconnect(host: String, username: String, password: String) -> crate::Result<Self> {
+	fn __new__(host: String, username: String, password: String) -> crate::Result<Self> {
 		super::tokio().block_on(async move { Client::new(host, username, password).await })
 	}
 

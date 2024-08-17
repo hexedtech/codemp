@@ -25,7 +25,8 @@ fn tokio() -> &'static tokio::runtime::Runtime {
 	RT.get_or_init(|| tokio::runtime::Runtime::new().unwrap())
 }
 
-// workaround to allow the GIL to be released across awaits
+// workaround to allow the GIL to be released across awaits, waiting on
+// https://github.com/PyO3/pyo3/pull/3610
 struct AllowThreads<F>(F);
 
 impl<F> Future for AllowThreads<F>

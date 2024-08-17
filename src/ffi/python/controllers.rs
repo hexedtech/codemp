@@ -96,10 +96,10 @@ impl Cursor {
 	}
 
 	#[getter(user)]
-	fn pyuser(&self) -> String {
+	fn pyuser(&self) -> Option<String> {
 		match self.user {
-			Some(user) => user.to_string(),
-			None => "".to_string(),
+			Some(user) => Some(user.to_string()),
+			None => None,
 		}
 	}
 }
