@@ -15,11 +15,17 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
+        features:
+          - rust
+          - lua
+          - java
+          - js
+          - python
         toolchain:
           - stable
         #  - beta
         #  - nightly
-        # disable other toolchains to save on github runners
+        # TODO should re-enable future toolchains so we get warnings on breaking changes
     steps:
       - uses: arduino/setup-protoc@v2
       - uses: actions/checkout@v3
@@ -27,5 +33,5 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.ACTIONS_SSH_DEPLOY_KEY }}
       - run: rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }}
-      - run: cargo build --verbose --all-features
-      - run: cargo test --verbose --all-features
+      - run: cargo build --verbose --features=${{ matrix.features }}
+      - run: cargo test --verbose --features=${{ matrix.features }}

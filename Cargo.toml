@@ -51,6 +51,7 @@ pyo3-build-config = { version = "0.19", optional = true }
 
 [features]
 default = []
+rust = [] # used for ci matrix
 lua = ["mlua", "tracing-subscriber"]
 java = ["lazy_static", "jni", "tracing-subscriber"]
 js = ["napi-build", "tracing-subscriber", "napi", "napi-derive"]
