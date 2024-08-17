@@ -142,7 +142,6 @@ impl Workspace {
 	}
 }
 
-#[cfg_attr(feature = "python", pyo3::pymethods)] //LMAO it works
 impl Workspace {
 	/// create a new buffer in current workspace
 	pub async fn create(&self, path: &str) -> crate::Result<()> {
