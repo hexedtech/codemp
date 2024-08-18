@@ -22,7 +22,14 @@ use tokio::sync::{mpsc, Mutex};
 fn tokio() -> &'static tokio::runtime::Runtime {
 	use std::sync::OnceLock;
 	static RT: OnceLock<tokio::runtime::Runtime> = OnceLock::new();
-	RT.get_or_init(|| tokio::runtime::Runtime::new().unwrap())
+	RT.get_or_init(|| {
+		tokio::runtime::Builder::new_current_thread()
+			.enable_all()
+			.on_thread_start(|| tracing::info!("tokio thread started."))
+			.on_thread_stop(|| tracing::info!("tokio thread stopped."))
+			.build()
+			.unwrap()
+	})
 }
 
 // workaround to allow the GIL to be released across awaits, waiting on
