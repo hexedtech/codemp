@@ -79,3 +79,25 @@ impl<T> JExceptable<T> for Result<T, uuid::Error> where T: Default {
 		self.unwrap_or_default()
 	}
 }
+
+/// Allows easy conversion for various types into Java objects.
+/// This is essentially the same as [TryInto], but that can't be emplemented on non-local types.
+pub(crate) trait JObjectify<'local> {
+	/// The error type, likely to be [jni::errors::Error].
+	type Error;
+
+	/// Attempts to convert the given object to a [jni::objects::JObject].
+	fn jobjectify(self, env: &mut jni::JNIEnv<'local>) -> Result<jni::objects::JObject<'local>, Self::Error>;
+}
+
+impl<'local> JObjectify<'local> for uuid::Uuid {
+	type Error = jni::errors::Error;
+	fn jobjectify(self, env: &mut jni::JNIEnv<'local>) -> Result<jni::objects::JObject<'local>, jni::errors::Error> {
+		env.find_class("java/util/UUID").and_then(|class| {
+			let (msb, lsb) = self.as_u64_pair();
+			let msb = i64::from_ne_bytes(msb.to_ne_bytes());
+			let lsb = i64::from_ne_bytes(lsb.to_ne_bytes());
+			env.new_object(&class, "(JJ)V", &[jni::objects::JValueGen::Long(msb), jni::objects::JValueGen::Long(lsb)])
+		})
+	}
+}

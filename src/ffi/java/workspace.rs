@@ -1,7 +1,7 @@
 use jni::{objects::{JClass, JObject, JString, JValueGen}, sys::{jlong, jobject, jobjectArray, jstring}, JNIEnv};
 use crate::Workspace;
 
-use super::{JExceptable, RT};
+use super::{JExceptable, JObjectify, RT};
 
 /// Gets the workspace id.
 #[no_mangle]
@@ -166,11 +166,11 @@ pub extern "system" fn Java_mp_code_Workspace_list_1buffer_1users<'local>(
 	let users = RT.block_on(workspace.list_buffer_users(&buffer))
 		.jexcept(&mut env);
 
-	env.find_class("java/lang/String")
-		.and_then(|class| env.new_object_array(users.len() as i32, class, JObject::null()))
+	env.find_class("java/util/UUID")
+		.and_then(|class| env.new_object_array(users.len() as i32, &class, JObject::null()))
 		.map(|arr| {
 			for (idx, user) in users.iter().enumerate() {
-				env.new_string(&user.id)
+				user.id.jobjectify(&mut env)
 					.and_then(|id| env.set_object_array_element(&arr, idx as i32, id))
 					.jexcept(&mut env);
 			}
@@ -204,17 +204,14 @@ pub extern "system" fn Java_mp_code_Workspace_event(
 	RT.block_on(workspace.event())
 		.map(|event| {
 			let (name, arg) = match event {
-				crate::api::Event::FileTreeUpdated => ("FILE_TREE_UPDATED", None),
-				crate::api::Event::UserJoin(arg) => ("USER_JOIN", Some(arg)),
-				crate::api::Event::UserLeave(arg) => ("USER_LEAVE", Some(arg)),
+				crate::api::Event::FileTreeUpdated(arg) => ("FILE_TREE_UPDATED", env.new_string(arg).unwrap_or_default()),
+				crate::api::Event::UserJoin(arg) => ("USER_JOIN", env.new_string(arg).unwrap_or_default()),
+				crate::api::Event::UserLeave(arg) => ("USER_LEAVE", env.new_string(arg).unwrap_or_default()),
 			};
 			let event_type = env.find_class("mp/code/Workspace$Event$Type")
 				.and_then(|class| env.get_static_field(class, name, "Lmp/code/Workspace/Event/Type;"))
 				.and_then(|f| f.l())
 				.jexcept(&mut env);
-			let arg = arg.map(|s| env.new_string(s).jexcept(&mut env))
-				.unwrap_or_default();
-
 			env.find_class("mp/code/Workspace$Event").and_then(|class|
 				env.new_object(
 					class,

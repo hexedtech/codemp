@@ -1,6 +1,7 @@
 package mp.code;
 
 import java.util.Optional;
+import java.util.UUID;
 
 import mp.code.data.DetachResult;
 import mp.code.exceptions.CodeMPException;
@@ -57,8 +58,8 @@ public class Workspace {
 		fetch_buffers(this.ptr);
 	}
 
-	private static native String[] list_buffer_users(long self, String path) throws CodeMPException;
-	public String[] listBufferUsers(String path) throws CodeMPException {
+	private static native UUID[] list_buffer_users(long self, String path) throws CodeMPException;
+	public UUID[] listBufferUsers(String path) throws CodeMPException {
 		return list_buffer_users(this.ptr, path);
 	}
 
@@ -104,8 +105,10 @@ public class Workspace {
 			} else return Optional.empty();
 		}
 
-		public boolean hasFileTreeUpdated() {
-			return type == Type.FILE_TREE_UPDATED;
+		public Optional<String> getTargetBuffer() {
+			if(this.type == Type.FILE_TREE_UPDATED) {
+				return Optional.of(this.argument);
+			} else return Optional.empty();
 		}
 
 		private enum Type {
