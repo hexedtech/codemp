@@ -11,25 +11,18 @@ impl Client {
 		tokio().block_on(Client::new(host, username, password))
 	}
 
-	async fn dioboia(&self) {
-		tokio().spawn(async { tracing::info!("dioboia? si dioboia!") });
-	}
-
 	#[pyo3(name = "join_workspace")]
-	async fn pyjoin_workspace(&self, workspace: String) -> crate::Result<Workspace> {
-		// self.join_workspace(workspace).await
+	fn pyjoin_workspace(&self, workspace: String) -> PyResult<super::RustPromise> {
+		tracing::info!("attempting to join the workspace {workspace}");
+
+		// crate::a_sync! { self => self.join_workspace(workspace).await }
 		let rc = self.clone();
-		crate::spawn_future!(rc.join_workspace(workspace))
-			.await
-			.unwrap()
-		// This expands to if spawn_future_allow_threads! is used
-		// tokio()
-		// 	.spawn(super::AllowThreads(Box::pin(async move {
-		// 		rc.join_workspace(workspace).await
-		// 	})))
-		// or if only spawn_future!
-		// tokio()
-		// 	.spawn(async move { rc.join_workspace(workspace).await })
+		Ok(super::RustPromise(Some(tokio().spawn(async move {
+			Ok(rc
+				.join_workspace(workspace)
+				.await
+				.map(|f| Python::with_gil(|py| f.into_py(py)))?)
+		}))))
 	}
 
 	#[pyo3(name = "leave_workspace")]

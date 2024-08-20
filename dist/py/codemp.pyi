@@ -1,13 +1,23 @@
-from typing import Tuple, Optional
+from typing import Tuple, Optional, Callable
 
-class PyLogger:
+class Driver:
 	"""
-	A python wrapper for the tracing subscriber so that we can
-	receive logging messages from the library.
+	this is akin to a big red button with a white "STOP" on top of it.
+	it is used to stop the runtime
 	"""
-	def __init__(self, debug) -> None: ...
-	async def listen(self) -> Optional[str]: ...
+	def stop(self) -> None: ...
 
+
+def init(logger_cb: Callable, debug: bool) -> Driver: ...
+
+class RustPromise[T]:
+	"""
+	This is a class akin to a future, which wraps a join handle from a spawned
+	task on the rust side. you may call .pyawait() on this promise to block
+	until we have a result, or return immediately if we already have one.
+	This only goes one way rust -> python.
+	"""
+	def pyawait(self) -> T: ...
 
 class TextChange:
 	"""
@@ -84,7 +94,7 @@ class Client:
 	to a server and joining/creating new workspaces
 	"""
 	def __new__(cls, host: str, username: str, password: str) -> None: ...
-	async def join_workspace(self, workspace: str) -> Workspace: ...
+	def join_workspace(self, workspace: str) -> RustPromise: ...
 	def leave_workspace(self, workspace: str) -> bool: ...
 	def get_workspace(self, id: str) -> Workspace: ...
 	def active_workspaces(self) -> list[str]: ...

@@ -5,7 +5,7 @@ use pyo3::prelude::*;
 
 use crate::spawn_future;
 
-use super::Promise;
+// use super::Promise;
 
 #[pymethods]
 impl Workspace {
@@ -31,12 +31,12 @@ impl Workspace {
 		}
 	}
 
-	#[pyo3(name = "event")]
-	fn pyevent(&self) -> Promise {
-		crate::a_sync! { self =>
-			self.event().await
-		}
-	}
+	// #[pyo3(name = "event")]
+	// fn pyevent(&self) -> Promise {
+	// 	crate::a_sync! { self =>
+	// 		self.event().await
+	// 	}
+	// }
 
 	#[pyo3(name = "fetch_buffers")]
 	async fn pyfetch_buffers(&self) -> crate::Result<()> {
