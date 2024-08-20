@@ -2,21 +2,34 @@ use crate::workspace::Workspace;
 use crate::Client;
 use pyo3::prelude::*;
 
-// #[pyfunction]
-// pub fn codemp_init<'a>(py: Python<'a>) -> PyResult<Py<Client>> {
-// 	Ok(Py::new(py, Client::default())?)
-// }
+use super::tokio;
 
 #[pymethods]
 impl Client {
 	#[new]
 	fn __new__(host: String, username: String, password: String) -> crate::Result<Self> {
-		super::tokio().block_on(async move { Client::new(host, username, password).await })
+		tokio().block_on(Client::new(host, username, password))
+	}
+
+	async fn dioboia(&self) {
+		tokio().spawn(async { tracing::info!("dioboia? si dioboia!") });
 	}
 
 	#[pyo3(name = "join_workspace")]
 	async fn pyjoin_workspace(&self, workspace: String) -> crate::Result<Workspace> {
-		self.join_workspace(workspace).await
+		// self.join_workspace(workspace).await
+		let rc = self.clone();
+		crate::spawn_future!(rc.join_workspace(workspace))
+			.await
+			.unwrap()
+		// This expands to if spawn_future_allow_threads! is used
+		// tokio()
+		// 	.spawn(super::AllowThreads(Box::pin(async move {
+		// 		rc.join_workspace(workspace).await
+		// 	})))
+		// or if only spawn_future!
+		// tokio()
+		// 	.spawn(async move { rc.join_workspace(workspace).await })
 	}
 
 	#[pyo3(name = "leave_workspace")]

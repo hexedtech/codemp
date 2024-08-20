@@ -5,6 +5,8 @@ use crate::buffer::Controller as BufferController;
 use crate::cursor::Controller as CursorController;
 use pyo3::prelude::*;
 
+use crate::spawn_future;
+
 // need to do manually since Controller is a trait implementation
 #[pymethods]
 impl CursorController {
@@ -16,22 +18,26 @@ impl CursorController {
 			buffer: path,
 			user: None,
 		};
-		super::AllowThreads(self.send(pos)).await
+		let rc = self.clone();
+		spawn_future!(rc.send(pos)).await.unwrap()
 	}
 
 	#[pyo3(name = "try_recv")]
 	async fn pytry_recv(&self) -> crate::Result<Option<Cursor>> {
-		super::AllowThreads(self.try_recv()).await
+		let rc = self.clone();
+		spawn_future!(rc.try_recv()).await.unwrap()
 	}
 
 	#[pyo3(name = "recv")]
 	async fn pyrecv(&self) -> crate::Result<Cursor> {
-		super::AllowThreads(self.recv()).await
+		let rc = self.clone();
+		spawn_future!(rc.recv()).await.unwrap()
 	}
 
 	#[pyo3(name = "poll")]
 	async fn pypoll(&self) -> crate::Result<()> {
-		super::AllowThreads(self.poll()).await
+		let rc = self.clone();
+		spawn_future!(rc.poll()).await.unwrap()
 	}
 
 	#[pyo3(name = "stop")]
@@ -45,7 +51,8 @@ impl CursorController {
 impl BufferController {
 	#[pyo3(name = "content")]
 	async fn pycontent(&self) -> crate::Result<String> {
-		super::AllowThreads(Box::pin(self.content())).await
+		let rc = self.clone();
+		spawn_future!(rc.content()).await.unwrap()
 	}
 
 	#[pyo3(name = "send")]
@@ -56,22 +63,26 @@ impl BufferController {
 			content: txt,
 			hash: None,
 		};
-		super::AllowThreads(self.send(op)).await
+		let rc = self.clone();
+		spawn_future!(rc.send(op)).await.unwrap()
 	}
 
 	#[pyo3(name = "try_recv")]
 	async fn pytry_recv(&self) -> crate::Result<Option<TextChange>> {
-		super::AllowThreads(self.try_recv()).await
+		let rc = self.clone();
+		spawn_future!(rc.try_recv()).await.unwrap()
 	}
 
 	#[pyo3(name = "recv")]
 	async fn pyrecv(&self) -> crate::Result<TextChange> {
-		super::AllowThreads(self.recv()).await
+		let rc = self.clone();
+		spawn_future!(rc.recv()).await.unwrap()
 	}
 
 	#[pyo3(name = "poll")]
 	async fn pypoll(&self) -> crate::Result<()> {
-		super::AllowThreads(self.poll()).await
+		let rc = self.clone();
+		spawn_future!(rc.poll()).await.unwrap()
 	}
 }
 
@@ -97,9 +108,6 @@ impl Cursor {
 
 	#[getter(user)]
 	fn pyuser(&self) -> Option<String> {
-		match self.user {
-			Some(user) => Some(user.to_string()),
-			None => None,
-		}
+		self.user.map(|user| user.to_string())
 	}
 }

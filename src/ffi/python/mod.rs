@@ -2,10 +2,10 @@ pub mod client;
 pub mod controllers;
 pub mod workspace;
 
-use std::sync::Arc;
 use std::{
 	future::Future,
-	pin::{pin, Pin},
+	pin::Pin,
+	sync::OnceLock,
 	task::{Context, Poll},
 };
 
@@ -17,10 +17,9 @@ use crate::{
 };
 use pyo3::exceptions::{PyConnectionError, PyRuntimeError, PySystemError};
 use pyo3::prelude::*;
-use tokio::sync::{mpsc, Mutex};
+use tokio::sync::watch;
 
 fn tokio() -> &'static tokio::runtime::Runtime {
-	use std::sync::OnceLock;
 	static RT: OnceLock<tokio::runtime::Runtime> = OnceLock::new();
 	RT.get_or_init(|| {
 		tokio::runtime::Builder::new_current_thread()
@@ -43,12 +42,30 @@ where
 {
 	type Output = F::Output;
 
-	fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+	fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
 		let waker = cx.waker();
-		Python::with_gil(|gil| {
-			gil.allow_threads(|| pin!(&mut self.0).poll(&mut Context::from_waker(waker)))
-		})
+		let fut = unsafe { self.map_unchecked_mut(|e| &mut e.0) };
+		Python::with_gil(|py| py.allow_threads(|| fut.poll(&mut Context::from_waker(waker))))
 	}
+}
+
+#[macro_export]
+macro_rules! spawn_future_allow_threads {
+	($fut:expr) => {
+		$crate::ffi::python::tokio().spawn($crate::ffi::python::AllowThreads(Box::pin(
+			async move {
+				tracing::info!("running future from rust.");
+				$fut.await
+			},
+		)))
+	};
+}
+
+#[macro_export]
+macro_rules! spawn_future {
+	($fut:expr) => {
+		$crate::ffi::python::tokio().spawn(async move { $fut.await })
+	};
 }
 
 impl From<crate::Error> for PyErr {
@@ -75,11 +92,11 @@ impl IntoPy<PyObject> for crate::api::User {
 }
 
 #[derive(Debug, Clone)]
-struct LoggerProducer(mpsc::Sender<String>);
+struct LoggerProducer(watch::Sender<String>);
 
 impl std::io::Write for LoggerProducer {
 	fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-		let _ = self.0.try_send(String::from_utf8_lossy(buf).to_string()); // ignore: logger disconnected or with full buffer
+		let _ = self.0.send(String::from_utf8_lossy(buf).to_string()); // ignore: logger disconnected or with full buffer
 		Ok(buf.len())
 	}
 
@@ -89,13 +106,13 @@ impl std::io::Write for LoggerProducer {
 }
 
 #[pyclass]
-struct PyLogger(Arc<Mutex<mpsc::Receiver<String>>>);
+struct PyLogger(watch::Receiver<String>);
 
 #[pymethods]
 impl PyLogger {
 	#[new]
 	fn init_logger(debug: bool) -> PyResult<Self> {
-		let (tx, rx) = mpsc::channel(256);
+		let (tx, mut rx) = watch::channel("logger initialised".to_string());
 		let level = if debug {
 			tracing::Level::DEBUG
 		} else {
@@ -120,13 +137,17 @@ impl PyLogger {
 			.with_writer(std::sync::Mutex::new(LoggerProducer(tx)))
 			.try_init()
 		{
-			Ok(_) => Ok(PyLogger(Arc::new(Mutex::new(rx)))),
+			Ok(_) => Ok(PyLogger(rx)),
 			Err(_) => Err(PySystemError::new_err("A logger already exists")),
 		}
 	}
 
-	async fn listen(&self) -> Option<String> {
-		AllowThreads(Box::pin(self.0.lock().await.recv())).await
+	async fn listen(&mut self) -> Option<String> {
+		if self.0.changed().await.is_ok() {
+			return Some(self.0.borrow().clone());
+		} else {
+			return None;
+		}
 	}
 }
 

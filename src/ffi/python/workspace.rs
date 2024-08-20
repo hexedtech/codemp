@@ -3,17 +3,21 @@ use crate::cursor::Controller as CursorController;
 use crate::workspace::Workspace;
 use pyo3::prelude::*;
 
+use crate::spawn_future;
+
 #[pymethods]
 impl Workspace {
 	// join a workspace
 	#[pyo3(name = "create")]
 	async fn pycreate(&self, path: String) -> crate::Result<()> {
-		self.create(path.as_str()).await
+		let rc = self.clone();
+		spawn_future!(rc.create(path.as_str())).await.unwrap()
 	}
 
 	#[pyo3(name = "attach")]
 	async fn pyattach(&self, path: String) -> crate::Result<BufferController> {
-		self.attach(path.as_str()).await
+		let rc = self.clone();
+		spawn_future!(rc.attach(path.as_str())).await.unwrap()
 	}
 
 	#[pyo3(name = "detach")]
@@ -27,27 +31,34 @@ impl Workspace {
 
 	#[pyo3(name = "event")]
 	async fn pyevent(&self) -> crate::Result<crate::api::Event> {
-		self.event().await
+		let rc = self.clone();
+		spawn_future!(rc.event()).await.unwrap()
 	}
 
 	#[pyo3(name = "fetch_buffers")]
 	async fn pyfetch_buffers(&self) -> crate::Result<()> {
-		self.fetch_buffers().await
+		let rc = self.clone();
+		spawn_future!(rc.fetch_buffers()).await.unwrap()
 	}
 
 	#[pyo3(name = "fetch_users")]
 	async fn pyfetch_users(&self) -> crate::Result<()> {
-		self.fetch_users().await
+		let rc = self.clone();
+		spawn_future!(rc.fetch_users()).await.unwrap()
 	}
 
 	#[pyo3(name = "list_buffer_users")]
 	async fn pylist_buffer_users(&self, path: String) -> crate::Result<Vec<crate::api::User>> {
-		self.list_buffer_users(path.as_str()).await
+		let rc = self.clone();
+		spawn_future!(rc.list_buffer_users(path.as_str()))
+			.await
+			.unwrap()
 	}
 
 	#[pyo3(name = "delete")]
 	async fn pydelete(&self, path: String) -> crate::Result<()> {
-		self.delete(path.as_str()).await
+		let rc = self.clone();
+		spawn_future!(rc.delete(path.as_str())).await.unwrap()
 	}
 
 	#[pyo3(name = "id")]
