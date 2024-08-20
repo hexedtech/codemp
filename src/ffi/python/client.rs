@@ -13,16 +13,17 @@ impl Client {
 
 	#[pyo3(name = "join_workspace")]
 	fn pyjoin_workspace(&self, workspace: String) -> PyResult<super::RustPromise> {
-		tracing::info!("attempting to join the workspace {workspace}");
+		tracing::info!("attempting to join the workspace {}", workspace);
 
-		// crate::a_sync! { self => self.join_workspace(workspace).await }
-		let rc = self.clone();
-		Ok(super::RustPromise(Some(tokio().spawn(async move {
-			Ok(rc
-				.join_workspace(workspace)
-				.await
-				.map(|f| Python::with_gil(|py| f.into_py(py)))?)
-		}))))
+		let this = self.clone();
+		crate::a_sync!(this.join_workspace(workspace).await)
+		// let rc = self.clone();
+		// Ok(super::RustPromise(Some(tokio().spawn(async move {
+		// 	Ok(rc
+		// 		.join_workspace(workspace)
+		// 		.await
+		// 		.map(|f| Python::with_gil(|py| f.into_py(py)))?)
+		// }))))
 	}
 
 	#[pyo3(name = "leave_workspace")]

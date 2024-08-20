@@ -3,23 +3,23 @@ use crate::cursor::Controller as CursorController;
 use crate::workspace::Workspace;
 use pyo3::prelude::*;
 
-use crate::spawn_future;
-
+use super::RustPromise;
+use crate::a_sync;
 // use super::Promise;
 
 #[pymethods]
 impl Workspace {
 	// join a workspace
 	#[pyo3(name = "create")]
-	async fn pycreate(&self, path: String) -> crate::Result<()> {
-		let rc = self.clone();
-		spawn_future!(rc.create(path.as_str())).await.unwrap()
+	fn pycreate(&self, path: String) -> PyResult<RustPromise> {
+		let this = self.clone();
+		a_sync!(this.create(path.as_str()).await)
 	}
 
 	#[pyo3(name = "attach")]
-	async fn pyattach(&self, path: String) -> crate::Result<BufferController> {
-		let rc = self.clone();
-		spawn_future!(rc.attach(path.as_str())).await.unwrap()
+	fn pyattach(&self, path: String) -> PyResult<RustPromise> {
+		let this = self.clone();
+		a_sync!(this.attach(path.as_str()).await)
 	}
 
 	#[pyo3(name = "detach")]
@@ -31,37 +31,35 @@ impl Workspace {
 		}
 	}
 
-	// #[pyo3(name = "event")]
-	// fn pyevent(&self) -> Promise {
-	// 	crate::a_sync! { self =>
-	// 		self.event().await
-	// 	}
-	// }
+	#[pyo3(name = "event")]
+	fn pyevent(&self) -> PyResult<RustPromise> {
+		let this = self.clone();
+		a_sync!(this.event().await)
+	}
 
 	#[pyo3(name = "fetch_buffers")]
-	async fn pyfetch_buffers(&self) -> crate::Result<()> {
-		let rc = self.clone();
-		spawn_future!(rc.fetch_buffers()).await.unwrap()
+	fn pyfetch_buffers(&self) -> PyResult<RustPromise> {
+		let this = self.clone();
+		a_sync!(this.fetch_buffers().await)
 	}
 
 	#[pyo3(name = "fetch_users")]
-	async fn pyfetch_users(&self) -> crate::Result<()> {
-		let rc = self.clone();
-		spawn_future!(rc.fetch_users()).await.unwrap()
+	fn pyfetch_users(&self) -> PyResult<RustPromise> {
+		let this = self.clone();
+		a_sync!(this.fetch_users().await)
 	}
 
 	#[pyo3(name = "list_buffer_users")]
-	async fn pylist_buffer_users(&self, path: String) -> crate::Result<Vec<crate::api::User>> {
-		let rc = self.clone();
-		spawn_future!(rc.list_buffer_users(path.as_str()))
-			.await
-			.unwrap()
+	fn pylist_buffer_users(&self, path: String) -> PyResult<RustPromise> {
+		// crate::Result<Vec<crate::api::User>> {
+		let this = self.clone();
+		a_sync!(this.list_buffer_users(path.as_str()).await)
 	}
 
 	#[pyo3(name = "delete")]
-	async fn pydelete(&self, path: String) -> crate::Result<()> {
-		let rc = self.clone();
-		spawn_future!(rc.delete(path.as_str())).await.unwrap()
+	fn pydelete(&self, path: String) -> PyResult<RustPromise> {
+		let this = self.clone();
+		a_sync!(this.delete(path.as_str()).await)
 	}
 
 	#[pyo3(name = "id")]

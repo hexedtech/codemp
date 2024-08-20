@@ -61,22 +61,13 @@ pub fn tokio() -> &'static tokio::runtime::Runtime {
 
 #[macro_export]
 macro_rules! a_sync {
-	($($clone:ident)* => $x:expr) => {
-		{
-			$(let $clone = $clone.clone();)*
-			Ok($crate::ffi::python::RustPromise(Some($crate::ffi::python::tokio().spawn(async move {
-				Ok($x.map(|f| Python::with_gil(|py| f.into_py(py)))?)
-			}))))
-		}
-	};
+	($x:expr) => {{
+		Ok($crate::ffi::python::RustPromise(Some(
+			$crate::ffi::python::tokio()
+				.spawn(async move { Ok($x.map(|f| Python::with_gil(|py| f.into_py(py)))?) }),
+		)))
+	}};
 }
-
-// #[macro_export]
-// macro_rules! spawn_future {
-// 	($fut:expr) => {
-// 		$crate::ffi::python::tokio().spawn(async move { $fut.await })
-// 	};
-// }
 
 #[derive(Debug, Clone)]
 struct LoggerProducer(mpsc::UnboundedSender<String>);
