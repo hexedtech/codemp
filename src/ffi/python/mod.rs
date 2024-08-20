@@ -15,11 +15,15 @@ use crate::{
 	cursor::Controller as CursorController,
 	Client, Workspace,
 };
-use pyo3::exceptions::{PyConnectionError, PyRuntimeError, PySystemError};
 use pyo3::prelude::*;
+use pyo3::{
+	exceptions::{PyConnectionError, PyRuntimeError, PySystemError},
+	ffi::PyFunctionObject,
+	types::PyFunction,
+};
 use tokio::sync::watch;
 
-fn tokio() -> &'static tokio::runtime::Runtime {
+pub fn tokio() -> &'static tokio::runtime::Runtime {
 	static RT: OnceLock<tokio::runtime::Runtime> = OnceLock::new();
 	RT.get_or_init(|| {
 		tokio::runtime::Builder::new_current_thread()
@@ -47,6 +51,16 @@ where
 		let fut = unsafe { self.map_unchecked_mut(|e| &mut e.0) };
 		Python::with_gil(|py| py.allow_threads(|| fut.poll(&mut Context::from_waker(waker))))
 	}
+}
+
+#[macro_export]
+macro_rules! a_sync {
+	($($clone:ident)* => $x:expr) => {
+		{
+			$(let $clone = $clone.clone();)*
+			Ok(Promise(Some($crate::ffi::python::tokio().spawn(async move { $x }))))
+		}
+	};
 }
 
 #[macro_export]
@@ -145,8 +159,29 @@ impl PyLogger {
 	async fn listen(&mut self) -> Option<String> {
 		if self.0.changed().await.is_ok() {
 			return Some(self.0.borrow().clone());
-		} else {
-			return None;
+		}
+
+		None
+	}
+}
+
+#[pyclass]
+pub struct Promise(Option<tokio::task::JoinHandle<PyResult<PyObject>>>);
+
+#[pymethods]
+impl Promise {
+	#[pyo3(name = "await")]
+	fn a_wait(&mut self) -> PyResult<PyObject> {
+		match self.0.take() {
+			None => Err(PySystemError::new_err(
+				"promise can't be awaited multiple times!",
+			)),
+			Some(x) => match tokio().block_on(x) {
+				Err(e) => Err(PySystemError::new_err(format!(
+					"error awaiting promise: {e}"
+				))),
+				Ok(res) => res,
+			},
 		}
 	}
 }
