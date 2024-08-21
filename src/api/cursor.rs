@@ -54,7 +54,7 @@ impl From<proto::cursor::CursorEvent> for Cursor {
 			start: (value.position.start.row, value.position.start.col),
 			end: (value.position.end.row, value.position.end.col),
 			buffer: value.position.buffer.path,
-			user: Uuid::parse_str(&value.user.id).ok(),
+			user: Some(value.user.uuid()),
 		}
 	}
 }
@@ -62,9 +62,7 @@ impl From<proto::cursor::CursorEvent> for Cursor {
 impl From<Cursor> for proto::cursor::CursorEvent {
 	fn from(value: Cursor) -> Self {
 		Self {
-			user: proto::common::Identity {
-				id: value.user.unwrap_or_default().to_string(),
-			},
+			user: value.user.unwrap_or_default().into(),
 			position: proto::cursor::CursorPosition {
 				buffer: proto::files::BufferNode { path: value.buffer },
 				start: proto::cursor::RowCol {

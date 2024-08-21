@@ -79,6 +79,10 @@ impl<T> InternallyMutable<T> {
 	pub fn set(&self, state: T) -> T {
 		self.setter.send_replace(state)
 	}
+
+	pub fn channel(&self) -> tokio::sync::watch::Receiver<T> {
+		self.getter.clone()
+	}
 }
 
 impl<T: Clone> InternallyMutable<T> {

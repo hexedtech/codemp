@@ -125,29 +125,28 @@ pub mod cursor;
 /// buffer operations, factory, controller and types
 pub mod buffer;
 
-/// crate error types and helpers
-pub mod errors;
-
-/// underlying client session manager
-pub mod client;
-
 /// workspace operations
 pub mod workspace;
+pub use workspace::Workspace;
+
+/// session 
+pub mod session;
+
+/// codemp client, wrapping all above
+pub mod client;
+pub use client::Client;
+
+/// crate error types and helpers
+pub mod errors;
+pub use errors::Error;
+pub use errors::Result;
 
 /// all-in-one imports : `use codemp::prelude::*;`
 pub mod prelude;
 
-/// language-specific ffi "glue"
-pub mod ffi;
-
 /// common utils used in this library and re-exposed
 pub mod ext;
-
-pub use errors::Error;
-pub use errors::Result;
-
-pub use client::Client;
-
-pub use workspace::Workspace;
-
 pub use ext::hash;
+
+/// language-specific ffi "glue"
+pub mod ffi;

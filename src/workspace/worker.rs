@@ -1,13 +1,9 @@
 use crate::{
-	api::{controller::ControllerWorker, Controller, Event, User},
-	buffer::{self, worker::BufferWorker},
-	cursor::{self, worker::CursorWorker},
-	workspace::service::Services,
+	api::{controller::ControllerWorker, Controller, Event, User}, buffer::{self, worker::BufferWorker}, cursor::{self, worker::CursorWorker}, ext::InternallyMutable, workspace::service::Services
 };
 
 use codemp_proto::{
-	auth::Token,
-	common::Empty,
+	common::{Empty, Token},
 	files::BufferNode,
 	workspace::{
 		workspace_event::{
@@ -33,8 +29,8 @@ pub struct Workspace(Arc<WorkspaceInner>);
 
 #[derive(Debug)]
 struct WorkspaceInner {
-	id: String,
-	user_id: Uuid, // reference to global user id
+	name: String,
+	user: User, // TODO back-reference to global user id... needed for buffer controllers
 	cursor: cursor::Controller,
 	buffers: DashMap<String, buffer::Controller>,
 	filetree: DashSet<String>,
@@ -45,17 +41,18 @@ struct WorkspaceInner {
 }
 
 impl Workspace {
-	/// create a new buffer and perform initial fetch operations
 	pub(crate) async fn try_new(
-		id: String,
-		user_id: Uuid,
+		name: String,
+		user: User,
 		dest: &str,
 		token: Token,
+		claims: tokio::sync::watch::Receiver<codemp_proto::common::Token>, // TODO ughh receiving this
 	) -> crate::Result<Self> {
-		let services = Services::try_new(dest, token).await?;
+		let workspace_claim = InternallyMutable::new(token);
+		let services = Services::try_new(dest, claims, workspace_claim.channel()).await?;
 		let ws_stream = services.ws().attach(Empty {}).await?.into_inner();
 
-		let (tx, rx) = mpsc::channel(256);
+		let (tx, rx) = mpsc::channel(128);
 		let (ev_tx, ev_rx) = mpsc::unbounded_channel();
 		let cur_stream = services
 			.cur()
@@ -72,8 +69,8 @@ impl Workspace {
 		});
 
 		let ws = Self(Arc::new(WorkspaceInner {
-			id,
-			user_id,
+			name,
+			user,
 			cursor: controller,
 			buffers: DashMap::default(),
 			filetree: DashSet::default(),
@@ -112,10 +109,10 @@ impl Workspace {
 							WorkspaceEventInner::Join(UserJoin { user }) => {
 								inner
 									.users
-									.insert(user.clone().into(), User { id: user.into() });
+									.insert(user.id.uuid(), user.into());
 							}
 							WorkspaceEventInner::Leave(UserLeave { user }) => {
-								inner.users.remove(&user.into());
+								inner.users.remove(&user.id.uuid());
 							}
 							// buffer
 							WorkspaceEventInner::Create(FileCreate { path }) => {
@@ -171,18 +168,18 @@ impl Workspace {
 			path: path.to_string(),
 		});
 		let credentials = worskspace_client.access_buffer(request).await?.into_inner();
-		self.0.services.set_token(credentials.token);
 
 		let (tx, rx) = mpsc::channel(256);
 		let mut req = tonic::Request::new(tokio_stream::wrappers::ReceiverStream::new(rx));
-		req.metadata_mut().insert(
-			"path",
-			tonic::metadata::MetadataValue::try_from(credentials.id.id)
-				.expect("could not represent path as byte sequence"),
-		);
+		req.metadata_mut()
+			.insert(
+				"buffer",
+				tonic::metadata::MetadataValue::try_from(credentials.token)
+					.map_err(|e| tonic::Status::internal(format!("failed representing token to string: {e}")))?,
+			);
 		let stream = self.0.services.buf().attach(req).await?.into_inner();
 
-		let worker = BufferWorker::new(self.0.user_id, path);
+		let worker = BufferWorker::new(self.0.user.id, path);
 		let controller = worker.controller();
 		tokio::spawn(async move {
 			tracing::debug!("controller worker started");
@@ -256,12 +253,12 @@ impl Workspace {
 				.into_inner()
 				.users
 				.into_iter()
-				.map(Uuid::from),
+				.map(User::from),
 		);
 
 		self.0.users.clear();
 		for u in users {
-			self.0.users.insert(u, User { id: u });
+			self.0.users.insert(u.id, u);
 		}
 
 		Ok(())
@@ -307,7 +304,7 @@ impl Workspace {
 	/// get the id of the workspace
 	// #[cfg_attr(feature = "js", napi)] // https://github.com/napi-rs/napi-rs/issues/1120
 	pub fn id(&self) -> String {
-		self.0.id.clone()
+		self.0.name.clone()
 	}
 
 	/// return a reference to current cursor controller, if currently in a workspace
@@ -349,12 +346,12 @@ impl Drop for WorkspaceInner {
 				tracing::warn!(
 					"could not stop buffer worker {} for workspace {}",
 					entry.value().name(),
-					self.id
+					self.name
 				);
 			}
 		}
 		if !self.cursor.stop() {
-			tracing::warn!("could not stop cursor worker for workspace {}", self.id);
+			tracing::warn!("could not stop cursor worker for workspace {}", self.name);
 		}
 	}
 }
