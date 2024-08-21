@@ -101,25 +101,44 @@ impl LuaUserData for Driver {
 
 impl LuaUserData for CodempClient {
 	fn add_fields<'lua, F: LuaUserDataFields<'lua, Self>>(fields: &mut F) {
-		fields.add_field_method_get("id", |_, this| Ok(this.user_id().to_string()));
+		fields.add_field_method_get("id", |_, this| Ok(this.user().id.to_string()));
+		fields.add_field_method_get("username", |_, this| Ok(this.user().name.clone()));
 	}
 
 	fn add_methods<'lua, M: LuaUserDataMethods<'lua, Self>>(methods: &mut M) {
 		methods.add_meta_method(LuaMetaMethod::ToString, |_, this, ()| Ok(format!("{:?}", this)));
 
-		// join a remote workspace and start processing cursor events
-		methods.add_method("join_workspace", |_, this, (session,):(String,)|
-			a_sync! { this => Ok(this.join_workspace(&session).await?) }
+		methods.add_method("refresh", |_, this, ()|
+			a_sync! { this => Ok(this.refresh().await?) }
 		);
 
-		methods.add_method("leave_workspace", |_, this, (session,):(String,)|
-			Ok(this.leave_workspace(&session))
+		methods.add_method("join_workspace", |_, this, (ws,):(String,)|
+			a_sync! { this => Ok(this.join_workspace(ws).await?) }
+		);
+
+		methods.add_method("create_workspace", |_, this, (ws,):(String,)|
+			a_sync! { this => Ok(this.create_workspace(ws).await?) }
+		);
+
+		methods.add_method("delete_workspace", |_, this, (ws,):(String,)|
+			a_sync! { this => Ok(this.delete_workspace(ws).await?) }
+		);
+
+		methods.add_method("invite_to_workspace", |_, this, (ws,user):(String,String)|
+			a_sync! { this => Ok(this.invite_to_workspace(ws, user).await?) }
+		);
+
+		methods.add_method("list_workspaces", |_, this, (owned,invited):(Option<bool>,Option<bool>)|
+			a_sync! { this => Ok(this.list_workspaces(owned.unwrap_or(true), invited.unwrap_or(true)).await?) }
+		);
+
+		methods.add_method("leave_workspace", |_, this, (ws,):(String,)|
+			Ok(this.leave_workspace(&ws))
 		);
 		
-		methods.add_method("get_workspace", |_, this, (session,):(String,)| Ok(this.get_workspace(&session)));
+		methods.add_method("get_workspace", |_, this, (ws,):(String,)| Ok(this.get_workspace(&ws)));
 		methods.add_method("active_workspaces", |_, this, ()| Ok(this.active_workspaces()));
 	}
-
 }
 
 
@@ -320,7 +339,7 @@ fn codemp_lua(lua: &Lua) -> LuaResult<LuaTable> {
 
 	// entrypoint
 	exports.set("connect", lua.create_function(|_, (host, username, password):(String,String,String)|
-		a_sync! { => Ok(CodempClient::new(host, username, password).await?) }
+		a_sync! { => Ok(CodempClient::connect(host, username, password).await?) }
 	)?)?;
 
 	// utils
