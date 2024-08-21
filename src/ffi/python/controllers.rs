@@ -5,39 +5,41 @@ use crate::buffer::Controller as BufferController;
 use crate::cursor::Controller as CursorController;
 use pyo3::prelude::*;
 
-use crate::spawn_future;
+use super::Promise;
+use crate::a_sync;
 
 // need to do manually since Controller is a trait implementation
 #[pymethods]
 impl CursorController {
 	#[pyo3(name = "send")]
-	async fn pysend(&self, path: String, start: (i32, i32), end: (i32, i32)) -> crate::Result<()> {
+	fn pysend(&self, path: String, start: (i32, i32), end: (i32, i32)) -> PyResult<Promise> {
 		let pos = Cursor {
 			start,
 			end,
 			buffer: path,
 			user: None,
 		};
-		let rc = self.clone();
-		spawn_future!(rc.send(pos)).await.unwrap()
+		let this = self.clone();
+		a_sync!(this.send(pos).await)
 	}
 
 	#[pyo3(name = "try_recv")]
-	async fn pytry_recv(&self) -> crate::Result<Option<Cursor>> {
-		let rc = self.clone();
-		spawn_future!(rc.try_recv()).await.unwrap()
+	fn pytry_recv(&self) -> PyResult<Promise> {
+		let this = self.clone();
+		a_sync!(this.try_recv().await)
 	}
 
 	#[pyo3(name = "recv")]
-	async fn pyrecv(&self) -> crate::Result<Cursor> {
-		let rc = self.clone();
-		spawn_future!(rc.recv()).await.unwrap()
+	fn pyrecv(&self) -> crate::Result<Option<Cursor>> {
+		Ok(super::tokio().block_on(self.try_recv())?)
+		// let this = self.clone();
+		// a_sync!(this.recv().await)
 	}
 
 	#[pyo3(name = "poll")]
-	async fn pypoll(&self) -> crate::Result<()> {
-		let rc = self.clone();
-		spawn_future!(rc.poll()).await.unwrap()
+	fn pypoll(&self) -> PyResult<Promise> {
+		let this = self.clone();
+		a_sync!(this.poll().await)
 	}
 
 	#[pyo3(name = "stop")]
@@ -50,39 +52,45 @@ impl CursorController {
 #[pymethods]
 impl BufferController {
 	#[pyo3(name = "content")]
-	async fn pycontent(&self) -> crate::Result<String> {
-		let rc = self.clone();
-		spawn_future!(rc.content()).await.unwrap()
+	async fn pycontent(&self) -> PyResult<Promise> {
+		let this = self.clone();
+		a_sync!(this.content().await)
 	}
 
 	#[pyo3(name = "send")]
-	async fn pysend(&self, start: u32, end: u32, txt: String) -> crate::Result<()> {
+	async fn pysend(&self, start: u32, end: u32, txt: String) -> PyResult<Promise> {
 		let op = TextChange {
 			start,
 			end,
 			content: txt,
 			hash: None,
 		};
-		let rc = self.clone();
-		spawn_future!(rc.send(op)).await.unwrap()
+		let this = self.clone();
+		a_sync!(this.send(op).await)
 	}
 
 	#[pyo3(name = "try_recv")]
-	async fn pytry_recv(&self) -> crate::Result<Option<TextChange>> {
-		let rc = self.clone();
-		spawn_future!(rc.try_recv()).await.unwrap()
+	fn pytry_recv(&self) -> crate::Result<Option<TextChange>> {
+		Ok(super::tokio().block_on(self.try_recv())?)
+		// let this = self.clone();
+		// a_sync!(this.try_recv().await)
 	}
 
 	#[pyo3(name = "recv")]
-	async fn pyrecv(&self) -> crate::Result<TextChange> {
-		let rc = self.clone();
-		spawn_future!(rc.recv()).await.unwrap()
+	async fn pyrecv(&self) -> PyResult<Promise> {
+		let this = self.clone();
+		a_sync!(this.recv().await)
 	}
 
 	#[pyo3(name = "poll")]
-	async fn pypoll(&self) -> crate::Result<()> {
-		let rc = self.clone();
-		spawn_future!(rc.poll()).await.unwrap()
+	async fn pypoll(&self) -> PyResult<Promise> {
+		let this = self.clone();
+		a_sync!(this.poll().await)
+	}
+
+	#[pyo3(name = "stop")]
+	fn pystop(&self) -> bool {
+		self.stop()
 	}
 }
 

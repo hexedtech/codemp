@@ -2,12 +2,18 @@ pub mod client;
 pub mod controllers;
 pub mod workspace;
 
+use std::{
+	future::{poll_fn, Future},
+	task::Poll,
+};
+
 use crate::{
 	api::{Cursor, TextChange},
 	buffer::Controller as BufferController,
 	cursor::Controller as CursorController,
 	Client, Workspace,
 };
+
 use pyo3::prelude::*;
 use pyo3::{
 	exceptions::{PyConnectionError, PyRuntimeError, PySystemError},
@@ -41,7 +47,7 @@ pub fn tokio() -> &'static tokio::runtime::Runtime {
 // {
 // 	type Output = F::Output;
 
-// 	fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+// 	fn poll(self: std::pin::Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
 // 		let waker = cx.waker();
 // 		let fut = unsafe { self.map_unchecked_mut(|e| &mut e.0) };
 // 		Python::with_gil(|py| py.allow_threads(|| fut.poll(&mut Context::from_waker(waker))))
@@ -62,7 +68,7 @@ pub fn tokio() -> &'static tokio::runtime::Runtime {
 #[macro_export]
 macro_rules! a_sync {
 	($x:expr) => {{
-		Ok($crate::ffi::python::RustPromise(Some(
+		Ok($crate::ffi::python::Promise(Some(
 			$crate::ffi::python::tokio()
 				.spawn(async move { Ok($x.map(|f| Python::with_gil(|py| f.into_py(py)))?) }),
 		)))
@@ -148,11 +154,11 @@ fn init(logging_cb: Py<PyFunction>, debug: bool) -> PyResult<PyObject> {
 }
 
 #[pyclass]
-pub struct RustPromise(Option<tokio::task::JoinHandle<PyResult<PyObject>>>);
+pub struct Promise(Option<tokio::task::JoinHandle<PyResult<PyObject>>>);
 
 #[pymethods]
-impl RustPromise {
-	#[pyo3(name = "pyawait")]
+impl Promise {
+	#[pyo3(name = "wait")]
 	fn _await(&mut self) -> PyResult<PyObject> {
 		match self.0.take() {
 			None => Err(PySystemError::new_err(
@@ -165,6 +171,13 @@ impl RustPromise {
 				Ok(res) => res,
 			},
 		}
+	}
+
+	fn is_done(&self) -> bool {
+		if let Some(handle) = self.0 {
+			return handle.is_finished();
+		}
+		false
 	}
 }
 
