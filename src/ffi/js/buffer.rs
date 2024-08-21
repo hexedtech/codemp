@@ -22,7 +22,7 @@ impl BufferController {
 				tokio::time::sleep(std::time::Duration::from_millis(200)).await;
 				match _controller.recv().await {
 					Ok(event) => {
-						tsfn.call(event, ThreadsafeFunctionCallMode::NonBlocking); //check this shit with tracing also we could use Ok(event) to get the error
+						tsfn.call(event, ThreadsafeFunctionCallMode::NonBlocking); //check this with tracing also we could use Ok(event) to get the error
 					},
 					Err(crate::Error::Deadlocked) => continue,
 					Err(e) => break tracing::warn!("error receiving: {}", e),
@@ -30,6 +30,11 @@ impl BufferController {
 			}
 		});
 		Ok(())
+	}
+
+	#[napi(js_name = "try_recv")]
+	pub async fn js_try_recv(&self) -> napi::Result<Option<TextChange>> {
+		Ok(self.try_recv().await?)
 	}
 
 	#[napi(js_name = "recv")]
@@ -40,5 +45,10 @@ impl BufferController {
 	#[napi(js_name = "send")]
 	pub async fn js_send(&self, op: TextChange) -> napi::Result<()> {
 		Ok(self.send(op).await?)
+	}
+
+	#[napi(js_name = "content")]
+	pub async fn js_content(&self) -> napi::Result<String> {
+		Ok(self.content().await?)
 	}
 }

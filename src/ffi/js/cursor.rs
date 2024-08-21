@@ -76,4 +76,9 @@ impl CursorController {
 		Ok(self.try_recv().await?
 		.map(|x| JsCursor::from(x)))
 	}
+
+	#[napi(js_name= "recv")]
+	pub async fn js_recv(&self) -> napi::Result<JsCursor> {
+		Ok(self.recv().await?.into())
+	}
 }
