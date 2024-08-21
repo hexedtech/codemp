@@ -7,8 +7,8 @@ use crate::buffer::controller::BufferController;
 
 #[napi]
 impl BufferController {
-	#[napi(ts_args_type = "fun: (event: TextChange) => void")]
-	pub fn callback(&self, fun: napi::JsFunction) -> napi::Result<()>{ 
+	#[napi(js_name = "callback", ts_args_type = "fun: (event: TextChange) => void")]
+	pub fn jscallback(&self, fun: napi::JsFunction) -> napi::Result<()>{ 
 		let tsfn : ThreadsafeFunction<crate::api::TextChange, Fatal> = 
 		fun.create_threadsafe_function(0,
 			|ctx : ThreadSafeCallContext<crate::api::TextChange>| {

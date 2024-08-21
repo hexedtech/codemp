@@ -1,4 +1,4 @@
-use jni::{objects::{JClass, JObject, JString, JValueGen}, sys::{jlong, jobject, jstring}, JNIEnv};
+use jni::{objects::{JClass, JObject, JValueGen}, sys::{jlong, jobject, jstring}, JNIEnv};
 
 use crate::api::Controller;
 

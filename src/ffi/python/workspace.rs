@@ -83,7 +83,7 @@ impl Workspace {
 	}
 
 	#[pyo3(name = "filetree")]
-	fn pyfiletree(&self) -> Vec<String> {
-		self.filetree()
+	fn pyfiletree(&self, filter: Option<&str>) -> Vec<String> {
+		self.filetree(filter)
 	}
 }

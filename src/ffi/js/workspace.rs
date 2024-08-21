@@ -12,8 +12,8 @@ impl Workspace {
 	}
 	
 	#[napi(js_name = "filetree")]
-	pub fn js_filetree(&self) -> Vec<String> {
-		self.filetree()
+	pub fn js_filetree(&self, filter: Option<&str>) -> Vec<String> {
+		self.filetree(filter)
 	}
 
 	#[napi(js_name = "cursor")]
