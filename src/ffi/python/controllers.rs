@@ -6,13 +6,19 @@ use crate::cursor::Controller as CursorController;
 use pyo3::prelude::*;
 
 use super::Promise;
-use crate::a_sync;
+use crate::a_sync_allow_threads;
 
 // need to do manually since Controller is a trait implementation
 #[pymethods]
 impl CursorController {
 	#[pyo3(name = "send")]
-	fn pysend(&self, path: String, start: (i32, i32), end: (i32, i32)) -> PyResult<Promise> {
+	fn pysend(
+		&self,
+		py: Python,
+		path: String,
+		start: (i32, i32),
+		end: (i32, i32),
+	) -> PyResult<Promise> {
 		let pos = Cursor {
 			start,
 			end,
@@ -20,26 +26,26 @@ impl CursorController {
 			user: None,
 		};
 		let this = self.clone();
-		a_sync!(this.send(pos).await)
+		a_sync_allow_threads!(py, this.send(pos).await)
 	}
 
 	#[pyo3(name = "try_recv")]
-	fn pytry_recv(&self) -> PyResult<Promise> {
+	fn pytry_recv(&self, py: Python) -> PyResult<Promise> {
 		let this = self.clone();
-		a_sync!(this.try_recv().await)
+		a_sync_allow_threads!(py, this.try_recv().await)
 	}
 
 	#[pyo3(name = "recv")]
-	fn pyrecv(&self) -> crate::Result<Option<Cursor>> {
-		Ok(super::tokio().block_on(self.try_recv())?)
+	fn pyrecv(&self, py: Python) -> crate::Result<Option<Cursor>> {
+		py.allow_threads(|| super::tokio().block_on(self.try_recv()))
 		// let this = self.clone();
-		// a_sync!(this.recv().await)
+		// a_sync_allow_threads!(py, this.recv().await)
 	}
 
 	#[pyo3(name = "poll")]
-	fn pypoll(&self) -> PyResult<Promise> {
+	fn pypoll(&self, py: Python) -> PyResult<Promise> {
 		let this = self.clone();
-		a_sync!(this.poll().await)
+		a_sync_allow_threads!(py, this.poll().await)
 	}
 
 	#[pyo3(name = "stop")]
@@ -52,13 +58,13 @@ impl CursorController {
 #[pymethods]
 impl BufferController {
 	#[pyo3(name = "content")]
-	async fn pycontent(&self) -> PyResult<Promise> {
+	fn pycontent(&self, py: Python) -> PyResult<Promise> {
 		let this = self.clone();
-		a_sync!(this.content().await)
+		a_sync_allow_threads!(py, this.content().await)
 	}
 
 	#[pyo3(name = "send")]
-	async fn pysend(&self, start: u32, end: u32, txt: String) -> PyResult<Promise> {
+	fn pysend(&self, py: Python, start: u32, end: u32, txt: String) -> PyResult<Promise> {
 		let op = TextChange {
 			start,
 			end,
@@ -66,26 +72,26 @@ impl BufferController {
 			hash: None,
 		};
 		let this = self.clone();
-		a_sync!(this.send(op).await)
+		a_sync_allow_threads!(py, this.send(op).await)
 	}
 
 	#[pyo3(name = "try_recv")]
-	fn pytry_recv(&self) -> crate::Result<Option<TextChange>> {
-		Ok(super::tokio().block_on(self.try_recv())?)
+	fn pytry_recv(&self, py: Python) -> crate::Result<Option<TextChange>> {
+		py.allow_threads(|| super::tokio().block_on(self.try_recv()))
 		// let this = self.clone();
-		// a_sync!(this.try_recv().await)
+		// a_sync_allow_threads!(py, this.try_recv().await)
 	}
 
 	#[pyo3(name = "recv")]
-	async fn pyrecv(&self) -> PyResult<Promise> {
+	fn pyrecv(&self, py: Python) -> PyResult<Promise> {
 		let this = self.clone();
-		a_sync!(this.recv().await)
+		a_sync_allow_threads!(py, this.recv().await)
 	}
 
 	#[pyo3(name = "poll")]
-	async fn pypoll(&self) -> PyResult<Promise> {
+	fn pypoll(&self, py: Python) -> PyResult<Promise> {
 		let this = self.clone();
-		a_sync!(this.poll().await)
+		a_sync_allow_threads!(py, this.poll().await)
 	}
 
 	#[pyo3(name = "stop")]

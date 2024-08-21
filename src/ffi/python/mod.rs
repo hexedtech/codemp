@@ -37,8 +37,8 @@ pub struct Promise(Option<tokio::task::JoinHandle<PyResult<PyObject>>>);
 #[pymethods]
 impl Promise {
 	#[pyo3(name = "wait")]
-	fn _await(&mut self) -> PyResult<PyObject> {
-		match self.0.take() {
+	fn _await(&mut self, py: Python<'_>) -> PyResult<PyObject> {
+		py.allow_threads(move || match self.0.take() {
 			None => Err(PyRuntimeError::new_err(
 				"promise can't be awaited multiple times!",
 			)),
@@ -48,15 +48,17 @@ impl Promise {
 				))),
 				Ok(res) => res,
 			},
-		}
+		})
 	}
 
-	fn done(&self) -> PyResult<bool> {
-		if let Some(handle) = &self.0 {
-			Ok(handle.is_finished())
-		} else {
-			Err(PyRuntimeError::new_err("promise was already awaited."))
-		}
+	fn done(&self, py: Python<'_>) -> PyResult<bool> {
+		py.allow_threads(|| {
+			if let Some(handle) = &self.0 {
+				Ok(handle.is_finished())
+			} else {
+				Err(PyRuntimeError::new_err("promise was already awaited."))
+			}
+		})
 	}
 }
 
@@ -67,6 +69,18 @@ macro_rules! a_sync {
 			$crate::ffi::python::tokio()
 				.spawn(async move { Ok($x.map(|f| Python::with_gil(|py| f.into_py(py)))?) }),
 		)))
+	}};
+}
+
+#[macro_export]
+macro_rules! a_sync_allow_threads {
+	($py:ident, $x:expr) => {{
+		$py.allow_threads(move || {
+			Ok($crate::ffi::python::Promise(Some(
+				$crate::ffi::python::tokio()
+					.spawn(async move { Ok($x.map(|f| Python::with_gil(|py| f.into_py(py)))?) }),
+			)))
+		})
 	}};
 }
 
@@ -125,7 +139,7 @@ fn init(logging_cb: Py<PyFunction>, debug: bool) -> PyResult<PyObject> {
 		.with_writer(std::sync::Mutex::new(LoggerProducer(tx)))
 		.try_init();
 
-	let (rt_stop_tx, rt_stop_rx) = oneshot::channel::<()>();
+	let (rt_stop_tx, mut rt_stop_rx) = oneshot::channel::<()>();
 
 	match log_subscribing {
 		Ok(_) => {
@@ -133,12 +147,14 @@ fn init(logging_cb: Py<PyFunction>, debug: bool) -> PyResult<PyObject> {
 			// python logger.
 			std::thread::spawn(move || {
 				tokio().block_on(async move {
-					tokio::select! {
-						biased;
-						_ = rt_stop_rx => { todo!() },
-						Some(msg) = rx.recv() => {
-							let _ = Python::with_gil(|py| logging_cb.call1(py, (msg,)));
-						},
+					loop {
+						tokio::select! {
+							biased;
+							Some(msg) = rx.recv() => {
+								let _ = Python::with_gil(|py| logging_cb.call1(py, (msg,)));
+							},
+							_ = &mut rt_stop_rx => { todo!() },
+						}
 					}
 				})
 			});

@@ -24,11 +24,10 @@ impl Client {
 	// }
 
 	#[pyo3(name = "join_workspace")]
-	fn pyjoin_workspace(&self, workspace: String) -> PyResult<super::Promise> {
+	fn pyjoin_workspace(&self, py: Python<'_>, workspace: String) -> PyResult<super::Promise> {
 		tracing::info!("attempting to join the workspace {}", workspace);
-
 		let this = self.clone();
-		crate::a_sync!(this.join_workspace(workspace).await)
+		crate::a_sync_allow_threads!(py, this.join_workspace(workspace).await)
 		// let this = self.clone();
 		// Ok(super::Promise(Some(tokio().spawn(async move {
 		// 	Ok(this

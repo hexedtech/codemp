@@ -4,22 +4,22 @@ use crate::workspace::Workspace;
 use pyo3::prelude::*;
 
 use super::Promise;
-use crate::a_sync;
+use crate::a_sync_allow_threads;
 // use super::Promise;
 
 #[pymethods]
 impl Workspace {
 	// join a workspace
 	#[pyo3(name = "create")]
-	fn pycreate(&self, path: String) -> PyResult<Promise> {
+	fn pycreate(&self, py: Python, path: String) -> PyResult<Promise> {
 		let this = self.clone();
-		a_sync!(this.create(path.as_str()).await)
+		a_sync_allow_threads!(py, this.create(path.as_str()).await)
 	}
 
 	#[pyo3(name = "attach")]
-	fn pyattach(&self, path: String) -> PyResult<Promise> {
+	fn pyattach(&self, py: Python, path: String) -> PyResult<Promise> {
 		let this = self.clone();
-		a_sync!(this.attach(path.as_str()).await)
+		a_sync_allow_threads!(py, this.attach(path.as_str()).await)
 	}
 
 	#[pyo3(name = "detach")]
@@ -32,34 +32,34 @@ impl Workspace {
 	}
 
 	#[pyo3(name = "event")]
-	fn pyevent(&self) -> PyResult<Promise> {
+	fn pyevent(&self, py: Python) -> PyResult<Promise> {
 		let this = self.clone();
-		a_sync!(this.event().await)
+		a_sync_allow_threads!(py, this.event().await)
 	}
 
 	#[pyo3(name = "fetch_buffers")]
-	fn pyfetch_buffers(&self) -> PyResult<Promise> {
+	fn pyfetch_buffers(&self, py: Python) -> PyResult<Promise> {
 		let this = self.clone();
-		a_sync!(this.fetch_buffers().await)
+		a_sync_allow_threads!(py, this.fetch_buffers().await)
 	}
 
 	#[pyo3(name = "fetch_users")]
-	fn pyfetch_users(&self) -> PyResult<Promise> {
+	fn pyfetch_users(&self, py: Python) -> PyResult<Promise> {
 		let this = self.clone();
-		a_sync!(this.fetch_users().await)
+		a_sync_allow_threads!(py, this.fetch_users().await)
 	}
 
 	#[pyo3(name = "list_buffer_users")]
-	fn pylist_buffer_users(&self, path: String) -> PyResult<Promise> {
+	fn pylist_buffer_users(&self, py: Python, path: String) -> PyResult<Promise> {
 		// crate::Result<Vec<crate::api::User>>
 		let this = self.clone();
-		a_sync!(this.list_buffer_users(path.as_str()).await)
+		a_sync_allow_threads!(py, this.list_buffer_users(path.as_str()).await)
 	}
 
 	#[pyo3(name = "delete")]
-	fn pydelete(&self, path: String) -> PyResult<Promise> {
+	fn pydelete(&self, py: Python, path: String) -> PyResult<Promise> {
 		let this = self.clone();
-		a_sync!(this.delete(path.as_str()).await)
+		a_sync_allow_threads!(py, this.delete(path.as_str()).await)
 	}
 
 	#[pyo3(name = "id")]
