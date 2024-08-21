@@ -5,7 +5,6 @@ use pyo3::prelude::*;
 
 use super::Promise;
 use crate::a_sync_allow_threads;
-// use super::Promise;
 
 #[pymethods]
 impl Workspace {
