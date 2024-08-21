@@ -15,9 +15,9 @@ async-trait = "0.1"
 # crdt
 diamond-types = "1.0"
 # proto
-codemp-proto = { git = "ssh://git@github.com/hexedtech/codemp-proto.git", tag = "v0.6.1" }
+codemp-proto = { git = "ssh://git@github.com/hexedtech/codemp-proto.git", rev = "f2863537c84fccb2f84b634fb8e76392b75442da" }
 uuid = { version = "1.7", features = ["v4"] }
-tonic = { version = "0.11", features = ["tls", "tls-roots"] }
+tonic = { version = "0.12", features = ["tls", "tls-roots"] }
 # api
 tokio = { version = "1.0", features = ["macros", "rt-multi-thread", "sync"] }
 xxhash-rust = { version = "0.8", features = ["xxh3"] }
