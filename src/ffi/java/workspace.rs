@@ -69,9 +69,20 @@ pub extern "system" fn Java_mp_code_Workspace_get_1file_1tree(
 	mut env: JNIEnv,
 	_class: JClass,
 	self_ptr: jlong,
+	filter: JString 
 ) -> jobjectArray {
 	let workspace = unsafe { Box::leak(Box::from_raw(self_ptr as *mut Workspace)) };
-	let file_tree = workspace.filetree();
+	let filter: Option<String> = if filter.is_null() {
+		None
+	} else {
+		Some(
+			env.get_string(&filter)
+				.map(|s| s.into())
+				.jexcept(&mut env)
+		)
+	};
+
+	let file_tree = workspace.filetree(filter.as_deref());
 	env.find_class("java/lang/String")
 		.and_then(|class| env.new_object_array(file_tree.len() as i32, class, JObject::null()))
 		.map(|arr| {

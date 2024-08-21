@@ -28,14 +28,14 @@ public class Workspace {
 		return Optional.ofNullable(get_buffer(this.ptr, path));
 	}
 
-	private static native String[] get_file_tree(long self);
-	public String[] getFileTree() {
-		return get_file_tree(this.ptr);
+	private static native String[] get_file_tree(long self, String filter);
+	public String[] getFileTree(Optional<String> filter) {
+		return get_file_tree(this.ptr, filter.orElse(null));
 	}
 
-	private static native long create_buffer(String path) throws CodeMPException;
-	public BufferController createBuffer(String path) throws CodeMPException {
-		return new BufferController(create_buffer(path));
+	private static native void create_buffer(String path) throws CodeMPException;
+	public void createBuffer(String path) throws CodeMPException {
+		create_buffer(path);
 	}
 
 	private static native BufferController attach_to_buffer(long self, String path) throws CodeMPException;
@@ -93,7 +93,7 @@ public class Workspace {
 			this.argument = argument;
 		}
 
-		public Optional<String> getUserJoined() {
+		public Optional<String  > getUserJoined() {
 			if(this.type == Type.USER_JOIN) {
 				return Optional.of(this.argument);
 			} else return Optional.empty();
