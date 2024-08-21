@@ -15,7 +15,7 @@ async-trait = "0.1"
 # crdt
 diamond-types = "1.0"
 # proto
-codemp-proto = { git = "ssh://git@github.com/hexedtech/codemp-proto.git", rev = "f2863537c84fccb2f84b634fb8e76392b75442da" }
+codemp-proto = { git = "ssh://git@github.com/hexedtech/codemp-proto.git", rev = "334389360e330e3162c57cb3ff011feae13c84ba" }
 uuid = { version = "1.7", features = ["v4"] }
 tonic = { version = "0.12", features = ["tls", "tls-roots"] }
 # api
