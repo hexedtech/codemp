@@ -5,7 +5,7 @@
 use std::sync::Arc;
 
 use diamond_types::LocalVersion;
-use tokio::sync::{oneshot, mpsc, watch};
+use tokio::sync::{mpsc, oneshot, watch};
 use tonic::async_trait;
 
 use crate::api::controller::ControllerCallback;
@@ -40,7 +40,9 @@ impl BufferController {
 		let (tx, rx) = oneshot::channel();
 		self.0.content_request.send(tx).await?;
 		let content = rx.await?;
-		self.0.last_update.set(self.0.latest_version.borrow().clone());
+		self.0
+			.last_update
+			.set(self.0.latest_version.borrow().clone());
 		Ok(content)
 	}
 }

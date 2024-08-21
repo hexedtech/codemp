@@ -2,17 +2,186 @@ pub mod client;
 pub mod controllers;
 pub mod workspace;
 
-use std::sync::Arc;
-
 use crate::{
 	api::{Cursor, TextChange},
 	buffer::Controller as BufferController,
 	cursor::Controller as CursorController,
 	Client, Workspace,
 };
-use pyo3::exceptions::{PyConnectionError, PyRuntimeError, PySystemError};
+
 use pyo3::prelude::*;
-use tokio::sync::{mpsc, Mutex};
+use pyo3::{
+	exceptions::{PyConnectionError, PyRuntimeError, PySystemError},
+	types::PyFunction,
+};
+
+use std::sync::OnceLock;
+use tokio::sync::{mpsc, oneshot};
+
+// global reference to a current_thread tokio runtime
+pub fn tokio() -> &'static tokio::runtime::Runtime {
+	static RT: OnceLock<tokio::runtime::Runtime> = OnceLock::new();
+	RT.get_or_init(|| {
+		tokio::runtime::Builder::new_current_thread()
+			.enable_all()
+			.build()
+			.unwrap()
+	})
+}
+
+// #[pyfunction]
+// fn register_event_loop(event_loop: PyObject) {
+// 	static EVENT_LOOP: OnceLock<PyObject> = OnceLock::new();
+// 	EVENT_LOOP.
+// }
+
+// #[pyfunction]
+// fn setup_async(
+// 	event_loop: PyObject,
+// 	call_soon_thread_safe: PyObject, // asyncio.EventLoop.call_soon_threadsafe
+// 	call_coroutine_thread_safe: PyObject, // asyncio.call_coroutine_threadsafe
+// 	create_future: PyObject,         // asyncio.EventLoop.create_future
+// ) {
+// 	let _ = EVENT_LOOP.get_or_init(|| event_loop);
+// 	let _ = CALL_SOON.get_or_init(|| call_soon_thread_safe);
+// 	let _ = CREATE_TASK.get_or_init(|| call_coroutine_thread_safe);
+// 	let _ = CREATE_FUTURE.get_or_init(|| create_future);
+// }
+
+#[pyclass]
+pub struct Promise(Option<tokio::task::JoinHandle<PyResult<PyObject>>>);
+
+#[pymethods]
+impl Promise {
+	#[pyo3(name = "wait")]
+	fn _await(&mut self, py: Python<'_>) -> PyResult<PyObject> {
+		py.allow_threads(move || match self.0.take() {
+			None => Err(PyRuntimeError::new_err(
+				"promise can't be awaited multiple times!",
+			)),
+			Some(x) => match tokio().block_on(x) {
+				Err(e) => Err(PyRuntimeError::new_err(format!(
+					"error awaiting promise: {e}"
+				))),
+				Ok(res) => res,
+			},
+		})
+	}
+
+	fn done(&self, py: Python<'_>) -> PyResult<bool> {
+		py.allow_threads(|| {
+			if let Some(handle) = &self.0 {
+				Ok(handle.is_finished())
+			} else {
+				Err(PyRuntimeError::new_err("promise was already awaited."))
+			}
+		})
+	}
+}
+
+#[macro_export]
+macro_rules! a_sync {
+	($x:expr) => {{
+		Ok($crate::ffi::python::Promise(Some(
+			$crate::ffi::python::tokio()
+				.spawn(async move { Ok($x.map(|f| Python::with_gil(|py| f.into_py(py)))?) }),
+		)))
+	}};
+}
+
+#[macro_export]
+macro_rules! a_sync_allow_threads {
+	($py:ident, $x:expr) => {{
+		$py.allow_threads(move || {
+			Ok($crate::ffi::python::Promise(Some(
+				$crate::ffi::python::tokio()
+					.spawn(async move { Ok($x.map(|f| Python::with_gil(|py| f.into_py(py)))?) }),
+			)))
+		})
+	}};
+}
+
+#[derive(Debug, Clone)]
+struct LoggerProducer(mpsc::UnboundedSender<String>);
+
+impl std::io::Write for LoggerProducer {
+	fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+		let _ = self.0.send(String::from_utf8_lossy(buf).to_string());
+		Ok(buf.len())
+	}
+
+	fn flush(&mut self) -> std::io::Result<()> {
+		Ok(())
+	}
+}
+
+#[pyclass]
+pub struct Driver(Option<oneshot::Sender<()>>);
+#[pymethods]
+impl Driver {
+	fn stop(&mut self) -> PyResult<()> {
+		match self.0.take() {
+			Some(tx) => {
+				let _ = tx.send(());
+				Ok(())
+			}
+			None => Err(PySystemError::new_err("Runtime was already stopped.")),
+		}
+	}
+}
+#[pyfunction]
+fn init(py: Python, logging_cb: Py<PyFunction>, debug: bool) -> PyResult<Driver> {
+	let (tx, mut rx) = mpsc::unbounded_channel();
+	let level = if debug {
+		tracing::Level::DEBUG
+	} else {
+		tracing::Level::INFO
+	};
+
+	let format = tracing_subscriber::fmt::format()
+		.without_time()
+		.with_level(true)
+		.with_target(true)
+		.with_thread_ids(false)
+		.with_thread_names(false)
+		.with_file(false)
+		.with_line_number(false)
+		.with_source_location(false)
+		.compact();
+
+	let log_subscribing = tracing_subscriber::fmt()
+		.with_ansi(false)
+		.event_format(format)
+		.with_max_level(level)
+		.with_writer(std::sync::Mutex::new(LoggerProducer(tx)))
+		.try_init();
+
+	let (rt_stop_tx, mut rt_stop_rx) = oneshot::channel::<()>();
+
+	match log_subscribing {
+		Ok(_) => {
+			// the runtime is driven by the logger awaiting messages from codemp and echoing them back to
+			// a provided logger.
+			py.allow_threads(move || {
+				std::thread::spawn(move || {
+					tokio().block_on(async move {
+						loop {
+							tokio::select! {
+								biased;
+								Some(msg) = rx.recv() => {
+									let _ = Python::with_gil(|py| logging_cb.call1(py, (msg,)));
+								},
+								_ = &mut rt_stop_rx => { break }, // a bit brutal but will do for now.
+							}
+						}
+					})
+				})
+			});
+			Ok(Driver(Some(rt_stop_tx)))
+		}
+		Err(_) => Err(PyRuntimeError::new_err("codemp was already initialised.")),
+	}
+}
 
 impl From<crate::Error> for PyErr {
 	fn from(value: crate::Error) -> Self {
@@ -31,66 +200,16 @@ impl From<crate::Error> for PyErr {
 	}
 }
 
-#[derive(Debug, Clone)]
-struct LoggerProducer(mpsc::Sender<String>);
-
-impl std::io::Write for LoggerProducer {
-	fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-		let _ = self.0.try_send(String::from_utf8_lossy(buf).to_string()); // ignore: logger disconnected or with full buffer
-		Ok(buf.len())
-	}
-
-	fn flush(&mut self) -> std::io::Result<()> {
-		Ok(())
-	}
-}
-
-#[pyclass]
-struct PyLogger(Arc<Mutex<mpsc::Receiver<String>>>);
-
-#[pymethods]
-impl PyLogger {
-	#[new]
-	fn init_logger(debug: bool) -> PyResult<Self> {
-		let (tx, rx) = mpsc::channel(256);
-		let level = if debug {
-			tracing::Level::DEBUG
-		} else {
-			tracing::Level::INFO
-		};
-
-		let format = tracing_subscriber::fmt::format()
-			.without_time()
-			.with_level(true)
-			.with_target(true)
-			.with_thread_ids(false)
-			.with_thread_names(false)
-			.with_file(false)
-			.with_line_number(false)
-			.with_source_location(false)
-			.compact();
-
-		match tracing_subscriber::fmt()
-			.with_ansi(false)
-			.event_format(format)
-			.with_max_level(level)
-			.with_writer(std::sync::Mutex::new(LoggerProducer(tx)))
-			.try_init()
-		{
-			Ok(_) => Ok(PyLogger(Arc::new(Mutex::new(rx)))),
-			Err(_) => Err(PySystemError::new_err("A logger already exists")),
-		}
-	}
-
-	fn listen<'p>(&'p self, py: Python<'p>) -> PyResult<&'p PyAny> {
-		let rc = self.0.clone();
-		pyo3_asyncio::tokio::future_into_py(py, async move { Ok(rc.lock().await.recv().await) })
+impl IntoPy<PyObject> for crate::api::User {
+	fn into_py(self, py: Python<'_>) -> PyObject {
+		self.id.to_string().into_py(py)
 	}
 }
 
 #[pymodule]
-fn codemp(_py: Python, m: &PyModule) -> PyResult<()> {
-	m.add_class::<PyLogger>()?;
+fn codemp(m: &Bound<'_, PyModule>) -> PyResult<()> {
+	m.add_function(wrap_pyfunction!(init, m)?)?;
+	m.add_class::<Driver>()?;
 
 	m.add_class::<TextChange>()?;
 	m.add_class::<BufferController>()?;

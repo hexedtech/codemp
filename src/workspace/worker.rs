@@ -140,7 +140,9 @@ impl Workspace {
 			}
 		});
 	}
+}
 
+impl Workspace {
 	/// create a new buffer in current workspace
 	pub async fn create(&self, path: &str) -> crate::Result<()> {
 		let mut workspace_client = self.0.services.ws();
@@ -357,6 +359,8 @@ impl Drop for WorkspaceInner {
 	}
 }
 
+#[cfg_attr(feature = "python", pyo3::pyclass(eq, eq_int))]
+#[cfg_attr(feature = "python", derive(PartialEq))]
 pub enum DetachResult {
 	NotAttached,
 	Detaching,

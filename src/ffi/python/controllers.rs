@@ -4,62 +4,105 @@ use crate::api::TextChange;
 use crate::buffer::Controller as BufferController;
 use crate::cursor::Controller as CursorController;
 use pyo3::prelude::*;
-use pyo3_asyncio::tokio::future_into_py;
 
-// use super::CodempController;
+use super::Promise;
+use crate::a_sync_allow_threads;
 
+// need to do manually since Controller is a trait implementation
 #[pymethods]
 impl CursorController {
 	#[pyo3(name = "send")]
-	pub fn pysend<'p>(
+	fn pysend(
 		&self,
-		py: Python<'p>,
+		py: Python,
 		path: String,
 		start: (i32, i32),
 		end: (i32, i32),
-	) -> PyResult<&'p PyAny> {
-		let rc = self.clone();
+	) -> PyResult<Promise> {
 		let pos = Cursor {
 			start,
 			end,
 			buffer: path,
 			user: None,
 		};
-		let rc = self.clone();
-		future_into_py(py, async move { Ok(rc.send(pos).await?) })
+		let this = self.clone();
+		a_sync_allow_threads!(py, this.send(pos).await)
 	}
 
 	#[pyo3(name = "try_recv")]
-	pub fn pytry_recv<'p>(&self, py: Python<'p>) -> PyResult<&'p PyAny> {
-		//PyResult<Option<Py<Cursor>>>
-		let rc = self.clone();
-
-		future_into_py(py, async move { Ok(rc.try_recv().await?) })
+	fn pytry_recv(&self, py: Python) -> PyResult<Promise> {
+		let this = self.clone();
+		a_sync_allow_threads!(py, this.try_recv().await)
 	}
 
 	#[pyo3(name = "recv")]
-	pub fn pyrecv<'p>(&'p self, py: Python<'p>) -> PyResult<&'p PyAny> {
-		let rc = self.clone();
-
-		future_into_py(py, async move {
-			let cur_event: Cursor = rc.recv().await?;
-			Python::with_gil(|py| Py::new(py, cur_event))
-		})
+	fn pyrecv(&self, py: Python) -> crate::Result<Option<Cursor>> {
+		py.allow_threads(|| super::tokio().block_on(self.try_recv()))
+		// let this = self.clone();
+		// a_sync_allow_threads!(py, this.recv().await)
 	}
 
 	#[pyo3(name = "poll")]
-	pub fn pypoll<'p>(&'p self, py: Python<'p>) -> PyResult<&'p PyAny> {
-		let rc = self.clone();
-
-		future_into_py(py, async move { Ok(rc.poll().await?) })
+	fn pypoll(&self, py: Python) -> PyResult<Promise> {
+		let this = self.clone();
+		a_sync_allow_threads!(py, this.poll().await)
 	}
 
 	#[pyo3(name = "stop")]
-	pub fn pystop(&self) -> bool {
+	fn pystop(&self) -> bool {
 		self.stop()
 	}
 }
 
+// need to do manually since Controller is a trait implementation
+#[pymethods]
+impl BufferController {
+	#[pyo3(name = "content")]
+	fn pycontent(&self, py: Python) -> PyResult<Promise> {
+		let this = self.clone();
+		a_sync_allow_threads!(py, this.content().await)
+	}
+
+	#[pyo3(name = "send")]
+	fn pysend(&self, py: Python, start: u32, end: u32, txt: String) -> PyResult<Promise> {
+		let op = TextChange {
+			start,
+			end,
+			content: txt,
+			hash: None,
+		};
+		let this = self.clone();
+		a_sync_allow_threads!(py, this.send(op).await)
+	}
+
+	#[pyo3(name = "try_recv")]
+	fn pytry_recv(&self, py: Python) -> crate::Result<Option<TextChange>> {
+		py.allow_threads(|| super::tokio().block_on(self.try_recv()))
+		// let this = self.clone();
+		// a_sync_allow_threads!(py, this.try_recv().await)
+	}
+
+	#[pyo3(name = "recv")]
+	fn pyrecv(&self, py: Python) -> PyResult<Promise> {
+		let this = self.clone();
+		a_sync_allow_threads!(py, this.recv().await)
+	}
+
+	#[pyo3(name = "poll")]
+	fn pypoll(&self, py: Python) -> PyResult<Promise> {
+		let this = self.clone();
+		a_sync_allow_threads!(py, this.poll().await)
+	}
+
+	#[pyo3(name = "stop")]
+	fn pystop(&self) -> bool {
+		self.stop()
+	}
+}
+
+// We have to write this manually since
+// cursor.user has type Option which cannot be translated
+// automatically
 #[pymethods]
 impl Cursor {
 	#[getter(start)]
@@ -78,85 +121,7 @@ impl Cursor {
 	}
 
 	#[getter(user)]
-	fn pyuser(&self) -> String {
-		match self.user {
-			Some(user) => user.to_string(),
-			None => "".to_string(),
-		}
-	}
-}
-
-#[pymethods]
-impl BufferController {
-	#[pyo3(name = "content")]
-	fn pycontent<'p>(&self, py: Python<'p>) -> PyResult<&'p PyAny> {
-		let rc = self.clone();
-		future_into_py(py, async move { Ok(rc.content().await?) })
-	}
-
-	#[pyo3(name = "send")]
-	fn pysend<'p>(&self, py: Python<'p>, start: u32, end: u32, txt: String) -> PyResult<&'p PyAny> {
-		let op = TextChange {
-			start,
-			end,
-			content: txt,
-			hash: None,
-		};
-		let rc = self.clone();
-		future_into_py(py, async move { Ok(rc.send(op).await?) })
-	}
-
-	#[pyo3(name = "try_recv")]
-	fn pytry_recv<'p>(&self, py: Python<'p>) -> PyResult<&'p PyAny> {
-		// match self.try_recv()? {
-		// 	Some(txt_change) => {
-		// 		let evt = txt_change;
-		// 		Ok(evt.into_py(py))
-		// 	}
-		// 	None => Ok(py.None()),
-		// }
-		let rc = self.clone();
-
-		future_into_py(py, async move { Ok(rc.try_recv().await?) })
-	}
-
-	#[pyo3(name = "recv")]
-	fn pyrecv<'p>(&'p self, py: Python<'p>) -> PyResult<&'p PyAny> {
-		let rc = self.clone();
-
-		future_into_py(py, async move {
-			let txt_change: TextChange = rc.recv().await?;
-			Python::with_gil(|py| Py::new(py, txt_change))
-		})
-	}
-
-	#[pyo3(name = "poll")]
-	fn pypoll<'p>(&'p self, py: Python<'p>) -> PyResult<&'p PyAny> {
-		let rc = self.clone();
-
-		pyo3_asyncio::tokio::future_into_py(py, async move { Ok(rc.poll().await?) })
-	}
-}
-
-#[pymethods]
-impl TextChange {
-	#[pyo3(name = "is_deletion")]
-	fn pyis_deletion(&self) -> bool {
-		self.is_delete()
-	}
-
-	#[pyo3(name = "is_addition")]
-	fn pyis_addition(&self) -> bool {
-		self.is_insert()
-	}
-
-	#[pyo3(name = "is_empty")]
-	fn pyis_empty(&self) -> bool {
-		self.is_empty()
-	}
-
-	#[pyo3(name = "apply")]
-	fn pyapply(&self, txt: &str) -> String {
-		self.apply(txt)
+	fn pyuser(&self) -> Option<String> {
+		self.user.map(|user| user.to_string())
 	}
 }
