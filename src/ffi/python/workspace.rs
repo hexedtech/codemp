@@ -72,7 +72,7 @@ impl Workspace {
 				.list_buffer_users(path.as_str())
 				.await?
 				.into_iter()
-				.map(|e| e.id)
+				.map(|e| e.id.to_string())
 				.collect();
 
 			Ok(usrlist)
@@ -118,8 +118,8 @@ impl Workspace {
 	}
 
 	#[pyo3(name = "filetree")]
-	fn pyfiletree(&self) -> Vec<String> {
-		self.filetree()
+	fn pyfiletree(&self, filter: Option<&str>) -> Vec<String> {
+		self.filetree(filter)
 	}
 }
 

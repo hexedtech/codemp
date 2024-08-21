@@ -332,8 +332,11 @@ impl Workspace {
 
 	/// get the currently cached "filetree"
 	// #[cfg_attr(feature = "js", napi)] // https://github.com/napi-rs/napi-rs/issues/1120
-	pub fn filetree(&self) -> Vec<String> {
-		self.0.filetree.iter().map(|f| f.clone()).collect()
+	pub fn filetree(&self, filter: Option<&str>) -> Vec<String> {
+		self.0.filetree.iter()
+			.filter(|f| filter.map_or(true, |flt| f.starts_with(flt)))
+			.map(|f| f.clone())
+			.collect()
 	}
 }
 

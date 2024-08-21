@@ -166,12 +166,15 @@ impl LuaUserData for CodempWorkspace {
 			});
 			Ok(())
 		});
+
+		methods.add_method("filetree", |_, this, (filter,):(Option<String>,)|
+			Ok(this.filetree(filter.as_deref()))
+		);
 	}
 
 	fn add_fields<'lua, F: LuaUserDataFields<'lua, Self>>(fields: &mut F) {
 		fields.add_field_method_get("id", |_, this| Ok(this.id()));
 		fields.add_field_method_get("cursor", |_, this| Ok(this.cursor()));
-		fields.add_field_method_get("filetree", |_, this| Ok(this.filetree()));
 		fields.add_field_method_get("active_buffers", |_, this| Ok(this.buffer_list()));
 		// fields.add_field_method_get("users", |_, this| Ok(this.0.users())); // TODO
 	}
