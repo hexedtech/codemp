@@ -31,6 +31,10 @@ impl BufferController {
 		});
 		Ok(())
 	}
+	#[napi(js_name = "get_name")]
+	pub fn js_name(&self) -> napi::Result<&str> {
+		Ok(&self.name())
+	}
 
 	#[napi(js_name = "try_recv")]
 	pub async fn js_try_recv(&self) -> napi::Result<Option<TextChange>> {
