@@ -2,11 +2,6 @@ pub mod client;
 pub mod controllers;
 pub mod workspace;
 
-use std::{
-	future::{poll_fn, Future},
-	task::Poll,
-};
-
 use crate::{
 	api::{Cursor, TextChange},
 	buffer::Controller as BufferController,
@@ -36,34 +31,34 @@ pub fn tokio() -> &'static tokio::runtime::Runtime {
 	})
 }
 
-// // workaround to allow the GIL to be released across awaits, waiting on
-// // https://github.com/PyO3/pyo3/pull/3610
-// struct AllowThreads<F>(F);
+#[pyclass]
+pub struct Promise(Option<tokio::task::JoinHandle<PyResult<PyObject>>>);
 
-// impl<F> Future for AllowThreads<F>
-// where
-// 	F: Future + Unpin + Send,
-// 	F::Output: Send,
-// {
-// 	type Output = F::Output;
+#[pymethods]
+impl Promise {
+	#[pyo3(name = "wait")]
+	fn _await(&mut self) -> PyResult<PyObject> {
+		match self.0.take() {
+			None => Err(PyRuntimeError::new_err(
+				"promise can't be awaited multiple times!",
+			)),
+			Some(x) => match tokio().block_on(x) {
+				Err(e) => Err(PyRuntimeError::new_err(format!(
+					"error awaiting promise: {e}"
+				))),
+				Ok(res) => res,
+			},
+		}
+	}
 
-// 	fn poll(self: std::pin::Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-// 		let waker = cx.waker();
-// 		let fut = unsafe { self.map_unchecked_mut(|e| &mut e.0) };
-// 		Python::with_gil(|py| py.allow_threads(|| fut.poll(&mut Context::from_waker(waker))))
-// 	}
-// }
-// #[macro_export]
-// macro_rules! spawn_future_allow_threads {
-// 	($fut:expr) => {
-// 		$crate::ffi::python::tokio().spawn($crate::ffi::python::AllowThreads(Box::pin(
-// 			async move {
-// 				tracing::info!("running future from rust.");
-// 				$fut.await
-// 			},
-// 		)))
-// 	};
-// }
+	fn done(&self) -> PyResult<bool> {
+		if let Some(handle) = &self.0 {
+			Ok(handle.is_finished())
+		} else {
+			Err(PyRuntimeError::new_err("promise was already awaited."))
+		}
+	}
+}
 
 #[macro_export]
 macro_rules! a_sync {
@@ -80,7 +75,7 @@ struct LoggerProducer(mpsc::UnboundedSender<String>);
 
 impl std::io::Write for LoggerProducer {
 	fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-		let _ = self.0.send(String::from_utf8_lossy(buf).to_string()); // ignore: logger disconnected or with full buffer
+		let _ = self.0.send(String::from_utf8_lossy(buf).to_string());
 		Ok(buf.len())
 	}
 
@@ -140,44 +135,16 @@ fn init(logging_cb: Py<PyFunction>, debug: bool) -> PyResult<PyObject> {
 				tokio().block_on(async move {
 					tokio::select! {
 						biased;
+						_ = rt_stop_rx => { todo!() },
 						Some(msg) = rx.recv() => {
 							let _ = Python::with_gil(|py| logging_cb.call1(py, (msg,)));
 						},
-						_ = rt_stop_rx => { todo!() },
 					}
 				})
 			});
 			Ok(Python::with_gil(|py| Driver(Some(rt_stop_tx)).into_py(py)))
 		}
 		Err(_) => Err(PyRuntimeError::new_err("codemp was already initialised.")),
-	}
-}
-
-#[pyclass]
-pub struct Promise(Option<tokio::task::JoinHandle<PyResult<PyObject>>>);
-
-#[pymethods]
-impl Promise {
-	#[pyo3(name = "wait")]
-	fn _await(&mut self) -> PyResult<PyObject> {
-		match self.0.take() {
-			None => Err(PySystemError::new_err(
-				"promise can't be awaited multiple times!",
-			)),
-			Some(x) => match tokio().block_on(x) {
-				Err(e) => Err(PySystemError::new_err(format!(
-					"error awaiting promise: {e}"
-				))),
-				Ok(res) => res,
-			},
-		}
-	}
-
-	fn is_done(&self) -> bool {
-		if let Some(handle) = self.0 {
-			return handle.is_finished();
-		}
-		false
 	}
 }
 

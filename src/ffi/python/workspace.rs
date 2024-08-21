@@ -51,7 +51,7 @@ impl Workspace {
 
 	#[pyo3(name = "list_buffer_users")]
 	fn pylist_buffer_users(&self, path: String) -> PyResult<Promise> {
-		// crate::Result<Vec<crate::api::User>> {
+		// crate::Result<Vec<crate::api::User>>
 		let this = self.clone();
 		a_sync!(this.list_buffer_users(path.as_str()).await)
 	}
@@ -83,6 +83,7 @@ impl Workspace {
 	}
 
 	#[pyo3(name = "filetree")]
+	#[pyo3(signature = (filter=None))]
 	fn pyfiletree(&self, filter: Option<&str>) -> Vec<String> {
 		self.filetree(filter)
 	}
