@@ -14,6 +14,9 @@ use codemp_proto::buffer::{BufferEvent, Operation};
 
 use super::controller::{BufferController, BufferControllerInner};
 
+pub(crate) type DeltaOp = (LocalVersion, Option<TextChange>);
+pub(crate) type DeltaRequest = (LocalVersion, oneshot::Sender<DeltaOp>);
+
 pub(crate) struct BufferWorker {
 	user_id: Uuid,
 	latest_version: watch::Sender<diamond_types::LocalVersion>,
@@ -21,7 +24,7 @@ pub(crate) struct BufferWorker {
 	poller: mpsc::UnboundedReceiver<oneshot::Sender<()>>,
 	pollers: Vec<oneshot::Sender<()>>,
 	content_checkout: mpsc::Receiver<oneshot::Sender<String>>,
-	delta_req: mpsc::Receiver<(LocalVersion, oneshot::Sender<(LocalVersion, TextChange)>)>,
+	delta_req: mpsc::Receiver<DeltaRequest>,
 	stop: mpsc::UnboundedReceiver<()>,
 	controller: BufferController,
 	callback: watch::Receiver<Option<ControllerCallback<BufferController>>>,
@@ -181,7 +184,9 @@ impl ControllerWorker<TextChange> for BufferWorker {
 									}
 								}
 							};
-							tx.send((new_local_v, tc)).unwrap_or_warn("could not update ops channel -- is controller dead?");
+							tx.send((new_local_v, Some(tc))).unwrap_or_warn("could not update ops channel -- is controller dead?");
+						} else {
+							tx.send((last_ver, None)).unwrap_or_warn("could not update ops channel -- is controller dead?");
 						}
 					},
 				},

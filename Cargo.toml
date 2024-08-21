@@ -26,10 +26,10 @@ tokio-stream = "0.1"
 dashmap = "5.5"
 
 # glue (multiple)
-lazy_static = { version = "1.4", optional = true }
 tracing-subscriber = { version = "0.3", optional = true }
 
 # glue (java)
+lazy_static = { version = "1.4", optional = true }
 jni = { version = "0.21", features = ["invocation"], optional = true }
 
 # glue (lua)
@@ -50,7 +50,7 @@ pyo3-build-config = { version = "0.19", optional = true }
 
 [features]
 default = []
-lua = ["mlua", "lazy_static", "tracing-subscriber"]
+lua = ["mlua", "tracing-subscriber"]
 java = ["lazy_static", "jni", "tracing-subscriber"]
 js = ["napi-build", "tracing-subscriber", "napi", "napi-derive"]
 python = ["pyo3", "tracing-subscriber", "pyo3-build-config"]
