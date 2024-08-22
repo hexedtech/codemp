@@ -4,6 +4,7 @@ use crate::api::TextChange;
 use crate::buffer::Controller as BufferController;
 use crate::cursor::Controller as CursorController;
 use pyo3::prelude::*;
+use pyo3::types::PyFunction;
 
 use super::Promise;
 use crate::a_sync_allow_threads;
@@ -46,6 +47,23 @@ impl CursorController {
 	fn pypoll(&self, py: Python) -> PyResult<Promise> {
 		let this = self.clone();
 		a_sync_allow_threads!(py, this.poll().await)
+	}
+
+	#[pyo3(name = "callback")]
+	fn pycallback(&self, py: Python, cb: Py<PyFunction>) {
+		py.allow_threads(move || {
+			self.callback(move |ctl| {
+				Python::with_gil(|py| {
+					// TODO what to do with this error?
+					let _ = cb.call1(py, (ctl,));
+				})
+			})
+		})
+	}
+
+	#[pyo3(name = "clear_callback")]
+	fn pyclear_callback(&self) {
+		self.clear_callback();
 	}
 
 	#[pyo3(name = "stop")]
@@ -92,6 +110,23 @@ impl BufferController {
 	fn pypoll(&self, py: Python) -> PyResult<Promise> {
 		let this = self.clone();
 		a_sync_allow_threads!(py, this.poll().await)
+	}
+
+	#[pyo3(name = "callback")]
+	fn pycallback(&self, py: Python, cb: Py<PyFunction>) {
+		py.allow_threads(move || {
+			self.callback(move |ctl| {
+				Python::with_gil(|py| {
+					// TODO what to do with this error?
+					let _ = cb.call1(py, (ctl,));
+				})
+			})
+		})
+	}
+
+	#[pyo3(name = "clear_callback")]
+	fn pyclear_callback(&self) {
+		self.clear_callback();
 	}
 
 	#[pyo3(name = "stop")]
