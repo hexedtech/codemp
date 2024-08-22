@@ -129,8 +129,27 @@ impl Driver {
 		}
 	}
 }
+
+fn init_runtime() -> Driver {
+	let (rt_stop_tx, mut rt_stop_rx) = oneshot::channel::<()>();
+
+	std::thread::spawn(move || {
+		tokio().block_on(async move {
+			tracing::info!("driving the runtime with pending...");
+			tokio::select! {
+				() = std::future::pending::<()>() => {}
+				_ = &mut rt_stop_rx => {}
+			}
+		})
+	});
+
+	Driver(Some(rt_stop_tx))
+}
+
 #[pyfunction]
-fn init(py: Python, logging_cb: Py<PyFunction>, debug: bool) -> PyResult<Driver> {
+fn init_logger(py: Python, logging_cb: Py<PyFunction>, debug: bool) -> PyResult<Driver> {
+	let driver = init_runtime();
+
 	let (tx, mut rx) = mpsc::unbounded_channel();
 	let level = if debug {
 		tracing::Level::DEBUG
@@ -160,23 +179,12 @@ fn init(py: Python, logging_cb: Py<PyFunction>, debug: bool) -> PyResult<Driver>
 
 	match log_subscribing {
 		Ok(_) => {
-			// the runtime is driven by the logger awaiting messages from codemp and echoing them back to
-			// a provided logger.
-			py.allow_threads(move || {
-				std::thread::spawn(move || {
-					tokio().block_on(async move {
-						loop {
-							tokio::select! {
-								biased;
-								Some(msg) = rx.recv() => {
-									let _ = Python::with_gil(|py| logging_cb.call1(py, (msg,)));
-								},
-								_ = &mut rt_stop_rx => { break }, // a bit brutal but will do for now.
-							}
-						}
-					})
-				})
-			});
+			// spawn the logger
+			tokio().spawn(async move {
+				while let Some(msg) = rx.recv().await {
+					let _ = Python::with_gil(|py| logging_cb.call1(py, (msg,)));
+				}
+			})
 			Ok(Driver(Some(rt_stop_tx)))
 		}
 		Err(_) => Err(PyRuntimeError::new_err("codemp was already initialised.")),
