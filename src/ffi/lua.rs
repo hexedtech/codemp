@@ -77,7 +77,7 @@ macro_rules! a_sync {
 	};
 }
 
-fn runtime_drive_forever(_: &Lua, ():()) -> LuaResult<Driver> {
+fn spawn_runtime_driver(_: &Lua, ():()) -> LuaResult<Driver> {
 	let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
 	std::thread::spawn(move || tokio().block_on(async move {
 		tracing::info!(" :: driving runtime...");
@@ -103,6 +103,7 @@ impl LuaUserData for CodempClient {
 	fn add_fields<'lua, F: LuaUserDataFields<'lua, Self>>(fields: &mut F) {
 		fields.add_field_method_get("id", |_, this| Ok(this.user().id.to_string()));
 		fields.add_field_method_get("username", |_, this| Ok(this.user().name.clone()));
+		fields.add_field_method_get("active_workspaces", |_, this| Ok(this.active_workspaces()));
 	}
 
 	fn add_methods<'lua, M: LuaUserDataMethods<'lua, Self>>(methods: &mut M) {
@@ -137,7 +138,6 @@ impl LuaUserData for CodempClient {
 		);
 		
 		methods.add_method("get_workspace", |_, this, (ws,):(String,)| Ok(this.get_workspace(&ws)));
-		methods.add_method("active_workspaces", |_, this, ()| Ok(this.active_workspaces()));
 	}
 }
 
@@ -192,7 +192,7 @@ impl LuaUserData for CodempWorkspace {
 	}
 
 	fn add_fields<'lua, F: LuaUserDataFields<'lua, Self>>(fields: &mut F) {
-		fields.add_field_method_get("id", |_, this| Ok(this.id()));
+		fields.add_field_method_get("name", |_, this| Ok(this.id()));
 		fields.add_field_method_get("cursor", |_, this| Ok(this.cursor()));
 		fields.add_field_method_get("active_buffers", |_, this| Ok(this.buffer_list()));
 		// fields.add_field_method_get("users", |_, this| Ok(this.0.users())); // TODO
@@ -334,7 +334,7 @@ impl LuaUserData for CodempTextChange {
 
 // define module and exports
 #[mlua::lua_module]
-fn codemp_lua(lua: &Lua) -> LuaResult<LuaTable> {
+fn codemp_native(lua: &Lua) -> LuaResult<LuaTable> {
 	let exports = lua.create_table()?;
 
 	// entrypoint
@@ -348,7 +348,7 @@ fn codemp_lua(lua: &Lua) -> LuaResult<LuaTable> {
 	)?)?;
 
 	// runtime
-	exports.set("runtime_drive_forever", lua.create_function(runtime_drive_forever)?)?;
+	exports.set("spawn_runtime_driver", lua.create_function(spawn_runtime_driver)?)?;
 
 	// logging
 	exports.set("logger", lua.create_function(logger)?)?;
