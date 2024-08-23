@@ -53,6 +53,8 @@ pub struct Promise(Option<tokio::task::JoinHandle<PyResult<PyObject>>>);
 
 #[pymethods]
 impl Promise {
+	// Can't use this in callbacks since tokio will complain about running
+	// a runtime inside another runtime.
 	#[pyo3(name = "wait")]
 	fn _await(&mut self, py: Python<'_>) -> PyResult<PyObject> {
 		py.allow_threads(move || match self.0.take() {

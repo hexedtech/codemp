@@ -31,22 +31,9 @@ impl CursorController {
 	}
 
 	#[pyo3(name = "try_recv")]
-	fn pytry_recv(&self, py: Python) -> PyResult<PyObject> {
-		// why? I want try-recv to have that 'blocking' flavour, for the "cool guy async" approach there's
-		// 'recv'...
+	fn pytry_recv(&self, py: Python) -> PyResult<Promise> {
 		let this = self.clone();
-		let prom: crate::Result<Promise> = a_sync_allow_threads!(py, this.try_recv().await);
-		prom?._await(py)
-		// // bad situation, here we either return an opaque PyResult<PyObject>
-		// // or if we want to return exacly a Result<Option<Cursor>> we would need to extract it back
-		// // into a rust object... which is expensive.
-		// // This is stupid isn't it?
-		// // the PyResult<Option<Cursor>> will become a PyObject anyway to be returned back... lmao
-		// let this = self.clone();
-		// let prom: crate::Result<Promise> = a_sync_allow_threads!(py, this.try_recv().await);
-		// let pyobj = prom?._await(py)?;
-		// let opt = pyobj.extract::<Option<Cursor>>(py)?;
-		// Ok(opt)
+		a_sync_allow_threads!(py, this.try_recv().await)
 	}
 
 	#[pyo3(name = "recv")]
@@ -87,6 +74,11 @@ impl CursorController {
 // need to do manually since Controller is a trait implementation
 #[pymethods]
 impl BufferController {
+	#[pyo3(name = "name")]
+	fn pyname(&self) -> String {
+		self.name().to_string()
+	}
+
 	#[pyo3(name = "content")]
 	fn pycontent(&self, py: Python) -> PyResult<Promise> {
 		let this = self.clone();
@@ -106,10 +98,9 @@ impl BufferController {
 	}
 
 	#[pyo3(name = "try_recv")]
-	fn pytry_recv(&self, py: Python) -> crate::Result<Option<TextChange>> {
-		py.allow_threads(|| super::tokio().block_on(self.try_recv()))
-		// let this = self.clone();
-		// a_sync_allow_threads!(py, this.try_recv().await)
+	fn pytry_recv(&self, py: Python) -> PyResult<Promise> {
+		let this = self.clone();
+		a_sync_allow_threads!(py, this.try_recv().await)
 	}
 
 	#[pyo3(name = "recv")]
