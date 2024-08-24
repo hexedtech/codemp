@@ -1,5 +1,6 @@
+use napi::threadsafe_function::ErrorStrategy::Fatal;
 use napi_derive::napi;
-use napi::threadsafe_function::{ThreadsafeFunction, ThreadSafeCallContext, ThreadsafeFunctionCallMode, ErrorStrategy};
+use napi::threadsafe_function::{ThreadsafeFunction, ThreadSafeCallContext, ThreadsafeFunctionCallMode};
 use crate::api::Controller;
 use crate::cursor::controller::CursorController;
 
@@ -42,28 +43,26 @@ impl From<crate::api::Cursor> for JsCursor {
 
 #[napi]
 impl CursorController {
-	#[napi(js_name = "callback", ts_args_type = "fun: (event: Cursor) => void")]
-	pub fn jscallback(&self, fun: napi::JsFunction) -> napi::Result<()>{ 
-		let tsfn : ThreadsafeFunction<JsCursor, ErrorStrategy::Fatal> = 
+
+	#[napi(js_name = "callback", ts_args_type = "fun: (event: CursorController) => void")]
+	pub fn jscallback(&self, fun: napi::JsFunction) -> napi::Result<()>{
+		let tsfn : ThreadsafeFunction<crate::cursor::controller::CursorController, Fatal> = 
 		fun.create_threadsafe_function(0,
-			|ctx : ThreadSafeCallContext<JsCursor>| {
+			|ctx : ThreadSafeCallContext<crate::cursor::controller::CursorController>| {
 				Ok(vec![ctx.value])
 			}
 		)?;
-		let _controller = self.clone();
-		tokio::spawn(async move {
-			loop {
-				match _controller.recv().await {
-					Ok(event) => {
-						tsfn.call(event.into(), ThreadsafeFunctionCallMode::NonBlocking); //check this shit with tracing also we could use Ok(event) to get the error
-					},
-					Err(crate::Error::Deadlocked) => continue,
-					Err(e) => break tracing::warn!("error receiving: {}", e),
-				}
-			}
+		self.callback(move |controller : CursorController| {
+
+			tsfn.call(controller.clone(), ThreadsafeFunctionCallMode::Blocking); //check this with tracing also we could use Ok(event) to get the error
+			// If it blocks the main thread too many time we have to change this
+
 		});
+
 		Ok(())
 	}
+
+
 
 	#[napi(js_name = "send")]
 	pub async fn js_send(&self, pos: JsCursor) -> napi::Result<()> {

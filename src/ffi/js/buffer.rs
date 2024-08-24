@@ -7,30 +7,26 @@ use crate::buffer::controller::BufferController;
 
 #[napi]
 impl BufferController {
-	#[napi(js_name = "callback", ts_args_type = "fun: (event: TextChange) => void")]
-	pub fn jscallback(&self, fun: napi::JsFunction) -> napi::Result<()>{ 
-		let tsfn : ThreadsafeFunction<crate::api::TextChange, Fatal> = 
+
+	#[napi(js_name = "callback", ts_args_type = "fun: (event: BufferController) => void")]
+	pub fn jscallback(&self, fun: napi::JsFunction) -> napi::Result<()>{
+		let tsfn : ThreadsafeFunction<crate::buffer::controller::BufferController, Fatal> = 
 		fun.create_threadsafe_function(0,
-			|ctx : ThreadSafeCallContext<crate::api::TextChange>| {
+			|ctx : ThreadSafeCallContext<crate::buffer::controller::BufferController>| {
 				Ok(vec![ctx.value])
 			}
 		)?;
-		let _controller = self.clone();
-		tokio::spawn(async move {
-			//tokio::time::sleep(std::time::Duration::from_secs(1)).await;
-			loop {
-				tokio::time::sleep(std::time::Duration::from_millis(200)).await;
-				match _controller.recv().await {
-					Ok(event) => {
-						tsfn.call(event, ThreadsafeFunctionCallMode::NonBlocking); //check this with tracing also we could use Ok(event) to get the error
-					},
-					Err(crate::Error::Deadlocked) => continue,
-					Err(e) => break tracing::warn!("error receiving: {}", e),
-				}
-			}
+		self.callback(move |controller : BufferController| {
+
+			tsfn.call(controller.clone(), ThreadsafeFunctionCallMode::Blocking); //check this with tracing also we could use Ok(event) to get the error
+			// If it blocks the main thread too many time we have to change this
+
 		});
+
 		Ok(())
 	}
+
+
 	#[napi(js_name = "get_name")]
 	pub fn js_name(&self) -> napi::Result<&str> {
 		Ok(&self.name())
