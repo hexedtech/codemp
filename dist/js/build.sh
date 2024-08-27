@@ -1,1 +1,1 @@
-npx napi build --release --cargo-cwd ../..
+npx napi build --cargo-cwd ../..

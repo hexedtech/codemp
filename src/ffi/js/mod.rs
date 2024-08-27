@@ -3,6 +3,8 @@ pub mod workspace;
 pub mod cursor;
 pub mod buffer;
 pub mod op_cache;
+pub mod ext;
+
 
 impl From<crate::Error> for napi::Error {
 	fn from(value: crate::Error) -> Self {

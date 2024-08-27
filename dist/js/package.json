@@ -1,6 +1,6 @@
 {
   "name": "@codemp/codemp",
-  "version": "0.0.5", 
+  "version": "0.0.9-debug", 
 
   "dependencies": {
     "@napi-rs/cli": "^2.18.0",
