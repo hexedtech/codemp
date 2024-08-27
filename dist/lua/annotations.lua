@@ -6,44 +6,49 @@
 -- TODO lua-language-server doesn't seem to support generic classes
 --      https://github.com/LuaLS/lua-language-server/issues/1532
 --      so we need to expand every possible promise type...
+-- 
+--      do you have a better idea? send a PR our way!
 
----@class Promise
+---@class (exact) Promise
 ---@field ready boolean true if promise completed
 
----@class NilPromise : Promise
+---@class (exact) NilPromise : Promise
 ---@field await fun(self: NilPromise): nil block until promise is ready
 
----@class StringArrayPromise : Promise
+---@class (exact) StringPromise : Promise
+---@field await fun(self: StringPromise): string block until promise is ready and return value
+
+---@class (exact) StringArrayPromise : Promise
 ---@field await fun(self: StringArrayPromise): string[] block until promise is ready and return value
 
----@class ClientPromise : Promise
+---@class (exact) ClientPromise : Promise
 ---@field await fun(self: ClientPromise): Client block until promise is ready and return value
 
----@class WorkspacePromise : Promise
+---@class (exact) WorkspacePromise : Promise
 ---@field await fun(self: WorkspacePromise): Workspace block until promise is ready and return value
 
----@class WorkspaceEventPromise : Promise
+---@class (exact) WorkspaceEventPromise : Promise
 ---@field await fun(self: WorkspaceEventPromise): WorkspaceEvent block until promise is ready and return value
 
----@class BufferControllerPromise : Promise
+---@class (exact) BufferControllerPromise : Promise
 ---@field await fun(self: BufferControllerPromise): BufferController block until promise is ready and return value
 
----@class CursorPromise : Promise
+---@class (exact) CursorPromise : Promise
 ---@field await fun(self: CursorPromise): Cursor block until promise is ready and return value
 
----@class MaybeCursorPromise : Promise
+---@class (exact) MaybeCursorPromise : Promise
 ---@field await fun(self: MaybeCursorPromise): Cursor? block until promise is ready and return value
 
----@class TextChangePromise : Promise
+---@class (exact) TextChangePromise : Promise
 ---@field await fun(self: TextChangePromise): TextChange block until promise is ready and return value
 
----@class MaybeTextChangePromise : Promise
+---@class (exact) MaybeTextChangePromise : Promise
 ---@field await fun(self: MaybeTextChangePromise): TextChange? block until promise is ready and return value
 
 -- [[ END ASYNC STUFF ]]
 
 
----@class Client
+---@class (exact) Client
 ---@field id string uuid of local user
 ---@field username string name of local user
 ---@field active_workspaces string[] array of all currently active workspace names
@@ -68,7 +73,7 @@ function Client:join_workspace(ws) end
 ---@async
 ---@nodiscard
 ---create a new workspace with given id
-function Client:join_workspace(ws) end
+function Client:create_workspace(ws) end
 
 ---@param ws string workspace id to leave
 ---leave workspace with given id, detaching and disconnecting
@@ -104,7 +109,7 @@ function Client:get_workspace(ws) end
 
 
 
----@class Workspace
+---@class (exact) Workspace
 ---@field name string workspace name
 ---@field cursor CursorController workspace cursor controller
 ---@field active_buffers string[] array of all currently active buffer names
@@ -142,7 +147,7 @@ function Workspace:attach_buffer(path) end
 ---detach from an active buffer, closing all streams. returns false if buffer was no longer active
 function Workspace:detach_buffer(path) end
 
----@param filter string only return elements starting with given filter
+---@param filter? string only return elements starting with given filter
 ---@return string[]
 ---return the list of available buffers in this workspace, as relative paths from workspace root
 function Workspace:filetree(filter) end
@@ -159,7 +164,7 @@ function Workspace:fetch_buffers(path) end
 ---force refresh users list from workspace
 function Workspace:fetch_users(path) end
 
----@class WorkspaceEvent
+---@class (exact) WorkspaceEvent
 ---@field type string
 ---@field value string
 
@@ -172,11 +177,11 @@ function Workspace:event() end
 
 
 
----@class BufferController
+---@class (exact) BufferController
 ---handle to a remote buffer, for async send/recv operations
 local BufferController = {}
 
----@class TextChange
+---@class (exact) TextChange
 ---@field content string text content of change
 ---@field first integer start index of change
 ---@field last integer end index of change
@@ -191,7 +196,6 @@ local BufferController = {}
 ---@nodiscard
 ---update buffer with a text change; note that to delete content should be empty but not span, while to insert span should be empty but not content (can insert and delete at the same time)
 function BufferController:send(first, last, content) end
-
 
 ---@return MaybeTextChangePromise
 ---@async
@@ -222,19 +226,25 @@ function BufferController:clear_callback() end
 ---register a new callback to be called on remote text changes (replaces any previously registered one)
 function BufferController:callback(cb) end
 
+---@return StringPromise
+---@async
+---@nodiscard
+---get current content of buffer controller, marking all pending changes as seen
+function BufferController:content() end
 
 
 
----@class CursorController
+
+---@class (exact) CursorController
 ---handle to a workspace's cursor channel, allowing send/recv operations
 local CursorController = {}
 
----@class RowCol
+---@class (exact) RowCol
 ---@field row integer row number
 ---@field col integer column number
 ---row and column tuple
 
----@class Cursor
+---@class (exact) Cursor
 ---@field user string? id of user owning this cursor
 ---@field buffer string relative path ("name") of buffer on which this cursor is
 ---@field start RowCol cursor start position
@@ -284,7 +294,7 @@ function CursorController:callback(cb) end
 
 
 
----@class Codemp
+---@class (exact) Codemp
 ---the codemp shared library
 local Codemp = {}
 
@@ -302,7 +312,7 @@ function Codemp.connect(host, username, password) end
 ---use xxh3 hash, returns an i64 from any string
 function Codemp.hash(data) end
 
----@class RuntimeDriver
+---@class (exact) RuntimeDriver
 ---@field stop fun(): boolean stops the runtime thread without deleting the runtime itself, returns false if driver was already stopped
 
 ---@return RuntimeDriver
