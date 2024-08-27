@@ -45,7 +45,7 @@ impl From<crate::api::Cursor> for JsCursor {
 impl CursorController {
 
 	#[napi(js_name = "callback", ts_args_type = "fun: (event: CursorController) => void")]
-	pub fn jscallback(&self, fun: napi::JsFunction) -> napi::Result<()>{
+	pub fn js_callback(&self, fun: napi::JsFunction) -> napi::Result<()>{
 		let tsfn : ThreadsafeFunction<crate::cursor::controller::CursorController, Fatal> = 
 		fun.create_threadsafe_function(0,
 			|ctx : ThreadSafeCallContext<crate::cursor::controller::CursorController>| {

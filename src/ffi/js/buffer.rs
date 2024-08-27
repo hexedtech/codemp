@@ -9,7 +9,7 @@ use crate::buffer::controller::BufferController;
 impl BufferController {
 
 	#[napi(js_name = "callback", ts_args_type = "fun: (event: BufferController) => void")]
-	pub fn jscallback(&self, fun: napi::JsFunction) -> napi::Result<()>{
+	pub fn js_callback(&self, fun: napi::JsFunction) -> napi::Result<()>{
 		let tsfn : ThreadsafeFunction<crate::buffer::controller::BufferController, Fatal> = 
 		fun.create_threadsafe_function(0,
 			|ctx : ThreadSafeCallContext<crate::buffer::controller::BufferController>| {
@@ -26,10 +26,21 @@ impl BufferController {
 		Ok(())
 	}
 
+	#[napi(js_name = "clear_callback")]
+	pub fn js_clear_callback(&self) -> napi::Result<()> {
+		self.clear_callback();
+		Ok(())
+	}
+
 
 	#[napi(js_name = "get_name")]
 	pub fn js_name(&self) -> napi::Result<&str> {
 		Ok(&self.name())
+	}
+
+	#[napi(js_name = "poll")]
+	pub async fn js_poll(&self) -> napi::Result<()>{
+		Ok(self.poll().await?)
 	}
 
 	#[napi(js_name = "try_recv")]
