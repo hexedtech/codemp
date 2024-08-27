@@ -8,7 +8,7 @@ use super::tokio;
 impl Client {
 	#[new]
 	fn __new__(host: String, username: String, password: String) -> crate::Result<Self> {
-		tokio().block_on(Client::new(host, username, password))
+		tokio().block_on(Client::connect(host, username, password))
 	}
 
 	// #[pyo3(name = "join_workspace")]
@@ -37,6 +37,34 @@ impl Client {
 		// }))))
 	}
 
+	#[pyo3(name = "create_workspace")]
+	fn pycreate_workspace(&self, py: Python<'_>, workspace: String) -> PyResult<super::Promise> {
+		tracing::info!("attempting to create workspace {}", workspace);
+		let this = self.clone();
+		crate::a_sync_allow_threads!(py, this.create_workspace(workspace).await)
+	}
+
+	#[pyo3(name = "delete_workspace")]
+	fn pydelete_workspace(&self, py: Python<'_>, workspace: String) -> PyResult<super::Promise> {
+		tracing::info!("attempting to delete workspace {}", workspace);
+		let this = self.clone();
+		crate::a_sync_allow_threads!(py, this.delete_workspace(workspace).await)
+	}
+
+	#[pyo3(name = "invite_to_workspace")]
+	fn pyinvite_to_workspace(&self, py: Python<'_>, workspace: String, user: String) -> PyResult<super::Promise> {
+		tracing::info!("attempting to invite {user} to workspace {workspace}");
+		let this = self.clone();
+		crate::a_sync_allow_threads!(py, this.invite_to_workspace(workspace, user).await)
+	}
+
+	#[pyo3(name = "list_workspaces")]
+	fn pylist_workspaces(&self, py: Python<'_>, owned: bool, invited: bool) -> PyResult<super::Promise> {
+		tracing::info!("attempting to list workspaces");
+		let this = self.clone();
+		crate::a_sync_allow_threads!(py, this.list_workspaces(owned, invited).await)
+	}
+
 	#[pyo3(name = "leave_workspace")]
 	fn pyleave_workspace(&self, id: String) -> bool {
 		self.leave_workspace(id.as_str())
@@ -55,6 +83,18 @@ impl Client {
 
 	#[pyo3(name = "user_id")]
 	fn pyuser_id(&self) -> String {
-		self.user_id().to_string()
+		self.user().id.to_string()
+	}
+
+	#[pyo3(name = "user_name")]
+	fn pyuser_name(&self) -> String {
+		self.user().name.clone()
+	}
+
+	#[pyo3(name = "refresh")]
+	fn pyrefresh(&self, py: Python<'_>) -> PyResult<super::Promise> {
+		tracing::info!("attempting to refresh token");
+		let this = self.clone();
+		crate::a_sync_allow_threads!(py, this.refresh().await)
 	}
 }

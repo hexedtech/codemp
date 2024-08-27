@@ -1,4 +1,4 @@
-use jni::{objects::{JClass, JString, JValueGen}, sys::{jboolean, jlong, jobject}, JNIEnv};
+use jni::{objects::{JClass, JObject, JString, JValueGen}, sys::{jboolean, jlong, jobject, jobjectArray}, JNIEnv};
 use crate::{client::Client, Workspace};
 
 use super::{JExceptable, RT};
@@ -21,7 +21,7 @@ pub extern "system" fn Java_mp_code_Client_connect<'local>(
 	let pwd: String = env.get_string(&pwd)
 		.map(|s| s.into())
 		.jexcept(&mut env);
-	RT.block_on(crate::Client::new(&url, &user, &pwd))
+	RT.block_on(crate::Client::connect(&url, &user, &pwd))
 		.map(|client| Box::into_raw(Box::new(client)) as jlong)
 		.map(|ptr| {
 			env.find_class("mp/code/Client")
@@ -52,6 +52,87 @@ pub extern "system" fn Java_mp_code_Client_join_1workspace<'local>(
 		}).jexcept(&mut env).as_raw()
 }
 
+/// Creates a workspace on server, if allowed to
+#[no_mangle]
+pub extern "system" fn Java_mp_code_Client_create_1workspace<'local>(
+	mut env: JNIEnv<'local>,
+	_class: JClass<'local>,
+	self_ptr: jlong,
+	input: JString<'local>
+) {
+	let client = unsafe { Box::leak(Box::from_raw(self_ptr as *mut Client)) };
+	let workspace_id = unsafe { env.get_string_unchecked(&input) }
+		.map(|wid| wid.to_string_lossy().to_string())
+		.jexcept(&mut env);
+	RT
+		.block_on(client.create_workspace(workspace_id))
+		.jexcept(&mut env);
+}
+
+/// Deletes a workspace on server, if allowed to
+#[no_mangle]
+pub extern "system" fn Java_mp_code_Client_delete_1workspace<'local>(
+	mut env: JNIEnv<'local>,
+	_class: JClass<'local>,
+	self_ptr: jlong,
+	input: JString<'local>
+) {
+	let client = unsafe { Box::leak(Box::from_raw(self_ptr as *mut Client)) };
+	let workspace_id = unsafe { env.get_string_unchecked(&input) }
+		.map(|wid| wid.to_string_lossy().to_string())
+		.jexcept(&mut env);
+	RT
+		.block_on(client.delete_workspace(workspace_id))
+		.jexcept(&mut env);
+}
+
+/// Invites another user to an owned workspace
+#[no_mangle]
+pub extern "system" fn Java_mp_code_Client_invite_1to_1workspace<'local>(
+	mut env: JNIEnv<'local>,
+	_class: JClass<'local>,
+	self_ptr: jlong,
+	ws: JString<'local>,
+	usr: JString<'local>
+) {
+	let client = unsafe { Box::leak(Box::from_raw(self_ptr as *mut Client)) };
+	let workspace_id = unsafe { env.get_string_unchecked(&ws) }
+		.map(|wid| wid.to_string_lossy().to_string())
+		.jexcept(&mut env);
+	let user_name = unsafe { env.get_string_unchecked(&usr) }
+		.map(|wid| wid.to_string_lossy().to_string())
+		.jexcept(&mut env);
+	RT
+		.block_on(client.invite_to_workspace(workspace_id, user_name))
+		.jexcept(&mut env);
+}
+
+/// List available workspaces
+#[no_mangle]
+pub extern "system" fn Java_mp_code_Client_list_1workspaces<'local>(
+	mut env: JNIEnv<'local>,
+	_class: JClass<'local>,
+	self_ptr: jlong,
+	owned: jboolean,
+	invited: jboolean
+) -> jobjectArray {
+	let client = unsafe { Box::leak(Box::from_raw(self_ptr as *mut Client)) };
+	let list = RT
+		.block_on(client.list_workspaces(owned != 0, invited != 0))
+		.jexcept(&mut env);
+
+	env.find_class("java/lang/String")
+		.and_then(|class| env.new_object_array(list.len() as i32, class, JObject::null()))
+		.map(|arr| {
+			for (idx, path) in list.iter().enumerate() {
+				env.new_string(path)
+					.and_then(|path| env.set_object_array_element(&arr, idx as i32, path))
+					.jexcept(&mut env)
+			}
+			arr
+		}).jexcept(&mut env).as_raw()
+}
+
 // TODO: this stays until we get rid of the arc then i'll have to find a better way
 fn spawn_updater(workspace: Workspace) -> Workspace {
 	let w = workspace.clone();
@@ -79,6 +160,7 @@ pub extern "system" fn Java_mp_code_Client_leave_1workspace<'local>(
 		.map(|wid| client.leave_workspace(&wid) as jboolean)
 		.jexcept(&mut env)
 }
+
 /// Gets a [Workspace] by name and returns a pointer to it.
 #[no_mangle]
 pub extern "system" fn Java_mp_code_Client_get_1workspace<'local>(
@@ -98,6 +180,17 @@ pub extern "system" fn Java_mp_code_Client_get_1workspace<'local>(
 				.and_then(|class| env.new_object(class, "(J)V", &[JValueGen::Long(ptr)]))
 				.jexcept(&mut env)
 		}).unwrap_or_default().as_raw()
+}
+
+/// Refresh client's session token
+#[no_mangle]
+pub extern "system" fn Java_mp_code_Client_refresh<'local>(
+	mut env: JNIEnv<'local>,
+	_class: JClass<'local>,
+	self_ptr: jlong,
+) {
+	let client = unsafe { Box::leak(Box::from_raw(self_ptr as *mut Client)) };
+	RT.block_on(client.refresh()).jexcept(&mut env);
 }
 
 /// Sets up the tracing subscriber.

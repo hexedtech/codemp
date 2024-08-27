@@ -24,6 +24,26 @@ public class Client {
 		return join_workspace(this.ptr, id);
 	}
 
+	private static native void create_workspace(long self, String id) throws CodeMPException;
+	public void createWorkspace(String id) throws CodeMPException {
+		return create_workspace(this.ptr, id);
+	}
+
+	private static native void delete_workspace(long self, String id) throws CodeMPException;
+	public void deleteWorkspace(String id) throws CodeMPException {
+		return delete_workspace(this.ptr, id);
+	}
+
+	private static native void invite_to_workspace(long self, String ws, String usr) throws CodeMPException;
+	public void inviteToWorkspace(String ws, String usr) throws CodeMPException {
+		return invite_to_workspace(this.ptr, id);
+	}
+
+	private static native String[] list_workspaces(long self, boolean owned, boolean invited) throws CodeMPException;
+	public String[] listWorkspaces(boolean owned, boolean invited) throws CodeMPException {
+		return list_workspaces(this.ptr, owned, invited);
+	}
+
 	private static native boolean leave_workspace(long self, String id);
 	public boolean leaveWorkspace(String id) {
 		return leave_workspace(this.ptr, id);
@@ -32,6 +52,11 @@ public class Client {
 	private static native Workspace get_workspace(long self);
 	public Optional<Workspace> getWorkspace() {
 		return Optional.ofNullable(get_workspace(this.ptr));
+	}
+
+	private static native void refresh_native(long self);
+	public void refresh() {
+		return refresh_native(this.ptr);
 	}
 	
 	private static native void free(long self);
