@@ -1,6 +1,6 @@
 [package]
 name = "codemp"
-version = "0.6.2"
+version = "0.7.0"
 edition = "2021"
 
 [lib]
@@ -15,7 +15,7 @@ async-trait = "0.1"
 # crdt
 diamond-types = "1.0"
 # proto
-codemp-proto = { git = "ssh://git@github.com/hexedtech/codemp-proto.git", rev = "334389360e330e3162c57cb3ff011feae13c84ba" }
+codemp-proto = { git = "ssh://git@github.com/hexedtech/codemp-proto.git", tag = "v0.7.0" }
 uuid = { version = "1.7", features = ["v4"] }
 tonic = { version = "0.12", features = ["tls", "tls-roots"] }
 # api
