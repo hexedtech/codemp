@@ -2,25 +2,11 @@ use crate::workspace::Workspace;
 use crate::Client;
 use pyo3::prelude::*;
 
-use super::tokio;
-
 #[pymethods]
 impl Client {
-	#[new]
-	fn __new__(host: String, username: String, password: String) -> crate::Result<Self> {
-		tokio().block_on(Client::connect(host, username, password))
-	}
-
-	// #[pyo3(name = "join_workspace")]
-	// async fn pyjoin_workspace(&self, workspace: String) -> JoinHandle<crate::Result<Workspace>> {
-	// 	tracing::info!("attempting to join the workspace {}", workspace);
-
-	// 	let this = self.clone();
-	// 	async {
-	// 		tokio()
-	// 			.spawn(async move { this.join_workspace(workspace).await })
-	// 			.await
-	// 	}
+	// #[new]
+	// fn __new__(host: String, username: String, password: String) -> crate::Result<Self> {
+	// 	tokio().block_on(Client::connect(host, username, password))
 	// }
 
 	#[pyo3(name = "join_workspace")]
@@ -52,14 +38,24 @@ impl Client {
 	}
 
 	#[pyo3(name = "invite_to_workspace")]
-	fn pyinvite_to_workspace(&self, py: Python<'_>, workspace: String, user: String) -> PyResult<super::Promise> {
+	fn pyinvite_to_workspace(
+		&self,
+		py: Python<'_>,
+		workspace: String,
+		user: String,
+	) -> PyResult<super::Promise> {
 		tracing::info!("attempting to invite {user} to workspace {workspace}");
 		let this = self.clone();
 		crate::a_sync_allow_threads!(py, this.invite_to_workspace(workspace, user).await)
 	}
 
 	#[pyo3(name = "list_workspaces")]
-	fn pylist_workspaces(&self, py: Python<'_>, owned: bool, invited: bool) -> PyResult<super::Promise> {
+	fn pylist_workspaces(
+		&self,
+		py: Python<'_>,
+		owned: bool,
+		invited: bool,
+	) -> PyResult<super::Promise> {
 		tracing::info!("attempting to list workspaces");
 		let this = self.clone();
 		crate::a_sync_allow_threads!(py, this.list_workspaces(owned, invited).await)

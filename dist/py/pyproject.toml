@@ -1,6 +1,6 @@
 [project]
 name = "codemp"
-version = "0.6.2"
+version = "0.7.0"
 description = "Cooperative multi-player coding"
 requires-python = ">=3.8"
 license = {file = "../../LICENSE"}

@@ -228,7 +228,7 @@ dependencies = [
 
 [[package]]
 name = "codemp"
-version = "0.6.2"
+version = "0.7.0"
 dependencies = [
  "async-trait",
  "codemp-proto",
@@ -254,7 +254,8 @@ dependencies = [
 
 [[package]]
 name = "codemp-proto"
-version = "0.6.1"
+version = "0.7.0"
+source = "git+ssh://git@github.com/hexedtech/codemp-proto.git?tag=v0.7.0#11cc52e837a2e568c14ef3bc3a70e8124564f5aa"
 dependencies = [
  "prost",
  "tonic",

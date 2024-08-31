@@ -131,8 +131,30 @@ impl Driver {
 		}
 	}
 }
+
 #[pyfunction]
-fn init(py: Python, logging_cb: Py<PyFunction>, debug: bool) -> PyResult<Driver> {
+fn init() -> PyResult<Driver> {
+	let (rt_stop_tx, mut rt_stop_rx) = oneshot::channel::<()>();
+	std::thread::spawn(move || {
+		tokio().block_on(async move {
+			tracing::info!("started runtime driver...");
+			tokio::select! {
+				() = std::future::pending::<()>() => {},
+				_ = &mut rt_stop_rx => {}
+			}
+		})
+	});
+
+	Ok(Driver(Some(rt_stop_tx)))
+}
+
+#[pyfunction]
+fn connect(host: String, username: String, password: String) -> PyResult<Promise> {
+	a_sync!(Client::connect(host, username, password).await)
+}
+
+#[pyfunction]
+fn set_logger(logging_cb: Py<PyFunction>, debug: bool) -> bool {
 	let (tx, mut rx) = mpsc::unbounded_channel();
 	let level = if debug {
 		tracing::Level::DEBUG
@@ -151,38 +173,22 @@ fn init(py: Python, logging_cb: Py<PyFunction>, debug: bool) -> PyResult<Driver>
 		.with_source_location(false)
 		.compact();
 
-	let log_subscribing = tracing_subscriber::fmt()
+	let log_subscribed = tracing_subscriber::fmt()
 		.with_ansi(false)
 		.event_format(format)
 		.with_max_level(level)
 		.with_writer(std::sync::Mutex::new(LoggerProducer(tx)))
-		.try_init();
+		.try_init()
+		.is_ok();
 
-	let (rt_stop_tx, mut rt_stop_rx) = oneshot::channel::<()>();
-
-	match log_subscribing {
-		Ok(_) => {
-			// the runtime is driven by the logger awaiting messages from codemp and echoing them back to
-			// a provided logger.
-			py.allow_threads(move || {
-				std::thread::spawn(move || {
-					tokio().block_on(async move {
-						loop {
-							tokio::select! {
-								biased;
-								Some(msg) = rx.recv() => {
-									let _ = Python::with_gil(|py| logging_cb.call1(py, (msg,)));
-								},
-								_ = &mut rt_stop_rx => { break }, // a bit brutal but will do for now.
-							}
-						}
-					})
-				})
-			});
-			Ok(Driver(Some(rt_stop_tx)))
-		}
-		Err(_) => Err(PyRuntimeError::new_err("codemp was already initialised.")),
+	if log_subscribed {
+		tokio().spawn(async move {
+			while let Some(msg) = rx.recv().await {
+				let _ = Python::with_gil(|py| logging_cb.call1(py, (msg,)));
+			}
+		});
 	}
+	log_subscribed
 }
 
 impl From<crate::Error> for PyErr {
@@ -211,6 +217,8 @@ impl IntoPy<PyObject> for crate::api::User {
 #[pymodule]
 fn codemp(m: &Bound<'_, PyModule>) -> PyResult<()> {
 	m.add_function(wrap_pyfunction!(init, m)?)?;
+	m.add_function(wrap_pyfunction!(connect, m)?)?;
+	m.add_function(wrap_pyfunction!(set_logger, m)?)?;
 	m.add_class::<Driver>()?;
 
 	m.add_class::<TextChange>()?;
