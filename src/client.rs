@@ -7,7 +7,7 @@ use std::sync::Arc;
 use dashmap::DashMap;
 use tonic::{service::interceptor::InterceptedService, transport::{Channel, Endpoint}};
 
-use crate::{api::User, ext::InternallyMutable, workspace::Workspace};
+use crate::{api::User, errors::{ConnectionResult, ProcedureResult}, ext::InternallyMutable, workspace::Workspace};
 use codemp_proto::{
 	auth::{auth_client::AuthClient, LoginRequest},
 	common::{Empty, Token}, session::{session_client::SessionClient, InviteRequest, WorkspaceRequest},
@@ -42,7 +42,7 @@ impl Client {
 		host: impl AsRef<str>,
 		username: impl AsRef<str>,
 		password: impl AsRef<str>,
-	) -> crate::Result<Self> {
+	) -> ConnectionResult<Self> {
 		let host = if host.as_ref().starts_with("http") {
 			host.as_ref().to_string()
 		} else {
@@ -75,7 +75,7 @@ impl Client {
 	}
 
 	/// refresh session token
-	pub async fn refresh(&self) -> crate::Result<()> {
+	pub async fn refresh(&self) -> ProcedureResult<()> {
 		let new_token = self.0.auth.clone().refresh(self.0.claims.get())
 			.await?
 			.into_inner();
@@ -84,7 +84,7 @@ impl Client {
 	}
 
 	/// attempts to create a new workspace with given name
-	pub async fn create_workspace(&self, name: impl AsRef<str>) -> crate::Result<()> {
+	pub async fn create_workspace(&self, name: impl AsRef<str>) -> ProcedureResult<()> {
 		self.0.session
 			.clone()
 			.create_workspace(WorkspaceRequest { workspace: name.as_ref().to_string() })
@@ -93,7 +93,7 @@ impl Client {
 	}
 
 	/// delete an existing workspace if possible
-	pub async fn delete_workspace(&self, name: impl AsRef<str>) -> crate::Result<()> {
+	pub async fn delete_workspace(&self, name: impl AsRef<str>) -> ProcedureResult<()> {
 		self.0.session
 			.clone()
 			.delete_workspace(WorkspaceRequest { workspace: name.as_ref().to_string() })
@@ -102,7 +102,7 @@ impl Client {
 	}
 
 	/// invite user associated with username to workspace, if possible
-	pub async fn invite_to_workspace(&self, workspace_name: impl AsRef<str>, user_name: impl AsRef<str>) -> crate::Result<()> {
+	pub async fn invite_to_workspace(&self, workspace_name: impl AsRef<str>, user_name: impl AsRef<str>) -> ProcedureResult<()> {
 		self.0.session
 			.clone()
 			.invite_to_workspace(InviteRequest {
@@ -114,7 +114,7 @@ impl Client {
 	}
 
 	/// list all available workspaces, filtering between those owned and those invited to
-	pub async fn list_workspaces(&self, owned: bool, invited: bool) -> crate::Result<Vec<String>> {
+	pub async fn list_workspaces(&self, owned: bool, invited: bool) -> ProcedureResult<Vec<String>> {
 		let mut workspaces = self.0.session
 			.clone()
 			.list_workspaces(Empty {})
@@ -130,7 +130,7 @@ impl Client {
 	}
 
 	/// join a workspace, returns [Workspace]
-	pub async fn join_workspace(&self, workspace: impl AsRef<str>) -> crate::Result<Workspace> {
+	pub async fn join_workspace(&self, workspace: impl AsRef<str>) -> ConnectionResult<Workspace> {
 		let token = self.0.session
 			.clone()
 			.access_workspace(WorkspaceRequest { workspace: workspace.as_ref().to_string() })
@@ -184,7 +184,7 @@ impl tonic::service::Interceptor for SessionInterceptor {
 	fn call(
 		&mut self,
 		mut request: tonic::Request<()>,
-	) -> Result<tonic::Request<()>, tonic::Status> {
+	) -> tonic::Result<tonic::Request<()>> {
 		if let Ok(token) = self.0.borrow().token.parse() {
 			request.metadata_mut().insert("session", token);
 		}

@@ -1,120 +1,73 @@
-//! ### Errors
-//! 
-//! library error helpers and types
 
-use std::result::Result as StdResult;
+#[deprecated = "use underlying errors to provide more context on what errors could really be thrown"]
+#[allow(deprecated)]
+pub type Result<T> = std::result::Result<T, Error>;
 
-use tracing::warn;
-
-/// an error which can be ignored with just a warning entry
-pub trait IgnorableError {
-	fn unwrap_or_warn(self, msg: &str);
-}
-
-impl<T, E> IgnorableError for StdResult<T, E>
-where E : std::fmt::Debug {
-	fn unwrap_or_warn(self, msg: &str) {
-		match self {
-			Ok(_) => {},
-			Err(e) => warn!("{}: {:?}", msg, e),
-		}
-	}
-}
-
-
-/// an error which can be ignored with just a warning entry and returning the default value
-pub trait IgnorableDefaultableError<T> {
-	fn unwrap_or_warn_default(self, msg: &str) -> T;
-}
-
-impl<T, E> IgnorableDefaultableError<T> for StdResult<T, E>
-where E : std::fmt::Display, T: Default {
-	fn unwrap_or_warn_default(self, msg: &str) -> T {
-		match self {
-			Ok(x) => x,
-			Err(e) => {
-				warn!("{}: {}", msg, e);
-				T::default()
-			},
-		}
-	}
-}
-
-/// result type for codemp errors
-pub type Result<T> = StdResult<T, Error>;
-
-// TODO split this into specific errors for various parts of the library
-/// codemp error type for library issues
+#[deprecated = "use underlying errors to provide more context on what errors could really be thrown"]
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
-	/// errors caused by tonic http layer
-	#[error("tonic error (status: {status}, message: {message})")]
-	Transport {
-		status: String,
-		message: String,
-	},
+	#[error("connection error: {0}")]
+	Connection(#[from] ConnectionError),
 
-	/// errors caused by async channels
-	#[error("channel error, send: {send}")]
-	Channel {
-		send: bool
-	},
+	#[error("procedure error: {0}")]
+	Procedure(#[from] ProcedureError),
 
-	/// errors caused by wrong usage of library objects
-	#[error("invalid state error: {msg}")]
-	InvalidState {
-		msg: String,
-	},
-
-	/// errors caused by wrong interlocking, safe to retry
-	#[error("deadlocked error")]
-	Deadlocked
+	#[error("controller error: {0}")]
+	Controller(#[from] ControllerError),
 }
 
-impl From<tonic::Status> for Error {
-	fn from(status: tonic::Status) -> Self {
-		Error::Transport {
-			status: status.code().to_string(),
-			message: status.message().to_string()
+
+
+pub type ProcedureResult<T> = std::result::Result<T, ProcedureError>;
+
+#[derive(Debug, thiserror::Error)]
+pub enum ProcedureError {
+	#[error("server rejected procedure with error: {0}")]
+	Server(#[from] tonic::Status)
+}
+
+
+
+pub type ConnectionResult<T> = std::result::Result<T, ConnectionError>;
+
+#[derive(Debug, thiserror::Error)]
+pub enum ConnectionError {
+	#[error("network error: {0}")]
+	Transport(#[from] tonic::transport::Error),
+
+	#[error("server rejected connection attempt: {0}")]
+	Procedure(#[from] tonic::Status),
+}
+
+impl From<ProcedureError> for ConnectionError {
+	fn from(value: ProcedureError) -> Self {
+		match value {
+			ProcedureError::Server(x) => Self::Procedure(x)
 		}
 	}
 }
 
-impl From<tonic::transport::Error> for Error {
-	fn from(err: tonic::transport::Error) -> Self {
-		Error::Transport {
-			status: tonic::Code::Unknown.to_string(),
-			message: format!("underlying transport error: {:?}", err)
-		}
+
+
+pub type ControllerResult<T> = std::result::Result<T, ControllerError>;
+
+#[derive(Debug, thiserror::Error)]
+pub enum ControllerError {
+	#[error("worker is already stopped")]
+	Stopped,
+
+	#[error("worker stopped before completing requested operation")]
+	Unfulfilled,
+}
+
+impl<T> From<tokio::sync::mpsc::error::SendError<T>> for ControllerError {
+	fn from(_: tokio::sync::mpsc::error::SendError<T>) -> Self {
+		Self::Stopped
 	}
 }
 
-impl<T> From<tokio::sync::mpsc::error::SendError<T>> for Error {
-	fn from(_value: tokio::sync::mpsc::error::SendError<T>) -> Self {
-		Error::Channel { send: true }
-	}
-}
-
-impl<T> From<tokio::sync::watch::error::SendError<T>> for Error {
-	fn from(_value: tokio::sync::watch::error::SendError<T>) -> Self {
-		Error::Channel { send: true }
-	}
-}
-
-impl From<tokio::sync::broadcast::error::RecvError> for Error {
-	fn from(_value: tokio::sync::broadcast::error::RecvError) -> Self {
-		Error::Channel { send: false }
-	}
-}
-
-impl From<tokio::sync::oneshot::error::RecvError> for Error {
-	fn from(_value: tokio::sync::oneshot::error::RecvError) -> Self {
-		Error::Channel { send: false }
-	}
-}
-
-impl From<tokio::sync::watch::error::RecvError> for Error {
-	fn from(_value: tokio::sync::watch::error::RecvError) -> Self {
-		Error::Channel { send: false }
+impl From<tokio::sync::oneshot::error::RecvError> for ControllerError {
+	fn from(_: tokio::sync::oneshot::error::RecvError) -> Self {
+		Self::Unfulfilled
 	}
 }

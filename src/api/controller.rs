@@ -3,7 +3,7 @@
 //! an bidirectional stream handler to easily manage async operations across local buffers and the
 //! server
 
-use crate::Result;
+use crate::errors::ControllerResult;
 
 #[async_trait::async_trait]
 pub(crate) trait ControllerWorker<T : Sized + Send + Sync> {
@@ -14,6 +14,9 @@ pub(crate) trait ControllerWorker<T : Sized + Send + Sync> {
 	fn controller(&self) -> Self::Controller;
 	async fn work(self, tx: Self::Tx, rx: Self::Rx);
 }
+
+// note that we don't use thiserror's #[from] because we don't want the error structs to contain
+// these foreign types, and also we want these to be easily constructable
 
 /// async and threadsafe handle to a generic bidirectional stream
 ///
@@ -29,14 +32,14 @@ pub trait Controller<T : Sized + Send + Sync> : Sized + Send + Sync {
 	///
 	/// success or failure of this function does not imply validity of sent operation,
 	/// because it's integrated asynchronously on the background worker
-	async fn send(&self, x: T) -> Result<()>;
+	async fn send(&self, x: T) -> ControllerResult<()>;
 
 	/// get next value from other users, blocking until one is available
 	///
 	/// this is just an async trait function wrapped by `async_trait`:
 	///
-	/// `async fn recv(&self) -> codemp::Result<T>;`
-	async fn recv(&self) -> Result<T> {
+	/// `async fn recv(&self) -> codemp::ControllerResult<T>;`
+	async fn recv(&self) -> ControllerResult<T> {
 		loop {
 			self.poll().await?;
 			if let Some(x) = self.try_recv().await? {
@@ -57,11 +60,11 @@ pub trait Controller<T : Sized + Send + Sync> : Sized + Send + Sync {
 	///
 	/// this is just an async trait function wrapped by `async_trait`:
 	///
-	/// `async fn poll(&self) -> codemp::Result<()>;`
-	async fn poll(&self) -> Result<()>;
+	/// `async fn poll(&self) -> codemp::ControllerResult<()>;`
+	async fn poll(&self) -> ControllerResult<()>;
 
 	/// attempt to receive a value without blocking, return None if nothing is available
-	async fn try_recv(&self) -> Result<Option<T>>;
+	async fn try_recv(&self) -> ControllerResult<Option<T>>;
 
 	/// stop underlying worker
 	///
@@ -75,7 +78,7 @@ pub trait Controller<T : Sized + Send + Sync> : Sized + Send + Sync {
 
 
 /// type wrapper for Boxed dyn callback
-pub struct ControllerCallback<T>(Box<dyn Sync + Send + Fn(T)>);
+pub struct ControllerCallback<T>(pub Box<dyn Sync + Send + Fn(T)>);
 
 impl<T> ControllerCallback<T> {
 	pub fn call(&self, x: T) {

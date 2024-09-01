@@ -1,5 +1,10 @@
 use crate::{
-	api::{controller::ControllerWorker, Controller, Event, User}, buffer::{self, worker::BufferWorker}, cursor::{self, worker::CursorWorker}, ext::InternallyMutable, workspace::service::Services
+	api::{controller::ControllerWorker, Controller, Event, User},
+	buffer::{self, worker::BufferWorker},
+	cursor::{self, worker::CursorWorker},
+	errors::{ConnectionResult, ControllerResult, ProcedureResult},
+	ext::InternallyMutable,
+	workspace::service::Services
 };
 
 use codemp_proto::{
@@ -47,7 +52,7 @@ impl Workspace {
 		dest: &str,
 		token: Token,
 		claims: tokio::sync::watch::Receiver<codemp_proto::common::Token>, // TODO ughh receiving this
-	) -> crate::Result<Self> {
+	) -> ConnectionResult<Self> {
 		let workspace_claim = InternallyMutable::new(token);
 		let services = Services::try_new(dest, claims, workspace_claim.channel()).await?;
 		let ws_stream = services.ws().attach(Empty {}).await?.into_inner();
@@ -141,7 +146,7 @@ impl Workspace {
 
 impl Workspace {
 	/// create a new buffer in current workspace
-	pub async fn create(&self, path: &str) -> crate::Result<()> {
+	pub async fn create(&self, path: &str) -> ProcedureResult<()> {
 		let mut workspace_client = self.0.services.ws();
 		workspace_client
 			.create_buffer(tonic::Request::new(BufferNode {
@@ -162,7 +167,7 @@ impl Workspace {
 	///
 	/// to interact with such buffer use [crate::api::Controller::send] or
 	/// [crate::api::Controller::recv] to exchange [crate::api::TextChange]
-	pub async fn attach(&self, path: &str) -> crate::Result<buffer::Controller> {
+	pub async fn attach(&self, path: &str) -> ConnectionResult<buffer::Controller> {
 		let mut worskspace_client = self.0.services.ws();
 		let request = tonic::Request::new(BufferNode {
 			path: path.to_string(),
@@ -216,18 +221,19 @@ impl Workspace {
 	}
 
 	/// await next workspace [crate::api::Event] and return it
-	pub async fn event(&self) -> crate::Result<Event> {
+	// TODO this method is weird and ugly, can we make it more standard?
+	pub async fn event(&self) -> ControllerResult<Event> {
 		self.0
 			.events
 			.lock()
 			.await
 			.recv()
 			.await
-			.ok_or(crate::Error::Channel { send: false })
+			.ok_or(crate::errors::ControllerError::Unfulfilled)
 	}
 
 	/// fetch a list of all buffers in a workspace
-	pub async fn fetch_buffers(&self) -> crate::Result<()> {
+	pub async fn fetch_buffers(&self) -> ProcedureResult<()> {
 		let mut workspace_client = self.0.services.ws();
 		let buffers = workspace_client
 			.list_buffers(tonic::Request::new(Empty {}))
@@ -244,7 +250,7 @@ impl Workspace {
 	}
 
 	/// fetch a list of all users in a workspace
-	pub async fn fetch_users(&self) -> crate::Result<()> {
+	pub async fn fetch_users(&self) -> ProcedureResult<()> {
 		let mut workspace_client = self.0.services.ws();
 		let users = BTreeSet::from_iter(
 			workspace_client
@@ -267,7 +273,7 @@ impl Workspace {
 	/// get a list of the users attached to a specific buffer
 	///
 	/// TODO: discuss implementation details
-	pub async fn list_buffer_users(&self, path: &str) -> crate::Result<Vec<User>> {
+	pub async fn list_buffer_users(&self, path: &str) -> ProcedureResult<Vec<User>> {
 		let mut workspace_client = self.0.services.ws();
 		let buffer_users = workspace_client
 			.list_buffer_users(tonic::Request::new(BufferNode {
@@ -284,7 +290,7 @@ impl Workspace {
 	}
 
 	/// delete a buffer
-	pub async fn delete(&self, path: &str) -> crate::Result<()> {
+	pub async fn delete(&self, path: &str) -> ProcedureResult<()> {
 		let mut workspace_client = self.0.services.ws();
 		workspace_client
 			.delete_buffer(tonic::Request::new(BufferNode {

@@ -1,4 +1,4 @@
-use crate::{Error, api::Controller};
+use crate::{api::Controller, errors::ControllerResult};
 use tokio::sync::mpsc;
 
 /// invoke .poll() on all given buffer controllers and wait, returning the first one ready
@@ -15,7 +15,7 @@ pub async fn select_buffer(
 	buffers: &[crate::buffer::Controller],
 	timeout: Option<std::time::Duration>,
 	runtime: &tokio::runtime::Runtime
-) -> crate::Result<Option<crate::buffer::Controller>> {
+) -> ControllerResult<Option<crate::buffer::Controller>> {
 	let (tx, mut rx) = mpsc::unbounded_channel();
 	let mut tasks = Vec::new();
 	for buffer in buffers {
@@ -24,7 +24,7 @@ pub async fn select_buffer(
 		tasks.push(runtime.spawn(async move {
 			match _buffer.poll().await {
 				Ok(()) => _tx.send(Ok(Some(_buffer))),
-				Err(_) => _tx.send(Err(Error::Channel { send: true })),
+				Err(e) => _tx.send(Err(e)),
 			}
 		}))
 	}
@@ -37,7 +37,7 @@ pub async fn select_buffer(
 	}
 	loop {
 		match rx.recv().await {
-			None => return Err(Error::Channel { send: false }),
+			None => return Err(crate::errors::ControllerError::Unfulfilled),
 			Some(Err(_)) => continue, // TODO log errors maybe?
 			Some(Ok(x)) => {
 				for t in tasks {
@@ -99,3 +99,37 @@ impl<T> crate::api::controller::CallbackHandle for CallbackHandleWatch<T> {
 		self.0.send_replace(None);
 	}
 }*/
+
+/// an error which can be ignored with just a warning entry
+pub trait IgnorableError {
+	fn unwrap_or_warn(self, msg: &str);
+}
+
+impl<T, E> IgnorableError for std::result::Result<T, E>
+where E : std::fmt::Debug {
+	fn unwrap_or_warn(self, msg: &str) {
+		match self {
+			Ok(_) => {},
+			Err(e) => tracing::warn!("{}: {:?}", msg, e),
+		}
+	}
+}
+
+
+/// an error which can be ignored with just a warning entry and returning the default value
+pub trait IgnorableDefaultableError<T> {
+	fn unwrap_or_warn_default(self, msg: &str) -> T;
+}
+
+impl<T, E> IgnorableDefaultableError<T> for std::result::Result<T, E>
+where E : std::fmt::Display, T: Default {
+	fn unwrap_or_warn_default(self, msg: &str) -> T {
+		match self {
+			Ok(x) => x,
+			Err(e) => {
+				tracing::warn!("{}: {}", msg, e);
+				T::default()
+			},
+		}
+	}
+}

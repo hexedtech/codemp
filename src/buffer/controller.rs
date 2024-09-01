@@ -8,11 +8,9 @@ use diamond_types::LocalVersion;
 use tokio::sync::{mpsc, oneshot, watch};
 use tonic::async_trait;
 
-use crate::api::controller::ControllerCallback;
-use crate::api::Controller;
-
+use crate::api::controller::{Controller, ControllerCallback};
 use crate::api::TextChange;
-
+use crate::errors::ControllerResult;
 use crate::ext::InternallyMutable;
 
 use super::worker::DeltaRequest;
@@ -36,7 +34,7 @@ impl BufferController {
 	}
 
 	/// return buffer whole content, updating internal buffer previous state
-	pub async fn content(&self) -> crate::Result<String> {
+	pub async fn content(&self) -> ControllerResult<String> {
 		let (tx, rx) = oneshot::channel();
 		self.0.content_request.send(tx).await?;
 		let content = rx.await?;
@@ -64,20 +62,19 @@ pub(crate) struct BufferControllerInner {
 impl Controller<TextChange> for BufferController {
 	/// block until a text change is available
 	/// this returns immediately if one is already available
-	async fn poll(&self) -> crate::Result<()> {
+	async fn poll(&self) -> ControllerResult<()> {
 		if self.0.last_update.get() != *self.0.latest_version.borrow() {
 			return Ok(());
 		}
 
 		let (tx, rx) = oneshot::channel::<()>();
 		self.0.poller.send(tx)?;
-		rx.await
-			.map_err(|_| crate::Error::Channel { send: false })?;
+		rx.await?;
 		Ok(())
 	}
 
 	/// if a text change is available, return it immediately
-	async fn try_recv(&self) -> crate::Result<Option<TextChange>> {
+	async fn try_recv(&self) -> ControllerResult<Option<TextChange>> {
 		let last_update = self.0.last_update.get();
 		let latest_version = self.0.latest_version.borrow().clone();
 
@@ -94,7 +91,7 @@ impl Controller<TextChange> for BufferController {
 
 	/// enqueue a text change for processing
 	/// this also updates internal buffer previous state
-	async fn send(&self, op: TextChange) -> crate::Result<()> {
+	async fn send(&self, op: TextChange) -> ControllerResult<()> {
 		// we let the worker do the updating to the last version and send it back.
 		let (tx, rx) = oneshot::channel();
 		self.0.ops_in.send((op, tx))?;

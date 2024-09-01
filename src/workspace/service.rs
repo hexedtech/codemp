@@ -7,6 +7,8 @@ use tonic::{
 	transport::{Channel, Endpoint},
 };
 
+use crate::errors::ConnectionResult;
+
 type AuthedService = InterceptedService<Channel, WorkspaceInterceptor>;
 
 #[derive(Debug)]
@@ -21,7 +23,7 @@ impl Services {
 		dest: &str,
 		session: tokio::sync::watch::Receiver<codemp_proto::common::Token>,
 		workspace: tokio::sync::watch::Receiver<codemp_proto::common::Token>,
-	) -> crate::Result<Self> {
+	) -> ConnectionResult<Self> {
 		let channel = Endpoint::from_shared(dest.to_string())?.connect().await?;
 		let inter = WorkspaceInterceptor { session, workspace };
 		Ok(Self {

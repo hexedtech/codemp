@@ -9,8 +9,8 @@ use tokio::sync::{
 };
 use tonic::async_trait;
 
-use crate::api::{controller::ControllerCallback, Controller, Cursor};
 use codemp_proto::cursor::{CursorEvent, CursorPosition};
+use crate::{api::{controller::ControllerCallback, Controller, Cursor}, errors::ControllerResult};
 /// the cursor controller implementation
 ///
 /// this contains
@@ -40,7 +40,7 @@ pub(crate) struct CursorControllerInner {
 impl Controller<Cursor> for CursorController {
 	/// enqueue a cursor event to be broadcast to current workspace
 	/// will automatically invert cursor start/end if they are inverted
-	async fn send(&self, mut cursor: Cursor) -> crate::Result<()> {
+	async fn send(&self, mut cursor: Cursor) -> ControllerResult<()> {
 		if cursor.start > cursor.end {
 			std::mem::swap(&mut cursor.start, &mut cursor.end);
 		}
@@ -48,7 +48,6 @@ impl Controller<Cursor> for CursorController {
 	}
 
 	/// try to receive without blocking, but will still block on stream mutex
-	async fn try_recv(&self) -> crate::Result<Option<Cursor>> {
 		let mut stream = self.0.stream.lock().await;
 		match stream.try_recv() {
 			Ok(x) => Ok(Some(x.into())),
@@ -59,11 +58,12 @@ impl Controller<Cursor> for CursorController {
 				Ok(stream.try_recv().map(|x| x.into()).ok())
 			}
 		}
+	async fn try_recv(&self) -> ControllerResult<Option<Cursor>> {
 	}
 
 	/// await for changed mutex and then next op change
-	async fn poll(&self) -> crate::Result<()> {
 		Ok(self.0.last_op.lock().await.changed().await?)
+	async fn poll(&self) -> ControllerResult<()> {
 	}
 
 	fn callback(&self, cb: impl Into<ControllerCallback<CursorController>>) {
