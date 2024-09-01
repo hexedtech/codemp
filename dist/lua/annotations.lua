@@ -313,13 +313,13 @@ function Codemp.connect(host, username, password) end
 function Codemp.hash(data) end
 
 ---@class (exact) RuntimeDriver
----@field stop fun(): boolean stops the runtime thread without deleting the runtime itself, returns false if driver was already stopped
+---@field stop fun(self: RuntimeDriver): boolean stops the runtime thread without deleting the runtime itself, returns false if driver was already stopped
 
 ---@return RuntimeDriver
 ---spawns a background thread and uses it to run the codemp runtime
 function Codemp.spawn_runtime_driver() end
 
----@param printer string | fun(string) log sink used for printing, if string will go to file, otherwise use given function
+---@param printer? string | fun(string) log sink used for printing, if string will go to file, otherwise use given function
 ---@param debug boolean? show more verbose debug logs, default false
 ---@return boolean true if logger was setup correctly, false otherwise
 ---setup a global logger for codemp, note that can only be done once
