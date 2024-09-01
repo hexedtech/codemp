@@ -8,12 +8,21 @@ use crate::workspace::worker::DetachResult;
 use mlua::prelude::*;
 use tokio::sync::mpsc;
 
-impl From::<CodempError> for LuaError {
-	fn from(value: CodempError) -> Self {
-		LuaError::WithContext {
-			context: value.to_string(),
-			cause: std::sync::Arc::new(LuaError::external(value)),
-		}
+impl From::<crate::errors::ConnectionError> for LuaError {
+	fn from(value: crate::errors::ConnectionError) -> Self {
+		LuaError::runtime(value.to_string())
+	}
+}
+
+impl From::<crate::errors::ProcedureError> for LuaError {
+	fn from(value: crate::errors::ProcedureError) -> Self {
+		LuaError::runtime(value.to_string())
+	}
+}
+
+impl From::<crate::errors::ControllerError> for LuaError {
+	fn from(value: crate::errors::ControllerError) -> Self {
+		LuaError::runtime(value.to_string())
 	}
 }
 
