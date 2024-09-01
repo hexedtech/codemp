@@ -381,8 +381,7 @@ impl Write for LuaLoggerProducer {
 fn logger(_: &Lua, (printer, debug): (LuaValue, Option<bool>)) -> LuaResult<bool> {
 	let level = if debug.unwrap_or_default() { tracing::Level::DEBUG } else {tracing::Level::INFO };
 	let success = match printer {
-		LuaNil
-		| LuaValue::Boolean(_)
+		LuaValue::Boolean(_)
 		| LuaValue::LightUserData(_)
 		| LuaValue::Integer(_)
 		| LuaValue::Number(_)
@@ -390,6 +389,23 @@ fn logger(_: &Lua, (printer, debug): (LuaValue, Option<bool>)) -> LuaResult<bool
 		| LuaValue::Thread(_)
 		| LuaValue::UserData(_)
 		| LuaValue::Error(_) => return Err(LuaError::BindError), // TODO full BadArgument type??
+		LuaValue::Nil => {
+			let format = tracing_subscriber::fmt::format()
+				.with_level(true)
+				.with_target(true)
+				.with_thread_ids(true)
+				.with_thread_names(true)
+				.with_ansi(true)
+				.with_file(false)
+				.with_line_number(false)
+				.with_source_location(false);
+			tracing_subscriber::fmt()
+				.event_format(format)
+				.with_max_level(level)
+				.with_writer(std::sync::Mutex::new(std::io::stderr()))
+				.try_init()
+				.is_ok()
+		},
 		LuaValue::String(path) => {
 			let logfile = std::fs::File::create(path.to_string_lossy()).map_err(|e| LuaError::RuntimeError(e.to_string()))?;
 			let format = tracing_subscriber::fmt::format()
