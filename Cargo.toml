@@ -33,7 +33,7 @@ lazy_static = { version = "1.4", optional = true }
 jni = { version = "0.21", features = ["invocation"], optional = true }
 
 # glue (lua)
-mlua = { version = "0.10.0-beta.1", features = ["module", "luajit", "send"], optional = true }
+mlua = { git = "https://github.com/mlua-rs/mlua" , rev = "ece66c46bfdc62685b758ffff16286f2806b2662", features = ["module", "luajit", "send"], optional = true }
 
 # glue (js)
 napi = { version = "2.16", features = ["full"], optional = true } 
@@ -51,7 +51,7 @@ pyo3-build-config = { version = "0.19", optional = true }
 [features]
 default = []
 rust = [] # used for ci matrix
-lua = ["mlua", "tracing-subscriber"]
+lua = ["mlua", "tracing-subscriber", "lazy_static"]
 java = ["lazy_static", "jni", "tracing-subscriber"]
 js = ["napi-build", "tracing-subscriber", "napi", "napi-derive"]
 python = ["pyo3", "tracing-subscriber", "pyo3-build-config"]
