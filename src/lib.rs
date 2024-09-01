@@ -129,9 +129,6 @@ pub mod buffer;
 pub mod workspace;
 pub use workspace::Workspace;
 
-/// session 
-pub mod session;
-
 /// codemp client, wrapping all above
 pub mod client;
 pub use client::Client;

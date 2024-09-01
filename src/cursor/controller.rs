@@ -3,14 +3,11 @@
 //! a controller implementation for cursor actions
 use std::sync::Arc;
 
-use tokio::sync::{
-	broadcast::{self, error::TryRecvError},
-	mpsc, watch, Mutex,
-};
+use tokio::sync::{mpsc, oneshot, watch};
 use tonic::async_trait;
 
-use codemp_proto::cursor::{CursorEvent, CursorPosition};
 use crate::{api::{controller::ControllerCallback, Controller, Cursor}, errors::ControllerResult};
+use codemp_proto::cursor::CursorPosition;
 /// the cursor controller implementation
 ///
 /// this contains
@@ -30,8 +27,8 @@ pub struct CursorController(pub(crate) Arc<CursorControllerInner>);
 #[derive(Debug)]
 pub(crate) struct CursorControllerInner {
 	pub(crate) op: mpsc::Sender<CursorPosition>,
-	pub(crate) last_op: Mutex<watch::Receiver<CursorEvent>>,
-	pub(crate) stream: Mutex<broadcast::Receiver<CursorEvent>>,
+	pub(crate) stream: mpsc::Sender<oneshot::Sender<Option<Cursor>>>,
+	pub(crate) poll: mpsc::UnboundedSender<oneshot::Sender<()>>,
 	pub(crate) callback: watch::Sender<Option<ControllerCallback<CursorController>>>,
 	pub(crate) stop: mpsc::UnboundedSender<()>,
 }
@@ -48,22 +45,18 @@ impl Controller<Cursor> for CursorController {
 	}
 
 	/// try to receive without blocking, but will still block on stream mutex
-		let mut stream = self.0.stream.lock().await;
-		match stream.try_recv() {
-			Ok(x) => Ok(Some(x.into())),
-			Err(TryRecvError::Empty) => Ok(None),
-			Err(TryRecvError::Closed) => Err(crate::Error::Channel { send: false }),
-			Err(TryRecvError::Lagged(n)) => {
-				tracing::warn!("cursor channel lagged, skipping {} events", n);
-				Ok(stream.try_recv().map(|x| x.into()).ok())
-			}
-		}
 	async fn try_recv(&self) -> ControllerResult<Option<Cursor>> {
+		let (tx, rx) = oneshot::channel();
+		self.0.stream.send(tx).await?;
+		Ok(rx.await?)
 	}
 
 	/// await for changed mutex and then next op change
-		Ok(self.0.last_op.lock().await.changed().await?)
 	async fn poll(&self) -> ControllerResult<()> {
+		let (tx, rx) = oneshot::channel();
+		self.0.poll.send(tx)?;
+		rx.await?;
+		Ok(())
 	}
 
 	fn callback(&self, cb: impl Into<ControllerCallback<CursorController>>) {

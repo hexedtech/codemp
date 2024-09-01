@@ -7,9 +7,8 @@ use uuid::Uuid;
 
 use crate::api::controller::{ControllerCallback, ControllerWorker};
 use crate::api::TextChange;
+use crate::ext::{IgnorableError, InternallyMutable};
 
-use crate::errors::IgnorableError;
-use crate::ext::InternallyMutable;
 use codemp_proto::buffer::{BufferEvent, Operation};
 
 use super::controller::{BufferController, BufferControllerInner};
