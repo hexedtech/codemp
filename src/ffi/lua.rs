@@ -341,30 +341,6 @@ impl LuaUserData for CodempTextChange {
 }
 
 
-// define module and exports
-#[mlua::lua_module]
-fn codemp_native(lua: &Lua) -> LuaResult<LuaTable> {
-	let exports = lua.create_table()?;
-
-	// entrypoint
-	exports.set("connect", lua.create_function(|_, (host, username, password):(String,String,String)|
-		a_sync! { => Ok(CodempClient::connect(host, username, password).await?) }
-	)?)?;
-
-	// utils
-	exports.set("hash", lua.create_function(|_, (txt,):(String,)|
-		Ok(crate::hash(txt))
-	)?)?;
-
-	// runtime
-	exports.set("spawn_runtime_driver", lua.create_function(spawn_runtime_driver)?)?;
-
-	// logging
-	exports.set("logger", lua.create_function(logger)?)?;
-
-	Ok(exports)
-}
-
 
 #[derive(Debug, Clone)]
 struct LuaLoggerProducer(mpsc::UnboundedSender<String>);
@@ -454,4 +430,28 @@ fn logger(_: &Lua, (printer, debug): (LuaValue, Option<bool>)) -> LuaResult<bool
 	};
 
 	Ok(success)
+}
+
+
+// define module and exports
+#[mlua::lua_module]
+fn codemp_native(lua: &Lua) -> LuaResult<LuaTable> {
+	let exports = lua.create_table()?;
+
+	// entrypoint
+	exports.set("connect", lua.create_function(|_, (host, username, password):(String,String,String)|
+		a_sync! { => Ok(CodempClient::connect(host, username, password).await?) }
+	)?)?;
+
+	// utils
+	exports.set("hash", lua.create_function(|_, (txt,):(String,)|
+		Ok(crate::hash(txt))
+	)?)?;
+
+	// runtime
+	exports.set("spawn_runtime_driver", lua.create_function(spawn_runtime_driver)?)?;
+	// logging
+	exports.set("logger", lua.create_function(logger)?)?;
+
+	Ok(exports)
 }
