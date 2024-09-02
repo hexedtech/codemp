@@ -40,22 +40,24 @@ impl TextChange {
 
 #[cfg_attr(feature = "python", pyo3::pymethods)]
 impl TextChange {
-	/// returns true if this TextChange deletes existing text
+	/// A change is a "deletion" if the change range span is bigger than zero.
+	/// This is not exclusive, a change can be both an insertion and a deletion.
 	pub fn is_delete(&self) -> bool {
 		self.start < self.end
 	}
 
-	/// returns true if this TextChange adds new text
+	/// A change is an "Insertion" if the content is not empty.
+	/// This is not exclusive, a change can be both an insertion and a deletion.
 	pub fn is_insert(&self) -> bool {
 		!self.content.is_empty()
 	}
 
-	/// returns true if this TextChange is effectively as no-op
+	/// Returns true if this TextChange is effectively as no-op
 	pub fn is_empty(&self) -> bool {
 		!self.is_delete() && !self.is_insert()
 	}
 
-	/// applies this text change to given text, returning a new string
+	/// Applies this text change to given text, returning a new string
 	pub fn apply(&self, txt: &str) -> String {
 		let pre_index = std::cmp::min(self.start as usize, txt.len());
 		let pre = txt.get(..pre_index).unwrap_or("").to_string();

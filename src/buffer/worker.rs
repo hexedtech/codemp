@@ -106,13 +106,17 @@ impl ControllerWorker<TextChange> for BufferWorker {
 					Some((change, ack)) => {
 						let agent_id = oplog.get_or_create_agent_id(&self.user_id.to_string());
 						let last_ver = oplog.local_version();
+						// clip to buffer extents
+						let clip_end = std::cmp::min(branch.len(), change.end as usize);
+						let clip_start = std::cmp::max(0, change.start as usize);
 
+						// in case we have a "replace" span
 						if change.is_delete() {
-							branch.delete_without_content(&mut oplog, agent_id, change.start as usize..change.end as usize);
+							branch.delete_without_content(&mut oplog, agent_id, clip_start..clip_end);
 						}
 
 						if change.is_insert() {
-							branch.insert(&mut oplog, agent_id, change.start as usize, &change.content);
+							branch.insert(&mut oplog, agent_id, clip_start, &change.content);
 						}
 
 						if change.is_delete() || change.is_insert() {
