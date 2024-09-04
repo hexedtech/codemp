@@ -1,6 +1,5 @@
 //! ### Prelude
-//! 
-//! all-in-one renamed imports with `use codemp::prelude::*`
+//! All-in-one renamed imports with `use codemp::prelude::*`.
 
 pub use crate::api::{
 	Controller as CodempController,
@@ -16,6 +15,3 @@ pub use crate::{
 	cursor::Controller as CodempCursorController,
 	buffer::Controller as CodempBufferController,
 };
-
-#[deprecated = "use CodempUser instead"]
-pub use crate::api::user::User as CodempUserInfo;

@@ -1,13 +1,12 @@
-//! ### client
-//!
-//! codemp client manager, containing grpc services
+//! ### Client
+//! Main `codemp` client, containing and managing all underlying services.
 
 use std::sync::Arc;
 
 use dashmap::DashMap;
 use tonic::{service::interceptor::InterceptedService, transport::{Channel, Endpoint}};
 
-use crate::{api::User, errors::{ConnectionResult, RemoteResult}, ext::InternallyMutable, workspace::Workspace};
+use crate::{api::User, errors::{ConnectionResult, RemoteResult}, ext::InternallyMutable, network, workspace::Workspace};
 use codemp_proto::{
 	auth::{auth_client::AuthClient, LoginRequest},
 	common::{Empty, Token}, session::{session_client::SessionClient, InviteRequest, WorkspaceRequest},
@@ -16,11 +15,11 @@ use codemp_proto::{
 #[cfg(feature = "python")]
 use pyo3::prelude::*;
 
-/// codemp client manager
+/// A `codemp` client handle.
 ///
-/// contains all required grpc services and the unique user id
-/// will disconnect when dropped
-/// can be used to interact with server
+/// It generates a new UUID and stores user credentials upon connecting.
+///
+/// A new [Client] can be obtained with [Client::connect].
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "js", napi_derive::napi)]
 #[cfg_attr(feature = "python", pyclass)]
@@ -32,12 +31,12 @@ struct ClientInner {
 	host: String,
 	workspaces: DashMap<String, Workspace>,
 	auth: AuthClient<Channel>,
-	session: SessionClient<InterceptedService<Channel, SessionInterceptor>>,
+	session: SessionClient<InterceptedService<Channel, network::SessionInterceptor>>,
 	claims: InternallyMutable<Token>,
 }
 
 impl Client {
-	/// instantiate and connect a new client
+	/// Connect to the server, authenticate and instantiate a new [Client].
 	pub async fn connect(
 		host: impl AsRef<str>,
 		username: impl AsRef<str>,
@@ -62,7 +61,7 @@ impl Client {
 		let claims = InternallyMutable::new(resp.token);
 
 		let session = SessionClient::with_interceptor(
-			channel, SessionInterceptor(claims.channel())
+			channel, network::SessionInterceptor(claims.channel())
 		);
 
 		Ok(Client(Arc::new(ClientInner {
@@ -74,7 +73,7 @@ impl Client {
 		})))
 	}
 
-	/// refresh session token
+	/// Refresh session token.
 	pub async fn refresh(&self) -> tonic::Result<()> {
 		let new_token = self.0.auth.clone().refresh(self.0.claims.get())
 			.await?
@@ -83,7 +82,7 @@ impl Client {
 		Ok(())
 	}
 
-	/// attempts to create a new workspace with given name
+	/// Attempt to create a new workspace with given name.
 	pub async fn create_workspace(&self, name: impl AsRef<str>) -> RemoteResult<()> {
 		self.0.session
 			.clone()
@@ -92,7 +91,7 @@ impl Client {
 		Ok(())
 	}
 
-	/// delete an existing workspace if possible
+	/// Delete an existing workspace if possible.
 	pub async fn delete_workspace(&self, name: impl AsRef<str>) -> RemoteResult<()> {
 		self.0.session
 			.clone()
@@ -101,7 +100,7 @@ impl Client {
 		Ok(())
 	}
 
-	/// invite user associated with username to workspace, if possible
+	/// Invite user with given username to the given workspace, if possible.
 	pub async fn invite_to_workspace(&self, workspace_name: impl AsRef<str>, user_name: impl AsRef<str>) -> RemoteResult<()> {
 		self.0.session
 			.clone()
@@ -113,7 +112,7 @@ impl Client {
 		Ok(())
 	}
 
-	/// list all available workspaces, filtering between those owned and those invited to
+	/// List all available workspaces, also filtering between those owned and those invited to.
 	pub async fn list_workspaces(&self, owned: bool, invited: bool) -> RemoteResult<Vec<String>> {
 		let mut workspaces = self.0.session
 			.clone()
@@ -129,9 +128,8 @@ impl Client {
 		Ok(out)
 	}
 
-	/// join a workspace, returns [Workspace]
+	/// Join and return a [Workspace].
 	pub async fn join_workspace(&self, workspace: impl AsRef<str>) -> ConnectionResult<Workspace> {
-		// STATUS
 		let token = self.0.session
 			.clone()
 			.access_workspace(WorkspaceRequest { workspace: workspace.as_ref().to_string() })
@@ -154,17 +152,17 @@ impl Client {
 		Ok(ws)
 	}
 
-	/// leaves a [Workspace] by name
+	/// Leave the [Workspace] with the given name.
 	pub fn leave_workspace(&self, id: &str) -> bool {
 		self.0.workspaces.remove(id).is_some()
 	}
 
-	/// gets a [Workspace] by name
+	/// Gets a [Workspace] handle by name.
 	pub fn get_workspace(&self, id: &str) -> Option<Workspace> {
 		self.0.workspaces.get(id).map(|x| x.clone())
 	}
 
-	/// get name of all active [Workspace]s
+	/// Get the names of all active [Workspace]s.
 	pub fn active_workspaces(&self) -> Vec<String> {
 		self.0
 			.workspaces
@@ -173,23 +171,8 @@ impl Client {
 			.collect()
 	}
 
-	/// accessor for user id
+	/// Get the currently logged in user.
 	pub fn user(&self) -> &User {
 		&self.0.user
-	}
-}
-
-#[derive(Debug, Clone)]
-struct SessionInterceptor(tokio::sync::watch::Receiver<codemp_proto::common::Token>);
-impl tonic::service::Interceptor for SessionInterceptor {
-	fn call(
-		&mut self,
-		mut request: tonic::Request<()>,
-	) -> tonic::Result<tonic::Request<()>> {
-		if let Ok(token) = self.0.borrow().token.parse() {
-			request.metadata_mut().insert("session", token);
-		}
-
-		Ok(request)
 	}
 }

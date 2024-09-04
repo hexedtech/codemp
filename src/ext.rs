@@ -1,16 +1,18 @@
+//! ### Extensions
+//! Contains a number of utils used internally or that may be of general interest.
+
 use crate::{api::Controller, errors::ControllerResult};
 use tokio::sync::mpsc;
 
-/// invoke .poll() on all given buffer controllers and wait, returning the first one ready
+/// Polls all given buffer controllers and waits, returning the first one ready.
 ///
-/// this will spawn tasks blocked on .poll() for each buffer controller. as soon as
-/// one finishes, all other tasks will be canceled and the ready controller will be
-/// returned
+/// It will spawn tasks blocked on [`Controller::poll`] for each buffer controller.
+/// As soon as one finishes, its controller is returned and all other tasks are canceled.
 ///
-/// if timeout is None, result will never be None, otherwise returns None if no buffer
-/// is ready before timeout expires
+/// If a timeout is provided, the result may be `None` if it expires before any task is
+/// complete.
 ///
-/// returns an error if all buffers returned errors while polling.
+/// It may return an error if all buffers returned errors while polling.
 pub async fn select_buffer(
 	buffers: &[crate::buffer::Controller],
 	timeout: Option<std::time::Duration>,
@@ -49,12 +51,17 @@ pub async fn select_buffer(
 	}
 }
 
+/// Hashes a given byte array with the internally used algorithm.
+/// 
+/// Currently, it uses [`xxhash_rust::xxh3::xxh3_64`].
 pub fn hash(data: impl AsRef<[u8]>) -> i64 {
 	let hash = xxhash_rust::xxh3::xxh3_64(data.as_ref());
 	i64::from_ne_bytes(hash.to_ne_bytes())
 }
 
-/// wraps sender and receiver to allow mutable field with immutable ref
+/// A field that can be *internally mutated* regardless of its external mutability.
+///
+/// Currently, it wraps the [`tokio::sync::watch`] channel couple to achieve this.
 #[derive(Debug)]
 pub struct InternallyMutable<T> {
 	getter: tokio::sync::watch::Receiver<T>,
@@ -70,7 +77,7 @@ impl<T: Default> Default for InternallyMutable<T> {
 impl<T> InternallyMutable<T> {
 	pub fn new(init: T) -> Self {
 		let (tx, rx) = tokio::sync::watch::channel(init);
-		InternallyMutable {
+		Self {
 			getter: rx,
 			setter: tx,
 		}
@@ -91,45 +98,18 @@ impl<T: Clone> InternallyMutable<T> {
 	}
 }
 
-/*
-pub(crate) struct CallbackHandleWatch<T>(pub(crate) tokio::sync::watch::Sender<Option<T>>);
-
-impl<T> crate::api::controller::CallbackHandle for CallbackHandleWatch<T> {
-	fn unregister(self) {
-		self.0.send_replace(None);
-	}
-}*/
-
-/// an error which can be ignored with just a warning entry
+/// An error that can be ignored with just a warning.
 pub trait IgnorableError {
 	fn unwrap_or_warn(self, msg: &str);
 }
 
 impl<T, E> IgnorableError for std::result::Result<T, E>
 where E : std::fmt::Debug {
+	/// Logs the error as a warning and returns a unit.
 	fn unwrap_or_warn(self, msg: &str) {
 		match self {
 			Ok(_) => {},
 			Err(e) => tracing::warn!("{}: {:?}", msg, e),
-		}
-	}
-}
-
-
-/// an error which can be ignored with just a warning entry and returning the default value
-pub trait IgnorableDefaultableError<T> {
-	fn unwrap_or_warn_default(self, msg: &str) -> T;
-}
-
-impl<T, E> IgnorableDefaultableError<T> for std::result::Result<T, E>
-where E : std::fmt::Display, T: Default {
-	fn unwrap_or_warn_default(self, msg: &str) -> T {
-		match self {
-			Ok(x) => x,
-			Err(e) => {
-				tracing::warn!("{}: {}", msg, e);
-				T::default()
-			},
 		}
 	}
 }

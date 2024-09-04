@@ -1,18 +1,25 @@
-pub type RemoteResult<T> = std::result::Result<T, RemoteError>;
+//! ### Errors
+//! Contains the crate's error types.
 
+/// An error returned by the server as response to a request.
+///
+/// This currently wraps an [http code](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status),
+/// returned as procedure status.
 #[derive(Debug, thiserror::Error)]
 #[error("server rejected procedure with error code: {0}")]
 pub struct RemoteError(#[from] tonic::Status);
 
+/// Wraps [std::result::Result] with a [RemoteError].
+pub type RemoteResult<T> = std::result::Result<T, RemoteError>;
 
-
-pub type ConnectionResult<T> = std::result::Result<T, ConnectionError>;
-
+/// An error that may occur when processing requests that require new connections.
 #[derive(Debug, thiserror::Error)]
 pub enum ConnectionError {
-	#[error("network error: {0}")]
+	/// Underlying [`tonic::transport::Error`].
+	#[error("transport error: {0}")]
 	Transport(#[from] tonic::transport::Error),
 
+	/// Error from the remote server, see [`RemoteError`].
 	#[error("server rejected connection attempt: {0}")]
 	Remote(#[from] RemoteError),
 }
@@ -23,15 +30,19 @@ impl From<tonic::Status> for ConnectionError {
 	}
 }
 
+/// Wraps [std::result::Result] with a [ConnectionError].
+pub type ConnectionResult<T> = std::result::Result<T, ConnectionError>;
 
-
-pub type ControllerResult<T> = std::result::Result<T, ControllerError>;
-
+/// An error that may occur when an [`crate::api::Controller`] attempts to
+/// perform an illegal operation.
 #[derive(Debug, thiserror::Error)]
 pub enum ControllerError {
+	/// Error occurred because the underlying controller worker is already stopped.
 	#[error("worker is already stopped")]
 	Stopped,
 
+	/// Error occurred because the underlying controller worker stopped before
+	/// fulfilling the request, without rejecting it first.
 	#[error("worker stopped before completing requested operation")]
 	Unfulfilled,
 }
@@ -47,3 +58,7 @@ impl From<tokio::sync::oneshot::error::RecvError> for ControllerError {
 		Self::Unfulfilled
 	}
 }
+
+/// Wraps [std::result::Result] with a [ControllerError].
+pub type ControllerResult<T> = std::result::Result<T, ControllerError>;
+

@@ -1,139 +1,108 @@
-//! # MultiPlayer Code Editing lib
+//! # Code MultiPlexer - cooperative development
 //!
-//! ![just a nice pic](https://alemi.dev/img/about-slice-3.jpg)
+//! `codemp` is an async client library to create cooperation tools for any text editor.
 //!
-//! > the core library of the codemp project, driving all editor plugins
+//! It is built as a batteries-included client library managing an authenticated user, multiple
+//! workspaces each containing any number of buffers.
 //!
-//! ## structure
-//! The main entrypoint is the [Client] object, that maintains a connection and can 
-//! be used to join workspaces or attach to buffers. It contains the underlying [Workspace] and 
-//! stores active controllers.
-//! 
-//! Some actions will return structs implementing the [api::Controller] trait. These can be polled 
-//! for new stream events ([api::Controller::poll]/[api::Controller::recv]), which will be returned in order. 
-//! Blocking and callback variants are also implemented. The [api::Controller] can also be used to send new 
-//! events to the server ([api::Controller::send]).
+//! The [`Client`] is completely managed by the library itself, making its use simple across async
+//! contexts and FFI boundaries. Asynchronous actions are abstracted away by the [`api::Controller`],
+//! providing an unopinionated approach with both callback-based and blocking-based APIs.
 //!
-//! Each operation on a buffer is represented as an [woot::crdt::Op]. The underlying buffer is a
-//! [WOOT CRDT](https://inria.hal.science/file/index/docid/71240/filename/RR-5580.pdf),
-//! but to use this library it's only sufficient to know that all WOOT buffers that have received
-//! the same operations converge to the same state, and that operations might not get integrated
-//! immediately but instead deferred until compatible.
+//! The library also provides ready-to-use bindings in a growing number of other programming languages,
+//! to support a potentially infinite number of editors.
 //!
-//! ## features
-//! * `api`    : include traits for core interfaces under [api] (default enabled)
-//! * `woot`   : include the underlying CRDT library and re-exports it (default enabled)
-//! * `proto`  : include GRCP protocol definitions under [proto] (default enabled)
-//! * `client` : include the local [client] implementation (default enabled)
-//! 
-//! ## examples
-//! most methods are split between the [Client] itself and the current [Workspace]
+//! # Overview 
+//! The main entrypoint is [`Client::connect`], which establishes an authenticated connection with
+//! a supported remote server and returns a [`Client`] handle to interact with it.
 //!
-//! ### async
-//! ```rust,no_run
-//! use codemp::api::{Controller, TextChange};
-//!
-//! # async fn async_example() -> codemp::Result<()> {
-//! // creating a client session will immediately attempt to connect
-//! let mut session = codemp::Client::new("http://alemi.dev:50053").await?;
-//!
-//! // login first, obtaining a new token granting access to 'some_workspace'
-//! session.login(
-//!   "username".to_string(),
-//!   "password".to_string(),
-//!   Some("some_workspace".to_string())
-//! ).await?;
-//! 
-//! // join a remote workspace, obtaining a workspace handle
-//! let workspace = session.join_workspace("some_workspace").await?;
-//!
-//! workspace.cursor().send(   // move cursor
-//!   codemp::proto::cursor::CursorPosition {
-//!     buffer: "test.txt".into(),
-//!     start: codemp::proto::cursor::RowCol { row: 0, col: 0 },
-//!     end: codemp::proto::cursor::RowCol { row: 0, col: 1 },
-//!   }
-//! )?;
-//! let op = workspace.cursor().recv().await?; // receive event from server
-//! println!("received cursor event: {:?}", op);
-//! 
-//! // attach to a new buffer and execute operations on it
-//! workspace.create("test.txt").await?;   // create new buffer
-//! let buffer = workspace.attach("test.txt").await?; // attach to it
-//! let local_change = TextChange { span: 0..0, content: "hello!".into() };
-//! buffer.send(local_change)?; // insert some text
-//! let remote_change = buffer.recv().await?; // await remote change
-//! #
-//! # Ok(())
+//! ```rust
+//! # async fn main() {
+//! let client = codemp::Client::connect(
+//!   "https://api.codemp.dev", // default server, by hexed.technology
+//!   "mail@example.net",       // your username, on hexed.technology it's the email
+//!   "dont-use-this-password"  // your password
+//! )
+//!   .await
+//!   .expect("failed to connect!");
 //! # }
 //! ```
 //!
-//! it's always possible to get a [Workspace] reference using [Client::get_workspace]
-//!
-//! ### sync
-//! if async is not viable, a solution might be keeping a global tokio runtime and blocking on it:
+//! A [`Client`] can acquire a [`Workspace`] handle by joining an existing one it can access with
+//! [`Client::join_workspace`] or create a new one with [`Client::create_workspace`].
 //!
 //! ```rust,no_run
-//! # use std::sync::Arc;
+//! # async fn main() {
+//! #  let client = codemp::Client::connect("", "", "").await.unwrap();
+//! client.create_workspace("my-workspace").await.expect("failed to create workspace!");
+//! let workspace = client.attach_workspace("my-workspace").await.expect("failed to attach!");
+//! # }
+//! ```
+//!
+//! A [`Workspace`] handle can be used to acquire a [`cursor::Controller`] to track remote [`api::Cursor`]s
+//! and one or more [`buffer::Controller`] to send and receive [`api::TextChange`]s.
+//!
+//! ```rust,no_run
+//! # async fn main() {
+//! #  let client = codemp::Client::connect("", "", "").await.unwrap();
+//! # client.create_workspace("").await.unwrap();
+//! # let workspace = client.attach_workspace("").await.unwrap();
+//! use codemp::api::Controller; // needed to access trait methods 
+//! let cursor = workspace.cursor();
+//! let event = cursor.recv().await.expect("disconnected while waiting for event!");
+//! println!("user {event.user} moved on buffer {event.buffer}");
+//! # }
+//! ```
+//!
+//! Internally, [`buffer::Controller`]s store the buffer state as a [diamond_types] CRDT, guaranteeing
+//! eventual consistency. Each [`api::TextChange`] is translated in a network counterpart that is
+//! guaranteed to converge.
+//!
+//! ```rust,no_run
+//! # async fn main() {
+//! #  let client = codemp::Client::connect("", "", "").await.unwrap();
+//! # client.create_workspace("").await.unwrap();
+//! # let workspace = client.attach_workspace("").await.unwrap();
 //! # use codemp::api::Controller;
-//! #
-//! # fn sync_example() -> codemp::Result<()> {
-//! let rt = tokio::runtime::Runtime::new().unwrap();
-//! let mut session = rt.block_on( // using block_on allows calling async code
-//!   codemp::Client::new("http://alemi.dev:50051")
-//! )?;
-//!
-//! rt.block_on(session.login(
-//!   "username".to_string(),
-//!   "password".to_string(),
-//!   Some("some_workspace".to_string())
-//! ))?;
-//! 
-//! let workspace = rt.block_on(session.join_workspace("some_workspace"))?;
-//!
-//! // attach to buffer and blockingly receive events
-//! let buffer = rt.block_on(workspace.attach("test.txt"))?; // attach to buffer, must already exist
-//! while let Ok(op) = rt.block_on(buffer.recv()) {   // must pass runtime
-//!   println!("received buffer event: {:?}", op);
-//! }
-//! #
-//! # Ok(())
+//! let buffer = workspace.attach_buffer("/some/file.txt").await.expect("failed to attach");
+//! buffer.content(); // force-sync
+//! if let Some(change) = buffer.try_recv().await.unwrap() {
+//!   println!("content: {change.content}, span: {change.span.start}-{change.span.end}");
+//! } // if None, no changes are currently available
 //! # }
 //! ```
 //!
-//! ## references
+//! ## FFI 
+//! As mentioned, we provide bindings in various programming languages. To obtain them, you can
+//! compile with the appropriate feature flag. Currently, the following are supported:
+//! * `lua`
+//! * `javascript`
+//! * `java` (requires additional build steps to be usable)
+//! * `python`
 //!
-//! ![another cool pic coz why not](https://alemi.dev/img/about-slice-2.png)
-//!
-//! check [codemp-vscode](https://github.com/codewithotherpeopleandchangenamelater/codemp-vscode)
-//! or [codemp-nvim](https://github.com/codewithotherpeopleandchangenamelater/codemp-nvim)
-//! or [codemp-server](https://github.com/codewithotherpeopleandchangenamelater/codemp-server) for
-//! reference implementations.
-//!
-//! keep track of feature completedness with the 
-//! [feature comparison matrix](https://github.com/orgs/codewithotherpeopleandchangenamelater/projects/3)
+//! For some of these, ready-to-use packages are available in various registries:
+//! * [pypi (python)](https://pypi.org/project/codemp)
+//! * [npm (javascript)](https://www.npmjs.com/package/codemp)
 //!
 
-#![doc(html_no_source)]
-
-/// public traits exposed to clients
+/// core structs and traits
 pub mod api;
 
 /// cursor related types and controller
 pub mod cursor;
 
-/// buffer operations, factory, controller and types
+/// buffer related types and controller
 pub mod buffer;
 
-/// workspace operations
+/// workspace handle and operations
 pub mod workspace;
 pub use workspace::Workspace;
 
-/// codemp client, wrapping all above
+/// client handle, containing all of the above
 pub mod client;
 pub use client::Client;
 
-/// crate error types and helpers
+/// crate error types
 pub mod errors;
 
 /// all-in-one imports : `use codemp::prelude::*;`
@@ -141,7 +110,9 @@ pub mod prelude;
 
 /// common utils used in this library and re-exposed
 pub mod ext;
-pub use ext::hash;
 
 /// language-specific ffi "glue"
 pub mod ffi;
+
+/// internal network services and interceptors
+pub(crate) mod network;

@@ -162,7 +162,7 @@ impl ControllerWorker<TextChange> for BufferWorker {
 							let new_local_v = branch.local_version();
 
 							let hash = if timer.step() {
-								Some(crate::hash(branch.content().to_string()))
+								Some(crate::ext::hash(branch.content().to_string()))
 							} else { None };
 
 							let tc = match dtop.kind {
