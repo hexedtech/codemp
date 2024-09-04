@@ -1,30 +1,8 @@
-
-#[deprecated = "use underlying errors to provide more context on what errors could really be thrown"]
-#[allow(deprecated)]
-pub type Result<T> = std::result::Result<T, Error>;
-
-#[deprecated = "use underlying errors to provide more context on what errors could really be thrown"]
-#[derive(Debug, thiserror::Error)]
-pub enum Error {
-	#[error("connection error: {0}")]
-	Connection(#[from] ConnectionError),
-
-	#[error("procedure error: {0}")]
-	Procedure(#[from] ProcedureError),
-
-	#[error("controller error: {0}")]
-	Controller(#[from] ControllerError),
-}
-
-
-
-pub type ProcedureResult<T> = std::result::Result<T, ProcedureError>;
+pub type RemoteResult<T> = std::result::Result<T, RemoteError>;
 
 #[derive(Debug, thiserror::Error)]
-pub enum ProcedureError {
-	#[error("server rejected procedure with error: {0}")]
-	Server(#[from] tonic::Status)
-}
+#[error("server rejected procedure with error code: {0}")]
+pub struct RemoteError(#[from] tonic::Status);
 
 
 
@@ -36,14 +14,12 @@ pub enum ConnectionError {
 	Transport(#[from] tonic::transport::Error),
 
 	#[error("server rejected connection attempt: {0}")]
-	Procedure(#[from] tonic::Status),
+	Remote(#[from] RemoteError),
 }
 
-impl From<ProcedureError> for ConnectionError {
-	fn from(value: ProcedureError) -> Self {
-		match value {
-			ProcedureError::Server(x) => Self::Procedure(x)
-		}
+impl From<tonic::Status> for ConnectionError {
+	fn from(value: tonic::Status) -> Self {
+		Self::Remote(RemoteError(value))
 	}
 }
 

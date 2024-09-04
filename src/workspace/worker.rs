@@ -2,7 +2,7 @@ use crate::{
 	api::{controller::ControllerWorker, Controller, Event, User},
 	buffer::{self, worker::BufferWorker},
 	cursor::{self, worker::CursorWorker},
-	errors::{ConnectionResult, ControllerResult, ProcedureResult},
+	errors::{ConnectionResult, ControllerResult, RemoteResult},
 	ext::InternallyMutable,
 	workspace::service::Services
 };
@@ -146,7 +146,7 @@ impl Workspace {
 
 impl Workspace {
 	/// create a new buffer in current workspace
-	pub async fn create(&self, path: &str) -> ProcedureResult<()> {
+	pub async fn create(&self, path: &str) -> RemoteResult<()> {
 		let mut workspace_client = self.0.services.ws();
 		workspace_client
 			.create_buffer(tonic::Request::new(BufferNode {
@@ -233,7 +233,7 @@ impl Workspace {
 	}
 
 	/// fetch a list of all buffers in a workspace
-	pub async fn fetch_buffers(&self) -> ProcedureResult<()> {
+	pub async fn fetch_buffers(&self) -> RemoteResult<()> {
 		let mut workspace_client = self.0.services.ws();
 		let buffers = workspace_client
 			.list_buffers(tonic::Request::new(Empty {}))
@@ -250,7 +250,7 @@ impl Workspace {
 	}
 
 	/// fetch a list of all users in a workspace
-	pub async fn fetch_users(&self) -> ProcedureResult<()> {
+	pub async fn fetch_users(&self) -> RemoteResult<()> {
 		let mut workspace_client = self.0.services.ws();
 		let users = BTreeSet::from_iter(
 			workspace_client
@@ -273,7 +273,7 @@ impl Workspace {
 	/// get a list of the users attached to a specific buffer
 	///
 	/// TODO: discuss implementation details
-	pub async fn list_buffer_users(&self, path: &str) -> ProcedureResult<Vec<User>> {
+	pub async fn list_buffer_users(&self, path: &str) -> RemoteResult<Vec<User>> {
 		let mut workspace_client = self.0.services.ws();
 		let buffer_users = workspace_client
 			.list_buffer_users(tonic::Request::new(BufferNode {
@@ -290,7 +290,7 @@ impl Workspace {
 	}
 
 	/// delete a buffer
-	pub async fn delete(&self, path: &str) -> ProcedureResult<()> {
+	pub async fn delete(&self, path: &str) -> RemoteResult<()> {
 		let mut workspace_client = self.0.services.ws();
 		workspace_client
 			.delete_buffer(tonic::Request::new(BufferNode {
