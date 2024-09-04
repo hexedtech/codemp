@@ -135,7 +135,6 @@ pub use client::Client;
 
 /// crate error types and helpers
 pub mod errors;
-pub use errors::{Error, Result};
 
 /// all-in-one imports : `use codemp::prelude::*;`
 pub mod prelude;
