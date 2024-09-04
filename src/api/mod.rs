@@ -1,8 +1,5 @@
-//! # api
-//!
-//! these traits represent the internal api for the codemp library.
-//! more methods and structs are provided but these are the core interfaces to 
-//! interact with the client.
+//! # API
+//! These traits and structs represent the main `codemp` library API.
 
 /// a generic async provider for bidirectional communication
 pub mod controller;
@@ -13,10 +10,10 @@ pub mod change;
 /// representation for an user's cursor
 pub mod cursor;
 
-/// workspace events
+/// live events in workspaces
 pub mod event;
 
-/// data structure for service users
+/// data structure for remote users
 pub mod user;
 
 pub use controller::Controller;

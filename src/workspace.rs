@@ -96,60 +96,6 @@ impl Workspace {
 		Ok(ws)
 	}
 
-	pub(crate) fn run_actor(
-		&self,
-		mut stream: Streaming<WorkspaceEvent>,
-		tx: mpsc::UnboundedSender<crate::api::Event>,
-	) {
-		// TODO for buffer and cursor controller we invoke the tokio::spawn outside, but here inside..?
-		let inner = self.0.clone();
-		let name = self.id();
-		tokio::spawn(async move {
-			loop {
-				match stream.message().await {
-					Err(e) => break tracing::error!("workspace '{}' stream closed: {}", name, e),
-					Ok(None) => break tracing::info!("leaving workspace {}", name),
-					Ok(Some(WorkspaceEvent { event: None })) => {
-						tracing::warn!("workspace {} received empty event", name)
-					}
-					Ok(Some(WorkspaceEvent { event: Some(ev) })) => {
-						let update = crate::api::Event::from(&ev);
-						match ev {
-							// user
-							WorkspaceEventInner::Join(UserJoin { user }) => {
-								inner
-									.users
-									.insert(user.id.uuid(), user.into());
-							}
-							WorkspaceEventInner::Leave(UserLeave { user }) => {
-								inner.users.remove(&user.id.uuid());
-							}
-							// buffer
-							WorkspaceEventInner::Create(FileCreate { path }) => {
-								inner.filetree.insert(path);
-							}
-							WorkspaceEventInner::Rename(FileRename { before, after }) => {
-								inner.filetree.remove(&before);
-								inner.filetree.insert(after);
-							}
-							WorkspaceEventInner::Delete(FileDelete { path }) => {
-								inner.filetree.remove(&path);
-								if let Some((_name, controller)) = inner.buffers.remove(&path) {
-									controller.stop();
-								}
-							}
-						}
-						if tx.send(update).is_err() {
-							tracing::warn!("no active controller to receive workspace event");
-						}
-					}
-				}
-			}
-		});
-	}
-}
-
-impl Workspace {
 	/// create a new buffer in current workspace
 	pub async fn create(&self, path: &str) -> RemoteResult<()> {
 		let mut workspace_client = self.0.services.ws();
@@ -207,11 +153,6 @@ impl Workspace {
 	/// this option will be carried in background: [buffer::worker::BufferWorker] will be stopped and dropped. there
 	/// may still be some events enqueued in buffers to poll, but the [buffer::Controller] itself won't be
 	/// accessible anymore from [Workspace].
-	///
-	/// ### returns
-	/// [DetachResult::NotAttached] if buffer wasn't attached in the first place
-	/// [DetachResult::Detaching] if detach was correctly requested
-	/// [DetachResult::AlreadyDetached] if worker is already stopped
 	pub fn detach(&self, path: &str) -> DetachResult {
 		match self.0.buffers.remove(path) {
 			None => DetachResult::NotAttached,
@@ -225,7 +166,7 @@ impl Workspace {
 		}
 	}
 
-	/// await next workspace [crate::api::Event] and return it
+	/// Await next workspace [Event] and return it
 	// TODO this method is weird and ugly, can we make it more standard?
 	pub async fn event(&self) -> ControllerResult<Event> {
 		self.0
@@ -237,7 +178,7 @@ impl Workspace {
 			.ok_or(crate::errors::ControllerError::Unfulfilled)
 	}
 
-	/// fetch a list of all buffers in a workspace
+	/// Re-fetch list of all buffers in a workspace
 	pub async fn fetch_buffers(&self) -> RemoteResult<()> {
 		let mut workspace_client = self.0.services.ws();
 		let buffers = workspace_client
@@ -254,7 +195,7 @@ impl Workspace {
 		Ok(())
 	}
 
-	/// fetch a list of all users in a workspace
+	/// Re-fetch list of all users in a workspace
 	pub async fn fetch_users(&self) -> RemoteResult<()> {
 		let mut workspace_client = self.0.services.ws();
 		let users = BTreeSet::from_iter(
@@ -275,9 +216,7 @@ impl Workspace {
 		Ok(())
 	}
 
-	/// get a list of the users attached to a specific buffer
-	///
-	/// TODO: discuss implementation details
+	/// Get a list of the [User]s attached to a specific buffer
 	pub async fn list_buffer_users(&self, path: &str) -> RemoteResult<Vec<User>> {
 		let mut workspace_client = self.0.services.ws();
 		let buffer_users = workspace_client
@@ -294,7 +233,7 @@ impl Workspace {
 		Ok(buffer_users)
 	}
 
-	/// delete a buffer
+	/// Delete a buffer
 	pub async fn delete(&self, path: &str) -> RemoteResult<()> {
 		let mut workspace_client = self.0.services.ws();
 		workspace_client
@@ -312,25 +251,25 @@ impl Workspace {
 		Ok(())
 	}
 
-	/// get the id of the workspace
+	/// Get the workspace unique id
 	// #[cfg_attr(feature = "js", napi)] // https://github.com/napi-rs/napi-rs/issues/1120
 	pub fn id(&self) -> String {
 		self.0.name.clone()
 	}
 
-	/// return a reference to current cursor controller, if currently in a workspace
+	/// Return a handle to workspace cursor controller
 	// #[cfg_attr(feature = "js", napi)] // https://github.com/napi-rs/napi-rs/issues/1120
 	pub fn cursor(&self) -> cursor::Controller {
 		self.0.cursor.clone()
 	}
 
-	/// get a new reference to a buffer controller, if any is active to given path
+	/// Get a [buffer::Controller] by path, if any is active on given path
 	// #[cfg_attr(feature = "js", napi)] // https://github.com/napi-rs/napi-rs/issues/1120
 	pub fn buffer_by_name(&self, path: &str) -> Option<buffer::Controller> {
 		self.0.buffers.get(path).map(|x| x.clone())
 	}
 
-	/// get a list of all the currently attached to buffers
+	/// Get a list of all the currently attached buffers
 	// #[cfg_attr(feature = "js", napi)] // https://github.com/napi-rs/napi-rs/issues/1120
 	pub fn buffer_list(&self) -> Vec<String> {
 		self.0
@@ -348,6 +287,58 @@ impl Workspace {
 			.map(|f| f.clone())
 			.collect()
 	}
+
+	pub(crate) fn run_actor(
+		&self,
+		mut stream: Streaming<WorkspaceEvent>,
+		tx: mpsc::UnboundedSender<crate::api::Event>,
+	) {
+		// TODO for buffer and cursor controller we invoke the tokio::spawn outside, but here inside..?
+		let inner = self.0.clone();
+		let name = self.id();
+		tokio::spawn(async move {
+			loop {
+				match stream.message().await {
+					Err(e) => break tracing::error!("workspace '{}' stream closed: {}", name, e),
+					Ok(None) => break tracing::info!("leaving workspace {}", name),
+					Ok(Some(WorkspaceEvent { event: None })) => {
+						tracing::warn!("workspace {} received empty event", name)
+					}
+					Ok(Some(WorkspaceEvent { event: Some(ev) })) => {
+						let update = crate::api::Event::from(&ev);
+						match ev {
+							// user
+							WorkspaceEventInner::Join(UserJoin { user }) => {
+								inner
+									.users
+									.insert(user.id.uuid(), user.into());
+							}
+							WorkspaceEventInner::Leave(UserLeave { user }) => {
+								inner.users.remove(&user.id.uuid());
+							}
+							// buffer
+							WorkspaceEventInner::Create(FileCreate { path }) => {
+								inner.filetree.insert(path);
+							}
+							WorkspaceEventInner::Rename(FileRename { before, after }) => {
+								inner.filetree.remove(&before);
+								inner.filetree.insert(after);
+							}
+							WorkspaceEventInner::Delete(FileDelete { path }) => {
+								inner.filetree.remove(&path);
+								if let Some((_name, controller)) = inner.buffers.remove(&path) {
+									controller.stop();
+								}
+							}
+						}
+						if tx.send(update).is_err() {
+							tracing::warn!("no active controller to receive workspace event");
+						}
+					}
+				}
+			}
+		});
+	}
 }
 
 impl Drop for WorkspaceInner {
@@ -356,7 +347,7 @@ impl Drop for WorkspaceInner {
 			if !entry.value().stop() {
 				tracing::warn!(
 					"could not stop buffer worker {} for workspace {}",
-					entry.value().name(),
+					entry.value().path(),
 					self.name
 				);
 			}

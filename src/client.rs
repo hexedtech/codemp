@@ -19,7 +19,7 @@ use pyo3::prelude::*;
 ///
 /// It generates a new UUID and stores user credentials upon connecting.
 ///
-/// A new [Client] can be obtained with [Client::connect].
+/// A new [`Client`] can be obtained with [`Client::connect`].
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "js", napi_derive::napi)]
 #[cfg_attr(feature = "python", pyclass)]
@@ -36,7 +36,7 @@ struct ClientInner {
 }
 
 impl Client {
-	/// Connect to the server, authenticate and instantiate a new [Client].
+	/// Connect to the server, authenticate and instantiate a new [`Client`].
 	pub async fn connect(
 		host: impl AsRef<str>,
 		username: impl AsRef<str>,
@@ -74,7 +74,7 @@ impl Client {
 	}
 
 	/// Refresh session token.
-	pub async fn refresh(&self) -> tonic::Result<()> {
+	pub async fn refresh(&self) -> RemoteResult<()> {
 		let new_token = self.0.auth.clone().refresh(self.0.claims.get())
 			.await?
 			.into_inner();
@@ -128,7 +128,7 @@ impl Client {
 		Ok(out)
 	}
 
-	/// Join and return a [Workspace].
+	/// Join and return a [`Workspace`].
 	pub async fn join_workspace(&self, workspace: impl AsRef<str>) -> ConnectionResult<Workspace> {
 		let token = self.0.session
 			.clone()
@@ -152,17 +152,17 @@ impl Client {
 		Ok(ws)
 	}
 
-	/// Leave the [Workspace] with the given name.
+	/// Leave the [`Workspace`] with the given name.
 	pub fn leave_workspace(&self, id: &str) -> bool {
 		self.0.workspaces.remove(id).is_some()
 	}
 
-	/// Gets a [Workspace] handle by name.
+	/// Gets a [`Workspace`] handle by name.
 	pub fn get_workspace(&self, id: &str) -> Option<Workspace> {
 		self.0.workspaces.get(id).map(|x| x.clone())
 	}
 
-	/// Get the names of all active [Workspace]s.
+	/// Get the names of all active [`Workspace`]s.
 	pub fn active_workspaces(&self) -> Vec<String> {
 		self.0
 			.workspaces

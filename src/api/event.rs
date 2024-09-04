@@ -1,10 +1,17 @@
+//! # Event
+//! Real time notification of changes in a workspace, to either users or buffers
 use codemp_proto::workspace::workspace_event::Event as WorkspaceEventInner;
 
+/// Event in a [crate::Workspace]
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "python", pyo3::pyclass)]
 pub enum Event {
+	/// Fired when the file tree changes
+	/// containes the modified buffer path (deleted or created or renamed)
 	FileTreeUpdated(String),
+	/// Fired when an user joins the current workspace
 	UserJoin(String),
+	/// Fired when an user leaves the current workspace
 	UserLeave(String),
 }
 

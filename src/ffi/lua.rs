@@ -1,10 +1,23 @@
+//! ### lua
+//! Using [mlua] it's possible to map almost perfectly the entirety of `codemp` API.
+//! Notable outliers are functions that receive `codemp` objects: these instead receive arguments
+//! to build the object instead (such as [`crate::api::Controller::send`])
+//!
+//! Note that async operations are carried out on a [tokio] current_thread runtime, so it is
+//! necessary to drive it. A separate driver thread can be spawned with `spawn_runtime_driver`
+//! function.
+//!
+//! To make callbacks work, the main lua thread must periodically stop and poll for callbacks via
+//! `poll_callback`, otherwise those will never run. This is necessary to allow safe concurrent
+//! access to the global Lua state, so minimize runtime inside callbacks as much as possile.
+
 use std::io::Write;
 use std::sync::Mutex;
 
 use crate::api::Cursor;
 use crate::ext::IgnorableError;
 use crate::prelude::*;
-use crate::workspace::worker::DetachResult;
+use crate::workspace::DetachResult;
 use mlua::prelude::*;
 use tokio::sync::mpsc;
 use tokio::sync::mpsc::error::TryRecvError;
@@ -15,8 +28,8 @@ impl From::<crate::errors::ConnectionError> for LuaError {
 	}
 }
 
-impl From::<crate::errors::ProcedureError> for LuaError {
-	fn from(value: crate::errors::ProcedureError) -> Self {
+impl From::<crate::errors::RemoteError> for LuaError {
+	fn from(value: crate::errors::RemoteError) -> Self {
 		LuaError::runtime(value.to_string())
 	}
 }
@@ -520,7 +533,7 @@ fn codemp_native(lua: &Lua) -> LuaResult<LuaTable> {
 
 	// utils
 	exports.set("hash", lua.create_function(|_, (txt,):(String,)|
-		Ok(crate::hash(txt))
+		Ok(crate::ext::hash(txt))
 	)?)?;
 
 	// runtime

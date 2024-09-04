@@ -1,3 +1,11 @@
+//! ### java
+//! Since for java it is necessary to deal with the JNI and no complete FFI library is available,
+//! java glue directly writes JNI functions leveraging [jni] rust bindings.
+//!
+//! To have a runnable `jar`, some extra Java code must be compiled (available under `dist/java`)
+//! and bundled together with the shared object. Such extra wrapper provides classes and methods
+//! loading the native extension and invoking the underlying native functions.
+
 pub mod client;
 pub mod workspace;
 pub mod cursor;

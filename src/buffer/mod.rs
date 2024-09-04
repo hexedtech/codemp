@@ -1,10 +1,7 @@
-//! ### buffer
-//!
-//! ![demo gif of early buffer sync in action](https://cdn.alemi.dev/codemp/demo-vscode.gif)
-//! 
-//! a buffer is a container fo text edited by users.
-//! this module contains buffer-related operations and helpers to create Operation Sequences
-//! (the underlying chunks of changes sent over the wire)
+//! ### Buffer
+//! A buffer is a container of text, modifiable in sync by users.
+//! It is built on top of [diamond_types] CRDT, guaranteeing that all peers which have received the
+//! same set of operations will converge to the same content.
 
 /// buffer controller implementation
 pub mod controller;

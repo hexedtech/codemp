@@ -1,6 +1,6 @@
-//! ### controller
-//!
-//! a controller implementation for cursor actions
+//! ### Cursor Controller
+//! A [Controller] implementation for [Cursor] actions in a [crate::Workspace]
+
 use std::sync::Arc;
 
 use tokio::sync::{mpsc, oneshot, watch};
@@ -8,17 +8,10 @@ use tonic::async_trait;
 
 use crate::{api::{controller::ControllerCallback, Controller, Cursor}, errors::ControllerResult};
 use codemp_proto::cursor::CursorPosition;
-/// the cursor controller implementation
+
+/// A [Controller] for asynchronously sending and receiving [Cursor] events
 ///
-/// this contains
-/// * the unique identifier of current user
-/// * a sink to send movements into
-/// * a mutex over a stream of inbound cursor events
-/// * a channel to stop the associated worker
-///
-/// for each controller a worker exists , managing outgoing and inbound event queues
-///
-/// upon dropping this handle will stop the associated worker
+/// An unique [CursorController] exists for each active [crate::Workspace].
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "python", pyo3::pyclass)]
 #[cfg_attr(feature = "js", napi_derive::napi)]
@@ -35,8 +28,6 @@ pub(crate) struct CursorControllerInner {
 
 #[async_trait]
 impl Controller<Cursor> for CursorController {
-	/// enqueue a cursor event to be broadcast to current workspace
-	/// will automatically invert cursor start/end if they are inverted
 	async fn send(&self, mut cursor: Cursor) -> ControllerResult<()> {
 		if cursor.start > cursor.end {
 			std::mem::swap(&mut cursor.start, &mut cursor.end);
@@ -44,14 +35,12 @@ impl Controller<Cursor> for CursorController {
 		Ok(self.0.op.send(cursor.into()).await?)
 	}
 
-	/// try to receive without blocking, but will still block on stream mutex
 	async fn try_recv(&self) -> ControllerResult<Option<Cursor>> {
 		let (tx, rx) = oneshot::channel();
 		self.0.stream.send(tx).await?;
 		Ok(rx.await?)
 	}
 
-	/// await for changed mutex and then next op change
 	async fn poll(&self) -> ControllerResult<()> {
 		let (tx, rx) = oneshot::channel();
 		self.0.poll.send(tx)?;

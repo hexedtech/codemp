@@ -1,15 +1,15 @@
 //! # User
-//!
-//! data structures for our service users
+//! An user is identified by an UUID, which should never change.
+//! Each user has an username, which can change but should be unique.
 
 use uuid::Uuid;
 
-/// represents a service user
-///
-/// all users are identified uniquely with UUIDs
+/// Represents a service user
 #[derive(Debug, Clone)]
 pub struct User {
+	/// User unique identifier, should never change
 	pub id: Uuid,
+	/// User name, can change but should be unique
 	pub name: String,
 }
 

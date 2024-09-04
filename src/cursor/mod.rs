@@ -1,9 +1,6 @@
-//! ### cursor
-//!
-//! ![demo gif of early cursor sync in action](https://cdn.alemi.dev/codemp/demo-nvim.gif)
-//! 
-//! each user holds a cursor, which consists of multiple highlighted region 
-//! on a specific buffer
+//! ### Cursor
+//! Each user in a [crate::Workspace] holds a cursor and can move it across multiple buffers.
+//! A cursor spans zero or more characters across one or more lines.
 
 pub(crate) mod worker;
 

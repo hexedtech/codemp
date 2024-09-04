@@ -1,6 +1,5 @@
-//! ### controller
-//!
-//! a controller implementation for buffer actions
+//! ### Buffer Controller
+//! A [Controller] implementation for buffer actions
 
 use std::sync::Arc;
 
@@ -15,25 +14,22 @@ use crate::ext::InternallyMutable;
 
 use super::worker::DeltaRequest;
 
-/// the buffer controller implementation
+/// A [Controller] to asyncrhonously interact with remote buffers
 ///
-/// for each controller a worker exists, managing outgoing and inbound
-/// queues, transforming outbound delayed ops and applying remote changes
-/// to the local buffer
-///
-/// upon dropping this handle will stop the associated worker
+/// Each buffer controller internally tracks the last acknowledged state, remaining always in sync
+/// with the server while allowing to procedurally receiving changes while still sending new ones.
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "python", pyo3::pyclass)]
 #[cfg_attr(feature = "js", napi_derive::napi)]
 pub struct BufferController(pub(crate) Arc<BufferControllerInner>);
 
 impl BufferController {
-	/// unique identifier of buffer
-	pub fn name(&self) -> &str {
+	/// Get the buffer path
+	pub fn path(&self) -> &str {
 		&self.0.name
 	}
 
-	/// return buffer whole content, updating internal buffer previous state
+	/// Return buffer whole content, updating internal acknowledgement tracker
 	pub async fn content(&self) -> ControllerResult<String> {
 		let (tx, rx) = oneshot::channel();
 		self.0.content_request.send(tx).await?;
@@ -60,8 +56,6 @@ pub(crate) struct BufferControllerInner {
 
 #[async_trait]
 impl Controller<TextChange> for BufferController {
-	/// block until a text change is available
-	/// this returns immediately if one is already available
 	async fn poll(&self) -> ControllerResult<()> {
 		if self.0.last_update.get() != *self.0.latest_version.borrow() {
 			return Ok(());
@@ -73,7 +67,6 @@ impl Controller<TextChange> for BufferController {
 		Ok(())
 	}
 
-	/// if a text change is available, return it immediately
 	async fn try_recv(&self) -> ControllerResult<Option<TextChange>> {
 		let last_update = self.0.last_update.get();
 		let latest_version = self.0.latest_version.borrow().clone();
@@ -89,8 +82,6 @@ impl Controller<TextChange> for BufferController {
 		Ok(change)
 	}
 
-	/// enqueue a text change for processing
-	/// this also updates internal buffer previous state
 	async fn send(&self, op: TextChange) -> ControllerResult<()> {
 		// we let the worker do the updating to the last version and send it back.
 		let (tx, rx) = oneshot::channel();
