@@ -1,7 +1,7 @@
 //! # Controller
 //! 
-//! an bidirectional stream handler to easily manage async operations across local buffers and the
-//! server
+//! A bidirectional stream handler to easily manage asynchronous operations between local buffers
+//! and the server.
 
 use crate::errors::ControllerResult;
 
@@ -18,27 +18,23 @@ pub(crate) trait ControllerWorker<T : Sized + Send + Sync> {
 // note that we don't use thiserror's #[from] because we don't want the error structs to contain
 // these foreign types, and also we want these to be easily constructable
 
-/// async and threadsafe handle to a generic bidirectional stream
+/// Asynchronous and thread-safe handle to a generic bidirectional stream.
 ///
-/// this generic trait is implemented by actors managing stream procedures.
-/// events can be enqueued for dispatching without blocking ([Controller::send]), and an async blocking 
-/// api ([Controller::recv]) is provided to wait for server events.
+/// This generic trait is implemented by actors managing stream procedures.
+/// 
+/// Events can be enqueued for dispatching without blocking with [`Controller::send`].
 ///
-/// * if possible, prefer a pure [Controller::recv] consumer, awaiting for events
-/// * if async is not feasible a [Controller::poll]/[Controller::try_recv] approach is possible
+/// For receiving events from the server, an asynchronous API with [`Controller::recv`] is
+/// provided; if that is not feasible, consider using [`Controller::callback`] or, alternatively,
+/// [`Controller::poll`] combined with [`Controller::try_recv`].
+///
+/// [`crate::ext::select_buffer`] may provide a useful helper for managing multiple controllers.
 #[async_trait::async_trait]
 pub trait Controller<T : Sized + Send + Sync> : Sized + Send + Sync {
-	/// enqueue a new value to be sent to all other users
-	///
-	/// success or failure of this function does not imply validity of sent operation,
-	/// because it's integrated asynchronously on the background worker
+	/// Enqueue a new value to be sent to all other users.
 	async fn send(&self, x: T) -> ControllerResult<()>;
 
-	/// get next value from other users, blocking until one is available
-	///
-	/// this is just an async trait function wrapped by `async_trait`:
-	///
-	/// `async fn recv(&self) -> codemp::ControllerResult<T>;`
+	/// Block until a value is available and returns it.
 	async fn recv(&self) -> ControllerResult<T> {
 		loop {
 			self.poll().await?;
@@ -48,41 +44,37 @@ pub trait Controller<T : Sized + Send + Sync> : Sized + Send + Sync {
 		}
 	}
 
-	/// registers a callback to be called on receive.
+	/// Register a callback to be called on receive.
 	///
-	/// there can only be one callback at any given time.
+	/// There can only be one callback registered at any given time.
 	fn callback(&self, cb: impl Into<ControllerCallback<Self>>);
 
-	/// clears the currently registered callback.
+	/// Clear the currently registered callback.
 	fn clear_callback(&self);
 
-	/// block until next value is available without consuming it
-	///
-	/// this is just an async trait function wrapped by `async_trait`:
-	///
-	/// `async fn poll(&self) -> codemp::ControllerResult<()>;`
+	/// Block until a value is available, without consuming it.
 	async fn poll(&self) -> ControllerResult<()>;
 
-	/// attempt to receive a value without blocking, return None if nothing is available
+	/// Attempt to receive a value, return None if nothing is currently available.
 	async fn try_recv(&self) -> ControllerResult<Option<T>>;
 
-	/// stop underlying worker
+	/// Stop underlying worker.
 	///
-	/// note that this will mean no more values can be received nor sent,
-	/// but existing controllers will still be accessible until all are dropped
+	/// After this is called, nothing can be received or sent anymore; however, existing
+	/// controllers will still be accessible until all handles are dropped.
 	/// 
-	/// returns true if stop signal was sent, false if channel is closed
-	///  (likely if worker is already stopped)
+	/// Returns true if the stop signal was successfully sent, false if channel was
+	/// closed (probably because worker had already been stopped).
 	fn stop(&self) -> bool;
 }
 
 
-/// type wrapper for Boxed dyn callback
+/// Type wrapper for Boxed dynamic callback.
 pub struct ControllerCallback<T>(pub Box<dyn Sync + Send + Fn(T)>);
 
 impl<T> ControllerCallback<T> {
-	pub fn call(&self, x: T) {
-		self.0(x) // lmao at this syntax
+	pub(crate) fn call(&self, x: T) {
+		self.0(x)
 	}
 }
 

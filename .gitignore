@@ -3,8 +3,12 @@
 .vscode/
 *.sublime-*
 
+# python
 .venv
 wheels/
+
+# lua
+dist/lua/*.so
 
 # js
 node_modules/

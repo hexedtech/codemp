@@ -9,7 +9,7 @@ use tonic::async_trait;
 use crate::{api::{controller::ControllerCallback, Controller, Cursor}, errors::ControllerResult};
 use codemp_proto::cursor::CursorPosition;
 
-/// A [Controller] for asynchronously sending and receiving [Cursor] events
+/// A [Controller] for asynchronously sending and receiving [Cursor] event.
 ///
 /// An unique [CursorController] exists for each active [crate::Workspace].
 #[derive(Debug, Clone)]

@@ -6,8 +6,10 @@
 //! workspaces each containing any number of buffers.
 //!
 //! The [`Client`] is completely managed by the library itself, making its use simple across async
-//! contexts and FFI boundaries. Asynchronous actions are abstracted away by the [`api::Controller`],
-//! providing an unopinionated approach with both callback-based and blocking-based APIs.
+//! contexts and FFI boundaries. All memory is managed by the library itself, which gives out always
+//! atomic reference-counted pointers to internally mutable objects. Asynchronous actions are
+//! abstracted away by the [`api::Controller`], providing an unopinionated approach with both
+//! callback-based and blocking-based APIs.
 //!
 //! The library also provides ready-to-use bindings in a growing number of other programming languages,
 //! to support a potentially infinite number of editors.
@@ -81,7 +83,7 @@
 //! * `python`
 //!
 //! For some of these, ready-to-use packages are available in various registries:
-//! * [pypi (python)](https://pypi.org/project/codemp)
+//! * [PyPI (python)](https://pypi.org/project/codemp)
 //! * [npm (javascript)](https://www.npmjs.com/package/codemp)
 //!
 

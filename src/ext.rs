@@ -4,7 +4,7 @@
 use crate::{api::Controller, errors::ControllerResult};
 use tokio::sync::mpsc;
 
-/// Polls all given buffer controllers and waits, returning the first one ready.
+/// Poll all given buffer controllers and wait, returning the first one ready.
 ///
 /// It will spawn tasks blocked on [`Controller::poll`] for each buffer controller.
 /// As soon as one finishes, its controller is returned and all other tasks are canceled.
@@ -51,7 +51,7 @@ pub async fn select_buffer(
 	}
 }
 
-/// Hashes a given byte array with the internally used algorithm.
+/// Hash a given byte array with the internally used algorithm.
 /// 
 /// Currently, it uses [`xxhash_rust::xxh3::xxh3_64`].
 pub fn hash(data: impl AsRef<[u8]>) -> i64 {

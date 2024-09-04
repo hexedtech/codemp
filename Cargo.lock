@@ -857,8 +857,7 @@ dependencies = [
 [[package]]
 name = "mlua"
 version = "0.10.0-beta.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "49976b1ca7e2538314441ba370636b8c80891438e3c255636a87594079362c4f"
+source = "git+https://github.com/mlua-rs/mlua?rev=ece66c46bfdc62685b758ffff16286f2806b2662#ece66c46bfdc62685b758ffff16286f2806b2662"
 dependencies = [
  "bstr",
  "mlua-sys",
@@ -871,8 +870,7 @@ dependencies = [
 [[package]]
 name = "mlua-sys"
 version = "0.6.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3ab7a5b4756b8177a2dfa8e0bbcde63bd4000afbc4ab20cbb68d114a25470f29"
+source = "git+https://github.com/mlua-rs/mlua?rev=ece66c46bfdc62685b758ffff16286f2806b2662#ece66c46bfdc62685b758ffff16286f2806b2662"
 dependencies = [
  "cc",
  "cfg-if",
@@ -882,8 +880,7 @@ dependencies = [
 [[package]]
 name = "mlua_derive"
 version = "0.9.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "09697a6cec88e7f58a02c7ab5c18c611c6907c8654613df9cc0192658a4fb859"
+source = "git+https://github.com/mlua-rs/mlua?rev=ece66c46bfdc62685b758ffff16286f2806b2662#ece66c46bfdc62685b758ffff16286f2806b2662"
 dependencies = [
  "proc-macro2",
  "quote",

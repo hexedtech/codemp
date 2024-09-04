@@ -1,4 +1,4 @@
-//! ### lua
+//! ### Lua
 //! Using [mlua] it's possible to map almost perfectly the entirety of `codemp` API.
 //! Notable outliers are functions that receive `codemp` objects: these instead receive arguments
 //! to build the object instead (such as [`crate::api::Controller::send`])
@@ -7,9 +7,9 @@
 //! necessary to drive it. A separate driver thread can be spawned with `spawn_runtime_driver`
 //! function.
 //!
-//! To make callbacks work, the main lua thread must periodically stop and poll for callbacks via
+//! To work with callbacks, the main Lua thread must periodically stop and poll for callbacks via
 //! `poll_callback`, otherwise those will never run. This is necessary to allow safe concurrent
-//! access to the global Lua state, so minimize runtime inside callbacks as much as possile.
+//! access to the global Lua state, so minimize callback execution time as much as possible.
 
 use std::io::Write;
 use std::sync::Mutex;

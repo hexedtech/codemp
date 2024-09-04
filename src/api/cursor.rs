@@ -1,5 +1,5 @@
 //! ### Cursor
-//! Represents the position of a remote user's cursor, with their display name
+//! Represents the position of a remote user's cursor.
 
 use codemp_proto as proto;
 use uuid::Uuid;
@@ -12,14 +12,14 @@ use pyo3::prelude::*;
 #[cfg_attr(feature = "python", pyclass)]
 // #[cfg_attr(feature = "python", pyo3(crate = "reexported::pyo3"))]
 pub struct Cursor {
-	/// Cursor start position in buffer, as 0-indexed row-column tuple
+	/// Cursor start position in buffer, as 0-indexed row-column tuple.
 	pub start: (i32, i32),
-	/// Cursor end position in buffer, as 0-indexed row-column tuple
+	/// Cursor end position in buffer, as 0-indexed row-column tuple.
 	pub end: (i32, i32),
-	/// Path of buffer this cursor is on
+	/// Path of buffer this cursor is on.
 	pub buffer: String,
-	/// User display name, if provided
-	pub user: Option<Uuid>,
+	/// User display name, if provided.
+	pub user: Option<Uuid>, // TODO this should be a string, not the UUID!
 }
 
 impl From<proto::cursor::CursorPosition> for Cursor {

@@ -7,9 +7,9 @@ use uuid::Uuid;
 /// Represents a service user
 #[derive(Debug, Clone)]
 pub struct User {
-	/// User unique identifier, should never change
+	/// User unique identifier, should never change.
 	pub id: Uuid,
-	/// User name, can change but should be unique
+	/// User name, can change but should be unique.
 	pub name: String,
 }
 

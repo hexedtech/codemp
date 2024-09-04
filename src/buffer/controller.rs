@@ -14,10 +14,10 @@ use crate::ext::InternallyMutable;
 
 use super::worker::DeltaRequest;
 
-/// A [Controller] to asyncrhonously interact with remote buffers
+/// A [Controller] to asynchronously interact with remote buffers.
 ///
 /// Each buffer controller internally tracks the last acknowledged state, remaining always in sync
-/// with the server while allowing to procedurally receiving changes while still sending new ones.
+/// with the server while allowing to procedurally receive changes while still sending new ones.
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "python", pyo3::pyclass)]
 #[cfg_attr(feature = "js", napi_derive::napi)]

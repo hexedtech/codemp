@@ -96,7 +96,7 @@ impl Workspace {
 		Ok(ws)
 	}
 
-	/// create a new buffer in current workspace
+	/// Create a new buffer in the current workspace.
 	pub async fn create(&self, path: &str) -> RemoteResult<()> {
 		let mut workspace_client = self.0.services.ws();
 		workspace_client
@@ -114,10 +114,7 @@ impl Workspace {
 		Ok(())
 	}
 
-	/// attach to a buffer, starting a buffer controller and returning a new reference to it
-	///
-	/// to interact with such buffer use [crate::api::Controller::send] or
-	/// [crate::api::Controller::recv] to exchange [crate::api::TextChange]
+	/// Attach to a buffer and return a handle to it.
 	pub async fn attach(&self, path: &str) -> ConnectionResult<buffer::Controller> {
 		let mut worskspace_client = self.0.services.ws();
 		let request = tonic::Request::new(BufferNode {
@@ -148,11 +145,11 @@ impl Workspace {
 		Ok(controller)
 	}
 
-	/// detach from an active buffer
+	/// Detach from an active buffer.
 	///
-	/// this option will be carried in background: [buffer::worker::BufferWorker] will be stopped and dropped. there
-	/// may still be some events enqueued in buffers to poll, but the [buffer::Controller] itself won't be
-	/// accessible anymore from [Workspace].
+	/// This option will be carried in background. [`buffer::worker::BufferWorker`] will be stopped and dropped.
+	/// There may still be some events enqueued in buffers to poll, but the [buffer::Controller] itself won't be
+	/// accessible anymore from [`Workspace`].
 	pub fn detach(&self, path: &str) -> DetachResult {
 		match self.0.buffers.remove(path) {
 			None => DetachResult::NotAttached,
@@ -166,7 +163,7 @@ impl Workspace {
 		}
 	}
 
-	/// Await next workspace [Event] and return it
+	/// Await next workspace [Event] and return it when it arrives.
 	// TODO this method is weird and ugly, can we make it more standard?
 	pub async fn event(&self) -> ControllerResult<Event> {
 		self.0
@@ -178,7 +175,7 @@ impl Workspace {
 			.ok_or(crate::errors::ControllerError::Unfulfilled)
 	}
 
-	/// Re-fetch list of all buffers in a workspace
+	/// Re-fetch the list of available buffers in the workspace.
 	pub async fn fetch_buffers(&self) -> RemoteResult<()> {
 		let mut workspace_client = self.0.services.ws();
 		let buffers = workspace_client
@@ -195,7 +192,7 @@ impl Workspace {
 		Ok(())
 	}
 
-	/// Re-fetch list of all users in a workspace
+	/// Re-fetch the list of all users in the workspace.
 	pub async fn fetch_users(&self) -> RemoteResult<()> {
 		let mut workspace_client = self.0.services.ws();
 		let users = BTreeSet::from_iter(
@@ -216,7 +213,7 @@ impl Workspace {
 		Ok(())
 	}
 
-	/// Get a list of the [User]s attached to a specific buffer
+	/// Get a list of the [User]s attached to a specific buffer.
 	pub async fn list_buffer_users(&self, path: &str) -> RemoteResult<Vec<User>> {
 		let mut workspace_client = self.0.services.ws();
 		let buffer_users = workspace_client
@@ -233,7 +230,7 @@ impl Workspace {
 		Ok(buffer_users)
 	}
 
-	/// Delete a buffer
+	/// Delete a buffer.
 	pub async fn delete(&self, path: &str) -> RemoteResult<()> {
 		let mut workspace_client = self.0.services.ws();
 		workspace_client
@@ -251,25 +248,25 @@ impl Workspace {
 		Ok(())
 	}
 
-	/// Get the workspace unique id
+	/// Get the workspace unique id.
 	// #[cfg_attr(feature = "js", napi)] // https://github.com/napi-rs/napi-rs/issues/1120
 	pub fn id(&self) -> String {
 		self.0.name.clone()
 	}
 
-	/// Return a handle to workspace cursor controller
+	/// Return a handle to the [`cursor::Controller`].
 	// #[cfg_attr(feature = "js", napi)] // https://github.com/napi-rs/napi-rs/issues/1120
 	pub fn cursor(&self) -> cursor::Controller {
 		self.0.cursor.clone()
 	}
 
-	/// Get a [buffer::Controller] by path, if any is active on given path
+	/// Return a handle to the [buffer::Controller] with the given path, if present.
 	// #[cfg_attr(feature = "js", napi)] // https://github.com/napi-rs/napi-rs/issues/1120
 	pub fn buffer_by_name(&self, path: &str) -> Option<buffer::Controller> {
 		self.0.buffers.get(path).map(|x| x.clone())
 	}
 
-	/// Get a list of all the currently attached buffers
+	/// Get a list of all the currently attached buffers.
 	// #[cfg_attr(feature = "js", napi)] // https://github.com/napi-rs/napi-rs/issues/1120
 	pub fn buffer_list(&self) -> Vec<String> {
 		self.0
@@ -279,7 +276,7 @@ impl Workspace {
 			.collect()
 	}
 
-	/// get the currently cached "filetree"
+	/// Get the filetree as it is currently cached.
 	// #[cfg_attr(feature = "js", napi)] // https://github.com/napi-rs/napi-rs/issues/1120
 	pub fn filetree(&self, filter: Option<&str>) -> Vec<String> {
 		self.0.filetree.iter()

@@ -1,8 +1,9 @@
 //! ### FFI
-//! Foreign-Function-Interface glue code, each gated behind feature flags
+//! The glue code for FFI (Foreign Function Interface) in various languages, each gated behind
+//! a feature flag.
 //!
-//! For all except java, the resulting shared object is ready to use, but external packages are
-//! available to simplify the dependancy and provide type hints in editor.
+//! For all except Java, the resulting shared object is ready to use, but external packages are
+//! available to simplify dependency management and provide type hints in editor.
 
 /// java bindings, built with [jni]
 #[cfg(feature = "java")]

@@ -1,38 +1,41 @@
 //! # TextChange
-//!
-//! an editor-friendly representation of a text change in a buffer
-//! to easily interface with codemp from various editors
+//! A high-level representation of a change within a given buffer.
 
-/// an editor-friendly representation of a text change in a buffer
+/// An editor-friendly representation of a text change in a given buffer.
+/// 
+/// It's expressed with a range of characters and a string of content that should replace them,
+/// allowing representation of any combination of deletions, insertions or replacements.
 ///
-/// this represent a range in the previous state of the string and a new content which should be
-/// replaced to it, allowing to represent any combination of deletions, insertions or replacements
+/// Bulky and large operations will result in a single [`TextChange`] effectively sending the whole
+/// new buffer, but smaller changes are efficient and easy to create or apply.
 ///
-/// bulk and widespread operations will result in a TextChange effectively sending the whole new
-/// buffer, but small changes are efficient and easy to create or apply
+/// [`TextChange`] contains an optional `hash` field. This is used for error correction: if
+/// provided, it should match the hash of the buffer content **after** applying this change.
+/// Note that the `hash` field will not necessarily be provided every time.
 ///
-/// ### examples
-/// to insert 'a' after 4th character we should send a
-///     `TextChange { span: 4..4, content: "a".into() }`
+/// ### Examples
+/// To insert 'a' after 4th character we should send a.
+///     `TextChange { start: 4, end: 4, content: "a".into(), hash: None }`
 ///
-/// to delete a the fourth character we should send a
-///     `TextChange { span: 3..4, content: "".into() }`
+/// To delete a the fourth character we should send a.
+///     `TextChange { start: 3, end: 4, content: "".into(), hash: None }`
 ///
 #[derive(Clone, Debug, Default)]
 #[cfg_attr(feature = "js", napi_derive::napi(object))]
 #[cfg_attr(feature = "python", pyo3::pyclass(get_all))]
 pub struct TextChange {
-	/// range start of text change, as char indexes in buffer previous state
+	/// Range start of text change, as char indexes in buffer previous state.
 	pub start: u32,
-	/// range end of text change, as char indexes in buffer previous state
+	/// Range end of text change, as char indexes in buffer previous state.
 	pub end: u32,
-	/// new content of text inside span
+	/// New content of text inside span.
 	pub content: String,
-	/// optional content hash after applying this change
+	/// Optional content hash after applying this change.
 	pub hash: Option<i64>,
 }
 
 impl TextChange {
+	/// Returns the [`std::ops::Range`] representing this change's span.
 	pub fn span(&self) -> std::ops::Range<usize> {
 		self.start as usize..self.end as usize
 	}
@@ -40,24 +43,26 @@ impl TextChange {
 
 #[cfg_attr(feature = "python", pyo3::pymethods)]
 impl TextChange {
-	/// A change is a "deletion" if the change range span is bigger than zero.
-	/// This is not exclusive, a change can be both an insertion and a deletion.
+	/// Returns true if this [`TextChange`] deletes existing text.
+	///
+	/// Note that this is is **not** mutually exclusive with [TextChange::is_insert].
 	pub fn is_delete(&self) -> bool {
 		self.start < self.end
 	}
 
-	/// A change is an "Insertion" if the content is not empty.
-	/// This is not exclusive, a change can be both an insertion and a deletion.
+	/// Returns true if this [`TextChange`] adds new text.
+	///
+	/// Note that this is is **not** mutually exclusive with [TextChange::is_delete].
 	pub fn is_insert(&self) -> bool {
 		!self.content.is_empty()
 	}
 
-	/// Returns true if this TextChange is effectively as no-op
+	/// Returns true if this [`TextChange`] is effectively as no-op.
 	pub fn is_empty(&self) -> bool {
 		!self.is_delete() && !self.is_insert()
 	}
 
-	/// Applies this text change to given text, returning a new string
+	/// Applies this text change to given text, returning a new string.
 	pub fn apply(&self, txt: &str) -> String {
 		let pre_index = std::cmp::min(self.start as usize, txt.len());
 		let pre = txt.get(..pre_index).unwrap_or("").to_string();
