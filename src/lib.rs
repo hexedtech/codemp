@@ -86,6 +86,7 @@
 //! * [PyPI (python)](https://pypi.org/project/codemp)
 //! * [npm (javascript)](https://www.npmjs.com/package/codemp)
 //!
+#![doc(html_logo_url = "https://codemp.dev/static/logo-round.png")]
 
 /// core structs and traits
 pub mod api;
