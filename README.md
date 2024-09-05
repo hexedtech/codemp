@@ -1,7 +1,7 @@
 [![codemp](https://codemp.dev/static/banner.png)](https://codemp.dev)
 
 [![Actions Status](https://github.com/hexedtech/codemp/actions/workflows/ci.yml/badge.svg)](https://github.com/hexedtech/codemp/actions)
-[![docs.rs](https://img.shields.io/docsrs/codemp)](https://docs.rs/codemp/0.7.0-beta.1/codemp/)
+[![docs.rs](https://img.shields.io/docsrs/codemp)](https://docs.rs/codemp/0.7.0-beta.2/codemp/)
 [![Crates.io Version](https://img.shields.io/crates/v/codemp)](https://crates.io/crates/codemp)
 [![NPM Version](https://img.shields.io/npm/v/codemp)](https://npmjs.org/package/codemp)
 [![PyPI - Version](https://img.shields.io/pypi/v/codemp)](https://pypi.org/project/codemp)
@@ -20,7 +20,7 @@ even under unreliable networks or constrained resources, the underlying CRDT wil
 convergent state across all users. Even with this baseline, `codemp`'s protocol is optimized for speed 
 and low network footprint, meaning even slow connections can provide stable real-time editing.
 
-The full documentation is available on [docs.rs](https://docs.rs/codemp).
+The full documentation is available on [docs.rs](https://docs.rs/codemp/0.7.0-beta.2/codemp/).
 
 # Usage
 `codemp` is primarily used as a plugin in your editor of choice.
