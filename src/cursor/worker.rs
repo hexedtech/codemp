@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use tokio::sync::{mpsc, oneshot, watch};
-use tonic::{Streaming, async_trait};
+use tonic::Streaming;
 
 use crate::{api::{controller::{ControllerCallback, ControllerWorker}, Cursor}, ext::IgnorableError};
 use codemp_proto::cursor::{CursorPosition, CursorEvent};
@@ -52,7 +52,6 @@ impl CursorWorker {
 	}
 }
 
-#[async_trait]
 impl ControllerWorker<Cursor> for CursorWorker {
 	type Controller = CursorController;
 	type Tx = mpsc::Sender<CursorPosition>;

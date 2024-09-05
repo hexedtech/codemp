@@ -5,7 +5,6 @@
 
 use crate::errors::ControllerResult;
 
-#[async_trait::async_trait]
 pub(crate) trait ControllerWorker<T : Sized + Send + Sync> {
 	type Controller : Controller<T>;
 	type Tx;
@@ -29,7 +28,8 @@ pub(crate) trait ControllerWorker<T : Sized + Send + Sync> {
 /// [`Controller::poll`] combined with [`Controller::try_recv`].
 ///
 /// [`crate::ext::select_buffer`] may provide a useful helper for managing multiple controllers.
-#[async_trait::async_trait]
+#[allow(async_fn_in_trait)]
+#[cfg_attr(feature = "async-trait", async_trait::async_trait)]
 pub trait Controller<T : Sized + Send + Sync> : Sized + Send + Sync {
 	/// Enqueue a new value to be sent to all other users.
 	async fn send(&self, x: T) -> ControllerResult<()>;

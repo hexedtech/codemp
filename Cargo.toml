@@ -11,7 +11,7 @@ authors = [
 ]
 license = "GPL-3.0-only"
 edition = "2021"
-version = "0.7.0-beta.1"
+version = "0.7.0-beta.2"
 exclude = ["dist/*"]
 
 [lib]
@@ -22,7 +22,6 @@ crate-type = ["cdylib"]
 # core
 tracing = "0.1"
 thiserror = "1.0"
-async-trait = "0.1"
 # crdt
 diamond-types = "1.0"
 # proto
@@ -53,6 +52,9 @@ napi-derive = { version="2.16",  optional = true}
 # glue (python)
 pyo3 = { version = "0.22", features = ["extension-module", "experimental-async"], optional = true}
 
+# extra
+async-trait = { version = "0.1", optional = true }
+
 [build-dependencies]
 # glue (js)
 napi-build = { version = "2", optional = true }
@@ -60,13 +62,15 @@ napi-build = { version = "2", optional = true }
 pyo3-build-config = { version = "0.19", optional = true }
 
 [features]
-default = []
+default = ["async-trait"]
+# ffi
 rust = [] # used for ci matrix
 lua = ["mlua", "tracing-subscriber", "lazy_static"]
 java = ["lazy_static", "jni", "tracing-subscriber"]
 js = ["napi-build", "tracing-subscriber", "napi", "napi-derive"]
 python = ["pyo3", "tracing-subscriber", "pyo3-build-config"]
+# extra
+async-trait = ["dep:async-trait"]
 
-# build with all features on docs.rs
-[package.metadata.docs.rs]
-all-features = true
+[package.metadata.docs.rs] # enabled features when building on docs.rs
+features = ["lua", "java", "js", "python"]

@@ -4,7 +4,6 @@
 use std::sync::Arc;
 
 use tokio::sync::{mpsc, oneshot, watch};
-use tonic::async_trait;
 
 use crate::{api::{controller::ControllerCallback, Controller, Cursor}, errors::ControllerResult};
 use codemp_proto::cursor::CursorPosition;
@@ -26,7 +25,7 @@ pub(crate) struct CursorControllerInner {
 	pub(crate) stop: mpsc::UnboundedSender<()>,
 }
 
-#[async_trait]
+#[cfg_attr(feature = "async-trait", async_trait::async_trait)]
 impl Controller<Cursor> for CursorController {
 	async fn send(&self, mut cursor: Cursor) -> ControllerResult<()> {
 		if cursor.start > cursor.end {

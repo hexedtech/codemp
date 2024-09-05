@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use diamond_types::LocalVersion;
 use tokio::sync::{mpsc, oneshot, watch};
-use tonic::{async_trait, Streaming};
+use tonic::Streaming;
 use uuid::Uuid;
 
 use crate::api::controller::{ControllerCallback, ControllerWorker};
@@ -71,7 +71,6 @@ impl BufferWorker {
 	}
 }
 
-#[async_trait]
 impl ControllerWorker<TextChange> for BufferWorker {
 	type Controller = BufferController;
 	type Tx = mpsc::Sender<Operation>;

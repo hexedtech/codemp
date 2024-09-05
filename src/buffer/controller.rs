@@ -5,7 +5,6 @@ use std::sync::Arc;
 
 use diamond_types::LocalVersion;
 use tokio::sync::{mpsc, oneshot, watch};
-use tonic::async_trait;
 
 use crate::api::controller::{Controller, ControllerCallback};
 use crate::api::TextChange;
@@ -54,7 +53,7 @@ pub(crate) struct BufferControllerInner {
 	pub(crate) callback: watch::Sender<Option<ControllerCallback<BufferController>>>,
 }
 
-#[async_trait]
+#[cfg_attr(feature = "async-trait", async_trait::async_trait)]
 impl Controller<TextChange> for BufferController {
 	async fn poll(&self) -> ControllerResult<()> {
 		if self.0.last_update.get() != *self.0.latest_version.borrow() {
