@@ -71,7 +71,16 @@ Refer to specific language documentation for specifics, differences and quirks.
 Any other language with C FFI capabilities will be able to use `codemp` via its bare C bindings.
 This may be more complex and may require wrapping the native calls underneath.
 
-# Contributing
+# Get in Touch
+We love to hear back from users! Be it to give feedback, propose new features or highlight bugs, don't hesitate to reach out!
+
+## Contacts
+We have a public [Gitter](https://gitter.im) room available on [gitter.im/hexedtech/codemp](https://gitter.im/hexedtech/codemp).
+It's possible to freely browse the room history, but to send new messages it will be necessary to sign in with your GitHub account.
+
+If you have a [Matrix](https://matrix.org) account, you can join the gitter room directly at [#hexedtech_codemp:gitter.im](https://matrix.to/#/#hexedtech_codemp:gitter.im)
+
+## Contributing
 If you find bugs or would like to see new features implemented, be sure to open an issue on this repository.
 
 > [!WARNING]
