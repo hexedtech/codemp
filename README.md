@@ -18,7 +18,7 @@ The full documentation is available on [docs.rs](https://docs.rs/codemp).
 `codemp` is primarily used as a plugin in your editor of choice.
 
 ## Installation
-> [!WARNING]
+> [!IMPORTANT]
 > The editor plugins are in active development. Expect frequent changes.
 
 `codemp` is available as a plugin for a growing number of text editors. Currently we support:
@@ -57,7 +57,7 @@ As a design philosophy, our binding APIs attempt to perfectly mimic their Rust c
 Refer to specific language documentation for specifics, differences and quirks.
 
 ### From other languages
-> [!WARNING]
+> [!IMPORTANT]
 > The common C bindings are not available yet!
 
 Any other language with C FFI capabilities will be able to use `codemp` via its bare C bindings.
