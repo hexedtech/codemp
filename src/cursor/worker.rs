@@ -2,14 +2,16 @@ use std::sync::Arc;
 
 use tokio::sync::{mpsc, oneshot, watch};
 use tonic::Streaming;
+use uuid::Uuid;
 
-use crate::{api::{controller::{ControllerCallback, ControllerWorker}, Cursor}, ext::IgnorableError};
+use crate::{api::{controller::{ControllerCallback, ControllerWorker}, Cursor, User}, ext::IgnorableError};
 use codemp_proto::cursor::{CursorPosition, CursorEvent};
 
 use super::controller::{CursorController, CursorControllerInner};
 
 pub(crate) struct CursorWorker {
 	op: mpsc::Receiver<CursorPosition>,
+	map: Arc<dashmap::DashMap<Uuid, User>>,
 	stream: mpsc::Receiver<oneshot::Sender<Option<Cursor>>>,
 	poll: mpsc::UnboundedReceiver<oneshot::Sender<()>>,
 	pollers: Vec<oneshot::Sender<()>>,
@@ -19,15 +21,10 @@ pub(crate) struct CursorWorker {
 	callback: watch::Receiver<Option<ControllerCallback<CursorController>>>,
 }
 
-impl Default for CursorWorker {
-	fn default() -> Self {
-		Self::new(64)
-	}
-}
-
 impl CursorWorker {
-	fn new(buffer_size: usize) -> Self {
-		let (op_tx, op_rx) = mpsc::channel(buffer_size);
+	pub fn new(user_map: Arc<dashmap::DashMap<Uuid, User>>) -> Self {
+		// TODO we should tweak the channel buffer size to better propagate backpressure
+		let (op_tx, op_rx) = mpsc::channel(64);
 		let (stream_tx, stream_rx) = mpsc::channel(1);
 		let (end_tx, end_rx) = mpsc::unbounded_channel();
 		let (cb_tx, cb_rx) = watch::channel(None);
@@ -41,6 +38,7 @@ impl CursorWorker {
 		};
 		Self {
 			op: op_rx,
+			map: user_map,
 			stream: stream_rx,
 			store: std::collections::VecDeque::default(),
 			stop: end_rx,
@@ -82,7 +80,17 @@ impl ControllerWorker<Cursor> for CursorWorker {
 				// server sents us a cursor
 				Ok(Some(cur)) = rx.message() => {
 					tracing::debug!("received cursor from server");
-					self.store.push_back(cur.into());
+					let mut cursor = Cursor {
+						buffer: cur.position.buffer.path,
+						start: (cur.position.start.row, cur.position.start.col),
+						end: (cur.position.end.row, cur.position.end.col),
+						user: None,
+					};
+					let user_id = Uuid::from(cur.user);
+					if let Some(user) = self.map.get(&user_id) {
+						cursor.user = Some(user.name.clone());
+					}
+					self.store.push_back(cursor);
 					for tx in self.pollers.drain(..) {
 						tx.send(()).unwrap_or_warn("poller dropped before unblocking");
 					}

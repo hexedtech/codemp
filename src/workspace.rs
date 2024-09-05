@@ -44,7 +44,7 @@ struct WorkspaceInner {
 	cursor: cursor::Controller,
 	buffers: DashMap<String, buffer::Controller>,
 	filetree: DashSet<String>,
-	users: DashMap<Uuid, User>,
+	users: Arc<DashMap<Uuid, User>>,
 	services: Services,
 	// TODO can we drop the mutex?
 	events: tokio::sync::Mutex<mpsc::UnboundedReceiver<crate::api::Event>>,
@@ -70,7 +70,9 @@ impl Workspace {
 			.await?
 			.into_inner();
 
-		let worker = CursorWorker::default();
+		let users = Arc::new(DashMap::default());
+
+		let worker = CursorWorker::new(users.clone());
 		let controller = worker.controller();
 		tokio::spawn(async move {
 			tracing::debug!("controller worker started");
@@ -84,7 +86,7 @@ impl Workspace {
 			cursor: controller,
 			buffers: DashMap::default(),
 			filetree: DashSet::default(),
-			users: DashMap::default(),
+			users,
 			events: tokio::sync::Mutex::new(ev_rx),
 			services,
 		}));
