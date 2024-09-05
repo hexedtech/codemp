@@ -1,6 +1,4 @@
-# codemp
-<p align="center"><a href="https://codemp.dev"><img alt="codemp logo" src="https://codemp.dev/static/codemp-banner.png" height="100"/></a></p>
-<!-- I know it's not going to work on a lot of markdown renderers, but it'll look alright even if it's rendered on the right. -->
+[![codemp](https://codemp.dev/static/codemp-banner.png)](https://codemp.dev)
 
 > `codemp` is a **collaborative** text editing solution to work remotely.
 
