@@ -22,7 +22,7 @@ impl From<JsCursor> for crate::api::Cursor {
 			start : (value.start_row, value.start_col),
 			end:  (value.end_row, value.end_col),
 			buffer: value.buffer,
-			user: value.user.map(|x| uuid::Uuid::parse_str(&x).expect("invalid uuid")),
+			user: value.user,
 		}
 	}
 }
@@ -73,7 +73,7 @@ impl CursorController {
 	#[napi(js_name= "try_recv")]
 	pub async fn js_try_recv(&self) -> napi::Result<Option<JsCursor>> {
 		Ok(self.try_recv().await?
-		.map(|x| JsCursor::from(x)))
+		.map(JsCursor::from))
 	}
 
 	#[napi(js_name= "recv")]

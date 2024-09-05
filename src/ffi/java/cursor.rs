@@ -92,10 +92,10 @@ pub extern "system" fn Java_mp_code_CursorController_send<'local>(
 	let user = if user.is_null() {
 		None
 	} else {
-		let user: String = env.get_string(&user)
+		Some(env.get_string(&user)
 			.map(|u| u.into())
-			.jexcept(&mut env);
-		Some(uuid::Uuid::parse_str(&user).jexcept(&mut env))
+			.jexcept(&mut env)
+		)
 	};
 
 	let controller = unsafe { Box::leak(Box::from_raw(self_ptr as *mut crate::cursor::Controller)) };

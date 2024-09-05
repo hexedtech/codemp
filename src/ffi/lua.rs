@@ -52,6 +52,7 @@ fn tokio() -> &'static tokio::runtime::Runtime {
 }
 
 // TODO cannot do Box<dyn IntoLuaMulti> ?? maybe its temporary because im using betas
+#[allow(unused)] // TODO pass callback args!
 enum CallbackArg {
 	CursorController(CodempCursorController),
 	BufferController(CodempBufferController),
@@ -351,7 +352,7 @@ impl LuaUserData for Cursor {
 	}
 
 	fn add_fields<'lua, F: LuaUserDataFields<'lua, Self>>(fields: &mut F) {
-		fields.add_field_method_get("user", |_, this| Ok(this.user.map(|x| x.to_string())));
+		fields.add_field_method_get("user", |_, this| Ok(this.user.clone()));
 		fields.add_field_method_get("buffer", |_, this| Ok(this.buffer.clone()));
 		fields.add_field_method_get("start",  |_, this| Ok(RowCol::from(this.start)));
 		fields.add_field_method_get("finish", |_, this| Ok(RowCol::from(this.end)));

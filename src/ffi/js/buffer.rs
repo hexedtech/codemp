@@ -35,7 +35,7 @@ impl BufferController {
 
 	#[napi(js_name = "get_path")]
 	pub fn js_path(&self) -> napi::Result<&str> {
-		Ok(&self.path())
+		Ok(self.path())
 	}
 
 	#[napi(js_name = "poll")]
@@ -50,7 +50,7 @@ impl BufferController {
 
 	#[napi(js_name = "recv")]
 	pub async fn js_recv(&self) -> napi::Result<TextChange> {
-		Ok(self.recv().await?.into())
+		Ok(self.recv().await?)
 	}
 
 	#[napi(js_name = "send")]

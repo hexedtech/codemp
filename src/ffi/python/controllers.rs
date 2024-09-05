@@ -160,6 +160,6 @@ impl Cursor {
 
 	#[getter(user)]
 	fn pyuser(&self) -> Option<String> {
-		self.user.map(|user| user.to_string())
+		self.user.clone()
 	}
 }
