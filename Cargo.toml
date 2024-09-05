@@ -2,6 +2,7 @@
 name = "codemp"
 description = "codemp -- code multiplexer"
 homepage = "https://codemp.dev"
+repository = "https://github.com/hexedtech/codemp"
 authors = [
 	"alemi <me@alemi.dev>",
 	"zaaarf <me@zaaarf.foo>",
