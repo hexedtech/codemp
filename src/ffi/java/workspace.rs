@@ -3,7 +3,7 @@ use crate::Workspace;
 
 use super::{JExceptable, JObjectify, RT};
 
-/// Gets the workspace id.
+/// Get the workspace id.
 #[no_mangle]
 pub extern "system" fn Java_mp_code_Workspace_get_1workspace_1id<'local>(
 	mut env: JNIEnv<'local>,
@@ -14,7 +14,7 @@ pub extern "system" fn Java_mp_code_Workspace_get_1workspace_1id<'local>(
 	env.new_string(workspace.id()).jexcept(&mut env).as_raw()
 }
 
-/// Gets a cursor controller by name and returns a pointer to it.
+/// Get a cursor controller by name and returns a pointer to it.
 #[no_mangle]
 pub extern "system" fn Java_mp_code_Workspace_get_1cursor<'local>(
 	mut env: JNIEnv<'local>,
@@ -27,7 +27,7 @@ pub extern "system" fn Java_mp_code_Workspace_get_1cursor<'local>(
 	).jexcept(&mut env).as_raw()
 }
 
-/// Gets a buffer controller by name and returns a pointer to it.
+/// Get a buffer controller by name and returns a pointer to it.
 #[no_mangle]
 pub extern "system" fn Java_mp_code_Workspace_get_1buffer<'local>(
 	mut env: JNIEnv<'local>,
@@ -47,7 +47,7 @@ pub extern "system" fn Java_mp_code_Workspace_get_1buffer<'local>(
 	}).unwrap_or_default().as_raw()
 }
 
-/// Creates a new buffer.
+/// Create a new buffer.
 #[no_mangle]
 pub extern "system" fn Java_mp_code_Workspace_create_1buffer<'local>(
 	mut env: JNIEnv,
@@ -63,7 +63,7 @@ pub extern "system" fn Java_mp_code_Workspace_create_1buffer<'local>(
 		.jexcept(&mut env);
 }
 
-/// Gets the filetree.
+/// Get the filetree.
 #[no_mangle]
 pub extern "system" fn Java_mp_code_Workspace_get_1file_1tree(
 	mut env: JNIEnv,
@@ -95,7 +95,7 @@ pub extern "system" fn Java_mp_code_Workspace_get_1file_1tree(
 		}).jexcept(&mut env).as_raw()
 }
 
-/// Attaches to a buffer and returns a pointer to its [crate::buffer::Controller].
+/// Attach to a buffer and return a pointer to its [crate::buffer::Controller].
 #[no_mangle]
 pub extern "system" fn Java_mp_code_Workspace_attach_1to_1buffer<'local>(
 	mut env: JNIEnv,
@@ -116,6 +116,7 @@ pub extern "system" fn Java_mp_code_Workspace_attach_1to_1buffer<'local>(
 		}).jexcept(&mut env).as_raw()
 }
 
+/// Detach from a buffer.
 #[no_mangle]
 pub extern "system" fn Java_mp_code_Workspace_detach_1from_1buffer<'local>(
 	mut env: JNIEnv,
@@ -128,9 +129,9 @@ pub extern "system" fn Java_mp_code_Workspace_detach_1from_1buffer<'local>(
 		.map(|path| path.to_string_lossy().to_string())
 		.jexcept(&mut env);
 	let name = match workspace.detach(&path) {
-		crate::workspace::worker::DetachResult::NotAttached => "NOT_ATTACHED",
-		crate::workspace::worker::DetachResult::Detaching => "DETACHED",
-		crate::workspace::worker::DetachResult::AlreadyDetached => "ALREADY_DETACHED"
+		crate::workspace::DetachResult::NotAttached => "NOT_ATTACHED",
+		crate::workspace::DetachResult::Detaching => "DETACHED",
+		crate::workspace::DetachResult::AlreadyDetached => "ALREADY_DETACHED"
 	};
 
 	env.find_class("mp/code/data/DetachResult")
@@ -140,7 +141,7 @@ pub extern "system" fn Java_mp_code_Workspace_detach_1from_1buffer<'local>(
 		.as_raw()
 }
 
-/// Updates the local buffer list.
+/// Update the local buffer list.
 #[no_mangle]
 pub extern "system" fn Java_mp_code_Workspace_fetch_1buffers(
 	mut env: JNIEnv,
@@ -151,7 +152,7 @@ pub extern "system" fn Java_mp_code_Workspace_fetch_1buffers(
 	RT.block_on(workspace.fetch_buffers()).jexcept(&mut env);
 }
 
-/// Updates the local user list.
+/// Update the local user list.
 #[no_mangle]
 pub extern "system" fn Java_mp_code_Workspace_fetch_1users(
 	mut env: JNIEnv,
@@ -162,7 +163,7 @@ pub extern "system" fn Java_mp_code_Workspace_fetch_1users(
 	RT.block_on(workspace.fetch_users()).jexcept(&mut env);
 }
 
-/// Lists users attached to a buffer.
+/// List users attached to a buffer.
 #[no_mangle]
 pub extern "system" fn Java_mp_code_Workspace_list_1buffer_1users<'local>(
 	mut env: JNIEnv,
@@ -189,7 +190,7 @@ pub extern "system" fn Java_mp_code_Workspace_list_1buffer_1users<'local>(
 		}).jexcept(&mut env).as_raw()
 }
 
-/// Deletes a buffer.
+/// Delete a buffer.
 #[no_mangle]
 pub extern "system" fn Java_mp_code_Workspace_delete_1buffer<'local>(
 	mut env: JNIEnv,
@@ -201,10 +202,11 @@ pub extern "system" fn Java_mp_code_Workspace_delete_1buffer<'local>(
 	let buffer = unsafe { env.get_string_unchecked(&input) }
 		.map(|buffer| buffer.to_string_lossy().to_string())
 		.jexcept(&mut env);
-	RT.block_on(workspace.delete(&buffer)).jexcept(&mut env);
+	RT.block_on(workspace.delete(&buffer))
+		.jexcept(&mut env);
 }
 
-/// Receives a workspace event if present.
+/// Receive a workspace event if present.
 #[no_mangle]
 pub extern "system" fn Java_mp_code_Workspace_event(
 	mut env: JNIEnv,
@@ -236,7 +238,7 @@ pub extern "system" fn Java_mp_code_Workspace_event(
 		}).jexcept(&mut env).as_raw()
 }
 
-/// Polls a list of buffers, returning the first ready one.
+/// Poll a list of buffers, returning the first ready one.
 #[no_mangle]
 pub extern "system" fn Java_mp_code_Workspace_select_1buffer(
 	mut env: JNIEnv,

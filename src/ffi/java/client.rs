@@ -3,7 +3,7 @@ use crate::{client::Client, Workspace};
 
 use super::{JExceptable, RT};
 
-/// Connects to a given URL and returns a [Client] to interact with that server.
+/// Connect to a given URL and return a [Client] to interact with that server.
 #[no_mangle]
 pub extern "system" fn Java_mp_code_Client_connect<'local>(
 	mut env: JNIEnv,
@@ -30,7 +30,7 @@ pub extern "system" fn Java_mp_code_Client_connect<'local>(
 		}).jexcept(&mut env).as_raw()
 }
 
-/// Joins a [Workspace] and returns a pointer to it.
+/// Join a [Workspace] and return a pointer to it.
 #[no_mangle]
 pub extern "system" fn Java_mp_code_Client_join_1workspace<'local>(
 	mut env: JNIEnv<'local>,
@@ -52,7 +52,7 @@ pub extern "system" fn Java_mp_code_Client_join_1workspace<'local>(
 		}).jexcept(&mut env).as_raw()
 }
 
-/// Creates a workspace on server, if allowed to
+/// Create a workspace on server, if allowed to.
 #[no_mangle]
 pub extern "system" fn Java_mp_code_Client_create_1workspace<'local>(
 	mut env: JNIEnv<'local>,
@@ -69,7 +69,7 @@ pub extern "system" fn Java_mp_code_Client_create_1workspace<'local>(
 		.jexcept(&mut env);
 }
 
-/// Deletes a workspace on server, if allowed to
+/// Delete a workspace on server, if allowed to.
 #[no_mangle]
 pub extern "system" fn Java_mp_code_Client_delete_1workspace<'local>(
 	mut env: JNIEnv<'local>,
@@ -86,7 +86,7 @@ pub extern "system" fn Java_mp_code_Client_delete_1workspace<'local>(
 		.jexcept(&mut env);
 }
 
-/// Invites another user to an owned workspace
+/// Invite another user to an owned workspace.
 #[no_mangle]
 pub extern "system" fn Java_mp_code_Client_invite_1to_1workspace<'local>(
 	mut env: JNIEnv<'local>,
@@ -107,7 +107,7 @@ pub extern "system" fn Java_mp_code_Client_invite_1to_1workspace<'local>(
 		.jexcept(&mut env);
 }
 
-/// List available workspaces
+/// List available workspaces.
 #[no_mangle]
 pub extern "system" fn Java_mp_code_Client_list_1workspaces<'local>(
 	mut env: JNIEnv<'local>,
@@ -146,7 +146,7 @@ fn spawn_updater(workspace: Workspace) -> Workspace {
 	workspace
 }
 
-/// Leaves a [Workspace] and returns whether or not the client was in such workspace.
+/// Leave a [Workspace] and return whether or not the client was in such workspace.
 #[no_mangle]
 pub extern "system" fn Java_mp_code_Client_leave_1workspace<'local>(
 	mut env: JNIEnv<'local>,
@@ -161,7 +161,7 @@ pub extern "system" fn Java_mp_code_Client_leave_1workspace<'local>(
 		.jexcept(&mut env)
 }
 
-/// Gets a [Workspace] by name and returns a pointer to it.
+/// Get a [Workspace] by name and returns a pointer to it.
 #[no_mangle]
 pub extern "system" fn Java_mp_code_Client_get_1workspace<'local>(
 	mut env: JNIEnv<'local>,
@@ -182,7 +182,7 @@ pub extern "system" fn Java_mp_code_Client_get_1workspace<'local>(
 		}).unwrap_or_default().as_raw()
 }
 
-/// Refresh client's session token
+/// Refresh the client's session token.
 #[no_mangle]
 pub extern "system" fn Java_mp_code_Client_refresh<'local>(
 	mut env: JNIEnv<'local>,
@@ -190,10 +190,11 @@ pub extern "system" fn Java_mp_code_Client_refresh<'local>(
 	self_ptr: jlong,
 ) {
 	let client = unsafe { Box::leak(Box::from_raw(self_ptr as *mut Client)) };
-	RT.block_on(client.refresh()).jexcept(&mut env);
+	RT.block_on(client.refresh())
+		.jexcept(&mut env);
 }
 
-/// Sets up the tracing subscriber.
+/// Set up the tracing subscriber.
 #[no_mangle]
 pub extern "system" fn Java_mp_code_Client_setup_1tracing<'local>(
 	mut env: JNIEnv,

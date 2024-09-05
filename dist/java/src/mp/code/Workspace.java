@@ -4,7 +4,9 @@ import java.util.Optional;
 import java.util.UUID;
 
 import mp.code.data.DetachResult;
-import mp.code.exceptions.CodeMPException;
+import mp.code.exceptions.ConnectionException;
+import mp.code.exceptions.ConnectionRemoteException;
+import mp.code.exceptions.ControllerException;
 
 public class Workspace {
 	private final long ptr;
@@ -33,13 +35,13 @@ public class Workspace {
 		return get_file_tree(this.ptr, filter.orElse(null));
 	}
 
-	private static native void create_buffer(String path) throws CodeMPException;
-	public void createBuffer(String path) throws CodeMPException {
+	private static native void create_buffer(String path) throws ConnectionRemoteException;
+	public void createBuffer(String path) throws ConnectionRemoteException {
 		create_buffer(path);
 	}
 
-	private static native BufferController attach_to_buffer(long self, String path) throws CodeMPException;
-	public BufferController attachToBuffer(String path) throws CodeMPException {
+	private static native BufferController attach_to_buffer(long self, String path) throws ConnectionException;
+	public BufferController attachToBuffer(String path) throws ConnectionException {
 		return attach_to_buffer(ptr, path);
 	}
 
@@ -48,33 +50,33 @@ public class Workspace {
 		return detach_from_buffer(this.ptr, path);
 	}
 
-	private static native void fetch_buffers(long self) throws CodeMPException;
-	public void fetchBuffers() throws CodeMPException {
+	private static native void fetch_buffers(long self) throws ConnectionRemoteException;
+	public void fetchBuffers() throws ConnectionRemoteException {
 		fetch_buffers(this.ptr);
 	}
 
-	private static native void fetch_users(long self) throws CodeMPException;
-	public void fetchUsers() throws CodeMPException {
+	private static native void fetch_users(long self) throws ConnectionRemoteException;
+	public void fetchUsers() throws ConnectionRemoteException {
 		fetch_buffers(this.ptr);
 	}
 
-	private static native UUID[] list_buffer_users(long self, String path) throws CodeMPException;
-	public UUID[] listBufferUsers(String path) throws CodeMPException {
+	private static native UUID[] list_buffer_users(long self, String path) throws ConnectionRemoteException;
+	public UUID[] listBufferUsers(String path) throws ConnectionRemoteException {
 		return list_buffer_users(this.ptr, path);
 	}
 
-	private static native void delete_buffer(long self, String path) throws CodeMPException;
-	public void deleteBuffer(String path) throws CodeMPException {
+	private static native void delete_buffer(long self, String path) throws ConnectionRemoteException;
+	public void deleteBuffer(String path) throws ConnectionRemoteException {
 		delete_buffer(this.ptr, path);
 	}
 
-	private static native Event event(long self) throws CodeMPException;
-	public Event event() throws CodeMPException {
+	private static native Event event(long self) throws ControllerException;
+	public Event event() throws ControllerException {
 		return event(this.ptr);
 	}
 
-	private static native BufferController select_buffer(long self, long timeout) throws CodeMPException;
-	public Optional<BufferController> selectBuffer(long timeout) throws CodeMPException {
+	private static native BufferController select_buffer(long self, long timeout) throws ControllerException;
+	public Optional<BufferController> selectBuffer(long timeout) throws ControllerException {
 		return Optional.ofNullable(select_buffer(this.ptr, timeout));
 	}
 

@@ -16,7 +16,7 @@ lazy_static::lazy_static! {
 	pub(crate) static ref RT: tokio::runtime::Runtime = tokio::runtime::Runtime::new().expect("could not create tokio runtime");
 }
 
-/// Sets up logging. Useful for debugging.
+/// Set up logging. Useful for debugging.
 pub(crate) fn setup_logger(debug: bool, path: Option<String>) {
 	let format = tracing_subscriber::fmt::format()
 		.with_level(true)
@@ -43,23 +43,44 @@ pub(crate) fn setup_logger(debug: bool, path: Option<String>) {
 	}
 }
 
-/// A trait meant for our [crate::Result] type to make converting it to Java easier.
+/// A trait meant for our local result type to make converting it to Java easier.
 /// jni-rs technically has [jni::errors::ToException], but this approach keeps it stream-like.
 pub(crate) trait JExceptable<T> {
-	/// Unwraps it and throws an appropriate Java exception if it's an error.
+	/// Unwrap it and throws an appropriate Java exception if it's an error.
 	/// Theoretically it returns the type's default value, but the exception makes the value ignored.
 	fn jexcept(self, env: &mut jni::JNIEnv) -> T;
 }
 
-impl<T> JExceptable<T> for crate::Result<T> where T: Default {
+impl<T> JExceptable<T> for crate::errors::ConnectionResult<T> where T: Default {
 	fn jexcept(self, env: &mut jni::JNIEnv) -> T {
 		if let Err(err) = &self {
 			let msg = format!("{err}");
 			match err {
-				crate::Error::InvalidState { .. } => env.throw_new("mp/code/exceptions/InvalidStateException", msg),
-				crate::Error::Deadlocked => env.throw_new("mp/code/exceptions/DeadlockedException", msg),
-				crate::Error::Transport { .. } => env.throw_new("mp/code/exceptions/TransportException", msg),
-				crate::Error::Channel { .. } => env.throw_new("mp/code/exceptions/ChannelException", msg)
+				crate::errors::ConnectionError::Transport(_) => env.throw_new("mp/code/exceptions/ConnectionTransportException", msg),
+				crate::errors::ConnectionError::Remote(_) => env.throw_new("mp/code/exceptions/ConnectionRemoteException", msg),
+			}.jexcept(env);
+		}
+		self.unwrap_or_default()
+	}
+}
+
+impl<T> JExceptable<T> for crate::errors::RemoteResult<T> where T: Default {
+	fn jexcept(self, env: &mut jni::JNIEnv) -> T {
+		if let Err(err) = &self {
+			let msg = format!("{err}");
+			env.throw_new("mp/code/exceptions/connection/RemoteException", msg).jexcept(env);
+		}
+		self.unwrap_or_default()
+	}
+}
+
+impl<T> JExceptable<T> for crate::errors::ControllerResult<T> where T: Default {
+	fn jexcept(self, env: &mut jni::JNIEnv) -> T {
+		if let Err(err) = &self {
+			let msg = format!("{err}");
+			match err {
+				crate::errors::ControllerError::Stopped => env.throw_new("mp/code/exceptions/ControllerStoppedException", msg),
+				crate::errors::ControllerError::Unfulfilled => env.throw_new("mp/code/exceptions/ControllerUnfulfilledException", msg),
 			}.jexcept(env);
 		}
 		self.unwrap_or_default()
@@ -94,7 +115,7 @@ pub(crate) trait JObjectify<'local> {
 	/// The error type, likely to be [jni::errors::Error].
 	type Error;
 
-	/// Attempts to convert the given object to a [jni::objects::JObject].
+	/// Attempt to convert the given object to a [jni::objects::JObject].
 	fn jobjectify(self, env: &mut jni::JNIEnv<'local>) -> Result<jni::objects::JObject<'local>, Self::Error>;
 }
 

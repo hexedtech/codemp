@@ -1,7 +1,8 @@
 package mp.code;
 
 import cz.adamh.utils.NativeUtils;
-import mp.code.exceptions.CodeMPException;
+import mp.code.exceptions.ConnectionException;
+import mp.code.exceptions.ConnectionRemoteException;
 
 import java.io.IOException;
 import java.util.Optional;
@@ -9,7 +10,7 @@ import java.util.Optional;
 public class Client {
 	private final long ptr;
 
-	public static native Client connect(String url, String username, String password) throws CodeMPException;
+	public static native Client connect(String url, String username, String password) throws ConnectionException;
 	Client(long ptr) {
 		this.ptr = ptr;
 	}
@@ -19,28 +20,28 @@ public class Client {
 		return get_url(this.ptr);
 	}
 
-	private static native Workspace join_workspace(long self, String id) throws CodeMPException;
-	public Workspace joinWorkspace(String id) throws CodeMPException {
+	private static native Workspace join_workspace(long self, String id) throws ConnectionException;
+	public Workspace joinWorkspace(String id) throws ConnectionException {
 		return join_workspace(this.ptr, id);
 	}
 
-	private static native void create_workspace(long self, String id) throws CodeMPException;
-	public void createWorkspace(String id) throws CodeMPException {
-		return create_workspace(this.ptr, id);
+	private static native void create_workspace(long self, String id) throws ConnectionRemoteException;
+	public void createWorkspace(String id) throws ConnectionRemoteException {
+		create_workspace(this.ptr, id);
 	}
 
-	private static native void delete_workspace(long self, String id) throws CodeMPException;
-	public void deleteWorkspace(String id) throws CodeMPException {
-		return delete_workspace(this.ptr, id);
+	private static native void delete_workspace(long self, String id) throws ConnectionRemoteException;
+	public void deleteWorkspace(String id) throws ConnectionRemoteException {
+		delete_workspace(this.ptr, id);
 	}
 
-	private static native void invite_to_workspace(long self, String ws, String usr) throws CodeMPException;
-	public void inviteToWorkspace(String ws, String usr) throws CodeMPException {
-		return invite_to_workspace(this.ptr, id);
+	private static native void invite_to_workspace(long self, String ws, String usr) throws ConnectionRemoteException;
+	public void inviteToWorkspace(String ws, String usr) throws ConnectionRemoteException {
+		invite_to_workspace(this.ptr, ws, usr);
 	}
 
-	private static native String[] list_workspaces(long self, boolean owned, boolean invited) throws CodeMPException;
-	public String[] listWorkspaces(boolean owned, boolean invited) throws CodeMPException {
+	private static native String[] list_workspaces(long self, boolean owned, boolean invited) throws ConnectionRemoteException;
+	public String[] listWorkspaces(boolean owned, boolean invited) throws ConnectionRemoteException {
 		return list_workspaces(this.ptr, owned, invited);
 	}
 
@@ -54,9 +55,9 @@ public class Client {
 		return Optional.ofNullable(get_workspace(this.ptr));
 	}
 
-	private static native void refresh_native(long self);
-	public void refresh() {
-		return refresh_native(this.ptr);
+	private static native void refresh_native(long self) throws ConnectionRemoteException;
+	public void refresh() throws ConnectionRemoteException {
+		refresh_native(this.ptr);
 	}
 	
 	private static native void free(long self);

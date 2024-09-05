@@ -2,7 +2,7 @@ use jni::{objects::{JClass, JString}, sys::jlong, JNIEnv};
 
 use super::JExceptable;
 
-/// Calculates the XXH3 hash for a given String.
+/// Calculate the XXH3 hash for a given String.
 #[no_mangle]
 pub extern "system" fn Java_mp_code_Utils_hash<'local>(
 	mut env: JNIEnv,

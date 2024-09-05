@@ -2,7 +2,7 @@ package mp.code;
 
 import mp.code.data.Cursor;
 import mp.code.data.TextChange;
-import mp.code.exceptions.CodeMPException;
+import mp.code.exceptions.ControllerException;
 
 import java.util.Optional;
 
@@ -18,23 +18,23 @@ public class BufferController {
 		return get_name(this.ptr);
 	}
 
-	private static native String get_content(long self) throws CodeMPException;
-	public String getContent() throws CodeMPException {
+	private static native String get_content(long self) throws ControllerException;
+	public String getContent() throws ControllerException {
 		return get_content(this.ptr);
 	}
 
-	private static native TextChange try_recv(long self) throws CodeMPException;
-	public Optional<TextChange> tryRecv() throws CodeMPException {
+	private static native TextChange try_recv(long self) throws ControllerException;
+	public Optional<TextChange> tryRecv() throws ControllerException {
 		return Optional.ofNullable(try_recv(this.ptr));
 	}
 
-	private static native Cursor recv(long self) throws CodeMPException;
-	public Cursor recv() throws CodeMPException {
+	private static native Cursor recv(long self) throws ControllerException;
+	public Cursor recv() throws ControllerException {
 		return recv(this.ptr);
 	}
 
-	private static native void send(long self, TextChange change) throws CodeMPException;
-	public void send(TextChange change) throws CodeMPException {
+	private static native void send(long self, TextChange change) throws ControllerException;
+	public void send(TextChange change) throws ControllerException {
 		send(this.ptr, change);
 	}
 

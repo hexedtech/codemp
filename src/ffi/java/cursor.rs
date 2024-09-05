@@ -3,7 +3,7 @@ use crate::api::Controller;
 
 use super::{JExceptable, RT};
 
-/// Tries to fetch a [crate::api::Cursor], or returns null if there's nothing.
+/// Try to fetch a [crate::api::Cursor], or returns null if there's nothing.
 #[no_mangle]
 pub extern "system" fn Java_mp_code_CursorController_try_1recv(
 	mut env: JNIEnv,
@@ -15,7 +15,7 @@ pub extern "system" fn Java_mp_code_CursorController_try_1recv(
 	jni_recv(&mut env, cursor)
 }
 
-/// Blocks until it receives a [crate::api::Cursor].
+/// Block until it receives a [crate::api::Cursor].
 #[no_mangle]
 pub extern "system" fn Java_mp_code_CursorController_recv(
 	mut env: JNIEnv,
@@ -56,7 +56,7 @@ fn jni_recv(env: &mut JNIEnv, cursor: Option<crate::api::Cursor>) -> jobject {
 	}.as_raw()
 }
 
-/// Receives from Java, converts and sends a [crate::api::Cursor].
+/// Receive from Java, converts and sends a [crate::api::Cursor].
 #[no_mangle]
 pub extern "system" fn Java_mp_code_CursorController_send<'local>(
 	mut env: JNIEnv,
