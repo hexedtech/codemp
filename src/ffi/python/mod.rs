@@ -195,20 +195,21 @@ fn set_logger(logging_cb: Py<PyFunction>, debug: bool) -> bool {
 	log_subscribed
 }
 
-impl From<crate::Error> for PyErr {
-	fn from(value: crate::Error) -> Self {
-		match value {
-			crate::Error::Transport { status, message } => {
-				PyConnectionError::new_err(format!("Transport error: ({}) {}", status, message))
-			}
-			crate::Error::Channel { send } => {
-				PyConnectionError::new_err(format!("Channel error (send:{})", send))
-			}
-			crate::Error::InvalidState { msg } => {
-				PyRuntimeError::new_err(format!("Invalid state: {}", msg))
-			}
-			crate::Error::Deadlocked => PyRuntimeError::new_err("Deadlock, retry."),
-		}
+impl From<crate::errors::ConnectionError> for PyErr {
+	fn from(value: crate::errors::ConnectionError) -> Self {
+		PyConnectionError::new_err(format!("Connection error: {value}")) 
+	}
+}
+
+impl From<crate::errors::RemoteError> for PyErr {
+	fn from(value: crate::errors::RemoteError) -> Self {
+		PyRuntimeError::new_err(format!("Remote error: {value}"))
+	}
+}
+
+impl From<crate::errors::ControllerError> for PyErr {
+	fn from(value: crate::errors::ControllerError) -> Self {
+		PyRuntimeError::new_err(format!("Controller error: {value}"))
 	}
 }
 

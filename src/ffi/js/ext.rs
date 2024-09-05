@@ -1,5 +1,5 @@
 use napi_derive::napi;
-use crate::hash;
+use crate::ext::hash;
 
 
 #[napi(js_name = "hash")]

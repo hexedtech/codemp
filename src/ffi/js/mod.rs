@@ -10,13 +10,21 @@ pub mod op_cache;
 pub mod ext;
 
 
-impl From<crate::Error> for napi::Error {
-	fn from(value: crate::Error) -> Self {
-		let msg = format!("{value}");
-		match value {
-			crate::Error::Deadlocked => napi::Error::new(napi::Status::WouldDeadlock, msg),
-			_ => napi::Error::new(napi::Status::GenericFailure, msg),
-		}
+impl From<crate::errors::ConnectionError> for napi::Error {
+	fn from(value: crate::errors::ConnectionError) -> Self {
+		napi::Error::new(napi::Status::GenericFailure, format!("{value}"))
+	}
+}
+
+impl From<crate::errors::RemoteError> for napi::Error {
+	fn from(value: crate::errors::RemoteError) -> Self {
+		napi::Error::new(napi::Status::GenericFailure, format!("{value}"))
+	}
+}
+
+impl From<crate::errors::ControllerError> for napi::Error {
+	fn from(value: crate::errors::ControllerError) -> Self {
+		napi::Error::new(napi::Status::GenericFailure, format!("{value}"))
 	}
 }
 

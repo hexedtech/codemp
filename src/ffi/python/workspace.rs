@@ -24,9 +24,9 @@ impl Workspace {
 	#[pyo3(name = "detach")]
 	fn pydetach(&self, path: String) -> bool {
 		match self.detach(path.as_str()) {
-			crate::workspace::worker::DetachResult::NotAttached => false,
-			crate::workspace::worker::DetachResult::Detaching => true,
-			crate::workspace::worker::DetachResult::AlreadyDetached => true,
+			crate::workspace::DetachResult::NotAttached => false,
+			crate::workspace::DetachResult::Detaching => true,
+			crate::workspace::DetachResult::AlreadyDetached => true,
 		}
 	}
 

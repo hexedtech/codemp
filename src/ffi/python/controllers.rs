@@ -74,9 +74,9 @@ impl CursorController {
 // need to do manually since Controller is a trait implementation
 #[pymethods]
 impl BufferController {
-	#[pyo3(name = "name")]
-	fn pyname(&self) -> String {
-		self.name().to_string()
+	#[pyo3(name = "path")]
+	fn pypath(&self) -> String {
+		self.path().to_string()
 	}
 
 	#[pyo3(name = "content")]

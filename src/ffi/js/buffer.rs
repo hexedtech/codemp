@@ -33,9 +33,9 @@ impl BufferController {
 	}
 
 
-	#[napi(js_name = "get_name")]
-	pub fn js_name(&self) -> napi::Result<&str> {
-		Ok(&self.name())
+	#[napi(js_name = "get_path")]
+	pub fn js_path(&self) -> napi::Result<&str> {
+		Ok(&self.path())
 	}
 
 	#[napi(js_name = "poll")]
