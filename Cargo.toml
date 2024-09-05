@@ -62,7 +62,7 @@ napi-build = { version = "2", optional = true }
 pyo3-build-config = { version = "0.19", optional = true }
 
 [features]
-default = ["async-trait"]
+default = []
 # ffi
 rust = [] # used for ci matrix
 lua = ["mlua", "tracing-subscriber", "lazy_static"]
