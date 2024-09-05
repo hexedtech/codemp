@@ -1,7 +1,16 @@
 [package]
 name = "codemp"
-version = "0.7.0"
+description = "codemp -- code multiplexer"
+homepage = "https://codemp.dev"
+authors = [
+	"alemi <me@alemi.dev>",
+	"zaaarf <me@zaaarf.foo>",
+	"frelodev <frelodev@gmail.com>",
+	"cschen <cschen@codemp.dev>"
+]
+license = "GPL-3.0-only"
 edition = "2021"
+version = "0.7.0-beta1"
 
 [lib]
 name = "codemp"
