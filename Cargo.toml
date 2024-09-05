@@ -42,7 +42,7 @@ lazy_static = { version = "1.4", optional = true }
 jni = { version = "0.21", features = ["invocation"], optional = true }
 
 # glue (lua)
-mlua = { git = "https://github.com/mlua-rs/mlua" , rev = "ece66c46bfdc62685b758ffff16286f2806b2662", features = ["module", "luajit", "send"], optional = true }
+mlua = { version = "0.10.0-beta.1", features = ["module", "luajit", "send"], optional = true }
 
 # glue (js)
 napi = { version = "2.16", features = ["full"], optional = true } 
