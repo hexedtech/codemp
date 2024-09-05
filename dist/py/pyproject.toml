@@ -1,18 +1,18 @@
 [project]
 name = "codemp"
-version = "0.0.1"
+version = "0.0.5"
 description = "code multiplexer"
-requires-python = ">=3.8"
+requires-python = ">= 3.8"
 license = "GPL-3.0-only"
 keywords = ["codemp", "cooperative", "rust", "python"]
 authors = [
-	{ name = "Camillo Schenone", email = "cschen@codemp.dev" },
+	{ name = "cschen", email = "cschen@codemp.dev" },
 	{ name = "alemi", email = "me@alemi.dev" },
 	{ name = "zaaarf", email = "me@zaaarf.foo" },
 	{ name = "frelodev", email = "frelodev@gmail.com" },
 ]
 maintainers = [
-	{ name = "Camillo Schenone", email = "cschen@codemp.dev" },
+	{ name = "cschen", email = "cschen@codemp.dev" },
 ]
 classifiers = [
 	"Programming Language :: Python"

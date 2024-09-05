@@ -13,11 +13,8 @@ use crate::{
 	Client, Workspace,
 };
 
+use pyo3::exceptions::{PyConnectionError, PyRuntimeError, PySystemError};
 use pyo3::prelude::*;
-use pyo3::{
-	exceptions::{PyConnectionError, PyRuntimeError, PySystemError},
-	types::PyFunction,
-};
 
 use std::sync::OnceLock;
 use tokio::sync::{mpsc, oneshot};
@@ -158,7 +155,10 @@ fn connect(host: String, username: String, password: String) -> PyResult<Promise
 }
 
 #[pyfunction]
-fn set_logger(logging_cb: Py<PyFunction>, debug: bool) -> bool {
+fn set_logger(py: Python, logging_cb: PyObject, debug: bool) -> bool {
+	if !logging_cb.bind_borrowed(py).is_callable() {
+		return false;
+	}
 	let (tx, mut rx) = mpsc::unbounded_channel();
 	let level = if debug {
 		tracing::Level::DEBUG
