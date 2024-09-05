@@ -11,6 +11,7 @@ authors = [
 license = "GPL-3.0-only"
 edition = "2021"
 version = "0.7.0-beta.1"
+exclude = ["dist/*"]
 
 [lib]
 name = "codemp"

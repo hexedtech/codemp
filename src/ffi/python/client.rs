@@ -6,7 +6,7 @@ use pyo3::prelude::*;
 impl Client {
 	#[new]
 	fn __new__(host: String, username: String, password: String) -> crate::errors::ConnectionResult<Self> {
-		tokio().block_on(Client::connect(host, username, password))
+		super::tokio().block_on(Client::connect(host, username, password))
 	}
 
 	// #[pyo3(name = "join_workspace")]
