@@ -55,3 +55,7 @@ lua = ["mlua", "tracing-subscriber", "lazy_static"]
 java = ["lazy_static", "jni", "tracing-subscriber"]
 js = ["napi-build", "tracing-subscriber", "napi", "napi-derive"]
 python = ["pyo3", "tracing-subscriber", "pyo3-build-config"]
+
+# build with all features on docs.rs
+[package.metadata.docs.rs]
+all-features = true
