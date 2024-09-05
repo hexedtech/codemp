@@ -39,10 +39,10 @@ The full documentation is available on [docs.rs](https://docs.rs/codemp).
 The `codemp` protocol is [openly available](https://github.com/hexedtech/codemp-proto/) and servers may be freely developed with it.
 
 A reference instance is provided by hexed.technology at [codemp.dev](https://codemp.dev). You may create an account for it [here](https://codemp.dev/register).
-
 During the initial closed beta, registrations will require an invite code. Get in contact if interested.
 
-An open beta is going to follow with free access to a single workspace. After the open beta period, the [codemp.dev] will switch to a subscription-based model.
+An open beta is going to follow with free access to a single workspace per user.
+After such period, [codemp.dev](https://codemp.dev) will switch to a subscription-based model.
 
 # Development
 This is the main client library for `codemp`. It provides a batteries-included fully-featured `Client`, managed by the library itself, and exposes a number of functions to interact with it. The host program can obtain a `Client` handle by connecting, and from that reference can retrieve every other necessary component.
