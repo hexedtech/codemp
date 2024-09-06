@@ -307,6 +307,11 @@ local Codemp = {}
 ---connect to codemp server, authenticate and return client
 function Codemp.connect(host, username, password) end
 
+---@return function | nil
+---@nodiscard
+---check if codemp thread sent a callback to be run on main thread
+function Codemp.poll_callback() end
+
 ---@param data string
 ---@return integer
 ---use xxh3 hash, returns an i64 from any string
