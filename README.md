@@ -15,9 +15,9 @@ as well as a remote virtual workspace for you and your team.
 
 > `codemp` is build with state-of-the-art CRDT technology, guaranteeing eventual consistency.
 
-This means everyone in a workspace will always be working on the exact same file _eventually_:
-even under unreliable networks or constrained resources, the underlying CRDT will always reach a 
-convergent state across all users. Even with this baseline, `codemp`'s protocol is optimized for speed 
+This means that everyone is guaranteed to converge to a consistent state once all changes are received
+no matter the order or the timing due to unreliable networks or constrained resources. And similarly, your
+changes will always carry their original intention. On top of this baseline, `codemp`'s protocol is optimized for speed 
 and low network footprint, meaning even slow connections can provide stable real-time editing.
 
 The full documentation is available on [docs.rs](https://docs.rs/codemp/0.7.0-beta.2/codemp/).
