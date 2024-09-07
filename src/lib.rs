@@ -21,7 +21,7 @@
 //! ```rust
 //! # async fn main() {
 //! let client = codemp::Client::connect(
-//!   "https://api.codemp.dev", // default server, by hexed.technology
+//!   "https://api.code.mp",    // default server, by hexed.technology
 //!   "mail@example.net",       // your username, on hexed.technology it's the email
 //!   "dont-use-this-password"  // your password
 //! )
@@ -86,7 +86,7 @@
 //! * [PyPI (python)](https://pypi.org/project/codemp)
 //! * [npm (javascript)](https://www.npmjs.com/package/codemp)
 //!
-#![doc(html_logo_url = "https://codemp.dev/static/logo-round.png")]
+#![doc(html_logo_url = "https://code.mp/static/logo-round.png")]
 
 /// core structs and traits
 pub mod api;

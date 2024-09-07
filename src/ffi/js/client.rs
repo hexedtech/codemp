@@ -4,7 +4,7 @@ use crate::{Client, Workspace};
 #[napi]
 /// connect to codemp servers and return a client session
 pub async fn connect(addr: Option<String>, username: String, password: String) -> napi::Result<crate::Client>{
-	let client = crate::Client::connect(addr.as_deref().unwrap_or("http://codemp.dev:50053"), username, password)
+	let client = crate::Client::connect(addr.as_deref().unwrap_or("http://code.mp:50053"), username, password)
 		.await?;
 
 	Ok(client)
