@@ -38,7 +38,7 @@ The full documentation is available on [docs.rs](https://docs.rs/codemp/0.7.0-be
 ## Registration
 The `codemp` protocol is [openly available](https://github.com/hexedtech/codemp-proto/) and servers may be freely developed with it.
 
-A reference instance is provided by hexed.technology at [code.mp](https://code.mp). You may create an account for it [here](https://code.mp/register).
+A reference instance is provided by hexed.technology at [code.mp](https://code.mp). You may create an account for it [here](https://code.mp/signup).
 During the initial closed beta, registrations will require an invite code. Get in contact if interested.
 
 An open beta is going to follow with free access to a single workspace per user.
