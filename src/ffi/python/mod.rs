@@ -82,7 +82,6 @@ impl Promise {
 	}
 }
 
-#[macro_export]
 macro_rules! a_sync {
 	($x:expr) => {{
 		Ok($crate::ffi::python::Promise(Some(
@@ -91,8 +90,8 @@ macro_rules! a_sync {
 		)))
 	}};
 }
+pub(crate) use a_sync;
 
-#[macro_export]
 macro_rules! a_sync_allow_threads {
 	($py:ident, $x:expr) => {{
 		$py.allow_threads(move || {
@@ -103,6 +102,7 @@ macro_rules! a_sync_allow_threads {
 		})
 	}};
 }
+pub(crate) use a_sync_allow_threads;
 
 #[derive(Debug, Clone)]
 struct LoggerProducer(mpsc::UnboundedSender<String>);
@@ -197,7 +197,7 @@ fn set_logger(py: Python, logging_cb: PyObject, debug: bool) -> bool {
 
 impl From<crate::errors::ConnectionError> for PyErr {
 	fn from(value: crate::errors::ConnectionError) -> Self {
-		PyConnectionError::new_err(format!("Connection error: {value}")) 
+		PyConnectionError::new_err(format!("Connection error: {value}"))
 	}
 }
 

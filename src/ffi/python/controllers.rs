@@ -6,8 +6,8 @@ use crate::cursor::Controller as CursorController;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 
+use super::a_sync_allow_threads;
 use super::Promise;
-use crate::a_sync_allow_threads;
 
 // need to do manually since Controller is a trait implementation
 #[pymethods]
