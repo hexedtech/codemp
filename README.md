@@ -83,7 +83,4 @@ If you have a [Matrix](https://matrix.org) account, you can join the gitter room
 ## Contributing
 If you find bugs or would like to see new features implemented, be sure to open an issue on this repository.
 
-> [!WARNING]
-> The CLA necessary for code contributions is not yet available!
-
-In case you wish to contribute code, that's great! We love external contributions, but we require you to sign our CLA first (available soon).
+In case you wish to contribute code, that's great! We love external contributions, feel free to open a PR!
