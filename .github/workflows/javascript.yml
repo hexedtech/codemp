@@ -16,10 +16,10 @@ jobs:
       fail-fast: false
       matrix:
         platform:
-          - runner: windows-latest
-            target: win32-x64
           - runner: ubuntu-latest
             target: linux-x64-gnu
+          - runner: windows-latest
+            target: win32-x64
           #- runner: macos-14
           #  target: darwin-arm64
           #- runner: macos-12
@@ -53,6 +53,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
+          registry-url: https://npmjs.org/
       - run: npm install
         working-directory: dist/js/publish
       - run: npx napi build --cargo-cwd=../../.. --platform --features=js
@@ -73,7 +74,7 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - run: rm -rf *.node artifacts node_modules
         working-directory: dist/js/publish
-      - uses: JS-DevTools/npm-publish@v3
-        with:
-          token: ${{ secrets.NPM_TOKEN }}
-          package: dist/js/publish
+      - run: npm publish
+        working-directory: dist/js/publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
