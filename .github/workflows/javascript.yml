@@ -1,0 +1,66 @@
+name: javascript
+
+on:
+  push:
+    branches:
+      - ci
+      - stable
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ${{ matrix.platform.runner }}
+    strategy:
+      matrix:
+        platform:
+          - runner: windows-latest
+            target: win32-x64
+          - runner: ubuntu-latest
+            target: linux-x64-gnu
+          - runner: macos-14
+            target: darwin-arm64
+          #- runner: macos-12
+          #  target: darwin-64
+    steps:
+      - uses: actions/checkout@v4
+      - uses: arduino/setup-protoc@v3
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install
+        working-directory: dist/js/publish
+      - run: npx napi build --cargo-cwd=../../.. --platform --release --features=js
+        working-directory: dist/js/publish
+      - uses: actions/upload-artifact@v4
+        with:
+          name: codemp-js-${{ matrix.platform.target }}
+          path: dist/js/publish/codemp.*.node
+
+  publish:
+    runs-on: ubuntu-latest
+    needs: [build]
+    steps:
+      # TODO we need index.d.ts and index.js but those get auto generated with napi build
+      #      we could upload them from one of the previous runs but its messy, so we'll waste 
+      #      some github resources and build another time here, discarding the binary
+      - uses: actions/checkout@v4
+      - uses: arduino/setup-protoc@v3
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install
+        working-directory: dist/js/publish
+      - run: npx napi build --cargo-cwd=../../.. --release --features=js
+        working-directory: dist/js/publish
+      - run: rm codemp.node
+        working-directory: dist/js/publish
+      - run: npx napi create-npm-dir -t .
+        working-directory: dist/js/publish
+      - run: npx napi artifacts
+        working-directory: dist/js/publish
+      - run: npx napi prepublish -t .
+        working-directory: dist/js/publish
