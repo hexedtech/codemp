@@ -10,86 +10,29 @@ permissions:
   contents: read
 
 jobs:
-  linux:
+  build:
     runs-on: ${{ matrix.platform.runner }}
     strategy:
       matrix:
         platform:
           - runner: ubuntu-latest
-            target: x64
-          #- runner: ubuntu-latest
-          #  target: x86
-          #- runner: ubuntu-latest
-          #  target: aarch64
-          #- runner: ubuntu-latest
-          #  target: armv7
-    steps:
-      - uses: actions/checkout@v4
-      - run: rustup update stable && rustup default stable
-      - uses: arduino/setup-protoc@v3
-      - run: cargo build --release --features=lua
-      - uses: actions/upload-artifact@v4
-        with:
-          name: codemp_native-lua-linux-${{ matrix.platform.target }}-gnu.so # will this rename????
-          path: target/release/libcodemp.so
-
-  musllinux:
-    runs-on: ${{ matrix.platform.runner }}
-    strategy:
-      matrix:
-        platform:
-          #- runner: ubuntu-latest
-          #  target: x86_64
-          #- runner: ubuntu-latest
-          #  target: x86
-          - runner: ubuntu-latest
-            target: aarch64
-          #- runner: ubuntu-latest
-          #  target: armv7
-    steps:
-      - uses: actions/checkout@v4
-      - run: rustup update stable && rustup default stable
-      - uses: arduino/setup-protoc@v3
-      - run: cargo build --release --features=lua
-      - uses: actions/upload-artifact@v4
-        with:
-          name: codemp_native-lua-linux-${{ matrix.platform.target }}-musl.so # will this rename????
-          path: target/release/libcodemp.so
-
-  windows:
-    runs-on: ${{ matrix.platform.runner }}
-    strategy:
-      matrix:
-        platform:
+            target: linux-x64-gnu
+            filename: libcodemp.so
           - runner: windows-latest
-            target: x64
-          #- runner: windows-latest
-          #  target: x86
-    steps:
-      - uses: actions/checkout@v4
-      - run: rustup update stable && rustup default stable
-      - uses: arduino/setup-protoc@v3
-      - run: cargo build --release --features=lua
-      - uses: actions/upload-artifact@v4
-        with:
-          name: codemp_native-lua-windows-${{ matrix.platform.target }}.dll # will this rename????
-          path: target/release/codemp.dll
-
-  macos:
-    runs-on: ${{ matrix.platform.runner }}
-    strategy:
-      matrix:
-        platform:
-          #- runner: macos-12
-          #  target: x64
+            target: win32-x64
+            filename: codemp.dll
           - runner: macos-14
-            target: aarch64
+            target: darwin-arm64
+            filename: codemp.dylib
+          #- runner: macos-12
+          #  target: darwin-x64
+          #  filename: codemp.dylib
     steps:
       - uses: actions/checkout@v4
-      - run: rustup update stable && rustup default stable
+      - uses: dtolnay/rust-toolchain@stable
       - uses: arduino/setup-protoc@v3
       - run: cargo build --release --features=lua
       - uses: actions/upload-artifact@v4
         with:
-          name: codemp_native-lua-macos-${{ matrix.platform.target }}.dylib # will this rename????
-          path: target/release/codemp.dylib
+          name: codemp-lua-${{ matrix.platform.target }}
+          path: target/release/libcodemp.so

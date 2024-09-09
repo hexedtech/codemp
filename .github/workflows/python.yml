@@ -46,42 +46,41 @@ jobs:
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
-          name: wheels-linux-${{ matrix.platform.target }}
+          name: codemp-py-linux-${{ matrix.platform.target }}
           path: dist/py
 
-  musllinux:
-    runs-on: ${{ matrix.platform.runner }}
-    strategy:
-      matrix:
-        platform:
-          #- runner: ubuntu-latest
-          #  target: x86_64
-          #- runner: ubuntu-latest
-          #  target: x86
-          - runner: ubuntu-latest
-            target: aarch64
-          #- runner: ubuntu-latest
-          #  target: armv7
-    steps:
-      - uses: actions/checkout@v4
-      - uses: arduino/setup-protoc@v3
-      - uses: actions/setup-python@v5
-        with:
-          python-version: 3.x
-      - name: Build wheels
-        uses: PyO3/maturin-action@v1
-        with:
-          working-directory: dist/py
-          target: ${{ matrix.platform.target }}
-          container: 'off'
-          args: --release --out .
-          sccache: 'true'
-          manylinux: musllinux_1_2
-      - name: Upload wheels
-        uses: actions/upload-artifact@v4
-        with:
-          name: wheels-musllinux-${{ matrix.platform.target }}
-          path: dist/py
+  #musllinux:
+  #  runs-on: ${{ matrix.platform.runner }}
+  #  strategy:
+  #    matrix:
+  #      platform:
+  #        #- runner: ubuntu-latest
+  #        #  target: x86_64
+  #        #- runner: ubuntu-latest
+  #        #  target: x86
+  #        - runner: ubuntu-latest
+  #          target: aarch64
+  #        #- runner: ubuntu-latest
+  #        #  target: armv7
+  #  steps:
+  #    - uses: actions/checkout@v4
+  #    - uses: arduino/setup-protoc@v3
+  #    - uses: actions/setup-python@v5
+  #      with:
+  #        python-version: 3.x
+  #    - name: Build wheels
+  #      uses: PyO3/maturin-action@v1
+  #      with:
+  #        working-directory: dist/py
+  #        target: ${{ matrix.platform.target }}
+  #        args: --release --out .
+  #        sccache: 'true'
+  #        manylinux: musllinux_1_2 # TODO for manylinux it runs in a container without protoc!
+  #    - name: Upload wheels
+  #      uses: actions/upload-artifact@v4
+  #      with:
+  #        name: codemp-py-musllinux-${{ matrix.platform.target }}
+  #        path: dist/py
 
   windows:
     runs-on: ${{ matrix.platform.runner }}
@@ -110,7 +109,7 @@ jobs:
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
-          name: wheels-windows-${{ matrix.platform.target }}
+          name: codemp-py-windows-${{ matrix.platform.target }}
           path: dist/py
 
   macos:
@@ -139,7 +138,7 @@ jobs:
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
-          name: wheels-macos-${{ matrix.platform.target }}
+          name: codemp-py-macos-${{ matrix.platform.target }}
           path: dist/py
 
   sdist:
@@ -155,20 +154,21 @@ jobs:
       - name: Upload sdist
         uses: actions/upload-artifact@v4
         with:
-          name: wheels-sdist
+          name: codemp-py-sdist
           path: dist/py
 
   release:
     name: Release
     runs-on: ubuntu-latest
     if: "startsWith(github.ref, 'refs/tags/')"
-    needs: [linux, musllinux, windows, macos, sdist]
+    needs: [linux, windows, macos, sdist]
     steps:
       - uses: actions/download-artifact@v4
+        pattern: codemp-py-*
       - name: Publish to PyPI
         uses: PyO3/maturin-action@v1
         env:
           MATURIN_PYPI_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
         with:
           command: upload
-          args: --non-interactive --skip-existing wheels-*/*
+          args: --non-interactive --skip-existing codemp-py-*/*

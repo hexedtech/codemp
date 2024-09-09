@@ -31,7 +31,9 @@ jobs:
         # TODO should re-enable future toolchains so we get warnings on breaking changes
     steps:
       - uses: arduino/setup-protoc@v3
-      - uses: actions/checkout@v3
-      - run: rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }}
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ matrix.toolchain }}
       - run: cargo build --verbose --features=${{ matrix.features }}
       - run: cargo test --verbose --features=${{ matrix.features }}
