@@ -42,6 +42,7 @@ processResources {
 	from(rustDir) {
 		include('*.dll')
 		include('*.so')
+		include('*dylib')
 		into('natives/')
 	}
 }
