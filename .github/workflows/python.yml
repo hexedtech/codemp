@@ -40,14 +40,14 @@ jobs:
           working-directory: dist/py
           target: ${{ matrix.platform.target }}
           container: 'off'
-          args: --release --out .
+          args: --release --out ./build
           sccache: 'true'
           manylinux: auto
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
           name: codemp-py-linux-${{ matrix.platform.target }}
-          path: dist/py
+          path: dist/py/build
 
   #musllinux:
   #  runs-on: ${{ matrix.platform.runner }}
@@ -73,14 +73,14 @@ jobs:
   #      with:
   #        working-directory: dist/py
   #        target: ${{ matrix.platform.target }}
-  #        args: --release --out .
+  #        args: --release --out ./build
   #        sccache: 'true'
   #        manylinux: musllinux_1_2 # TODO for manylinux it runs in a container without protoc!
   #    - name: Upload wheels
   #      uses: actions/upload-artifact@v4
   #      with:
   #        name: codemp-py-musllinux-${{ matrix.platform.target }}
-  #        path: dist/py
+  #        path: dist/py/build
 
   windows:
     runs-on: ${{ matrix.platform.runner }}
@@ -104,13 +104,13 @@ jobs:
           working-directory: dist/py
           target: ${{ matrix.platform.target }}
           container: 'off'
-          args: --release --out .
+          args: --release --out ./build
           sccache: 'true'
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
           name: codemp-py-windows-${{ matrix.platform.target }}
-          path: dist/py
+          path: dist/py/build
 
   macos:
     runs-on: ${{ matrix.platform.runner }}
@@ -133,13 +133,13 @@ jobs:
           working-directory: dist/py
           target: ${{ matrix.platform.target }}
           container: 'off'
-          args: --release --out .
+          args: --release --out ./build
           sccache: 'true'
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
           name: codemp-py-macos-${{ matrix.platform.target }}
-          path: dist/py
+          path: dist/py/build
 
   sdist:
     runs-on: ubuntu-latest
@@ -150,12 +150,12 @@ jobs:
         with:
           working-directory: dist/py
           command: sdist
-          args: --out .
+          args: --out ./build
       - name: Upload sdist
         uses: actions/upload-artifact@v4
         with:
           name: codemp-py-sdist
-          path: dist/py
+          path: dist/py/build
 
   release:
     runs-on: ubuntu-latest
@@ -164,7 +164,7 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           pattern: codemp-py-*
-          path: dist/py/wheels
+          path: dist/py
       - run: tree
         working-directory: dist/py
       - uses: PyO3/maturin-action@v1
