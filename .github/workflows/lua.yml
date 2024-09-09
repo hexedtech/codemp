@@ -17,12 +17,12 @@ jobs:
         platform:
           - runner: ubuntu-latest
             target: x64
-          - runner: ubuntu-latest
-            target: x86
-          - runner: ubuntu-latest
-            target: aarch64
-          - runner: ubuntu-latest
-            target: armv7
+          #- runner: ubuntu-latest
+          #  target: x86
+          #- runner: ubuntu-latest
+          #  target: aarch64
+          #- runner: ubuntu-latest
+          #  target: armv7
     steps:
       - uses: actions/checkout@v4
       - run: rustup update stable && rustup default stable
@@ -38,14 +38,14 @@ jobs:
     strategy:
       matrix:
         platform:
-          - runner: ubuntu-latest
-            target: x86_64
-          - runner: ubuntu-latest
-            target: x86
+          #- runner: ubuntu-latest
+          #  target: x86_64
+          #- runner: ubuntu-latest
+          #  target: x86
           - runner: ubuntu-latest
             target: aarch64
-          - runner: ubuntu-latest
-            target: armv7
+          #- runner: ubuntu-latest
+          #  target: armv7
     steps:
       - uses: actions/checkout@v4
       - run: rustup update stable && rustup default stable
@@ -63,8 +63,8 @@ jobs:
         platform:
           - runner: windows-latest
             target: x64
-          - runner: windows-latest
-            target: x86
+          #- runner: windows-latest
+          #  target: x86
     steps:
       - uses: actions/checkout@v4
       - run: rustup update stable && rustup default stable
@@ -80,8 +80,8 @@ jobs:
     strategy:
       matrix:
         platform:
-          - runner: macos-12
-            target: x64
+          #- runner: macos-12
+          #  target: x64
           - runner: macos-14
             target: aarch64
     steps:
