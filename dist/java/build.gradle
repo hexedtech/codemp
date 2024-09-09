@@ -52,3 +52,4 @@ tasks.register('cargoBuild', Exec) {
 }
 
 build.dependsOn cargoBuild
+build.finalizedBy shadowJar

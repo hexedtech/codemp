@@ -204,8 +204,9 @@ pub extern "system" fn Java_mp_code_Client_setup_1tracing<'local>(
 	super::setup_logger(
 		true,
 		Some(path)
-			.filter(|p| p.is_null())
-			.map(|p| env.get_string(&p).map(|s| s.into()).jexcept(&mut env))
+			.filter(|p| !p.is_null())
+			.map(|p| env.get_string(&p).map(|s| s.into())
+			.jexcept(&mut env))
 	);
 }
 

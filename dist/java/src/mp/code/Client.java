@@ -50,9 +50,9 @@ public class Client {
 		return leave_workspace(this.ptr, id);
 	}
 
-	private static native Workspace get_workspace(long self);
-	public Optional<Workspace> getWorkspace() {
-		return Optional.ofNullable(get_workspace(this.ptr));
+	private static native Workspace get_workspace(long self, String workspace);
+	public Optional<Workspace> getWorkspace(String workspace) {
+		return Optional.ofNullable(get_workspace(this.ptr, workspace));
 	}
 
 	private static native void refresh_native(long self) throws ConnectionRemoteException;
@@ -70,8 +70,8 @@ public class Client {
 	static {
 		try {
 			if(System.getProperty("os.name").startsWith("Windows"))
-				NativeUtils.loadLibraryFromJar("/natives/codemp_intellij.dll");
-			else NativeUtils.loadLibraryFromJar("/natives/libcodemp_intellij.so");
+				NativeUtils.loadLibraryFromJar("/natives/codemp.dll");
+			else NativeUtils.loadLibraryFromJar("/natives/libcodemp.so");
 			setup_tracing(System.getenv().get("CODEMP_TRACING_LOG"));
 		} catch(IOException e) {
 			throw new RuntimeException(e);
