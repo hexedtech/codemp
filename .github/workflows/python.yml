@@ -164,7 +164,8 @@ jobs:
     needs: [linux, windows, macos, sdist]
     steps:
       - uses: actions/download-artifact@v4
-        pattern: codemp-py-*
+        with:
+          pattern: codemp-py-*
       - name: Publish to PyPI
         uses: PyO3/maturin-action@v1
         env:
