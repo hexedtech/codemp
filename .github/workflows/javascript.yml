@@ -33,7 +33,7 @@ jobs:
           node-version: '20'
       - run: npm install
         working-directory: dist/js/publish
-      - run: npx napi build --cargo-cwd=../../.. --platform --release --features=js
+      - run: npx napi build --cargo-cwd=../../.. --platform --release --features=js --strip
         working-directory: dist/js/publish
       - uses: actions/upload-artifact@v4
         with:
@@ -55,7 +55,7 @@ jobs:
           node-version: '20'
       - run: npm install
         working-directory: dist/js/publish
-      - run: npx napi build --cargo-cwd=../../.. --release --features=js
+      - run: npx napi build --cargo-cwd=../../.. --features=js
         working-directory: dist/js/publish
       - run: rm codemp.node
         working-directory: dist/js/publish
