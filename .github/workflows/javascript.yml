@@ -65,3 +65,5 @@ jobs:
         working-directory: dist/js/publish
       - run: npx napi prepublish -t .
         working-directory: dist/js/publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
