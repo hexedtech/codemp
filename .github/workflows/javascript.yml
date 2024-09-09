@@ -20,8 +20,8 @@ jobs:
             target: win32-x64
           - runner: ubuntu-latest
             target: linux-x64-gnu
-          - runner: macos-14
-            target: darwin-arm64
+          #- runner: macos-14
+          #  target: darwin-arm64
           #- runner: macos-12
           #  target: darwin-64
     steps:
