@@ -36,4 +36,4 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: codemp-lua-${{ matrix.platform.target }}
-          path: target/release/libcodemp.so
+          path: target/release/${{ matrix.platform.filename }}
