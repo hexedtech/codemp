@@ -28,22 +28,19 @@ jobs:
             target: aarch64
           - runner: ubuntu-latest
             target: armv7
-          - runner: ubuntu-latest
-            target: s390x
-          - runner: ubuntu-latest
-            target: ppc64le
     steps:
       - uses: actions/checkout@v4
       - run: rustup update stable && rustup default stable
-      - uses: arduino/setup-protoc@v2
+      - uses: arduino/setup-protoc@v3
       - uses: actions/setup-python@v5
         with:
           python-version: 3.x
       - name: Build wheels
         uses: PyO3/maturin-action@v1
+        working-directory: dist/py
         with:
           target: ${{ matrix.platform.target }}
-          args: --release --out dist/py
+          args: --release --out .
           sccache: 'true'
           manylinux: auto
       - name: Upload wheels
@@ -68,15 +65,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: rustup update stable && rustup default stable
-      - uses: arduino/setup-protoc@v2
+      - uses: arduino/setup-protoc@v3
       - uses: actions/setup-python@v5
         with:
           python-version: 3.x
       - name: Build wheels
         uses: PyO3/maturin-action@v1
+        working-directory: dist/py
         with:
           target: ${{ matrix.platform.target }}
-          args: --release --out dist/py
+          args: --release --out .
           sccache: 'true'
           manylinux: musllinux_1_2
       - name: Upload wheels
@@ -97,16 +95,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: rustup update stable && rustup default stable
-      - uses: arduino/setup-protoc@v2
+      - uses: arduino/setup-protoc@v3
       - uses: actions/setup-python@v5
         with:
           python-version: 3.x
           architecture: ${{ matrix.platform.target }}
       - name: Build wheels
         uses: PyO3/maturin-action@v1
+        working-directory: dist/py
         with:
           target: ${{ matrix.platform.target }}
-          args: --release --out dist/py
+          args: --release --out .
           sccache: 'true'
       - name: Upload wheels
         uses: actions/upload-artifact@v4
@@ -126,15 +125,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: rustup update stable && rustup default stable
-      - uses: arduino/setup-protoc@v2
+      - uses: arduino/setup-protoc@v3
       - uses: actions/setup-python@v5
         with:
           python-version: 3.x
       - name: Build wheels
         uses: PyO3/maturin-action@v1
+        working-directory: dist/py
         with:
           target: ${{ matrix.platform.target }}
-          args: --release --out dist/py
+          args: --release --out .
           sccache: 'true'
       - name: Upload wheels
         uses: actions/upload-artifact@v4
@@ -148,9 +148,10 @@ jobs:
       - uses: actions/checkout@v4
       - name: Build sdist
         uses: PyO3/maturin-action@v1
+        working-directory: dist/py
         with:
           command: sdist
-          args: --out dist/py
+          args: --out .
       - name: Upload sdist
         uses: actions/upload-artifact@v4
         with:
