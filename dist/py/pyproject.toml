@@ -1,6 +1,6 @@
 [project]
 name = "codemp"
-version = "0.0.6"
+version = "0.0.7"
 description = "code multiplexer"
 requires-python = ">= 3.8"
 license = "GPL-3.0-only"
