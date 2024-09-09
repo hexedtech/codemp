@@ -13,6 +13,7 @@ jobs:
   build:
     runs-on: ${{ matrix.platform.runner }}
     strategy:
+      fail_fast: false
       matrix:
         platform:
           - runner: windows-latest
