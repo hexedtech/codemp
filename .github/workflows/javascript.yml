@@ -69,7 +69,7 @@ jobs:
         working-directory: dist/js/publish
       - run: npx napi prepublish -t . --skip-gh-release
         working-directory: dist/js/publish
-      - run: npm publish
-        working-directory: dist/js/publish
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - uses: JS-DevTools/npm-publish@v3
+        with:
+          token: ${{ secrets.NPM_TOKEN }}
+          package: dist/js/publish
