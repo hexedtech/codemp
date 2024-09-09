@@ -4,9 +4,12 @@
   "devDependencies": {
     "@napi-rs/cli": "^2.18.4"
   },
+  "napi": {
+    "name": "codemp"
+  },
   "optionalDependencies": {
     "codemp-win32-x64-msvc": "0.0.4",
-    "codemp-darwin-x64": "0.0.4",
+    "codemp-darwin-arm64": "0.0.4",
     "codemp-linux-x64-gnu": "0.0.4"
   }
 }
