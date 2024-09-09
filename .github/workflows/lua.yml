@@ -1,0 +1,88 @@
+name: lua
+
+on:
+  push:
+    branches:
+      - ci
+      - stable
+
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    runs-on: ${{ matrix.platform.runner }}
+    strategy:
+      matrix:
+        platform:
+          - runner: ubuntu-latest
+            target: x64
+          - runner: ubuntu-latest
+            target: x86
+          - runner: ubuntu-latest
+            target: aarch64
+          - runner: ubuntu-latest
+            target: armv7
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup update
+      - run: cargo build --release --features=lua
+      - uses: actions/upload-artifact@v4
+        with:
+          name: codemp_native-lua-linux-${{ matrix.platform.target }}-gnu.so # will this rename????
+          path: target/release/libcodemp.so
+
+  musllinux:
+    runs-on: ${{ matrix.platform.runner }}
+    strategy:
+      matrix:
+        platform:
+          - runner: ubuntu-latest
+            target: x86_64
+          - runner: ubuntu-latest
+            target: x86
+          - runner: ubuntu-latest
+            target: aarch64
+          - runner: ubuntu-latest
+            target: armv7
+    steps:
+      - uses: actions/checkout@v4
+      - run: cargo build --release --features=lua
+      - uses: actions/upload-artifact@v4
+        with:
+          name: codemp_native-lua-linux-${{ matrix.platform.target }}-musl.so # will this rename????
+          path: target/release/libcodemp.so
+
+  windows:
+    runs-on: ${{ matrix.platform.runner }}
+    strategy:
+      matrix:
+        platform:
+          - runner: windows-latest
+            target: x64
+          - runner: windows-latest
+            target: x86
+    steps:
+      - uses: actions/checkout@v4
+      - run: cargo build --release --features=lua
+      - uses: actions/upload-artifact@v4
+        with:
+          name: codemp_native-lua-windows-${{ matrix.platform.target }}.dll # will this rename????
+          path: target/release/codemp.dll
+
+  macos:
+    runs-on: ${{ matrix.platform.runner }}
+    strategy:
+      matrix:
+        platform:
+          - runner: macos-12
+            target: x64
+          - runner: macos-14
+            target: aarch64
+    steps:
+      - uses: actions/checkout@v4
+      - run: cargo build --release --features=lua
+      - uses: actions/upload-artifact@v4
+        with:
+          name: codemp_native-lua-macos-${{ matrix.platform.target }}.dylib # will this rename????
+          path: target/release/codemp.dylib

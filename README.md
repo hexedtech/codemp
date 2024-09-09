@@ -1,6 +1,6 @@
 [![codemp](https://code.mp/static/banner.png)](https://code.mp)
 
-[![Actions Status](https://github.com/hexedtech/codemp/actions/workflows/ci.yml/badge.svg)](https://github.com/hexedtech/codemp/actions)
+[![Actions Status](https://github.com/hexedtech/codemp/actions/workflows/test.yml/badge.svg)](https://github.com/hexedtech/codemp/actions)
 [![docs.rs](https://img.shields.io/docsrs/codemp)](https://docs.rs/codemp/0.7.0-beta.2/codemp/)
 [![Crates.io Version](https://img.shields.io/crates/v/codemp)](https://crates.io/crates/codemp)
 [![NPM Version](https://img.shields.io/npm/v/codemp)](https://npmjs.org/package/codemp)
