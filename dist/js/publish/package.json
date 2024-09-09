@@ -1,6 +1,25 @@
 {
   "name": "@codemp/native",
   "version": "0.0.7",
+  "description": "code multiplexer -- javascript bindings",
+  "keywords": [
+    "codemp",
+    "collaborative",
+    "ffi",
+    "rust",
+    "editors"
+  ],
+  "license": "GPL-3.0",
+  "author": {
+    "url": "https://hexed.technology"
+  },
+  "contributors": [
+    { "name": "alemi", "email": "me@alemi.dev" },
+    { "name": "frelodev", "email": "frelodev@gmail.com" },
+    { "name": "zaaarf", "email": "me@zaaarf.foo" },
+    { "name": "cschen", "email": "cschen@codemp.dev" }
+  ],
+  "repository": "https://github.com/hexedtech/codemp",
   "devDependencies": {
     "@napi-rs/cli": "^2.18.4"
   },
