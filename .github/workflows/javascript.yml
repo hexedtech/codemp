@@ -58,13 +58,13 @@ jobs:
         working-directory: dist/js/publish
       - run: rm *.node
         working-directory: dist/js/publish
-      - run: npx napi create-npm-dir -t .
+      - run: npx napi create-npm-dir -t .; tree
         working-directory: dist/js/publish
       - uses: actions/download-artifact@v4
         with:
           path: dist/js/publish/artifacts
           pattern: codemp-js-*
-      - run: npx napi artifacts
+      - run: npx napi artifacts; tree
         working-directory: dist/js/publish
       - run: npx napi prepublish -t . --skip-gh-release
         working-directory: dist/js/publish
