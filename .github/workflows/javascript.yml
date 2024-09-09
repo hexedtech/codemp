@@ -20,8 +20,8 @@ jobs:
             target: linux-x64-gnu
           - runner: windows-latest
             target: win32-x64
-          - runner: macos-14
-            target: darwin-arm64
+          #- runner: macos-14
+          #  target: darwin-arm64
     steps:
       - uses: actions/checkout@v4
       - uses: arduino/setup-protoc@v3
