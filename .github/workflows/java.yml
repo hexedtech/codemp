@@ -25,9 +25,6 @@ jobs:
           - runner: macos-14
             target: darwin-arm64
             filename: codemp.dylib
-          #- runner: macos-12
-          #  target: darwin-x64
-          #  filename: codemp.dylib
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
