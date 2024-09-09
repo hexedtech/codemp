@@ -1,6 +1,6 @@
 {
   "name": "@codemp/native",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "devDependencies": {
     "@napi-rs/cli": "^2.18.4"
   },

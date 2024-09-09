@@ -20,10 +20,8 @@ jobs:
             target: linux-x64-gnu
           - runner: windows-latest
             target: win32-x64
-          #- runner: macos-14
-          #  target: darwin-arm64
-          #- runner: macos-12
-          #  target: darwin-64
+          - runner: macos-14
+            target: darwin-arm64
     steps:
       - uses: actions/checkout@v4
       - uses: arduino/setup-protoc@v3
@@ -79,6 +77,7 @@ jobs:
       #      so we just sed out before releasing. this is really ugly but if it works right now i'll just
       #      take it and think again about it later
       - run: sed -i 's/"@codemp\/native"/"codemp"/' package.json
+        working-directory: dist/js/publish
       - run: npm publish
         working-directory: dist/js/publish
         env:
