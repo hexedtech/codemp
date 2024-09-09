@@ -65,7 +65,7 @@ jobs:
         with:
           path: artifacts
           pattern: codemp-js-*
-      - run: npx napi artifacts
+      - run: tree; npx napi artifacts; tree
         working-directory: dist/js/publish
       - run: npx napi prepublish -t . --skip-gh-release
         working-directory: dist/js/publish
