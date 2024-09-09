@@ -1,5 +1,5 @@
 {
-  "name": "codemp",
+  "name": "@codemp/native",
   "version": "0.0.6",
   "devDependencies": {
     "@napi-rs/cli": "^2.18.4"
@@ -8,8 +8,8 @@
     "name": "codemp"
   },
   "optionalDependencies": {
-    "codemp-win32-x64-msvc": "0.0.4",
-    "codemp-darwin-arm64": "0.0.4",
-    "codemp-linux-x64-gnu": "0.0.4"
+    "@codemp/native-win32-x64-msvc": "0.0.4",
+    "@codemp/native-darwin-arm64": "0.0.4",
+    "@codemp/native-linux-x64-gnu": "0.0.4"
   }
 }
