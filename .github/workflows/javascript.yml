@@ -63,7 +63,7 @@ jobs:
         working-directory: dist/js/publish
       - uses: actions/download-artifact@v4
         with:
-          path: artifacts
+          path: dist/js/publish/artifacts
           pattern: codemp-js-*
       - run: tree; npx napi artifacts; tree
         working-directory: dist/js/publish
