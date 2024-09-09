@@ -61,9 +61,15 @@ jobs:
         working-directory: dist/js/publish
       - run: npx napi create-npm-dir -t .
         working-directory: dist/js/publish
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          pattern: codemp-js-*
       - run: npx napi artifacts
         working-directory: dist/js/publish
-      - run: npx napi prepublish -t .
+      - run: npx napi prepublish -t . --skip-gh-release
+        working-directory: dist/js/publish
+      - run: npm publish
         working-directory: dist/js/publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
