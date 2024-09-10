@@ -56,10 +56,10 @@ Just `cargo add codemp` and check the docs for some examples.
 
 ### From supported languages
 We provide first-class bindings for:
- - [JavaScript](./dist/js/README.md): available from `npm` as [`codemp`](https://npmjs.org/package/codemp)
- - [Python](./dist/lua/README.md): available from `PyPI` as [`codemp`](https://pypi.org/project/codemp)
- - [Lua](./dist/lua/README.md): run `cargo build --features=lua`
- - [Java](./dist/java/README.md): run `gradle build` in `dist/java/` (requires Gradle)
+ - [![JavaScript](https://github.com/hexedtech/codemp/actions/workflows/javascript.yml/badge.svg)](./dist/js/README.md): available from `npm` as [`codemp`](https://npmjs.org/package/codemp)
+ - [![Python](https://github.com/hexedtech/codemp/actions/workflows/python.yml/badge.svg)](./dist/lua/README.md): available from `PyPI` as [`codemp`](https://pypi.org/project/codemp)
+ - [![Lua](https://github.com/hexedtech/codemp/actions/workflows/lua.yml/badge.svg)](./dist/lua/README.md): run `cargo build --features=lua`
+ - [![Java](https://github.com/hexedtech/codemp/actions/workflows/java.yml/badge.svg)](./dist/java/README.md): run `gradle build` in `dist/java/` (requires Gradle)
 
 As a design philosophy, our binding APIs attempt to perfectly mimic their Rust counterparts, so the main documentation can still be referenced as source of truth.
 Refer to specific language documentation for specifics, differences and quirks.
