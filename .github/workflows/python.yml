@@ -30,6 +30,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: arduino/setup-protoc@v3
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/setup-python@v5
         with:
           python-version: 3.x
@@ -64,6 +65,7 @@ jobs:
   #  steps:
   #    - uses: actions/checkout@v4
   #    - uses: arduino/setup-protoc@v3
+  #      repo-token: ${{ secrets.GITHUB_TOKEN }}
   #    - uses: actions/setup-python@v5
   #      with:
   #        python-version: 3.x
@@ -93,6 +95,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: arduino/setup-protoc@v3
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/setup-python@v5
         with:
           python-version: 3.x
@@ -123,6 +126,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: arduino/setup-protoc@v3
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/setup-python@v5
         with:
           python-version: 3.x
