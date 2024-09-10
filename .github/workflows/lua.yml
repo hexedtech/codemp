@@ -43,7 +43,7 @@ jobs:
       fail-fast: false
       matrix:
         platform:
-          - runner: macos-14
+          - runner: macos-latest
             target: darwin-arm64
             filename: codemp.dylib
           #- runner: macos-12
