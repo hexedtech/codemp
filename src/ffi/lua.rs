@@ -525,8 +525,12 @@ fn logger(_: &Lua, (printer, debug): (LuaValue, Option<bool>)) -> LuaResult<bool
 
 
 // define module and exports
-#[mlua::lua_module]
-fn codemp_native(lua: &Lua) -> LuaResult<LuaTable> {
+#[mlua::lua_module(name = "codemp")] fn entry_1(lua: &Lua) -> LuaResult<LuaTable> { entrypoint(lua) }
+#[mlua::lua_module(name = "libcodemp")] fn entry_2(lua: &Lua) -> LuaResult<LuaTable> { entrypoint(lua) }
+#[mlua::lua_module(name = "codemp_native")] fn entry_3(lua: &Lua) -> LuaResult<LuaTable> { entrypoint(lua) }
+#[mlua::lua_module(name = "codemp_lua")] fn entry_4(lua: &Lua) -> LuaResult<LuaTable> { entrypoint(lua) }
+
+fn entrypoint(lua: &Lua) -> LuaResult<LuaTable> {
 	let exports = lua.create_table()?;
 
 	// entrypoint
