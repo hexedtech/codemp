@@ -23,7 +23,7 @@ jobs:
             ext: so
           - runner: windows-latest
             arch: x86_64
-            target: linux-gnu
+            target: windows-msvc
             pre:
             ext: dll
     steps:
