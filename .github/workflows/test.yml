@@ -20,7 +20,7 @@ jobs:
       matrix:
         features:
           - rust
-          - lua
+          - luajit # should we test with lua54 instead?
           - java
           - js
           - python
