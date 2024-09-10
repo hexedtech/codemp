@@ -37,3 +37,16 @@ jobs:
         with:
           name: codemp-lua-${{ matrix.platform.target }}
           path: target/release/${{ matrix.platform.filename }}
+
+  publish:
+    runs-on: ubuntu-latest
+    needs: [build]
+    steps:
+      - uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: codemp-lua-*
+      - run: tree
+      - run: scp * dev@codemp.dev:/srv/http/codemp/files/releases/lua/
