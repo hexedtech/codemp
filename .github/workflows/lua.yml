@@ -75,16 +75,20 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build, build-macos]
     steps:
+      - uses: actions/checkout@v4
+      - run: mkdir dist/lua/publish
       - uses: webfactory/ssh-agent@v0.9.0
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
       - uses: actions/download-artifact@v4
         with:
           pattern: codemp-lua-*
-      - run: tree
+          path: dist/lua/publish
+      - run: tree dist/lua
+      - run: scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null dist/lua/annotations.lua dev@codemp.dev:/srv/http/codemp/files/releases/lua/
       # TODO ugly fix to deal with folders on this side...
       - name: copy files on remote
         run: |
-          for DIR in $(ls); do
-            scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null $DIR/* dev@codemp.dev:/srv/http/codemp/files/releases/lua/
+          for DIR in $(ls dist/lua/publish); do
+            scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null dist/lua/publish/$DIR/* dev@codemp.dev:/srv/http/codemp/files/releases/lua/
           done
