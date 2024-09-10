@@ -8,20 +8,12 @@ This is important because Lua looks up the constructor symbol based on filename.
 
 Type hints are provided in `annotations.lua`, just include them in your language server: `---@module 'annotations'`.
 
-## Example loader
-A simple loader is provided here:
+## LuaRocks
+`codemp` is available as a rock on [LuaRocks](https://luarocks.org/modules/alemi/codemp)
 
-```lua
----@module 'annotations'
+## Manual bundling
+LuaRocks compiles from source, which only works if have the rust toolchain available. To provide a reasonable NeoVim experience, we provide pre-built binaries.
 
----@return Codemp
-local function load()
-	local native, _ = require("codemp.native")
-	return native
-end
+> Download latest build and annotations from [here](https://codemp.dev/releases/lua/)
 
-return {
-	load = load,
-}
-```
-
+You will need a loader file to provide annotations: you can use provided `codemp.lua`
