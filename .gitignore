@@ -6,6 +6,7 @@
 # python
 .venv
 wheels/
+dist/py/build.sh
 
 # lua
 dist/lua/*.so
