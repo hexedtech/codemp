@@ -18,4 +18,4 @@ jobs:
       - uses: arduino/setup-protoc@v3
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - run: cargo publish
+      - run: cargo publish --locked --token ${{ secrets.CRATES_IO_TOKEN }}
