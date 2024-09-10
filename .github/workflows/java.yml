@@ -37,3 +37,5 @@ jobs:
         with:
           name: codemp-java-${{ matrix.platform.target }}
           path: dist/java/build/libs
+
+  # TODO add a publish step to maven central
