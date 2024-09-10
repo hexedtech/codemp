@@ -15,15 +15,17 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        platform:
+        target:
           - runner: ubuntu-latest
-            target: linux-x64-gnu
-            ext: so
+            arch: x86_64
+            platform: linux-gnu
             pre: lib
+            ext: so
           - runner: windows-latest
-            target: win32-x64
-            ext: dll
+            arch: x86_64
+            platform: linux-gnu
             pre:
+            ext: dll
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -31,11 +33,11 @@ jobs:
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
       - run: cargo build --release --features=luajit
-      - run: mv target/release/${{ matrix.platform.pre}}codemp.${{ matrix.platform.ext }} dist/lua/codemp-lua-${{ matrix.platform.target }}.${{ matrix.platform.ext }}
+      - run: mv target/release/${{matrix.target.pre}}codemp.${{matrix.target.ext}} dist/lua/codemp-lua-${{matrix.target.arch}}-${{matrix.target.platform}}.${{matrix.target.ext}}
       - uses: actions/upload-artifact@v4
         with:
           name: codemp-lua-${{ matrix.platform.target }}
-          path: dist/lua/codemp-lua-${{ matrix.platform.target }}.${{ matrix.platform.ext }}
+          path: dist/lua/codemp-lua-${{matrix.target.arch}}-${{matrix.target.platform}}.${{matrix.target.ext}}
 
   # macos requires some extra cargo config to make it work, but
   # these settings make test fail so better limit them to this run
@@ -46,13 +48,15 @@ jobs:
       matrix:
         platform:
           - runner: macos-latest
-            target: darwin-arm64
-            ext: dylib
+            arch: aarch64
+            platform: darwin
             pre: lib
+            ext: dylib
           #- runner: macos-12
-          #  target: darwin-x64
-          #  ext: dylib
+          #  arch: x86_64
+          #  platform: darwin
           #  pre: lib
+          #  ext: dylib
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -60,11 +64,11 @@ jobs:
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
       - run: cargo rustc --release --features=luajit -- -C link-arg=-undefined -C link-arg=dynamic_lookup
-      - run: mv target/release/${{ matrix.platform.pre}}codemp.${{ matrix.platform.ext }} dist/lua/codemp-lua-${{ matrix.platform.target }}.${{ matrix.platform.ext }}
+      - run: mv target/release/${{matrix.target.pre}}codemp.${{matrix.target.ext}} dist/lua/codemp-lua-${{matrix.target.arch}}-${{matrix.target.platform}}.${{matrix.target.ext}}
       - uses: actions/upload-artifact@v4
         with:
           name: codemp-lua-${{ matrix.platform.target }}
-          path: dist/lua/codemp-lua-${{ matrix.platform.target }}.${{ matrix.platform.ext }}
+          path: dist/lua/codemp-lua-${{matrix.target.arch}}-${{matrix.target.platform}}.${{matrix.target.ext}}
 
   # TODO this just copies files on our server, maybe publish on luarocks? maybe do it properly with versions
   publish:
