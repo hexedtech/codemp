@@ -47,10 +47,12 @@ jobs:
         platform:
           - runner: macos-latest
             target: darwin-arm64
-            filename: codemp.dylib
+            ext: dylib
+            pre: lib
           #- runner: macos-12
           #  target: darwin-x64
-          #  filename: codemp.dylib
+          #  ext: dylib
+          #  pre: lib
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -58,10 +60,11 @@ jobs:
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
       - run: cargo rustc --release --features=luajit -- -C link-arg=-undefined -C link-arg=dynamic_lookup
+      - run: mv target/release/${{ matrix.platform.pre}}codemp.${{ matrix.platform.ext }} dist/lua/codemp-lua-${{ matrix.platform.target }}.${{ matrix.platform.ext }}
       - uses: actions/upload-artifact@v4
         with:
           name: codemp-lua-${{ matrix.platform.target }}
-          path: target/release/${{ matrix.platform.filename }}
+          path: dist/lua/codemp-lua-${{ matrix.platform.target }}.${{ matrix.platform.ext }}
 
   # TODO this just copies files on our server, maybe publish on luarocks? maybe do it properly with versions
   publish:
