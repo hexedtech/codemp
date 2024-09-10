@@ -3,7 +3,6 @@ name: rust
 on:
   push:
     branches:
-      - ci
       - stable
 
 env:

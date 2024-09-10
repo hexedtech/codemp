@@ -3,7 +3,6 @@ name: java
 on:
   push:
     branches:
-      - ci
       - stable
 
 permissions:
