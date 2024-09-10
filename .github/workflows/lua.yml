@@ -15,15 +15,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        target:
+        platform:
           - runner: ubuntu-latest
             arch: x86_64
-            platform: linux-gnu
+            target: linux-gnu
             pre: lib
             ext: so
           - runner: windows-latest
             arch: x86_64
-            platform: linux-gnu
+            target: linux-gnu
             pre:
             ext: dll
     steps:
@@ -33,11 +33,11 @@ jobs:
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
       - run: cargo build --release --features=luajit
-      - run: mv target/release/${{matrix.target.pre}}codemp.${{matrix.target.ext}} dist/lua/codemp-lua-${{matrix.target.arch}}-${{matrix.target.platform}}.${{matrix.target.ext}}
+      - run: mv target/release/${{matrix.platform.pre}}codemp.${{matrix.platform.ext}} dist/lua/codemp-lua-${{matrix.platform.arch}}-${{matrix.platform.target}}.${{matrix.platform.ext}}
       - uses: actions/upload-artifact@v4
         with:
           name: codemp-lua-${{ matrix.platform.target }}
-          path: dist/lua/codemp-lua-${{matrix.target.arch}}-${{matrix.target.platform}}.${{matrix.target.ext}}
+          path: dist/lua/codemp-lua-${{matrix.platform.arch}}-${{matrix.platform.target}}.${{matrix.platform.ext}}
 
   # macos requires some extra cargo config to make it work, but
   # these settings make test fail so better limit them to this run
@@ -49,7 +49,7 @@ jobs:
         platform:
           - runner: macos-latest
             arch: aarch64
-            platform: darwin
+            target: darwin
             pre: lib
             ext: dylib
           #- runner: macos-12
@@ -64,11 +64,11 @@ jobs:
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
       - run: cargo rustc --release --features=luajit -- -C link-arg=-undefined -C link-arg=dynamic_lookup
-      - run: mv target/release/${{matrix.target.pre}}codemp.${{matrix.target.ext}} dist/lua/codemp-lua-${{matrix.target.arch}}-${{matrix.target.platform}}.${{matrix.target.ext}}
+      - run: mv target/release/${{matrix.platform.pre}}codemp.${{matrix.platform.ext}} dist/lua/codemp-lua-${{matrix.platform.arch}}-${{matrix.platform.target}}.${{matrix.platform.ext}}
       - uses: actions/upload-artifact@v4
         with:
           name: codemp-lua-${{ matrix.platform.target }}
-          path: dist/lua/codemp-lua-${{matrix.target.arch}}-${{matrix.target.platform}}.${{matrix.target.ext}}
+          path: dist/lua/codemp-lua-${{matrix.platform.arch}}-${{matrix.platform.target}}.${{matrix.platform.ext}}
 
   # TODO this just copies files on our server, maybe publish on luarocks? maybe do it properly with versions
   publish:
