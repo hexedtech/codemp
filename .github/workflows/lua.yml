@@ -3,7 +3,6 @@ name: lua
 on:
   push:
     branches:
-      - ci
       - stable
 
 permissions:
