@@ -1,10 +1,9 @@
 package = "codemp"
-version = "0.0.1-1"
+version = "0.0.1-2"
 
 source = {
-    -- url = "git+https://github.com/hexedtech/codemp",
-	url = "git+file:///home/alemi/source/work/codemp/lib",
-	branch = "ci",
+    url = "git+https://github.com/hexedtech/codemp",
+	branch = "dev",
 }
 
 dependencies = {
