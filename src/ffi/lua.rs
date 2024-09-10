@@ -14,6 +14,8 @@
 use std::io::Write;
 use std::sync::Mutex;
 
+use mlua_codemp_patch as mlua;
+
 use crate::api::Cursor;
 use crate::ext::IgnorableError;
 use crate::prelude::*;
@@ -125,13 +127,13 @@ lazy_static::lazy_static! {
 struct Promise<T: Send + Sync + IntoLuaMulti>(Option<tokio::task::JoinHandle<LuaResult<T>>>);
 
 impl<T: Send + Sync + IntoLuaMulti + 'static> LuaUserData for Promise<T> {
-	fn add_fields<'lua, F: LuaUserDataFields<'lua, Self>>(fields: &mut F) {
+	fn add_fields<F: LuaUserDataFields<Self>>(fields: &mut F) {
 		fields.add_field_method_get("ready", |_, this|
 			Ok(this.0.as_ref().map_or(true, |x| x.is_finished()))
 		);
 	}
 
-	fn add_methods<'lua, M: LuaUserDataMethods<'lua, Self>>(methods: &mut M) {
+	fn add_methods<M: LuaUserDataMethods<Self>>(methods: &mut M) {
 		// TODO: await MUST NOT be used in callbacks!!
 		methods.add_method_mut("await", |_, this, ()| match this.0.take() {
 			None => Err(LuaError::runtime("Promise already awaited")),
@@ -186,7 +188,7 @@ fn spawn_runtime_driver(_: &Lua, ():()) -> LuaResult<Driver> {
 #[derive(Debug)]
 struct Driver(tokio::sync::mpsc::UnboundedSender<()>, Option<std::thread::JoinHandle<()>>);
 impl LuaUserData for Driver {
-	fn add_methods<'lua, M: LuaUserDataMethods<'lua, Self>>(methods: &mut M) {
+	fn add_methods<M: LuaUserDataMethods<Self>>(methods: &mut M) {
 		methods.add_meta_method(LuaMetaMethod::ToString, |_, this, ()| Ok(format!("{:?}", this)));
 		methods.add_method_mut("stop", |_, this, ()| {
 			match this.1.take() {
@@ -207,13 +209,13 @@ impl LuaUserData for Driver {
 
 
 impl LuaUserData for CodempClient {
-	fn add_fields<'lua, F: LuaUserDataFields<'lua, Self>>(fields: &mut F) {
+	fn add_fields<F: LuaUserDataFields<Self>>(fields: &mut F) {
 		fields.add_field_method_get("id", |_, this| Ok(this.user().id.to_string()));
 		fields.add_field_method_get("username", |_, this| Ok(this.user().name.clone()));
 		fields.add_field_method_get("active_workspaces", |_, this| Ok(this.active_workspaces()));
 	}
 
-	fn add_methods<'lua, M: LuaUserDataMethods<'lua, Self>>(methods: &mut M) {
+	fn add_methods<M: LuaUserDataMethods<Self>>(methods: &mut M) {
 		methods.add_meta_method(LuaMetaMethod::ToString, |_, this, ()| Ok(format!("{:?}", this)));
 
 		methods.add_method("refresh", |_, this, ()|
@@ -250,7 +252,7 @@ impl LuaUserData for CodempClient {
 
 
 impl LuaUserData for CodempWorkspace {
-	fn add_methods<'lua, M: LuaUserDataMethods<'lua, Self>>(methods: &mut M) {
+	fn add_methods<M: LuaUserDataMethods<Self>>(methods: &mut M) {
 		methods.add_meta_method(LuaMetaMethod::ToString, |_, this, ()| Ok(format!("{:?}", this)));
 		methods.add_method("create_buffer", |_, this, (name,):(String,)|
 			a_sync! { this => Ok(this.create(&name).await?) }
@@ -298,7 +300,7 @@ impl LuaUserData for CodempWorkspace {
 		);
 	}
 
-	fn add_fields<'lua, F: LuaUserDataFields<'lua, Self>>(fields: &mut F) {
+	fn add_fields<F: LuaUserDataFields<Self>>(fields: &mut F) {
 		fields.add_field_method_get("name", |_, this| Ok(this.id()));
 		fields.add_field_method_get("cursor", |_, this| Ok(this.cursor()));
 		fields.add_field_method_get("active_buffers", |_, this| Ok(this.buffer_list()));
@@ -307,11 +309,11 @@ impl LuaUserData for CodempWorkspace {
 }
 
 impl LuaUserData for CodempEvent {
-	fn add_methods<'lua, M: LuaUserDataMethods<'lua, Self>>(methods: &mut M) {
+	fn add_methods<M: LuaUserDataMethods<Self>>(methods: &mut M) {
 		methods.add_meta_method(LuaMetaMethod::ToString, |_, this, ()| Ok(format!("{:?}", this)));
 	}
 
-	fn add_fields<'lua, F: LuaUserDataFields<'lua, Self>>(fields: &mut F) {
+	fn add_fields<F: LuaUserDataFields<Self>>(fields: &mut F) {
 		fields.add_field_method_get("type", |_, this| match this {
 			CodempEvent::FileTreeUpdated(_) => Ok("filetree"),
 			CodempEvent::UserJoin(_) | CodempEvent::UserLeave(_) => Ok("user"),
@@ -324,7 +326,7 @@ impl LuaUserData for CodempEvent {
 }
 
 impl LuaUserData for CodempCursorController {
-	fn add_methods<'lua, M: LuaUserDataMethods<'lua, Self>>(methods: &mut M) {
+	fn add_methods<M: LuaUserDataMethods<Self>>(methods: &mut M) {
 		methods.add_meta_method(LuaMetaMethod::ToString, |_, this, ()| Ok(format!("{:?}", this)));
 
 		methods.add_method("send", |_, this, (buffer, start_row, start_col, end_row, end_col):(String, i32, i32, i32, i32)|
@@ -347,11 +349,11 @@ impl LuaUserData for CodempCursorController {
 }
 
 impl LuaUserData for Cursor {
-	fn add_methods<'lua, M: LuaUserDataMethods<'lua, Self>>(methods: &mut M) {
+	fn add_methods<M: LuaUserDataMethods<Self>>(methods: &mut M) {
 		methods.add_meta_method(LuaMetaMethod::ToString, |_, this, ()| Ok(format!("{:?}", this)));
 	}
 
-	fn add_fields<'lua, F: LuaUserDataFields<'lua, Self>>(fields: &mut F) {
+	fn add_fields<F: LuaUserDataFields<Self>>(fields: &mut F) {
 		fields.add_field_method_get("user", |_, this| Ok(this.user.clone()));
 		fields.add_field_method_get("buffer", |_, this| Ok(this.buffer.clone()));
 		fields.add_field_method_get("start",  |_, this| Ok(RowCol::from(this.start)));
@@ -372,18 +374,18 @@ impl From<(i32, i32)> for RowCol {
 }
 
 impl LuaUserData for RowCol {
-	fn add_methods<'lua, M: LuaUserDataMethods<'lua, Self>>(methods: &mut M) {
+	fn add_methods<M: LuaUserDataMethods<Self>>(methods: &mut M) {
 		methods.add_meta_method(LuaMetaMethod::ToString, |_, this, ()| Ok(format!("{:?}", this)));
 	}
 
-	fn add_fields<'lua, F: LuaUserDataFields<'lua, Self>>(fields: &mut F) {
+	fn add_fields<F: LuaUserDataFields<Self>>(fields: &mut F) {
 		fields.add_field_method_get("row",  |_, this| Ok(this.row));
 		fields.add_field_method_get("col",  |_, this| Ok(this.col));
 	}
 }
 
 impl LuaUserData for CodempBufferController {
-	fn add_methods<'lua, M: LuaUserDataMethods<'lua, Self>>(methods: &mut M) {
+	fn add_methods<M: LuaUserDataMethods<Self>>(methods: &mut M) {
 		methods.add_meta_method(LuaMetaMethod::ToString, |_, this, ()| Ok(format!("{:?}", this)));
 
 		methods.add_method("send", |_, this, (start, end, content, hash): (usize, usize, String, Option<i64>)|
@@ -416,14 +418,14 @@ impl LuaUserData for CodempBufferController {
 }
 
 impl LuaUserData for CodempTextChange {
-	fn add_fields<'lua, F: LuaUserDataFields<'lua, Self>>(fields: &mut F) {
+	fn add_fields<F: LuaUserDataFields<Self>>(fields: &mut F) {
 		fields.add_field_method_get("content", |_, this| Ok(this.content.clone()));
 		fields.add_field_method_get("first",   |_, this| Ok(this.start));
 		fields.add_field_method_get("last",  |_, this| Ok(this.end));
 		fields.add_field_method_get("hash",  |_, this| Ok(this.hash));
 	}
 
-	fn add_methods<'lua, M: LuaUserDataMethods<'lua, Self>>(methods: &mut M) {
+	fn add_methods<M: LuaUserDataMethods<Self>>(methods: &mut M) {
 		methods.add_meta_method(LuaMetaMethod::ToString, |_, this, ()| Ok(format!("{:?}", this)));
 		methods.add_method("apply", |_, this, (txt,):(String,)| Ok(this.apply(&txt)));
 	}
@@ -509,7 +511,7 @@ fn logger(_: &Lua, (printer, debug): (LuaValue, Option<bool>)) -> LuaResult<bool
 			if res {
 				tokio().spawn(async move {
 					while let Some(msg) = rx.recv().await {
-						let _ = cb.call::<(String,),()>((msg,));
+						let _ = cb.call::<()>((msg,));
 						// if the logger fails logging who logs it?
 					}
 				});
