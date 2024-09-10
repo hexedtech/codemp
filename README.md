@@ -2,11 +2,10 @@
 
 [![Actions Status](https://github.com/hexedtech/codemp/actions/workflows/test.yml/badge.svg)](https://github.com/hexedtech/codemp/actions)
 [![docs.rs](https://img.shields.io/docsrs/codemp)](https://docs.rs/codemp/0.7.0-beta.2/codemp/)
+[![Gitter](https://img.shields.io/gitter/room/hexedtech/codemp)](https://gitter.im/hexedtech/codemp)
 [![Crates.io Version](https://img.shields.io/crates/v/codemp)](https://crates.io/crates/codemp)
 [![NPM Version](https://img.shields.io/npm/v/codemp)](https://npmjs.org/package/codemp)
 [![PyPI - Version](https://img.shields.io/pypi/v/codemp)](https://pypi.org/project/codemp)
-[![Crates.io License](https://img.shields.io/crates/l/codemp)](https://github.com/hexedtech/codemp/blob/dev/LICENSE)
-[![Gitter](https://img.shields.io/gitter/room/hexedtech/codemp)](https://gitter.im/hexedtech/codemp)
 
 > `codemp` is a **collaborative** text editing solution to work remotely.
 
@@ -56,10 +55,10 @@ Just `cargo add codemp` and check the docs for some examples.
 
 ### From supported languages
 We provide first-class bindings for:
- - [![JavaScript](https://github.com/hexedtech/codemp/actions/workflows/javascript.yml/badge.svg)](./dist/js/README.md): available from `npm` as [`codemp`](https://npmjs.org/package/codemp)
- - [![Python](https://github.com/hexedtech/codemp/actions/workflows/python.yml/badge.svg)](./dist/lua/README.md): available from `PyPI` as [`codemp`](https://pypi.org/project/codemp)
- - [![Lua](https://github.com/hexedtech/codemp/actions/workflows/lua.yml/badge.svg)](./dist/lua/README.md): run `cargo build --features=lua`
- - [![Java](https://github.com/hexedtech/codemp/actions/workflows/java.yml/badge.svg)](./dist/java/README.md): run `gradle build` in `dist/java/` (requires Gradle)
+ - [![JavaScript](https://github.com/hexedtech/codemp/actions/workflows/javascript.yml/badge.svg)](./dist/js/README.md) available from `npm` as [`codemp`](https://npmjs.org/package/codemp)
+ - [![Python](https://github.com/hexedtech/codemp/actions/workflows/python.yml/badge.svg)](./dist/lua/README.md) available from `PyPI` as [`codemp`](https://pypi.org/project/codemp)
+ - [![Lua](https://github.com/hexedtech/codemp/actions/workflows/lua.yml/badge.svg)](./dist/lua/README.md) run `cargo build --features=lua`
+ - [![Java](https://github.com/hexedtech/codemp/actions/workflows/java.yml/badge.svg)](./dist/java/README.md) run `gradle build` in `dist/java/` (requires Gradle)
 
 As a design philosophy, our binding APIs attempt to perfectly mimic their Rust counterparts, so the main documentation can still be referenced as source of truth.
 Refer to specific language documentation for specifics, differences and quirks.
