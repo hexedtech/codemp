@@ -31,7 +31,8 @@ jobs:
         # TODO should re-enable future toolchains so we get warnings on breaking changes
     steps:
       - uses: arduino/setup-protoc@v3
-        repo-token: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@master
         with:

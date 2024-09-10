@@ -28,7 +28,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: arduino/setup-protoc@v3
-        repo-token: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
       - run: cargo build --release --features=luajit
       - run: mv target/release/${{ matrix.platform.pre}}codemp.${{ matrix.platform.ext }} dist/lua/codemp-lua-${{ matrix.platform.target }}.${{ matrix.platform.ext }}
       - uses: actions/upload-artifact@v4
@@ -54,7 +55,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: arduino/setup-protoc@v3
-        repo-token: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
       - run: cargo rustc --release --features=luajit -- -C link-arg=-undefined -C link-arg=dynamic_lookup
       - uses: actions/upload-artifact@v4
         with:
