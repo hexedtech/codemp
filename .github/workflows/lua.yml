@@ -22,12 +22,6 @@ jobs:
           - runner: windows-latest
             target: win32-x64
             filename: codemp.dll
-          - runner: macos-14
-            target: darwin-arm64
-            filename: codemp.dylib
-          #- runner: macos-12
-          #  target: darwin-x64
-          #  filename: codemp.dylib
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -38,9 +32,37 @@ jobs:
           name: codemp-lua-${{ matrix.platform.target }}
           path: target/release/${{ matrix.platform.filename }}
 
+  # macos requires some extra cargo config to make it work, but
+  # these settings make test fail so better limit them to this run
+  build-macos:
+    runs-on: ${{ matrix.platform.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - runner: macos-14
+            target: darwin-arm64
+            filename: codemp.dylib
+          #- runner: macos-12
+          #  target: darwin-x64
+          #  filename: codemp.dylib
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: arduino/setup-protoc@v3
+      # this is the extra config required for lua
+      - run: mkdir .cargo
+      - run: echo '${{ MLUA_CARGO_CONFIG_EXTRA_SETTINGS }}' > .cargo/config.toml
+      # TODO can we make it prettier?
+      - run: cargo build --release --features=lua
+      - uses: actions/upload-artifact@v4
+        with:
+          name: codemp-lua-${{ matrix.platform.target }}
+          path: target/release/${{ matrix.platform.filename }}
+
   publish:
     runs-on: ubuntu-latest
-    needs: [build]
+    needs: [build, build-macos]
     steps:
       - uses: webfactory/ssh-agent@v0.9.0
         with:
