@@ -53,11 +53,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: arduino/setup-protoc@v3
-      # this is the extra config required for lua
-      - run: mkdir .cargo
-      - run: echo '${{ vars.MLUA_CARGO_CONFIG_EXTRA_SETTINGS }}' > .cargo/config.toml
-      # TODO can we make it prettier?
-      - run: cargo build --release --features=lua
+      - run: cargo rustc --release --features=lua -- -C link-arg=-undefined -C link-arg=dynamic_lookup
       - uses: actions/upload-artifact@v4
         with:
           name: codemp-lua-${{ matrix.platform.target }}
