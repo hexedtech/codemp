@@ -52,7 +52,7 @@ jobs:
       - uses: arduino/setup-protoc@v3
       # this is the extra config required for lua
       - run: mkdir .cargo
-      - run: echo '${{ MLUA_CARGO_CONFIG_EXTRA_SETTINGS }}' > .cargo/config.toml
+      - run: echo '${{ vars.MLUA_CARGO_CONFIG_EXTRA_SETTINGS }}' > .cargo/config.toml
       # TODO can we make it prettier?
       - run: cargo build --release --features=lua
       - uses: actions/upload-artifact@v4
