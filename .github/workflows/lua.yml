@@ -74,4 +74,4 @@ jobs:
         with:
           pattern: codemp-lua-*
       - run: tree
-      - run: scp * dev@codemp.dev:/srv/http/codemp/files/releases/lua/
+      - run: scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null * dev@codemp.dev:/srv/http/codemp/files/releases/lua/
