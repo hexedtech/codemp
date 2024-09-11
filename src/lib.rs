@@ -87,6 +87,7 @@
 //! * [npm (javascript)](https://www.npmjs.com/package/codemp)
 //!
 #![doc(html_logo_url = "https://code.mp/static/logo-round.png")]
+#![doc(html_favicon_url = "https://code.mp/static/favicon.ico")]
 
 /// core structs and traits
 pub mod api;
