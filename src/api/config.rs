@@ -3,7 +3,16 @@
 
 
 /// Configuration struct for `codemp` client
-#[derive(Debug, Clone)]
+///
+/// username and password are required fields, while everything else is optional
+///
+/// host, port and tls affect all connections to all grpc services
+/// resulting endpoint is composed like this:
+///     http{tls?'s':''}://{host}:{port}
+#[derive(Clone, Debug)]
+#[cfg_attr(feature = "js", napi_derive::napi(object))]
+#[cfg_attr(feature = "python", pyo3::pyclass(get_all))]
+#[cfg_attr(feature = "serialize", derive(serde::Serialize, serde::Deserialize))]
 pub struct Config {
 	/// user identifier used to register, possibly your email
 	pub username: String,
@@ -18,6 +27,11 @@ pub struct Config {
 }
 
 impl Config {
+	/// construct a new Config object, with given username and password
+	pub fn new(username: String, password: String) -> Self {
+		Self { username, password, host: None, port: None, tls: None }
+	}
+
 	#[inline]
 	pub(crate) fn host(&self) -> &str {
 		self.host.as_deref().unwrap_or("api.code.mp")

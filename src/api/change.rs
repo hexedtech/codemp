@@ -23,6 +23,7 @@
 #[derive(Clone, Debug, Default)]
 #[cfg_attr(feature = "js", napi_derive::napi(object))]
 #[cfg_attr(feature = "python", pyo3::pyclass(get_all))]
+#[cfg_attr(feature = "serialize", derive(serde::Serialize, serde::Deserialize))]
 pub struct TextChange {
 	/// Range start of text change, as char indexes in buffer previous state.
 	pub start: u32,
