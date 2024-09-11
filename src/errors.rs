@@ -6,7 +6,7 @@
 /// This currently wraps an [http code](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status),
 /// returned as procedure status.
 #[derive(Debug, thiserror::Error)]
-#[error("server rejected procedure with error code: {0}")]
+#[error("server rejected procedure with error code: {0:?}")]
 pub struct RemoteError(#[from] tonic::Status);
 
 /// Wraps [std::result::Result] with a [RemoteError].
@@ -16,11 +16,11 @@ pub type RemoteResult<T> = std::result::Result<T, RemoteError>;
 #[derive(Debug, thiserror::Error)]
 pub enum ConnectionError {
 	/// Underlying [`tonic::transport::Error`].
-	#[error("transport error: {0}")]
+	#[error("transport error: {0:?}")]
 	Transport(#[from] tonic::transport::Error),
 
 	/// Error from the remote server, see [`RemoteError`].
-	#[error("server rejected connection attempt: {0}")]
+	#[error("server rejected connection attempt: {0:?}")]
 	Remote(#[from] RemoteError),
 }
 
