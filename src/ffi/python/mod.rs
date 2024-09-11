@@ -150,8 +150,8 @@ fn init() -> PyResult<Driver> {
 }
 
 #[pyfunction]
-fn connect(host: String, username: String, password: String) -> PyResult<Promise> {
-	a_sync!(Client::connect(host, username, password).await)
+fn connect(config: crate::api::Config) -> PyResult<Promise> {
+	a_sync!(Client::connect(config).await)
 }
 
 #[pyfunction]

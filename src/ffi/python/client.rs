@@ -5,14 +5,14 @@ use pyo3::prelude::*;
 
 #[pymethods]
 impl Client {
-	#[new]
-	fn __new__(
-		host: String,
-		username: String,
-		password: String,
-	) -> crate::errors::ConnectionResult<Self> {
-		super::tokio().block_on(Client::connect(host, username, password))
-	}
+	// #[new]
+	// fn __new__(
+	// 	host: String,
+	// 	username: String,
+	// 	password: String,
+	// ) -> crate::errors::ConnectionResult<Self> {
+	// 	super::tokio().block_on(Client::connect(host, username, password))
+	// }
 
 	// #[pyo3(name = "join_workspace")]
 	// async fn pyjoin_workspace(&self, workspace: String) -> JoinHandle<crate::Result<Workspace>> {

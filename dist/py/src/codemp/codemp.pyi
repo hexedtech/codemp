@@ -7,10 +7,19 @@ class Driver:
 	"""
 	def stop(self) -> None: ...
 
+class Config:
+	"""
+	Configuration data structure for codemp clients
+	"""
+	username: str
+	password: str
+	host: Optional[str]
+	port: Optional[int]
+	tls: Optional[bool]
 
 def init() -> Driver: ...
 def set_logger(logger_cb: Callable[[str], None], debug: bool) -> bool: ...
-def connect(host: str, username: str, password: str) -> Promise[Client]: ...
+def connect(config: Config) -> Promise[Client]: ...
 
 class Promise[T]:
 	"""
