@@ -49,8 +49,8 @@ impl Config {
 
 	pub(crate) fn endpoint(&self) -> String {
 		format!(
-			"{}{}:{}",
-			if self.tls() { "https://" } else { "http" },
+			"{}://{}:{}",
+			if self.tls() { "https" } else { "http" },
 			self.host(),
 			self.port()
 		)
