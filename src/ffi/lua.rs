@@ -254,19 +254,19 @@ impl LuaUserData for CodempClient {
 impl LuaUserData for CodempWorkspace {
 	fn add_methods<M: LuaUserDataMethods<Self>>(methods: &mut M) {
 		methods.add_meta_method(LuaMetaMethod::ToString, |_, this, ()| Ok(format!("{:?}", this)));
-		methods.add_method("create_buffer", |_, this, (name,):(String,)|
+		methods.add_method("create", |_, this, (name,):(String,)|
 			a_sync! { this => Ok(this.create(&name).await?) }
 		);
 
-		methods.add_method("attach_buffer", |_, this, (name,):(String,)|
+		methods.add_method("attach", |_, this, (name,):(String,)|
 			a_sync! { this => Ok(this.attach(&name).await?) }
 		);
 
-		methods.add_method("detach_buffer", |_, this, (name,):(String,)|
+		methods.add_method("detach", |_, this, (name,):(String,)|
 			Ok(matches!(this.detach(&name), DetachResult::Detaching | DetachResult::AlreadyDetached))
 		);
 
-		methods.add_method("delete_buffer", |_, this, (name,):(String,)|
+		methods.add_method("delete", |_, this, (name,):(String,)|
 			a_sync! { this => Ok(this.delete(&name).await?) }
 		);
 
