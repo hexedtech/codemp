@@ -173,6 +173,18 @@ macro_rules! a_sync {
 	};
 }
 
+macro_rules! from_lua_serde {
+	($($t:ty)*) => {
+		$(
+			impl FromLua for $t {
+				fn from_lua(value: LuaValue, lua: &Lua) -> LuaResult<$t> {
+					lua.from_value(value)
+				}
+			}
+		)*
+	};
+}
+
 fn spawn_runtime_driver(_: &Lua, ():()) -> LuaResult<Driver> {
 	let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
 	let handle = std::thread::spawn(move || tokio().block_on(async move {
@@ -308,6 +320,25 @@ impl LuaUserData for CodempWorkspace {
 	}
 }
 
+from_lua_serde! { CodempEvent }
+impl LuaUserData for CodempEvent {
+	fn add_methods<M: LuaUserDataMethods<Self>>(methods: &mut M) {
+		methods.add_meta_method(LuaMetaMethod::ToString, |_, this, ()| Ok(format!("{:?}", this)));
+	}
+
+	fn add_fields<F: LuaUserDataFields<Self>>(fields: &mut F) {
+		fields.add_field_method_get("type", |_, this| match this {
+			CodempEvent::FileTreeUpdated(_) => Ok("filetree"),
+			CodempEvent::UserJoin(_) | CodempEvent::UserLeave(_) => Ok("user"),
+		});
+		fields.add_field_method_get("value", |_, this| match this {
+			CodempEvent::FileTreeUpdated(x) => Ok(x.clone()),
+			CodempEvent::UserJoin(x) | CodempEvent::UserLeave(x) => Ok(x.clone()),
+		});
+	}
+}
+
+
 impl LuaUserData for CodempCursorController {
 	fn add_methods<M: LuaUserDataMethods<Self>>(methods: &mut M) {
 		methods.add_meta_method(LuaMetaMethod::ToString, |_, this, ()| Ok(format!("{:?}", this)));
@@ -328,6 +359,43 @@ impl LuaUserData for CodempCursorController {
 			this.callback(move |controller: CodempCursorController| CHANNEL.send(cb.clone(), controller));
 			Ok(())
 		});
+	}
+}
+
+from_lua_serde! { CodempCursor }
+impl LuaUserData for Cursor {
+	fn add_methods<M: LuaUserDataMethods<Self>>(methods: &mut M) {
+		methods.add_meta_method(LuaMetaMethod::ToString, |_, this, ()| Ok(format!("{:?}", this)));
+	}
+
+	fn add_fields<F: LuaUserDataFields<Self>>(fields: &mut F) {
+		fields.add_field_method_get("user", |_, this| Ok(this.user.clone()));
+		fields.add_field_method_get("buffer", |_, this| Ok(this.buffer.clone()));
+		fields.add_field_method_get("start",  |_, this| Ok(RowCol::from(this.start)));
+		fields.add_field_method_get("finish", |_, this| Ok(RowCol::from(this.end)));
+	}
+}
+
+#[derive(Debug, Clone, Copy)]
+struct RowCol {
+	row: i32,
+	col: i32,
+}
+
+impl From<(i32, i32)> for RowCol {
+	fn from((row, col): (i32, i32)) -> Self {
+		Self { row, col }
+	}
+}
+
+impl LuaUserData for RowCol {
+	fn add_methods<M: LuaUserDataMethods<Self>>(methods: &mut M) {
+		methods.add_meta_method(LuaMetaMethod::ToString, |_, this, ()| Ok(format!("{:?}", this)));
+	}
+
+	fn add_fields<F: LuaUserDataFields<Self>>(fields: &mut F) {
+		fields.add_field_method_get("row",  |_, this| Ok(this.row));
+		fields.add_field_method_get("col",  |_, this| Ok(this.col));
 	}
 }
 
@@ -355,6 +423,7 @@ impl LuaUserData for CodempBufferController {
 	}
 }
 
+from_lua_serde! { CodempTextChange }
 impl LuaUserData for CodempTextChange {
 	fn add_fields<F: LuaUserDataFields<Self>>(fields: &mut F) {
 		fields.add_field_method_get("content", |_, this| Ok(this.content.clone()));
@@ -369,7 +438,16 @@ impl LuaUserData for CodempTextChange {
 	}
 }
 
-
+from_lua_serde! { CodempConfig }
+impl LuaUserData for CodempConfig {
+	fn add_fields<F: LuaUserDataFields<Self>>(fields: &mut F) {
+		fields.add_field_method_get("username", |_, this| Ok(this.username.clone()));
+		fields.add_field_method_get("password", |_, this| Ok(this.password.clone()));
+		fields.add_field_method_get("host", |_, this| Ok(this.host.clone()));
+		fields.add_field_method_get("port", |_, this| Ok(this.port));
+		fields.add_field_method_get("tls", |_, this| Ok(this.tls));
+	}
+}
 
 #[derive(Debug, Clone)]
 struct LuaLoggerProducer(mpsc::UnboundedSender<String>);
