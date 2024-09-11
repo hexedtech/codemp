@@ -181,21 +181,19 @@ function Workspace:event() end
 ---handle to a remote buffer, for async send/recv operations
 local BufferController = {}
 
----@class (exact) TextChange
+---@class TextChange
 ---@field content string text content of change
 ---@field first integer start index of change
 ---@field last integer end index of change
 ---@field hash integer? optional hash of text buffer after this change, for sync checks
 ---@field apply fun(self: TextChange, other: string): string apply this text change to a string
 
----@param first integer change start index
----@param last integer change end index
----@param content string change content
+---@param change TextChange text change to broadcast
 ---@return NilPromise
 ---@async
 ---@nodiscard
 ---update buffer with a text change; note that to delete content should be empty but not span, while to insert span should be empty but not content (can insert and delete at the same time)
-function BufferController:send(first, last, content) end
+function BufferController:send(change) end
 
 ---@return MaybeTextChangePromise
 ---@async
@@ -239,28 +237,24 @@ function BufferController:content() end
 ---handle to a workspace's cursor channel, allowing send/recv operations
 local CursorController = {}
 
----@class (exact) RowCol
+---@class RowCol
 ---@field row integer row number
 ---@field col integer column number
 ---row and column tuple
 
----@class (exact) Cursor
+---@class Cursor
 ---@field user string? id of user owning this cursor
 ---@field buffer string relative path ("name") of buffer on which this cursor is
 ---@field start RowCol cursor start position
 ---@field finish RowCol cursor end position
 ---a cursor position
 
----@param buffer string buffer relative path ("name") to send this cursor on
----@param start_row integer cursor start row
----@param start_col integer cursor start col
----@param end_row integer cursor end row
----@param end_col integer cursor end col
+---@param cursor Cursor cursor event to broadcast
 ---@return NilPromise
 ---@async
 ---@nodiscard
 ---update cursor position by sending a cursor event to server
-function CursorController:send(buffer, start_row, start_col, end_row, end_col) end
+function CursorController:send(cursor) end
 
 
 ---@return MaybeCursorPromise
@@ -294,18 +288,24 @@ function CursorController:callback(cb) end
 
 
 
+
+---@class Config
+---@field username string user identifier used to register, possibly your email
+---@field password string user password chosen upon registration
+---@field host string | nil address of server to connect to, default api.code.mp
+---@field port integer | nil port to connect to, default 50053
+---@field tls boolean | nil enable or disable tls, default true
+
 ---@class (exact) Codemp
 ---the codemp shared library
 local Codemp = {}
 
----@param host string server host to connect to
----@param username string username used to log in (usually email)
----@param password string password used to log in
+---@param config Config configuration for
 ---@return ClientPromise
 ---@async
 ---@nodiscard
 ---connect to codemp server, authenticate and return client
-function Codemp.connect(host, username, password) end
+function Codemp.connect(config) end
 
 ---@return function | nil
 ---@nodiscard
