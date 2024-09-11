@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - dev
-      - config
 
 env:
   CARGO_TERM_COLOR: always
