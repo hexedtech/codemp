@@ -308,29 +308,12 @@ impl LuaUserData for CodempWorkspace {
 	}
 }
 
-impl LuaUserData for CodempEvent {
-	fn add_methods<M: LuaUserDataMethods<Self>>(methods: &mut M) {
-		methods.add_meta_method(LuaMetaMethod::ToString, |_, this, ()| Ok(format!("{:?}", this)));
-	}
-
-	fn add_fields<F: LuaUserDataFields<Self>>(fields: &mut F) {
-		fields.add_field_method_get("type", |_, this| match this {
-			CodempEvent::FileTreeUpdated(_) => Ok("filetree"),
-			CodempEvent::UserJoin(_) | CodempEvent::UserLeave(_) => Ok("user"),
-		});
-		fields.add_field_method_get("value", |_, this| match this {
-			CodempEvent::FileTreeUpdated(x) => Ok(x.clone()),
-			CodempEvent::UserJoin(x) | CodempEvent::UserLeave(x) => Ok(x.clone()),
-		});
-	}
-}
-
 impl LuaUserData for CodempCursorController {
 	fn add_methods<M: LuaUserDataMethods<Self>>(methods: &mut M) {
 		methods.add_meta_method(LuaMetaMethod::ToString, |_, this, ()| Ok(format!("{:?}", this)));
 
-		methods.add_method("send", |_, this, (buffer, start_row, start_col, end_row, end_col):(String, i32, i32, i32, i32)|
-			a_sync! { this => Ok(this.send(CodempCursor { buffer, start: (start_row, start_col), end: (end_row, end_col), user: None }).await?) }
+		methods.add_method("send", |_, this, (cursor,):(CodempCursor,)|
+			a_sync! { this => Ok(this.send(cursor).await?) }
 		);
 		methods.add_method("try_recv", |_, this, ()|
 			a_sync! { this => Ok(this.try_recv().await?) }
@@ -348,57 +331,12 @@ impl LuaUserData for CodempCursorController {
 	}
 }
 
-impl LuaUserData for Cursor {
-	fn add_methods<M: LuaUserDataMethods<Self>>(methods: &mut M) {
-		methods.add_meta_method(LuaMetaMethod::ToString, |_, this, ()| Ok(format!("{:?}", this)));
-	}
-
-	fn add_fields<F: LuaUserDataFields<Self>>(fields: &mut F) {
-		fields.add_field_method_get("user", |_, this| Ok(this.user.clone()));
-		fields.add_field_method_get("buffer", |_, this| Ok(this.buffer.clone()));
-		fields.add_field_method_get("start",  |_, this| Ok(RowCol::from(this.start)));
-		fields.add_field_method_get("finish", |_, this| Ok(RowCol::from(this.end)));
-	}
-}
-
-#[derive(Debug, Clone, Copy)]
-struct RowCol {
-	row: i32,
-	col: i32,
-}
-
-impl From<(i32, i32)> for RowCol {
-	fn from((row, col): (i32, i32)) -> Self {
-		Self { row, col }
-	}
-}
-
-impl LuaUserData for RowCol {
-	fn add_methods<M: LuaUserDataMethods<Self>>(methods: &mut M) {
-		methods.add_meta_method(LuaMetaMethod::ToString, |_, this, ()| Ok(format!("{:?}", this)));
-	}
-
-	fn add_fields<F: LuaUserDataFields<Self>>(fields: &mut F) {
-		fields.add_field_method_get("row",  |_, this| Ok(this.row));
-		fields.add_field_method_get("col",  |_, this| Ok(this.col));
-	}
-}
-
 impl LuaUserData for CodempBufferController {
 	fn add_methods<M: LuaUserDataMethods<Self>>(methods: &mut M) {
 		methods.add_meta_method(LuaMetaMethod::ToString, |_, this, ()| Ok(format!("{:?}", this)));
 
-		methods.add_method("send", |_, this, (start, end, content, hash): (usize, usize, String, Option<i64>)|
-			a_sync! { this => Ok(
-				this.send(
-					CodempTextChange {
-						start: start as u32,
-						end: end as u32,
-						content,
-						hash,
-					}
-				).await?
-			)}
+		methods.add_method("send", |_, this, (change,): (CodempTextChange,)|
+			a_sync! { this => Ok(this.send(change).await?)}
 		);
 
 		methods.add_method("try_recv", |_, this, ()| a_sync! { this => Ok(this.try_recv().await?) });
@@ -534,8 +472,8 @@ fn entrypoint(lua: &Lua) -> LuaResult<LuaTable> {
 	let exports = lua.create_table()?;
 
 	// entrypoint
-	exports.set("connect", lua.create_function(|_, (host, username, password):(String,String,String)|
-		a_sync! { => Ok(CodempClient::connect(host, username, password).await?) }
+	exports.set("connect", lua.create_function(|_, (config,):(CodempConfig,)|
+		a_sync! { => Ok(CodempClient::connect(config).await?) }
 	)?)?;
 
 	// utils
