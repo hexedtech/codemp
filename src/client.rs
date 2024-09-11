@@ -28,7 +28,7 @@ pub struct Client(Arc<ClientInner>);
 #[derive(Debug)]
 struct ClientInner {
 	user: User,
-	host: String,
+	config: crate::api::Config,
 	workspaces: DashMap<String, Workspace>,
 	auth: AuthClient<Channel>,
 	session: SessionClient<InterceptedService<Channel, network::SessionInterceptor>>,
@@ -37,39 +37,29 @@ struct ClientInner {
 
 impl Client {
 	/// Connect to the server, authenticate and instantiate a new [`Client`].
-	pub async fn connect(
-		host: impl AsRef<str>,
-		username: impl AsRef<str>,
-		password: impl AsRef<str>,
-	) -> ConnectionResult<Self> {
-		let host = if host.as_ref().starts_with("http") {
-			host.as_ref().to_string()
-		} else {
-			format!("https://{}", host.as_ref())
-		};
-
-		let channel = Endpoint::from_shared(host.clone())?.connect().await?;
+	pub async fn connect(config: crate::api::Config) -> ConnectionResult<Self> {
+		// TODO move these two into network.rs
+		let channel = Endpoint::from_shared(config.endpoint())?.connect().await?;
 		let mut auth = AuthClient::new(channel.clone());
 
 		let resp = auth.login(LoginRequest {
-			username: username.as_ref().to_string(),
-			password: password.as_ref().to_string(),
+			username: config.username.clone(),
+			password: config.password.clone(),
 		})
 			.await?
 			.into_inner();
 
 		let claims = InternallyMutable::new(resp.token);
 
+		// TODO move this one into network.rs
 		let session = SessionClient::with_interceptor(
 			channel, network::SessionInterceptor(claims.channel())
 		);
 
 		Ok(Client(Arc::new(ClientInner {
-			host,
 			user: resp.user.into(),
 			workspaces: DashMap::default(),
-			claims,
-			auth, session,
+			claims, auth, session, config
 		})))
 	}
 
@@ -139,7 +129,7 @@ impl Client {
 		let ws = Workspace::try_new(
 			workspace.as_ref().to_string(),
 			self.0.user.clone(),
-			&self.0.host,
+			self.0.config.clone(),
 			token,
 			self.0.claims.channel(),
 		)

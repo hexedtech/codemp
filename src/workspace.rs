@@ -54,12 +54,12 @@ impl Workspace {
 	pub(crate) async fn try_new(
 		name: String,
 		user: User,
-		dest: &str,
+		config: crate::api::Config,
 		token: Token,
 		claims: tokio::sync::watch::Receiver<codemp_proto::common::Token>, // TODO ughh receiving this
 	) -> ConnectionResult<Self> {
 		let workspace_claim = InternallyMutable::new(token);
-		let services = Services::try_new(dest, claims, workspace_claim.channel()).await?;
+		let services = Services::try_new(&config.endpoint(), claims, workspace_claim.channel()).await?;
 		let ws_stream = services.ws().attach(Empty {}).await?.into_inner();
 
 		let (tx, rx) = mpsc::channel(128);
