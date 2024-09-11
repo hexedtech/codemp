@@ -85,13 +85,12 @@ pub extern "system" fn Java_mp_code_Workspace_get_1file_1tree(
 	let file_tree = workspace.filetree(filter.as_deref());
 	env.find_class("java/lang/String")
 		.and_then(|class| env.new_object_array(file_tree.len() as i32, class, JObject::null()))
-		.map(|arr| {
+		.inspect(|arr| {
 			for (idx, path) in file_tree.iter().enumerate() {
 				env.new_string(path)
-					.and_then(|path| env.set_object_array_element(&arr, idx as i32, path))
+					.and_then(|path| env.set_object_array_element(arr, idx as i32, path))
 					.jexcept(&mut env)
 			}
-			arr
 		}).jexcept(&mut env).as_raw()
 }
 
@@ -180,13 +179,12 @@ pub extern "system" fn Java_mp_code_Workspace_list_1buffer_1users<'local>(
 
 	env.find_class("java/util/UUID")
 		.and_then(|class| env.new_object_array(users.len() as i32, &class, JObject::null()))
-		.map(|arr| {
+		.inspect(|arr| {
 			for (idx, user) in users.iter().enumerate() {
 				user.id.jobjectify(&mut env)
-					.and_then(|id| env.set_object_array_element(&arr, idx as i32, id))
+					.and_then(|id| env.set_object_array_element(arr, idx as i32, id))
 					.jexcept(&mut env);
 			}
-			arr
 		}).jexcept(&mut env).as_raw()
 }
 

@@ -10,7 +10,9 @@ import java.util.Optional;
 public class Client {
 	private final long ptr;
 
-	public static native Client connect(String url, String username, String password) throws ConnectionException;
+	public static native Client connect(String username, String password) throws ConnectionException;
+	public static native Client connectToServer(String username, String password, String host, int port, boolean tls) throws ConnectionException;
+
 	Client(long ptr) {
 		this.ptr = ptr;
 	}

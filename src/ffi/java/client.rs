@@ -1,27 +1,69 @@
-use jni::{objects::{JClass, JObject, JString, JValueGen}, sys::{jboolean, jlong, jobject, jobjectArray}, JNIEnv};
-use crate::{client::Client, Workspace};
+use jni::{objects::{JClass, JObject, JString, JValueGen}, sys::{jboolean, jint, jlong, jobject, jobjectArray}, JNIEnv};
+use crate::{api::Config, client::Client, Workspace};
 
 use super::{JExceptable, RT};
 
-/// Connect to a given URL and return a [Client] to interact with that server.
+/// Connect using the given credentials to the default server, and return a [Client] to interact with it.
 #[no_mangle]
 pub extern "system" fn Java_mp_code_Client_connect<'local>(
 	mut env: JNIEnv,
 	_class: JClass<'local>,
-	url: JString<'local>,
 	user: JString<'local>,
 	pwd: JString<'local>
 ) -> jobject {
-	let url: String = env.get_string(&url)
+	let username: String = env.get_string(&user)
 		.map(|s| s.into())
 		.jexcept(&mut env);
-	let user: String = env.get_string(&user)
+	let password: String = env.get_string(&pwd)
 		.map(|s| s.into())
 		.jexcept(&mut env);
-	let pwd: String = env.get_string(&pwd)
+	connect_internal(env, Config {
+		username,
+		password,
+		host: None,
+		port: None,
+		tls: None
+	})
+}
+
+/// Connect to a given URL and return a [Client] to interact with that server.
+#[no_mangle]
+#[allow(non_snake_case)]
+pub extern "system" fn Java_mp_code_Client_connectToServer<'local>(
+	mut env: JNIEnv,
+	_class: JClass<'local>,
+	user: JString<'local>,
+	pwd: JString<'local>,
+	host: JString<'local>,
+	port: jint,
+	tls: jboolean
+) -> jobject {
+	let username: String = env.get_string(&user)
 		.map(|s| s.into())
 		.jexcept(&mut env);
-	RT.block_on(crate::Client::connect(&url, &user, &pwd))
+	let password: String = env.get_string(&pwd)
+		.map(|s| s.into())
+		.jexcept(&mut env);
+	let host: String = env.get_string(&host)
+		.map(|s| s.into())
+		.jexcept(&mut env);
+
+	if port < 0 {
+		env.throw_new("mp/code/exceptions/JNIException", "Negative port number!")
+			.jexcept(&mut env);
+	}
+
+	connect_internal(env, Config {
+		username,
+		password,
+		host: Some(host),
+		port: Some(port as u16),
+		tls: Some(tls != 0),
+	})
+}
+
+fn connect_internal(mut env: JNIEnv, config: Config) -> jobject {
+	RT.block_on(Client::connect(config))
 		.map(|client| Box::into_raw(Box::new(client)) as jlong)
 		.map(|ptr| {
 			env.find_class("mp/code/Client")
@@ -123,13 +165,12 @@ pub extern "system" fn Java_mp_code_Client_list_1workspaces<'local>(
 
 	env.find_class("java/lang/String")
 		.and_then(|class| env.new_object_array(list.len() as i32, class, JObject::null()))
-		.map(|arr| {
+		.inspect(|arr| {
 			for (idx, path) in list.iter().enumerate() {
 				env.new_string(path)
-					.and_then(|path| env.set_object_array_element(&arr, idx as i32, path))
+					.and_then(|path| env.set_object_array_element(arr, idx as i32, path))
 					.jexcept(&mut env)
 			}
-			arr
 		}).jexcept(&mut env).as_raw()
 }
 
