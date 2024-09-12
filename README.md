@@ -1,7 +1,7 @@
 [![codemp](https://code.mp/static/banner.png)](https://code.mp)
 
 [![Actions Status](https://github.com/hexedtech/codemp/actions/workflows/test.yml/badge.svg)](https://github.com/hexedtech/codemp/actions)
-[![docs.rs](https://img.shields.io/docsrs/codemp)](https://docs.rs/codemp/0.7.0-beta.2/codemp/)
+[![docs.rs](https://img.shields.io/docsrs/codemp)](https://docs.rs/codemp/)
 [![Gitter](https://img.shields.io/gitter/room/hexedtech/codemp)](https://gitter.im/hexedtech/codemp)
 [![Crates.io Version](https://img.shields.io/crates/v/codemp)](https://crates.io/crates/codemp)
 [![NPM Version](https://img.shields.io/npm/v/codemp)](https://npmjs.org/package/codemp)
@@ -19,7 +19,7 @@ no matter the order or the timing due to unreliable networks or constrained reso
 changes will always carry their original intention. On top of this baseline, `codemp`'s protocol is optimized for speed 
 and low network footprint, meaning even slow connections can provide stable real-time editing.
 
-The full documentation is available on [docs.rs](https://docs.rs/codemp/0.7.0-beta.2/codemp/).
+The full documentation is available on [docs.rs](https://docs.rs/codemp/0.7.0-beta44/codemp/).
 
 # Usage
 `codemp` is primarily used as a plugin in your editor of choice.
