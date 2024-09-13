@@ -2,7 +2,10 @@
 `codemp`'s Java bindings are implemented using the [JNI](https://docs.oracle.com/javase/8/docs/technotes/guides/jni/).
 
 On the Rust side, all Java-related code is gated behind the `java` feature, and is implemented using[`jni-rs`](https://github.com/jni-rs/jni-rs).
-Unlike other languages, Java requires glue code on both sides: as a result, a Java component is necessary.
+Unlike other supported languages, Java is statically typed and requires knowing all foreign function types at compile time.
+This means that, to use `codemp` from Java, all functions which will be used must be declared (as `native`), making using our Java binding without extra glue extremely tedious.
+
+We provide glue code also on the Java side, wrapping all native calls and defining classes to hold `codemp` types.
 
 ## Building
 This is a [Gradle](https://gradle.org/) project: building requires having both Gradle and Cargo installed, as well as the JDK (any non-abandoned version).

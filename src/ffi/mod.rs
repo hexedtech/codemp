@@ -1,38 +1,47 @@
-//! # FFI
-//! The glue code for FFI (Foreign Function Interface) in various languages, each gated behind
-//! a feature flag.
-//!
-//! For all except Java, the resulting shared object is ready to use, but external packages are
-//! available to simplify dependency management and provide type hints in editor.
-//!
-//! ## Lua
-//! Using [mlua](https://docs.rs/mlua) it's possible to map almost perfectly the entirety of `codemp` API.
-//! Notable outliers are functions that receive `codemp` objects: these instead receive arguments
-//! to build the object instead (such as [`crate::api::Controller::send`])
-//!
-//! Note that async operations are carried out on a [tokio] current_thread runtime, so it is
-//! necessary to drive it. A separate driver thread can be spawned with `spawn_runtime_driver`
-//! function.
-//!
-//! To work with callbacks, the main Lua thread must periodically stop and poll for callbacks via
-//! `poll_callback`, otherwise those will never run. This is necessary to allow safe concurrent
-//! access to the global Lua state, so minimize callback execution time as much as possible.
-//!
-//! ## Python
-//! Using [pyo3](https://docs.rs/pyo3) it's possible to map perfectly the entirety of `codemp` API.
-//! Async operations run on a dedicated [tokio] runtime
-//!
+//! # Foreign Function Interface
+//! `codemp` aims to be available as a library from as many programming languages as possible.
+//! To achieve this, we rely on Foreign Function Interface.
+//! 
 //! ## JavaScript
-//! Using [napi](https://docs.rs/napi) it's possible to map perfectly the entirety of `codemp` API.
-//! Async operations run on a dedicated [tokio] runtime and the result is sent back to main thread
+//! Our JavaScript glue is built with [`napi`](https://napi.rs).
 //!
+//! All async operations are handled on a separate tokio runtime, automatically managed by `napi`.
+//! Callbacks are safely scheduled to be called on the main loop thread.
+//! 
+//! ## Python
+//! Our Python glue is built with [`PyO3`](https://pyo3.rs).
+//!
+//! All async operations return a `Promise`, which can we `.wait()`-ed to block and get the return
+//! value. The `Future` itself is run on a `tokio` runtime in a dedicated thread, which must be
+//! stared with `codemp.init()` before doing any async operations.
+//! 
+//! ## Lua
+//! Our Lua glue is built with [`mlua`](https://github.com/mlua-rs/mlua).
+//!
+//! Lua bindings run all async code on a current thread tokio runtime, which should be driven with
+//! a dedicated thread.
+//!
+//! All async functions will return a `Promise`, which can be `:await()`-ed to block and get the
+//! return value.
+//!
+//! Note as Lua uses filename to locate entrypoint symbol, so shared object can't just have any name.
+//! Accepted filenames are `libcodemp.___`, `codemp.___`, `codemp_native.___`, `codemp_lua.___` (extension depends on your platform: `so` on linux, `dll` on windows, `dylib` on macos).
+//! Type hints are provided in `dist/lua/annotations.lua`, just include them in your language server: `---@module 'annotations'`.
+//! 
+//! `codemp` is available as a rock on [LuaRocks](https://luarocks.org/modules/alemi/codemp),
+//! however LuaRocks compiles from source and will require having `cargo` installed.
+//! We provide pre-built binaries at [codemp.dev/releases/lua](https://codemp.dev/releases/lua/).
+//! **Please do not rely on this link, as our built binaries will likely move somewhere else soon!**.
+//! 
 //! ## Java
-//! Since for java it is necessary to deal with the JNI and no complete FFI library is available,
-//! java glue directly writes JNI functions leveraging [jni](https://docs.rs/jni) rust bindings.
+//! Our Java glue is built with [`jni`](https://github.com/jni-rs/jni-rs).
 //!
-//! To have a runnable `jar`, some extra Java code must be compiled (available under `dist/java`)
-//! and bundled together with the shared object. Such extra wrapper provides classes and methods
-//! loading the native extension and invoking the underlying native functions.
+//! Memory management is entirely delegated to the JVM's garbage collector.
+//! A more elegant solution than `Object.finalize()`, who is deprecated in newer Java versions, may be coming eventually.
+//! 
+//! Exceptions coming from the native side have generally been made checked to imitate Rust's philosophy with `Result`.
+//! `JNIException`s are however unchecked: there is nothing you can do to recover from them, as they usually represent a severe error in the glue code. If they arise, it's probably a bug.
+//! 
 
 /// java bindings, built with [jni]
 #[cfg(feature = "java")]
