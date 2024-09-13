@@ -1,7 +1,3 @@
-//! ### python
-//! Using [pyo3] it's possible to map perfectly the entirety of `codemp` API.
-//! Async operations run on a dedicated [tokio] runtime
-
 pub mod client;
 pub mod controllers;
 pub mod workspace;

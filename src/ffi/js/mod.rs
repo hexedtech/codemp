@@ -1,7 +1,3 @@
-//! ### javascript
-//! Using [napi] it's possible to map perfectly the entirety of `codemp` API.
-//! Async operations run on a dedicated [tokio] runtime and the result is sent back to main thread
-
 pub mod client;
 pub mod workspace;
 pub mod cursor;
