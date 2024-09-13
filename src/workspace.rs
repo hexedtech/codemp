@@ -279,10 +279,17 @@ impl Workspace {
 	}
 
 	/// Get the filetree as it is currently cached.
+	/// A filter may be applied, and it may be strict (equality check) or not (starts_with check).
 	// #[cfg_attr(feature = "js", napi)] // https://github.com/napi-rs/napi-rs/issues/1120
-	pub fn filetree(&self, filter: Option<&str>) -> Vec<String> {
+	pub fn filetree(&self, filter: Option<&str>, strict: bool) -> Vec<String> {
 		self.0.filetree.iter()
-			.filter(|f| filter.map_or(true, |flt| f.starts_with(flt)))
+			.filter(|f| filter.map_or(true, |flt| {
+				if strict {
+					f.eq(flt)
+				} else {
+					f.starts_with(flt)
+				}
+			}))
 			.map(|f| f.clone())
 			.collect()
 	}

@@ -30,9 +30,9 @@ public class Workspace {
 		return Optional.ofNullable(get_buffer(this.ptr, path));
 	}
 
-	private static native String[] get_file_tree(long self, String filter);
-	public String[] getFileTree(Optional<String> filter) {
-		return get_file_tree(this.ptr, filter.orElse(null));
+	private static native String[] get_file_tree(long self, String filter, boolean strict);
+	public String[] getFileTree(Optional<String> filter, boolean strict) {
+		return get_file_tree(this.ptr, filter.orElse(null), strict);
 	}
 
 	private static native void create_buffer(String path) throws ConnectionRemoteException;
