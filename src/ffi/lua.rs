@@ -294,8 +294,8 @@ impl LuaUserData for CodempWorkspace {
 		// 	Ok(())
 		// });
 
-		methods.add_method("filetree", |_, this, (filter,):(Option<String>,)|
-			Ok(this.filetree(filter.as_deref()))
+		methods.add_method("filetree", |_, this, (filter, strict,):(Option<String>, bool,)|
+			Ok(this.filetree(filter.as_deref(), strict))
 		);
 	}
 

@@ -147,10 +147,11 @@ function Workspace:attach_buffer(path) end
 ---detach from an active buffer, closing all streams. returns false if buffer was no longer active
 function Workspace:detach_buffer(path) end
 
----@param filter? string only return elements starting with given filter
+---@param filter? string apply a filter to the return elements
+---@param strict boolean whether to strictly match or just check whether it starts with it
 ---@return string[]
 ---return the list of available buffers in this workspace, as relative paths from workspace root
-function Workspace:filetree(filter) end
+function Workspace:filetree(filter, strict) end
 
 ---@return NilPromise
 ---@async

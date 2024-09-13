@@ -1,4 +1,4 @@
-use jni::{objects::{JClass, JObject, JString, JValueGen}, sys::{jlong, jobject, jobjectArray, jstring}, JNIEnv};
+use jni::{objects::{JClass, JObject, JString, JValueGen}, sys::{jboolean, jlong, jobject, jobjectArray, jstring}, JNIEnv};
 use crate::Workspace;
 
 use super::{JExceptable, JObjectify, RT};
@@ -69,7 +69,8 @@ pub extern "system" fn Java_mp_code_Workspace_get_1file_1tree(
 	mut env: JNIEnv,
 	_class: JClass,
 	self_ptr: jlong,
-	filter: JString 
+	filter: JString,
+	strict: jboolean
 ) -> jobjectArray {
 	let workspace = unsafe { Box::leak(Box::from_raw(self_ptr as *mut Workspace)) };
 	let filter: Option<String> = if filter.is_null() {
@@ -82,7 +83,7 @@ pub extern "system" fn Java_mp_code_Workspace_get_1file_1tree(
 		)
 	};
 
-	let file_tree = workspace.filetree(filter.as_deref());
+	let file_tree = workspace.filetree(filter.as_deref(), strict != 0);
 	env.find_class("java/lang/String")
 		.and_then(|class| env.new_object_array(file_tree.len() as i32, class, JObject::null()))
 		.inspect(|arr| {
