@@ -33,7 +33,7 @@ use uuid::Uuid;
 use napi_derive::napi;
 
 #[derive(Debug, Clone)]
-#[cfg_attr(feature = "python", pyo3::pyclass)]
+#[cfg_attr(feature = "py", pyo3::pyclass)]
 #[cfg_attr(feature = "js", napi)]
 pub struct Workspace(Arc<WorkspaceInner>);
 
@@ -357,8 +357,8 @@ impl Drop for WorkspaceInner {
 	}
 }
 
-#[cfg_attr(feature = "python", pyo3::pyclass(eq, eq_int))]
-#[cfg_attr(feature = "python", derive(PartialEq))]
+#[cfg_attr(feature = "py", pyo3::pyclass(eq, eq_int))]
+#[cfg_attr(feature = "py", derive(PartialEq))]
 pub enum DetachResult {
 	NotAttached,
 	Detaching,

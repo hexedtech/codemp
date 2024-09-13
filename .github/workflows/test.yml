@@ -22,7 +22,7 @@ jobs:
           - luajit # should we test with lua54 instead?
           - java
           - js
-          - python
+          - py
         toolchain:
           - stable
         #  - beta

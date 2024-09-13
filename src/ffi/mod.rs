@@ -47,5 +47,5 @@ pub mod lua;
 pub mod js;
 
 /// python bindings, built with [pyo3]
-#[cfg(feature = "python")]
+#[cfg(feature = "py")]
 pub mod python;

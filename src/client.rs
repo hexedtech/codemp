@@ -12,7 +12,7 @@ use codemp_proto::{
 	common::{Empty, Token}, session::{session_client::SessionClient, InviteRequest, WorkspaceRequest},
 };
 
-#[cfg(feature = "python")]
+#[cfg(feature = "py")]
 use pyo3::prelude::*;
 
 /// A `codemp` client handle.
@@ -22,7 +22,7 @@ use pyo3::prelude::*;
 /// A new [`Client`] can be obtained with [`Client::connect`].
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "js", napi_derive::napi)]
-#[cfg_attr(feature = "python", pyclass)]
+#[cfg_attr(feature = "py", pyclass)]
 pub struct Client(Arc<ClientInner>);
 
 #[derive(Debug)]

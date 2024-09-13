@@ -12,7 +12,7 @@ use codemp_proto::{cursor::{CursorPosition, RowCol}, files::BufferNode};
 ///
 /// An unique [CursorController] exists for each active [crate::Workspace].
 #[derive(Debug, Clone)]
-#[cfg_attr(feature = "python", pyo3::pyclass)]
+#[cfg_attr(feature = "py", pyo3::pyclass)]
 #[cfg_attr(feature = "js", napi_derive::napi)]
 pub struct CursorController(pub(crate) Arc<CursorControllerInner>);
 
