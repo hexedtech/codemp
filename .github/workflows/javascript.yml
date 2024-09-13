@@ -31,13 +31,13 @@ jobs:
         with:
           node-version: '20'
       - run: npm install
-        working-directory: dist/js/publish
-      - run: npx napi build --cargo-cwd=../../.. --platform --release --features=js --strip
-        working-directory: dist/js/publish
+        working-directory: dist/js
+      - run: npx napi build --cargo-cwd=../.. --platform --release --features=js --strip
+        working-directory: dist/js
       - uses: actions/upload-artifact@v4
         with:
           name: codemp-js-${{ matrix.platform.target }}
-          path: dist/js/publish/codemp.*.node
+          path: dist/js/codemp.*.node
 
   publish:
     runs-on: ubuntu-latest
@@ -56,32 +56,34 @@ jobs:
           node-version: '20'
           registry-url: 'https://registry.npmjs.org'
       - run: npm install
-        working-directory: dist/js/publish
-      - run: npx napi build --cargo-cwd=../../.. --platform --features=js
-        working-directory: dist/js/publish
+        working-directory: dist/js
+      - run: npx napi build --cargo-cwd=../.. --platform --features=js
+        working-directory: dist/js
       - run: rm *.node
-        working-directory: dist/js/publish
+        working-directory: dist/js
       - run: npx napi create-npm-dir -t .; tree
-        working-directory: dist/js/publish
+        working-directory: dist/js
       - uses: actions/download-artifact@v4
         with:
-          path: dist/js/publish/artifacts
+          path: dist/js/artifacts
           pattern: codemp-js-*
       - run: npx napi artifacts; tree
-        working-directory: dist/js/publish
+        working-directory: dist/js
       - run: npx napi prepublish -t . --skip-gh-release
-        working-directory: dist/js/publish
+        working-directory: dist/js
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - run: rm -rf *.node artifacts node_modules
-        working-directory: dist/js/publish
+        working-directory: dist/js
+      - run: cp ../../README.md .
+        working-directory: dist/js
       # TODO this is a bit awful, but napi just appends the platform triplet to the resulting package name
       #      however we want '@codemp/native-...' and 'codemp' (because otherwise it gets flagged as spam)
       #      so we just sed out before releasing. this is really ugly but if it works right now i'll just
       #      take it and think again about it later
       - run: sed -i 's/"@codemp\/native"/"codemp"/' package.json
-        working-directory: dist/js/publish
+        working-directory: dist/js
       - run: npm publish
-        working-directory: dist/js/publish
+        working-directory: dist/js
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
