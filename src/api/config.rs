@@ -1,7 +1,6 @@
 //! # Config
 //! Data structure defining clients configuration
 
-
 /// Configuration struct for `codemp` client
 ///
 /// username and password are required fields, while everything else is optional
@@ -11,7 +10,7 @@
 ///     http{tls?'s':''}://{host}:{port}
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "js", napi_derive::napi(object))]
-#[cfg_attr(feature = "py", pyo3::pyclass(get_all))]
+#[cfg_attr(feature = "python", pyo3::pyclass(get_all, set_all))]
 #[cfg_attr(feature = "serialize", derive(serde::Serialize, serde::Deserialize))]
 pub struct Config {
 	/// user identifier used to register, possibly your email
@@ -29,7 +28,13 @@ pub struct Config {
 impl Config {
 	/// construct a new Config object, with given username and password
 	pub fn new(username: String, password: String) -> Self {
-		Self { username, password, host: None, port: None, tls: None }
+		Self {
+			username,
+			password,
+			host: None,
+			port: None,
+			tls: None,
+		}
 	}
 
 	#[inline]

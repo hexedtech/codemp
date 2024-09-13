@@ -14,18 +14,6 @@ impl Client {
 	// 	super::tokio().block_on(Client::connect(host, username, password))
 	// }
 
-	// #[pyo3(name = "join_workspace")]
-	// async fn pyjoin_workspace(&self, workspace: String) -> JoinHandle<crate::Result<Workspace>> {
-	// 	tracing::info!("attempting to join the workspace {}", workspace);
-
-	// 	let this = self.clone();
-	// 	async {
-	// 		tokio()
-	// 			.spawn(async move { this.join_workspace(workspace).await })
-	// 			.await
-	// 	}
-	// }
-
 	#[pyo3(name = "join_workspace")]
 	fn pyjoin_workspace(&self, py: Python<'_>, workspace: String) -> PyResult<super::Promise> {
 		tracing::info!("attempting to join the workspace {}", workspace);

@@ -7,6 +7,7 @@ class Driver:
 	"""
 	def stop(self) -> None: ...
 
+def get_default_config() -> Config: ...
 class Config:
 	"""
 	Configuration data structure for codemp clients
