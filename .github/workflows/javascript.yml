@@ -73,7 +73,7 @@ jobs:
         working-directory: dist/js
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-      - run: rm -rf *.node artifacts node_modules
+      - run: rm -rf *.node artifacts node_modules npm
         working-directory: dist/js
       - run: cp ../../README.md .
         working-directory: dist/js
