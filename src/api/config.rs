@@ -10,7 +10,7 @@
 ///     http{tls?'s':''}://{host}:{port}
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "js", napi_derive::napi(object))]
-#[cfg_attr(feature = "python", pyo3::pyclass(get_all, set_all))]
+#[cfg_attr(feature = "py", pyo3::pyclass(get_all, set_all))]
 #[cfg_attr(feature = "serialize", derive(serde::Serialize, serde::Deserialize))]
 pub struct Config {
 	/// user identifier used to register, possibly your email
