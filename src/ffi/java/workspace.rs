@@ -22,9 +22,7 @@ pub extern "system" fn Java_mp_code_Workspace_get_1cursor<'local>(
 	self_ptr: jlong
 ) -> jobject {
 	let workspace = unsafe { Box::leak(Box::from_raw(self_ptr as *mut Workspace)) };
-	env.find_class("mp/code/CursorController").and_then(|class|
-		env.new_object(class, "(J)V", &[JValueGen::Long(Box::into_raw(Box::new(workspace.cursor())) as jlong)])
-	).jexcept(&mut env).as_raw()
+	workspace.cursor().jobjectify(&mut env).jexcept(&mut env).as_raw()
 }
 
 /// Get a buffer controller by name and returns a pointer to it.
@@ -39,12 +37,10 @@ pub extern "system" fn Java_mp_code_Workspace_get_1buffer<'local>(
 	let path = unsafe { env.get_string_unchecked(&input) }
 		.map(|path| path.to_string_lossy().to_string())
 		.jexcept(&mut env);
-	
-	workspace.buffer_by_name(&path).map(|buf| {
-		env.find_class("mp/code/BufferController").and_then(|class|
-			env.new_object(class, "(J)V", &[JValueGen::Long(Box::into_raw(Box::new(buf)) as jlong)])
-		).jexcept(&mut env)
-	}).unwrap_or_default().as_raw()
+	workspace.buffer_by_name(&path)
+		.map(|buf| buf.jobjectify(&mut env).jexcept(&mut env))
+		.unwrap_or_default()
+		.as_raw()
 }
 
 /// Create a new buffer.
@@ -108,12 +104,9 @@ pub extern "system" fn Java_mp_code_Workspace_attach_1to_1buffer<'local>(
 		.map(|path| path.to_string_lossy().to_string())
 		.jexcept(&mut env);
 	RT.block_on(workspace.attach(&path))
-		.map(|buffer| Box::into_raw(Box::new(buffer)) as jlong)
-		.map(|ptr| {
-			env.find_class("mp/code/BufferController")
-				.and_then(|class| env.new_object(class, "(J)V", &[JValueGen::Long(ptr)]))
-				.jexcept(&mut env)
-		}).jexcept(&mut env).as_raw()
+		.map(|buffer| buffer.jobjectify(&mut env).jexcept(&mut env))
+		.jexcept(&mut env)
+		.as_raw()
 }
 
 /// Detach from a buffer.
