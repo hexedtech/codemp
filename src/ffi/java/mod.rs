@@ -114,12 +114,29 @@ pub(crate) trait JObjectify<'local> {
 impl<'local> JObjectify<'local> for uuid::Uuid {
 	type Error = jni::errors::Error;
 	fn jobjectify(self, env: &mut jni::JNIEnv<'local>) -> Result<jni::objects::JObject<'local>, Self::Error> {
-		env.find_class("java/util/UUID").and_then(|class| {
-			let (msb, lsb) = self.as_u64_pair();
-			let msb = i64::from_ne_bytes(msb.to_ne_bytes());
-			let lsb = i64::from_ne_bytes(lsb.to_ne_bytes());
-			env.new_object(&class, "(JJ)V", &[jni::objects::JValueGen::Long(msb), jni::objects::JValueGen::Long(lsb)])
-		})
+		let class = env.find_class("java/util/UUID")?;
+		let (msb, lsb) = self.as_u64_pair();
+		let msb = i64::from_ne_bytes(msb.to_ne_bytes());
+		let lsb = i64::from_ne_bytes(lsb.to_ne_bytes());
+		env.new_object(&class, "(JJ)V", &[jni::objects::JValueGen::Long(msb), jni::objects::JValueGen::Long(lsb)])
+	}
+}
+
+impl<'local> JObjectify<'local> for crate::api::User {
+	type Error = jni::errors::Error;
+
+	fn jobjectify(self, env: &mut jni::JNIEnv<'local>) -> Result<jni::objects::JObject<'local>, Self::Error> {
+		let id_field = self.id.jobjectify(env)?;
+		let name_field = env.new_string(self.name)?;
+		let class = env.find_class("mp/code/data/User")?;
+		env.new_object(
+			&class,
+			"(Ljava/util/UUID;Ljava/lang/String;)V",
+			&[
+				jni::objects::JValueGen::Object(&id_field),
+				jni::objects::JValueGen::Object(&name_field)
+			]
+		)
 	}
 }
 

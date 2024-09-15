@@ -1,6 +1,7 @@
 package mp.code;
 
 import cz.adamh.utils.NativeUtils;
+import mp.code.data.User;
 import mp.code.exceptions.ConnectionException;
 import mp.code.exceptions.ConnectionRemoteException;
 
@@ -17,9 +18,9 @@ public class Client {
 		this.ptr = ptr;
 	}
 
-	private static native String get_url(long self);
-	public String getUrl() {
-		return get_url(this.ptr);
+	private static native User get_user(long self);
+	public User getUser() {
+		return get_user(this.ptr);
 	}
 
 	private static native Workspace join_workspace(long self, String id) throws ConnectionException;
@@ -47,6 +48,11 @@ public class Client {
 		return list_workspaces(this.ptr, owned, invited);
 	}
 
+	private static native String[] active_workspaces(long self);
+	public String[] activeWorkspaces() {
+		return active_workspaces(this.ptr);
+	}
+
 	private static native boolean leave_workspace(long self, String id);
 	public boolean leaveWorkspace(String id) {
 		return leave_workspace(this.ptr, id);
@@ -57,9 +63,9 @@ public class Client {
 		return Optional.ofNullable(get_workspace(this.ptr, workspace));
 	}
 
-	private static native void refresh_native(long self) throws ConnectionRemoteException;
+	private static native void refresh(long self) throws ConnectionRemoteException;
 	public void refresh() throws ConnectionRemoteException {
-		refresh_native(this.ptr);
+		refresh(this.ptr);
 	}
 	
 	private static native void free(long self);

@@ -285,7 +285,7 @@ impl Workspace {
 		self.0.filetree.iter()
 			.filter(|f| filter.map_or(true, |flt| {
 				if strict {
-					f.eq(flt)
+					f.as_str() == flt
 				} else {
 					f.starts_with(flt)
 				}

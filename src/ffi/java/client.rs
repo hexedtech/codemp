@@ -1,7 +1,7 @@
 use jni::{objects::{JClass, JObject, JString, JValueGen}, sys::{jboolean, jint, jlong, jobject, jobjectArray}, JNIEnv};
 use crate::{api::Config, client::Client, Workspace};
 
-use super::{JExceptable, RT};
+use super::{JExceptable, JObjectify, RT};
 
 /// Connect using the given credentials to the default server, and return a [Client] to interact with it.
 #[no_mangle]
@@ -70,6 +70,20 @@ fn connect_internal(mut env: JNIEnv, config: Config) -> jobject {
 				.and_then(|class| env.new_object(class, "(J)V", &[JValueGen::Long(ptr)]))
 				.jexcept(&mut env)
 		}).jexcept(&mut env).as_raw()
+}
+
+/// Gets the current [crate::api::User].
+#[no_mangle]
+pub extern "system" fn Java_mp_code_Client_get_1user(
+	mut env: JNIEnv,
+	_class: JClass,
+	self_ptr: jlong
+) -> jobject {
+	let client = unsafe { Box::leak(Box::from_raw(self_ptr as *mut Client)) };
+	client.user().clone()
+		.jobjectify(&mut env)
+		.jexcept(&mut env)
+		.as_raw()
 }
 
 /// Join a [Workspace] and return a pointer to it.
@@ -162,7 +176,26 @@ pub extern "system" fn Java_mp_code_Client_list_1workspaces<'local>(
 	let list = RT
 		.block_on(client.list_workspaces(owned != 0, invited != 0))
 		.jexcept(&mut env);
+	env.find_class("java/lang/String")
+		.and_then(|class| env.new_object_array(list.len() as i32, class, JObject::null()))
+		.inspect(|arr| {
+			for (idx, path) in list.iter().enumerate() {
+				env.new_string(path)
+					.and_then(|path| env.set_object_array_element(arr, idx as i32, path))
+					.jexcept(&mut env)
+			}
+		}).jexcept(&mut env).as_raw()
+}
 
+/// List available workspaces.
+#[no_mangle]
+pub extern "system" fn Java_mp_code_Client_active_1workspaces<'local>(
+	mut env: JNIEnv<'local>,
+	_class: JClass<'local>,
+	self_ptr: jlong
+) -> jobjectArray {
+	let client = unsafe { Box::leak(Box::from_raw(self_ptr as *mut Client)) };
+	let list = client.active_workspaces();
 	env.find_class("java/lang/String")
 		.and_then(|class| env.new_object_array(list.len() as i32, class, JObject::null()))
 		.inspect(|arr| {
