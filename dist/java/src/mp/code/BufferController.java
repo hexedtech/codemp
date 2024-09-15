@@ -1,5 +1,6 @@
 package mp.code;
 
+import mp.code.data.Callback;
 import mp.code.data.Cursor;
 import mp.code.data.TextChange;
 import mp.code.exceptions.ControllerException;
@@ -36,6 +37,11 @@ public class BufferController {
 	private static native void send(long self, TextChange change) throws ControllerException;
 	public void send(TextChange change) throws ControllerException {
 		send(this.ptr, change);
+	}
+
+	private static native void callback(long self, Callback<BufferController> cb);
+	public void callback(Callback<BufferController> cb) {
+		callback(this.ptr, cb);
 	}
 
 	private static native void free(long self);

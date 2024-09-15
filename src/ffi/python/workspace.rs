@@ -82,8 +82,8 @@ impl Workspace {
 	}
 
 	#[pyo3(name = "filetree")]
-	#[pyo3(signature = (filter=None))]
-	fn pyfiletree(&self, filter: Option<&str>) -> Vec<String> {
-		self.filetree(filter)
+	#[pyo3(signature = (filter=None, strict=false))]
+	fn pyfiletree(&self, filter: Option<&str>, strict: bool) -> Vec<String> {
+		self.filetree(filter, strict)
 	}
 }

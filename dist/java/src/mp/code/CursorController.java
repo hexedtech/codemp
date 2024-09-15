@@ -1,5 +1,6 @@
 package mp.code;
 
+import mp.code.data.Callback;
 import mp.code.data.Cursor;
 import mp.code.exceptions.ControllerException;
 
@@ -25,6 +26,11 @@ public class CursorController {
 	private static native void send(long self, Cursor cursor) throws ControllerException;
 	public void send(Cursor cursor) throws ControllerException {
 		send(this.ptr, cursor);
+	}
+
+	private static native void callback(long self, Callback<CursorController> cb);
+	public void callback(Callback<CursorController> cb) {
+		callback(this.ptr, cb);
 	}
 
 	private static native void free(long self);

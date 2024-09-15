@@ -33,7 +33,7 @@ use uuid::Uuid;
 use napi_derive::napi;
 
 #[derive(Debug, Clone)]
-#[cfg_attr(feature = "python", pyo3::pyclass)]
+#[cfg_attr(feature = "py", pyo3::pyclass)]
 #[cfg_attr(feature = "js", napi)]
 pub struct Workspace(Arc<WorkspaceInner>);
 
@@ -54,12 +54,12 @@ impl Workspace {
 	pub(crate) async fn try_new(
 		name: String,
 		user: User,
-		dest: &str,
+		config: crate::api::Config,
 		token: Token,
 		claims: tokio::sync::watch::Receiver<codemp_proto::common::Token>, // TODO ughh receiving this
 	) -> ConnectionResult<Self> {
 		let workspace_claim = InternallyMutable::new(token);
-		let services = Services::try_new(dest, claims, workspace_claim.channel()).await?;
+		let services = Services::try_new(&config.endpoint(), claims, workspace_claim.channel()).await?;
 		let ws_stream = services.ws().attach(Empty {}).await?.into_inner();
 
 		let (tx, rx) = mpsc::channel(128);
@@ -279,10 +279,17 @@ impl Workspace {
 	}
 
 	/// Get the filetree as it is currently cached.
+	/// A filter may be applied, and it may be strict (equality check) or not (starts_with check).
 	// #[cfg_attr(feature = "js", napi)] // https://github.com/napi-rs/napi-rs/issues/1120
-	pub fn filetree(&self, filter: Option<&str>) -> Vec<String> {
+	pub fn filetree(&self, filter: Option<&str>, strict: bool) -> Vec<String> {
 		self.0.filetree.iter()
-			.filter(|f| filter.map_or(true, |flt| f.starts_with(flt)))
+			.filter(|f| filter.map_or(true, |flt| {
+				if strict {
+					f.as_str() == flt
+				} else {
+					f.starts_with(flt)
+				}
+			}))
 			.map(|f| f.clone())
 			.collect()
 	}
@@ -357,8 +364,8 @@ impl Drop for WorkspaceInner {
 	}
 }
 
-#[cfg_attr(feature = "python", pyo3::pyclass(eq, eq_int))]
-#[cfg_attr(feature = "python", derive(PartialEq))]
+#[cfg_attr(feature = "py", pyo3::pyclass(eq, eq_int))]
+#[cfg_attr(feature = "py", derive(PartialEq))]
 pub enum DetachResult {
 	NotAttached,
 	Detaching,

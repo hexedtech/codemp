@@ -1,7 +1,3 @@
-//! ### python
-//! Using [pyo3] it's possible to map perfectly the entirety of `codemp` API.
-//! Async operations run on a dedicated [tokio] runtime
-
 pub mod client;
 pub mod controllers;
 pub mod workspace;
@@ -150,8 +146,18 @@ fn init() -> PyResult<Driver> {
 }
 
 #[pyfunction]
-fn connect(host: String, username: String, password: String) -> PyResult<Promise> {
-	a_sync!(Client::connect(host, username, password).await)
+fn get_default_config() -> crate::api::Config {
+	let mut conf = crate::api::Config::new("".to_string(), "".to_string());
+	conf.host = Some(conf.host().to_string());
+	conf.port = Some(conf.port());
+	conf.tls = Some(false);
+	conf
+}
+
+#[pyfunction]
+fn connect(py: Python, config: Py<crate::api::Config>) -> PyResult<Promise> {
+	let conf: crate::api::Config = config.extract(py)?;
+	a_sync!(Client::connect(conf).await)
 }
 
 #[pyfunction]
@@ -222,6 +228,7 @@ impl IntoPy<PyObject> for crate::api::User {
 #[pymodule]
 fn codemp(m: &Bound<'_, PyModule>) -> PyResult<()> {
 	m.add_function(wrap_pyfunction!(init, m)?)?;
+	m.add_function(wrap_pyfunction!(get_default_config, m)?)?;
 	m.add_function(wrap_pyfunction!(connect, m)?)?;
 	m.add_function(wrap_pyfunction!(set_logger, m)?)?;
 	m.add_class::<Driver>()?;

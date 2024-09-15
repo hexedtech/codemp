@@ -1,16 +1,3 @@
-//! ### Lua
-//! Using [mlua] it's possible to map almost perfectly the entirety of `codemp` API.
-//! Notable outliers are functions that receive `codemp` objects: these instead receive arguments
-//! to build the object instead (such as [`crate::api::Controller::send`])
-//!
-//! Note that async operations are carried out on a [tokio] current_thread runtime, so it is
-//! necessary to drive it. A separate driver thread can be spawned with `spawn_runtime_driver`
-//! function.
-//!
-//! To work with callbacks, the main Lua thread must periodically stop and poll for callbacks via
-//! `poll_callback`, otherwise those will never run. This is necessary to allow safe concurrent
-//! access to the global Lua state, so minimize callback execution time as much as possible.
-
 use std::io::Write;
 use std::sync::Mutex;
 
@@ -173,6 +160,18 @@ macro_rules! a_sync {
 	};
 }
 
+macro_rules! from_lua_serde {
+	($($t:ty)*) => {
+		$(
+			impl FromLua for $t {
+				fn from_lua(value: LuaValue, lua: &Lua) -> LuaResult<$t> {
+					lua.from_value(value)
+				}
+			}
+		)*
+	};
+}
+
 fn spawn_runtime_driver(_: &Lua, ():()) -> LuaResult<Driver> {
 	let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
 	let handle = std::thread::spawn(move || tokio().block_on(async move {
@@ -254,19 +253,19 @@ impl LuaUserData for CodempClient {
 impl LuaUserData for CodempWorkspace {
 	fn add_methods<M: LuaUserDataMethods<Self>>(methods: &mut M) {
 		methods.add_meta_method(LuaMetaMethod::ToString, |_, this, ()| Ok(format!("{:?}", this)));
-		methods.add_method("create_buffer", |_, this, (name,):(String,)|
+		methods.add_method("create", |_, this, (name,):(String,)|
 			a_sync! { this => Ok(this.create(&name).await?) }
 		);
 
-		methods.add_method("attach_buffer", |_, this, (name,):(String,)|
+		methods.add_method("attach", |_, this, (name,):(String,)|
 			a_sync! { this => Ok(this.attach(&name).await?) }
 		);
 
-		methods.add_method("detach_buffer", |_, this, (name,):(String,)|
+		methods.add_method("detach", |_, this, (name,):(String,)|
 			Ok(matches!(this.detach(&name), DetachResult::Detaching | DetachResult::AlreadyDetached))
 		);
 
-		methods.add_method("delete_buffer", |_, this, (name,):(String,)|
+		methods.add_method("delete", |_, this, (name,):(String,)|
 			a_sync! { this => Ok(this.delete(&name).await?) }
 		);
 
@@ -295,8 +294,8 @@ impl LuaUserData for CodempWorkspace {
 		// 	Ok(())
 		// });
 
-		methods.add_method("filetree", |_, this, (filter,):(Option<String>,)|
-			Ok(this.filetree(filter.as_deref()))
+		methods.add_method("filetree", |_, this, (filter, strict,):(Option<String>, bool,)|
+			Ok(this.filetree(filter.as_deref(), strict))
 		);
 	}
 
@@ -308,6 +307,7 @@ impl LuaUserData for CodempWorkspace {
 	}
 }
 
+from_lua_serde! { CodempEvent }
 impl LuaUserData for CodempEvent {
 	fn add_methods<M: LuaUserDataMethods<Self>>(methods: &mut M) {
 		methods.add_meta_method(LuaMetaMethod::ToString, |_, this, ()| Ok(format!("{:?}", this)));
@@ -325,12 +325,13 @@ impl LuaUserData for CodempEvent {
 	}
 }
 
+
 impl LuaUserData for CodempCursorController {
 	fn add_methods<M: LuaUserDataMethods<Self>>(methods: &mut M) {
 		methods.add_meta_method(LuaMetaMethod::ToString, |_, this, ()| Ok(format!("{:?}", this)));
 
-		methods.add_method("send", |_, this, (buffer, start_row, start_col, end_row, end_col):(String, i32, i32, i32, i32)|
-			a_sync! { this => Ok(this.send(CodempCursor { buffer, start: (start_row, start_col), end: (end_row, end_col), user: None }).await?) }
+		methods.add_method("send", |_, this, (cursor,):(CodempCursor,)|
+			a_sync! { this => Ok(this.send(cursor).await?) }
 		);
 		methods.add_method("try_recv", |_, this, ()|
 			a_sync! { this => Ok(this.try_recv().await?) }
@@ -348,6 +349,7 @@ impl LuaUserData for CodempCursorController {
 	}
 }
 
+from_lua_serde! { CodempCursor }
 impl LuaUserData for Cursor {
 	fn add_methods<M: LuaUserDataMethods<Self>>(methods: &mut M) {
 		methods.add_meta_method(LuaMetaMethod::ToString, |_, this, ()| Ok(format!("{:?}", this)));
@@ -388,17 +390,8 @@ impl LuaUserData for CodempBufferController {
 	fn add_methods<M: LuaUserDataMethods<Self>>(methods: &mut M) {
 		methods.add_meta_method(LuaMetaMethod::ToString, |_, this, ()| Ok(format!("{:?}", this)));
 
-		methods.add_method("send", |_, this, (start, end, content, hash): (usize, usize, String, Option<i64>)|
-			a_sync! { this => Ok(
-				this.send(
-					CodempTextChange {
-						start: start as u32,
-						end: end as u32,
-						content,
-						hash,
-					}
-				).await?
-			)}
+		methods.add_method("send", |_, this, (change,): (CodempTextChange,)|
+			a_sync! { this => Ok(this.send(change).await?)}
 		);
 
 		methods.add_method("try_recv", |_, this, ()| a_sync! { this => Ok(this.try_recv().await?) });
@@ -417,6 +410,7 @@ impl LuaUserData for CodempBufferController {
 	}
 }
 
+from_lua_serde! { CodempTextChange }
 impl LuaUserData for CodempTextChange {
 	fn add_fields<F: LuaUserDataFields<Self>>(fields: &mut F) {
 		fields.add_field_method_get("content", |_, this| Ok(this.content.clone()));
@@ -431,7 +425,16 @@ impl LuaUserData for CodempTextChange {
 	}
 }
 
-
+from_lua_serde! { CodempConfig }
+impl LuaUserData for CodempConfig {
+	fn add_fields<F: LuaUserDataFields<Self>>(fields: &mut F) {
+		fields.add_field_method_get("username", |_, this| Ok(this.username.clone()));
+		fields.add_field_method_get("password", |_, this| Ok(this.password.clone()));
+		fields.add_field_method_get("host", |_, this| Ok(this.host.clone()));
+		fields.add_field_method_get("port", |_, this| Ok(this.port));
+		fields.add_field_method_get("tls", |_, this| Ok(this.tls));
+	}
+}
 
 #[derive(Debug, Clone)]
 struct LuaLoggerProducer(mpsc::UnboundedSender<String>);
@@ -534,8 +537,8 @@ fn entrypoint(lua: &Lua) -> LuaResult<LuaTable> {
 	let exports = lua.create_table()?;
 
 	// entrypoint
-	exports.set("connect", lua.create_function(|_, (host, username, password):(String,String,String)|
-		a_sync! { => Ok(CodempClient::connect(host, username, password).await?) }
+	exports.set("connect", lua.create_function(|_, (config,):(CodempConfig,)|
+		a_sync! { => Ok(CodempClient::connect(config).await?) }
 	)?)?;
 
 	// utils

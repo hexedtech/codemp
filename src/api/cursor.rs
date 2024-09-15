@@ -1,13 +1,14 @@
 //! ### Cursor
 //! Represents the position of a remote user's cursor.
 
-#[cfg(feature = "python")]
+#[cfg(feature = "py")]
 use pyo3::prelude::*;
 
 /// User cursor position in a buffer
 #[derive(Clone, Debug, Default)]
-#[cfg_attr(feature = "python", pyclass)]
-// #[cfg_attr(feature = "python", pyo3(crate = "reexported::pyo3"))]
+#[cfg_attr(feature = "py", pyclass)]
+#[cfg_attr(feature = "serialize", derive(serde::Serialize, serde::Deserialize))]
+// #[cfg_attr(feature = "py", pyo3(crate = "reexported::pyo3"))]
 pub struct Cursor {
 	/// Cursor start position in buffer, as 0-indexed row-column tuple.
 	pub start: (i32, i32),

@@ -1,6 +1,6 @@
 {
   "name": "@codemp/native",
-  "version": "0.0.9",
+  "version": "0.0.10",
   "description": "code multiplexer -- javascript bindings",
   "keywords": [
     "codemp",
@@ -35,8 +35,8 @@
 	}
   },
   "optionalDependencies": {
-    "@codemp/native-win32-x64-msvc": "0.0.4",
-    "@codemp/native-darwin-arm64": "0.0.4",
-    "@codemp/native-linux-x64-gnu": "0.0.4"
+    "@codemp/native-win32-x64-msvc": "0.0.10",
+    "@codemp/native-darwin-arm64": "0.0.10",
+    "@codemp/native-linux-x64-gnu": "0.0.10"
   }
 }

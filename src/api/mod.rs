@@ -7,6 +7,9 @@ pub mod controller;
 /// a generic representation of a text change
 pub mod change;
 
+/// client configuration
+pub mod config;
+
 /// representation for an user's cursor
 pub mod cursor;
 
@@ -18,6 +21,7 @@ pub mod user;
 
 pub use controller::Controller;
 pub use change::TextChange;
+pub use config::Config;
 pub use cursor::Cursor;
 pub use event::Event;
 pub use user::User;

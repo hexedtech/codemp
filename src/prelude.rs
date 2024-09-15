@@ -7,6 +7,7 @@ pub use crate::api::{
 	Cursor as CodempCursor,
 	User as CodempUser,
 	Event as CodempEvent,
+	Config as CodempConfig,
 };
 	
 pub use crate::{

@@ -11,7 +11,7 @@ authors = [
 ]
 license = "GPL-3.0-only"
 edition = "2021"
-version = "0.7.0-beta.3"
+version = "0.7.0-beta.4"
 exclude = ["dist/*"]
 
 [lib]
@@ -43,7 +43,7 @@ lazy_static = { version = "1.4", optional = true }
 jni = { version = "0.21", features = ["invocation"], optional = true }
 
 # glue (lua)
-mlua-codemp-patch = { version = "0.10.0-beta.2", features = ["module", "send"], optional = true }
+mlua-codemp-patch = { version = "0.10.0-beta.2", features = ["module", "send", "serialize"], optional = true }
 
 # glue (js)
 napi = { version = "2.16", features = ["full"], optional = true } 
@@ -54,6 +54,7 @@ pyo3 = { version = "0.22", features = ["extension-module", "abi3-py38"], optiona
 
 # extra
 async-trait = { version = "0.1", optional = true }
+serde = { version = "1.0", features = ["derive"], optional = true }
 
 [build-dependencies]
 # glue (js)
@@ -65,18 +66,15 @@ pyo3-build-config = { version = "0.19", optional = true }
 default = []
 # extra
 async-trait = ["dep:async-trait"]
+serialize = ["dep:serde", "uuid/serde"]
 # ffi
 rust = [] # used for ci matrix
 java = ["lazy_static", "jni", "tracing-subscriber"]
 js = ["napi-build", "tracing-subscriber", "napi", "napi-derive"]
-python = ["pyo3", "tracing-subscriber", "pyo3-build-config"]
-lua = ["mlua-codemp-patch", "tracing-subscriber", "lazy_static"]
-lua54 = ["lua", "mlua-codemp-patch/lua54"]
-lua53 = ["lua", "mlua-codemp-patch/lua53"]
-lua52 = ["lua", "mlua-codemp-patch/lua52"]
-lua51 = ["lua", "mlua-codemp-patch/lua51"]
-luajit = ["lua", "mlua-codemp-patch/luajit"]
+py = ["pyo3", "tracing-subscriber", "pyo3-build-config"]
+lua = ["mlua-codemp-patch", "tracing-subscriber", "lazy_static", "serialize", "mlua-codemp-patch/lua54"]
+luajit = ["mlua-codemp-patch", "tracing-subscriber", "lazy_static", "serialize", "mlua-codemp-patch/luajit"]
 
 
 [package.metadata.docs.rs] # enabled features when building on docs.rs
-features = ["lua", "java", "js", "python"]
+features = ["serialize"]

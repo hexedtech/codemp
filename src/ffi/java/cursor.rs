@@ -1,7 +1,7 @@
 use jni::{objects::{JClass, JObject, JString, JValueGen}, sys::{jlong, jobject}, JNIEnv};
 use crate::api::Controller;
 
-use super::{JExceptable, RT};
+use super::{handle_callback, JExceptable, RT};
 
 /// Try to fetch a [crate::api::Cursor], or returns null if there's nothing.
 #[no_mangle]
@@ -54,6 +54,16 @@ fn jni_recv(env: &mut JNIEnv, cursor: Option<crate::api::Cursor>) -> jobject {
 				}).jexcept(env)
 		}
 	}.as_raw()
+}
+
+#[no_mangle]
+pub extern "system" fn Java_mp_code_CursorController_callback<'local>(
+	mut env: JNIEnv,
+	_class: JClass<'local>,
+	self_ptr: jlong,
+	cb: JObject<'local>,
+) {
+	handle_callback!("mp/code/CursorController", env, self_ptr, cb, crate::cursor::Controller);
 }
 
 /// Receive from Java, converts and sends a [crate::api::Cursor].

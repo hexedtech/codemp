@@ -1,6 +1,6 @@
 use jni::{objects::{JClass, JObject, JValueGen}, sys::{jlong, jobject, jstring}, JNIEnv};
 
-use crate::api::Controller;
+use crate::{api::Controller, ffi::java::handle_callback};
 
 use super::{JExceptable, RT};
 
@@ -86,4 +86,71 @@ fn recv_jni(env: &mut JNIEnv, change: Option<crate::api::TextChange>) -> jobject
 				}).jexcept(env)
 		}
 	}.as_raw()
+}
+
+#[no_mangle]
+pub extern "system" fn Java_mp_code_BufferController_callback<'local>(
+	mut env: JNIEnv,
+	_class: JClass<'local>,
+	self_ptr: jlong,
+	cb: JObject<'local>,
+) {
+	handle_callback!("mp/code/BufferController", env, self_ptr, cb, crate::buffer::Controller);
+}
+
+/// Receive from Java, converts and sends a [crate::api::TextChange].
+#[no_mangle]
+pub extern "system" fn Java_mp_code_BufferController_send<'local>(
+	mut env: JNIEnv,
+	_class: JClass<'local>,
+	self_ptr: jlong,
+	input: JObject<'local>,
+) {
+	let Ok(start) = env.get_field(&input, "start", "I")
+		.and_then(|sr| sr.i())
+		.jexcept(&mut env)
+		.try_into()
+	else {
+		env.throw_new("java/lang/IllegalArgumentException", "Start index cannot be negative!")
+			.expect("Failed to throw exception!");
+		return;
+	};
+	
+	let Ok(end) = env.get_field(&input, "end", "I")
+		.and_then(|er| er.i())
+		.jexcept(&mut env)
+		.try_into()
+	else {
+		env.throw_new("java/lang/IllegalArgumentException", "End index cannot be negative!")
+			.expect("Failed to throw exception!");
+		return;
+	};
+
+	let content = env.get_field(&input, "content", "Ljava/lang/String;")
+		.and_then(|b| b.l())
+		.map(|b| b.into())
+		.jexcept(&mut env);
+	let content = env.get_string(&content)
+		.map(|b| b.into())
+		.jexcept(&mut env);
+
+	let hash = env.get_field(&input, "hash", "Ljava/util/OptionalLong")
+		.and_then(|hash| hash.l())
+		.and_then(|hash| {
+			if env.call_method(&hash, "isPresent", "()Z", &[]).and_then(|r| r.z()).jexcept(&mut env) {
+				env.call_method(&hash, "getAsLong", "()J", &[])
+					.and_then(|r| r.j())
+					.map(Some)
+			} else {
+				Ok(None)
+			}
+		}).jexcept(&mut env);
+
+	let controller = unsafe { Box::leak(Box::from_raw(self_ptr as *mut crate::buffer::Controller)) };
+	RT.block_on(controller.send(crate::api::TextChange {
+		start,
+		end,
+		content,
+		hash,
+	})).jexcept(&mut env);
 }
