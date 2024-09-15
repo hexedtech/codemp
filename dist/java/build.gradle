@@ -39,6 +39,7 @@ def rustDir = projectDir.toPath()
 	.resolve('release')
 	.toFile()
 processResources {
+	outputs.upToDateWhen { false } // no caching
 	from(rustDir) {
 		include('*.dll')
 		include('*.so')
@@ -52,5 +53,5 @@ tasks.register('cargoBuild', Exec) {
 	commandLine 'cargo', 'build', '--release', '--features=java'
 }
 
-build.dependsOn cargoBuild
+processResources.dependsOn cargoBuild
 build.finalizedBy shadowJar
