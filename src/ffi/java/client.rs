@@ -1,7 +1,7 @@
 use jni::{objects::{JClass, JObject, JString, JValueGen}, sys::{jboolean, jint, jlong, jobject, jobjectArray}, JNIEnv};
 use crate::{api::Config, client::Client, Workspace};
 
-use super::{JExceptable, JObjectify, RT};
+use super::{JExceptable, JObjectify};
 
 /// Connect using the given credentials to the default server, and return a [Client] to interact with it.
 #[no_mangle]
@@ -63,7 +63,7 @@ pub extern "system" fn Java_mp_code_Client_connectToServer<'local>(
 }
 
 fn connect_internal(mut env: JNIEnv, config: Config) -> jobject {
-	RT.block_on(Client::connect(config))
+	super::tokio().block_on(Client::connect(config))
 		.map(|client| Box::into_raw(Box::new(client)) as jlong)
 		.map(|ptr| {
 			env.find_class("mp/code/Client")
@@ -98,7 +98,7 @@ pub extern "system" fn Java_mp_code_Client_join_1workspace<'local>(
 	let workspace_id = unsafe { env.get_string_unchecked(&input) }
 		.map(|wid| wid.to_string_lossy().to_string())
 		.jexcept(&mut env);
-	RT.block_on(client.join_workspace(workspace_id))
+	super::tokio().block_on(client.join_workspace(workspace_id))
 		.map(|workspace| spawn_updater(workspace.clone()))
 		.map(|workspace| Box::into_raw(Box::new(workspace)) as jlong)
 		.map(|ptr| {
@@ -120,7 +120,7 @@ pub extern "system" fn Java_mp_code_Client_create_1workspace<'local>(
 	let workspace_id = unsafe { env.get_string_unchecked(&input) }
 		.map(|wid| wid.to_string_lossy().to_string())
 		.jexcept(&mut env);
-	RT
+	super::tokio()
 		.block_on(client.create_workspace(workspace_id))
 		.jexcept(&mut env);
 }
@@ -137,7 +137,7 @@ pub extern "system" fn Java_mp_code_Client_delete_1workspace<'local>(
 	let workspace_id = unsafe { env.get_string_unchecked(&input) }
 		.map(|wid| wid.to_string_lossy().to_string())
 		.jexcept(&mut env);
-	RT
+	super::tokio()
 		.block_on(client.delete_workspace(workspace_id))
 		.jexcept(&mut env);
 }
@@ -158,7 +158,7 @@ pub extern "system" fn Java_mp_code_Client_invite_1to_1workspace<'local>(
 	let user_name = unsafe { env.get_string_unchecked(&usr) }
 		.map(|wid| wid.to_string_lossy().to_string())
 		.jexcept(&mut env);
-	RT
+	super::tokio()
 		.block_on(client.invite_to_workspace(workspace_id, user_name))
 		.jexcept(&mut env);
 }
@@ -173,7 +173,7 @@ pub extern "system" fn Java_mp_code_Client_list_1workspaces<'local>(
 	invited: jboolean
 ) -> jobjectArray {
 	let client = unsafe { Box::leak(Box::from_raw(self_ptr as *mut Client)) };
-	let list = RT
+	let list = super::tokio()
 		.block_on(client.list_workspaces(owned != 0, invited != 0))
 		.jexcept(&mut env);
 	env.find_class("java/lang/String")
@@ -210,7 +210,7 @@ pub extern "system" fn Java_mp_code_Client_active_1workspaces<'local>(
 // TODO: this stays until we get rid of the arc then i'll have to find a better way
 fn spawn_updater(workspace: Workspace) -> Workspace {
 	let w = workspace.clone();
-	RT.spawn(async move {
+	super::tokio().spawn(async move {
 		loop {
 			tokio::time::sleep(std::time::Duration::from_secs(60)).await;
 			w.fetch_buffers().await.unwrap();
@@ -264,7 +264,7 @@ pub extern "system" fn Java_mp_code_Client_refresh<'local>(
 	self_ptr: jlong,
 ) {
 	let client = unsafe { Box::leak(Box::from_raw(self_ptr as *mut Client)) };
-	RT.block_on(client.refresh())
+	super::tokio().block_on(client.refresh())
 		.jexcept(&mut env);
 }
 

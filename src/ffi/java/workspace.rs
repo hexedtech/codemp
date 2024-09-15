@@ -1,7 +1,7 @@
 use jni::{objects::{JClass, JObject, JString, JValueGen}, sys::{jboolean, jlong, jobject, jobjectArray, jstring}, JNIEnv};
 use crate::Workspace;
 
-use super::{JExceptable, JObjectify, RT};
+use super::{JExceptable, JObjectify};
 
 /// Get the workspace id.
 #[no_mangle]
@@ -55,7 +55,7 @@ pub extern "system" fn Java_mp_code_Workspace_create_1buffer<'local>(
 	let path = unsafe { env.get_string_unchecked(&input) }
 		.map(|path| path.to_string_lossy().to_string())
 		.jexcept(&mut env);
-	RT.block_on(ws.create(&path))
+	super::tokio().block_on(ws.create(&path))
 		.jexcept(&mut env);
 }
 
@@ -103,7 +103,7 @@ pub extern "system" fn Java_mp_code_Workspace_attach_1to_1buffer<'local>(
 	let path = unsafe { env.get_string_unchecked(&input) }
 		.map(|path| path.to_string_lossy().to_string())
 		.jexcept(&mut env);
-	RT.block_on(workspace.attach(&path))
+	super::tokio().block_on(workspace.attach(&path))
 		.map(|buffer| buffer.jobjectify(&mut env).jexcept(&mut env))
 		.jexcept(&mut env)
 		.as_raw()
@@ -142,7 +142,7 @@ pub extern "system" fn Java_mp_code_Workspace_fetch_1buffers(
 	self_ptr: jlong,
 ) {
 	let workspace = unsafe { Box::leak(Box::from_raw(self_ptr as *mut Workspace)) };
-	RT.block_on(workspace.fetch_buffers()).jexcept(&mut env);
+	super::tokio().block_on(workspace.fetch_buffers()).jexcept(&mut env);
 }
 
 /// Update the local user list.
@@ -153,7 +153,7 @@ pub extern "system" fn Java_mp_code_Workspace_fetch_1users(
 	self_ptr: jlong,
 ) {
 	let workspace = unsafe { Box::leak(Box::from_raw(self_ptr as *mut Workspace)) };
-	RT.block_on(workspace.fetch_users()).jexcept(&mut env);
+	super::tokio().block_on(workspace.fetch_users()).jexcept(&mut env);
 }
 
 /// List users attached to a buffer.
@@ -168,7 +168,7 @@ pub extern "system" fn Java_mp_code_Workspace_list_1buffer_1users<'local>(
 	let buffer = unsafe { env.get_string_unchecked(&input) }
 		.map(|buffer| buffer.to_string_lossy().to_string())
 		.jexcept(&mut env);
-	let users = RT.block_on(workspace.list_buffer_users(&buffer))
+	let users = super::tokio().block_on(workspace.list_buffer_users(&buffer))
 		.jexcept(&mut env);
 
 	env.find_class("java/util/UUID")
@@ -194,7 +194,7 @@ pub extern "system" fn Java_mp_code_Workspace_delete_1buffer<'local>(
 	let buffer = unsafe { env.get_string_unchecked(&input) }
 		.map(|buffer| buffer.to_string_lossy().to_string())
 		.jexcept(&mut env);
-	RT.block_on(workspace.delete(&buffer))
+	super::tokio().block_on(workspace.delete(&buffer))
 		.jexcept(&mut env);
 }
 
@@ -206,7 +206,7 @@ pub extern "system" fn Java_mp_code_Workspace_event(
 	self_ptr: jlong
 ) -> jobject {
 	let workspace = unsafe { Box::leak(Box::from_raw(self_ptr as *mut Workspace)) };
-	RT.block_on(workspace.event())
+	super::tokio().block_on(workspace.event())
 		.map(|event| {
 			let (name, arg) = match event {
 				crate::api::Event::FileTreeUpdated(arg) => ("FILE_TREE_UPDATED", env.new_string(arg).unwrap_or_default()),
@@ -247,10 +247,10 @@ pub extern "system" fn Java_mp_code_Workspace_select_1buffer(
 		}
 	}
 
-	RT.block_on(crate::ext::select_buffer(
+	super::tokio().block_on(crate::ext::select_buffer(
 		&controllers,
 		Some(std::time::Duration::from_millis(timeout as u64)),
-		&RT,
+		super::tokio(),
 	)).jexcept(&mut env)
 		.map(|buf| {
 			env.find_class("mp/code/BufferController").and_then(|class|

@@ -95,7 +95,7 @@ public class Workspace {
 			this.argument = argument;
 		}
 
-		public Optional<String  > getUserJoined() {
+		public Optional<String> getUserJoined() {
 			if(this.type == Type.USER_JOIN) {
 				return Optional.of(this.argument);
 			} else return Optional.empty();

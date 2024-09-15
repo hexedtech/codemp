@@ -2,10 +2,37 @@ pub mod client;
 pub mod workspace;
 pub mod cursor;
 pub mod buffer;
-pub mod utils;
+pub mod ext;
 
-lazy_static::lazy_static! {
-	pub(crate) static ref RT: tokio::runtime::Runtime = tokio::runtime::Runtime::new().expect("could not create tokio runtime");
+/// Gets or creates the relevant [tokio::runtime::Runtime].
+fn tokio() -> &'static tokio::runtime::Runtime {
+	use std::sync::OnceLock;
+	static RT: OnceLock<tokio::runtime::Runtime> = OnceLock::new();
+	RT.get_or_init(||
+		tokio::runtime::Builder::new_current_thread()
+			.enable_all()
+			.build()
+			.expect("could not create tokio runtime")
+	)
+}
+
+/// A static reference to [jni::JavaVM] that is set on JNI load.
+static mut JVM: Option<std::sync::Arc<jni::JavaVM>> = None;
+
+/// Safe accessor for the [jni::JavaVM] static.
+pub(crate) fn jvm() -> std::sync::Arc<jni::JavaVM> {
+	unsafe { JVM.clone() }.unwrap()
+}
+
+/// Called upon initialisation of the JVM.
+#[allow(non_snake_case)]
+#[no_mangle]
+pub extern "system" fn JNI_OnLoad(
+	vm: jni::JavaVM,
+	_: *mut std::ffi::c_void
+) -> jni::sys::jint {
+	unsafe { JVM = Some(std::sync::Arc::new(vm)) };
+	jni::sys::JNI_VERSION_1_1
 }
 
 /// Set up logging. Useful for debugging.
@@ -149,7 +176,7 @@ impl<'local> JObjectify<'local> for crate::cursor::Controller {
 			class,
 			"(J)V",
 			&[
-				jni::objects::JValueGen::Long(Box::into_raw(Box::new(&self)) as jni::sys::jlong)
+				jni::objects::JValueGen::Long(Box::into_raw(Box::new(self)) as jni::sys::jlong)
 			]
 		)
 	}
@@ -164,46 +191,8 @@ impl<'local> JObjectify<'local> for crate::buffer::Controller {
 			class,
 			"(J)V",
 			&[
-				jni::objects::JValueGen::Long(Box::into_raw(Box::new(&self)) as jni::sys::jlong)
+				jni::objects::JValueGen::Long(Box::into_raw(Box::new(self)) as jni::sys::jlong)
 			]
 		)
 	}
 }
-
-macro_rules! handle_callback {
-	($jtype:literal, $env:ident, $self_ptr:ident, $cb:ident, $t:ty) => {
-		let controller = unsafe { Box::leak(Box::from_raw($self_ptr as *mut $t)) };
-		
-		let Ok(jvm) = $env.get_java_vm() else {
-			$env.throw_new("mp/code/exceptions/JNIException", "Failed to get JVM reference!")
-				.expect("Failed to throw exception!");
-			return;
-		};
-
-		let Ok(cb_ref) = $env.new_global_ref($cb) else {
-			$env.throw_new("mp/code/exceptions/JNIException", "Failed to pin callback reference!")
-				.expect("Failed to throw exception!");
-			return;
-		};
-		controller.callback(move |controller: $t| {
-			use std::ops::DerefMut;
-			use crate::ffi::java::JObjectify;
-			let mut guard = jvm.attach_current_thread().unwrap();
-			let jcontroller = match controller.jobjectify(guard.deref_mut()) {
-				Err(e) => return tracing::error!("could not convert callback argument: {e:?}"),
-				Ok(x) => x,
-			};
-			let sig = format!("(L{};)V", $jtype);
-			if let Err(e) = guard.call_method(&cb_ref,
-				"invoke",
-				&sig,
-				&[jni::objects::JValueGen::Object(&jcontroller)]
-			) {
-				tracing::error!("error invoking callback: {e:?}");
-			}
-		});
-	};
-}
-
-pub(crate) use handle_callback;
-
