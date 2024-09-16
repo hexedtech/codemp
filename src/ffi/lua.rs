@@ -40,31 +40,17 @@ fn tokio() -> &'static tokio::runtime::Runtime {
 	)
 }
 
+fn lua_tuple<T: IntoLua>(lua: &Lua, (a, b): (T, T)) -> LuaResult<LuaTable> {
+	let table = lua.create_table()?;
+	table.set(1, a)?;
+	table.set(2, b)?;
+	Ok(table)
+}
+
 // TODO cannot do Box<dyn IntoLuaMulti> ?? maybe its temporary because im using betas
 #[allow(unused)] // TODO pass callback args!
-enum CallbackArg {
-	CursorController(CodempCursorController),
-	BufferController(CodempBufferController),
-	Event(CodempEvent),
-}
-
-impl From<CodempCursorController> for CallbackArg {
-	fn from(value: CodempCursorController) -> Self {
-		Self::CursorController(value)
-	}
-}
-
-impl From<CodempBufferController> for CallbackArg {
-	fn from(value: CodempBufferController) -> Self {
-		Self::BufferController(value)
-	}
-}
-
-impl From<CodempEvent> for CallbackArg {
-	fn from(value: CodempEvent) -> Self {
-		Self::Event(value)
-	}
-}
+//struct CallbackArg<T: IntoLuaMulti>(tokio::sync::oneshot::Receiver<T>);
+struct CallbackArg;
 
 struct CallbackChannel {
 	tx: tokio::sync::mpsc::UnboundedSender<(LuaFunction, CallbackArg)>,
@@ -82,8 +68,10 @@ impl Default for CallbackChannel {
 }
 
 impl CallbackChannel {
-	fn send(&self, cb: LuaFunction, arg: impl Into<CallbackArg>) {
-		self.tx.send((cb, arg.into())).unwrap_or_warn("error scheduling callback")
+	fn send(&self, cb: LuaFunction, _arg: impl IntoLuaMulti) {
+		// let (tx, rx) = tokio::sync::oneshot::channel();
+		// tx.send(arg);
+		self.tx.send((cb, CallbackArg)).unwrap_or_warn("error scheduling callback")
 	}
 
 	fn recv(&self) -> Option<(LuaFunction, CallbackArg)> {
@@ -358,33 +346,10 @@ impl LuaUserData for Cursor {
 	fn add_fields<F: LuaUserDataFields<Self>>(fields: &mut F) {
 		fields.add_field_method_get("user", |_, this| Ok(this.user.clone()));
 		fields.add_field_method_get("buffer", |_, this| Ok(this.buffer.clone()));
-		fields.add_field_method_get("start",  |_, this| Ok(RowCol::from(this.start)));
-		fields.add_field_method_get("end", |_, this| Ok(RowCol::from(this.end)));
+		fields.add_field_method_get("start",  |lua, this| lua_tuple(lua, this.start));
+		fields.add_field_method_get("end", |lua, this| lua_tuple(lua, this.end));
 		// add a 'finish' accessor too because in Lua 'end' is reserved
-		fields.add_field_method_get("finish", |_, this| Ok(RowCol::from(this.end)));
-	}
-}
-
-#[derive(Debug, Clone, Copy)]
-struct RowCol {
-	row: i32,
-	col: i32,
-}
-
-impl From<(i32, i32)> for RowCol {
-	fn from((row, col): (i32, i32)) -> Self {
-		Self { row, col }
-	}
-}
-
-impl LuaUserData for RowCol {
-	fn add_methods<M: LuaUserDataMethods<Self>>(methods: &mut M) {
-		methods.add_meta_method(LuaMetaMethod::ToString, |_, this, ()| Ok(format!("{:?}", this)));
-	}
-
-	fn add_fields<F: LuaUserDataFields<Self>>(fields: &mut F) {
-		fields.add_field_method_get("row",  |_, this| Ok(this.row));
-		fields.add_field_method_get("col",  |_, this| Ok(this.col));
+		fields.add_field_method_get("finish", |lua, this| lua_tuple(lua, this.end));
 	}
 }
 
