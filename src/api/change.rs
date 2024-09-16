@@ -28,6 +28,7 @@ pub struct TextChange {
 	/// Range start of text change, as char indexes in buffer previous state.
 	pub start: u32,
 	/// Range end of text change, as char indexes in buffer previous state.
+	#[cfg_attr(feature = "serialize", serde(alias = "finish"))] // Lua uses `end` as keyword
 	pub end: u32,
 	/// New content of text inside span.
 	pub content: String,

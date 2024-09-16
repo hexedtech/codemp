@@ -13,6 +13,7 @@ pub struct Cursor {
 	/// Cursor start position in buffer, as 0-indexed row-column tuple.
 	pub start: (i32, i32),
 	/// Cursor end position in buffer, as 0-indexed row-column tuple.
+	#[cfg_attr(feature = "serialize", serde(alias = "finish"))] // Lua uses `end` as keyword
 	pub end: (i32, i32),
 	/// Path of buffer this cursor is on.
 	pub buffer: String,

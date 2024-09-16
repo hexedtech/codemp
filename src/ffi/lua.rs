@@ -294,8 +294,8 @@ impl LuaUserData for CodempWorkspace {
 		// 	Ok(())
 		// });
 
-		methods.add_method("filetree", |_, this, (filter, strict,):(Option<String>, bool,)|
-			Ok(this.filetree(filter.as_deref(), strict))
+		methods.add_method("filetree", |_, this, (filter, strict,):(Option<String>, Option<bool>,)|
+			Ok(this.filetree(filter.as_deref(), strict.unwrap_or(false)))
 		);
 	}
 
@@ -359,6 +359,8 @@ impl LuaUserData for Cursor {
 		fields.add_field_method_get("user", |_, this| Ok(this.user.clone()));
 		fields.add_field_method_get("buffer", |_, this| Ok(this.buffer.clone()));
 		fields.add_field_method_get("start",  |_, this| Ok(RowCol::from(this.start)));
+		fields.add_field_method_get("end", |_, this| Ok(RowCol::from(this.end)));
+		// add a 'finish' accessor too because in Lua 'end' is reserved
 		fields.add_field_method_get("finish", |_, this| Ok(RowCol::from(this.end)));
 	}
 }
@@ -414,9 +416,11 @@ from_lua_serde! { CodempTextChange }
 impl LuaUserData for CodempTextChange {
 	fn add_fields<F: LuaUserDataFields<Self>>(fields: &mut F) {
 		fields.add_field_method_get("content", |_, this| Ok(this.content.clone()));
-		fields.add_field_method_get("first",   |_, this| Ok(this.start));
-		fields.add_field_method_get("last",  |_, this| Ok(this.end));
+		fields.add_field_method_get("start",   |_, this| Ok(this.start));
+		fields.add_field_method_get("end",  |_, this| Ok(this.end));
 		fields.add_field_method_get("hash",  |_, this| Ok(this.hash));
+		// add a 'finish' accessor too because in Lua 'end' is reserved
+		fields.add_field_method_get("finish",  |_, this| Ok(this.end));
 	}
 
 	fn add_methods<M: LuaUserDataMethods<Self>>(methods: &mut M) {

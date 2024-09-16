@@ -72,8 +72,9 @@ rust = [] # used for ci matrix
 java = ["lazy_static", "jni", "tracing-subscriber"]
 js = ["napi-build", "tracing-subscriber", "napi", "napi-derive"]
 py = ["pyo3", "tracing-subscriber", "pyo3-build-config"]
-lua = ["mlua-codemp-patch", "tracing-subscriber", "lazy_static", "serialize", "mlua-codemp-patch/lua54"]
-luajit = ["mlua-codemp-patch", "tracing-subscriber", "lazy_static", "serialize", "mlua-codemp-patch/luajit"]
+lua = ["mlua-codemp-patch", "tracing-subscriber", "lazy_static", "serialize"]
+lua54 =["lua", "mlua-codemp-patch/lua54"] 
+luajit = ["lua", "mlua-codemp-patch/luajit"]
 
 
 [package.metadata.docs.rs] # enabled features when building on docs.rs

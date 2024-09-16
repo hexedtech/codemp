@@ -121,14 +121,14 @@ local Workspace = {}
 ---@async
 ---@nodiscard
 ---create a new empty buffer
-function Workspace:create_buffer(path) end
+function Workspace:create(path) end
 
 ---@param path string relative path ("name") of buffer to delete
 ---@return NilPromise
 ---@async
 ---@nodiscard
 ---delete buffer from workspace
-function Workspace:delete_buffer(path) end
+function Workspace:delete(path) end
 
 ---@param path string relative path ("name") of buffer to get
 ---@return BufferController?
@@ -140,15 +140,15 @@ function Workspace:get_buffer(path) end
 ---@async
 ---@nodiscard
 ---attach to a remote buffer, synching content and changes and returning its controller
-function Workspace:attach_buffer(path) end
+function Workspace:attach(path) end
 
 ---@param path string relative path ("name") of buffer to detach from
 ---@return boolean
 ---detach from an active buffer, closing all streams. returns false if buffer was no longer active
-function Workspace:detach_buffer(path) end
+function Workspace:detach(path) end
 
 ---@param filter? string apply a filter to the return elements
----@param strict boolean whether to strictly match or just check whether it starts with it
+---@param strict? boolean whether to strictly match or just check whether it starts with it
 ---@return string[]
 ---return the list of available buffers in this workspace, as relative paths from workspace root
 function Workspace:filetree(filter, strict) end
@@ -184,10 +184,14 @@ local BufferController = {}
 
 ---@class TextChange
 ---@field content string text content of change
----@field first integer start index of change
----@field last integer end index of change
+---@field start integer start index of change
+---@field finish integer end index of change
 ---@field hash integer? optional hash of text buffer after this change, for sync checks
----@field apply fun(self: TextChange, other: string): string apply this text change to a string
+local TextChange = {}
+
+---@param other string text to apply change to
+---apply this text change to a string, returning the result
+function TextChange:apply(other) end
 
 ---@param change TextChange text change to broadcast
 ---@return NilPromise
@@ -238,16 +242,11 @@ function BufferController:content() end
 ---handle to a workspace's cursor channel, allowing send/recv operations
 local CursorController = {}
 
----@class RowCol
----@field row integer row number
----@field col integer column number
----row and column tuple
-
 ---@class Cursor
 ---@field user string? id of user owning this cursor
 ---@field buffer string relative path ("name") of buffer on which this cursor is
----@field start RowCol cursor start position
----@field finish RowCol cursor end position
+---@field start [integer, integer] cursor start position
+---@field finish [integer, integer] cursor end position
 ---a cursor position
 
 ---@param cursor Cursor cursor event to broadcast
@@ -297,7 +296,7 @@ function CursorController:callback(cb) end
 ---@field port integer | nil port to connect to, default 50053
 ---@field tls boolean | nil enable or disable tls, default true
 
----@class (exact) Codemp
+---@class Codemp
 ---the codemp shared library
 local Codemp = {}
 
