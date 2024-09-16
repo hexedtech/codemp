@@ -147,8 +147,8 @@ pub extern "system" fn Java_mp_code_BufferController_send<'local>(
 	self_ptr: jlong,
 	input: JObject<'local>,
 ) {
-	let Ok(start) = env.get_field(&input, "start", "I")
-		.and_then(|sr| sr.i())
+	let Ok(start) = env.get_field(&input, "start", "J")
+		.and_then(|sr| sr.j())
 		.jexcept(&mut env)
 		.try_into()
 	else {
@@ -157,8 +157,8 @@ pub extern "system" fn Java_mp_code_BufferController_send<'local>(
 		return;
 	};
 	
-	let Ok(end) = env.get_field(&input, "end", "I")
-		.and_then(|er| er.i())
+	let Ok(end) = env.get_field(&input, "end", "J")
+		.and_then(|er| er.j())
 		.jexcept(&mut env)
 		.try_into()
 	else {
@@ -175,7 +175,7 @@ pub extern "system" fn Java_mp_code_BufferController_send<'local>(
 		.map(|b| b.into())
 		.jexcept(&mut env);
 
-	let hash = env.get_field(&input, "hash", "Ljava/util/OptionalLong")
+	let hash = env.get_field(&input, "hash", "Ljava/util/OptionalLong;")
 		.and_then(|hash| hash.l())
 		.and_then(|hash| {
 			if env.call_method(&hash, "isPresent", "()Z", &[]).and_then(|r| r.z()).jexcept(&mut env) {

@@ -33,6 +33,10 @@ pub extern "system" fn Java_mp_code_Workspace_get_1buffer<'local>(
 	self_ptr: jlong,
 	input: JString<'local>
 ) -> jobject {
+	if input.is_null() {
+		return std::ptr::null_mut();
+	}
+
 	let workspace = unsafe { Box::leak(Box::from_raw(self_ptr as *mut Workspace)) };
 	let path = unsafe { env.get_string_unchecked(&input) }
 		.map(|path| path.to_string_lossy().to_string())

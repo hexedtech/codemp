@@ -110,8 +110,12 @@ impl<T> JExceptable<T> for Result<T, jni::errors::Error> where T: Default {
 	fn jexcept(self, env: &mut jni::JNIEnv) -> T {
 		if let Err(err) = &self {
 			let msg = format!("{err}");
-			env.throw_new("mp/code/exceptions/JNIException", msg)
-				.expect("A severe error occurred: we were unable to create a JNIException. This is an unrecoverable state.");
+			if let Err(err) = env.throw_new("mp/code/exceptions/JNIException", msg) {
+				if let Err(err) = env.exception_describe() {
+					tracing::error!("An exception occurred and we failed to even describe it: {err:#?}.");
+				}
+				panic!("A severe error occurred: we were unable to create a JNIException from {err:#?}. This is an unrecoverable state.");
+			}
 		}
 		self.unwrap_or_default()
 	}
@@ -121,8 +125,12 @@ impl<T> JExceptable<T> for Result<T, uuid::Error> where T: Default {
 	fn jexcept(self, env: &mut jni::JNIEnv) -> T {
 		if let Err(err) = &self {
 			let msg = format!("{err}");
-			env.throw_new("java/lang/IllegalArgumentException", msg) 
-				.expect("A severe error occurred: we were unable to create a JNIException. This is an unrecoverable state.");
+			if let Err(err) = env.throw_new("java/lang/IllegalArgumentException", msg) {
+				if let Err(err) = env.exception_describe() {
+					tracing::error!("An exception occurred and we failed to even describe it: {err:#?}.");
+				}
+				panic!("A severe error occurred: we were unable to create a JNIException from {err:#?}. This is an unrecoverable state.");
+			}
 		}
 		self.unwrap_or_default()
 	}
