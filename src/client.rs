@@ -126,7 +126,7 @@ impl Client {
 			.await?
 			.into_inner();
 
-		let ws = Workspace::try_new(
+		let ws = Workspace::connect(
 			workspace.as_ref().to_string(),
 			self.0.user.clone(),
 			self.0.config.clone(),

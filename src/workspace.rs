@@ -51,7 +51,7 @@ struct WorkspaceInner {
 }
 
 impl Workspace {
-	pub(crate) async fn try_new(
+	pub(crate) async fn connect(
 		name: String,
 		user: User,
 		config: crate::api::Config,
