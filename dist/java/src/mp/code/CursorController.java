@@ -4,6 +4,7 @@ import mp.code.data.Callback;
 import mp.code.data.Cursor;
 import mp.code.exceptions.ControllerException;
 
+import java.util.Objects;
 import java.util.Optional;
 
 public class CursorController {
@@ -25,12 +26,12 @@ public class CursorController {
 
 	private static native void send(long self, Cursor cursor) throws ControllerException;
 	public void send(Cursor cursor) throws ControllerException {
-		send(this.ptr, cursor);
+		send(this.ptr, Objects.requireNonNull(cursor));
 	}
 
 	private static native void callback(long self, Callback<CursorController> cb);
 	public void callback(Callback<CursorController> cb) {
-		callback(this.ptr, cb);
+		callback(this.ptr, Objects.requireNonNull(cb));
 	}
 
 	private static native void clear_callback(long self);

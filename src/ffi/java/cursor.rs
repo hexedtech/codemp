@@ -1,9 +1,9 @@
-use jni::{objects::{JClass, JObject, JString}, sys::{jboolean, jlong, jobject}, JNIEnv};
-use crate::api::Controller;
+use jni::{objects::{JClass, JObject}, sys::{jboolean, jlong, jobject}, JNIEnv};
+use crate::api::{Controller, Cursor};
 
-use super::{JExceptable, JObjectify};
+use super::{handle_error, null_check, tokio, Deobjectify, JExceptable, JObjectify};
 
-/// Try to fetch a [crate::api::Cursor], or returns null if there's nothing.
+/// Try to fetch a [Cursor], or returns null if there's nothing.
 #[no_mangle]
 pub extern "system" fn Java_mp_code_CursorController_try_1recv(
 	mut env: JNIEnv,
@@ -11,13 +11,13 @@ pub extern "system" fn Java_mp_code_CursorController_try_1recv(
 	self_ptr: jlong,
 ) -> jobject {
 	let controller = unsafe { Box::leak(Box::from_raw(self_ptr as *mut crate::cursor::Controller)) };
-	super::tokio().block_on(controller.try_recv())
+	tokio().block_on(controller.try_recv())
 		.jexcept(&mut env)
 		.map(|change| change.jobjectify(&mut env).jexcept(&mut env).as_raw())
 		.unwrap_or_else(std::ptr::null_mut)
 }
 
-/// Block until it receives a [crate::api::Cursor].
+/// Block until it receives a [Cursor].
 #[no_mangle]
 pub extern "system" fn Java_mp_code_CursorController_recv(
 	mut env: JNIEnv,
@@ -25,62 +25,29 @@ pub extern "system" fn Java_mp_code_CursorController_recv(
 	self_ptr: jlong,
 ) -> jobject {
 	let controller = unsafe { Box::leak(Box::from_raw(self_ptr as *mut crate::cursor::Controller)) };
-	super::tokio().block_on(controller.recv())
+	tokio().block_on(controller.recv())
 		.jexcept(&mut env)
 		.jobjectify(&mut env)
 		.jexcept(&mut env)
 		.as_raw()
 }
 
-/// Receive from Java, converts and sends a [crate::api::Cursor].
+/// Receive from Java, converts and sends a [Cursor].
 #[no_mangle]
 pub extern "system" fn Java_mp_code_CursorController_send<'local>(
-	mut env: JNIEnv,
+	mut env: JNIEnv<'local>,
 	_class: JClass<'local>,
 	self_ptr: jlong,
-	input: JObject<'local>,
+	cursor: JObject<'local>,
 ) {
-	let start_row = env.get_field(&input, "startRow", "I")
-		.and_then(|sr| sr.i())
-		.jexcept(&mut env);
-	let start_col = env.get_field(&input, "startCol", "I")
-		.and_then(|sc| sc.i())
-		.jexcept(&mut env);
-	let end_row = env.get_field(&input, "endRow", "I")
-		.and_then(|er| er.i())
-		.jexcept(&mut env);
-	let end_col = env.get_field(&input, "endCol", "I")
-		.and_then(|ec| ec.i())
-		.jexcept(&mut env);
-
-	let buffer = env.get_field(&input, "buffer", "Ljava/lang/String;")
-		.and_then(|b| b.l())
-		.map(|b| b.into())
-		.jexcept(&mut env);
-	let buffer = env.get_string(&buffer)
-		.map(|b| b.into())
-		.jexcept(&mut env);
-
-	let user: JString = env.get_field(&input, "user", "Ljava/lang/String;")
-		.and_then(|u| u.l())
-		.map(|u| u.into())
-		.jexcept(&mut env);
-	let user = if user.is_null() {
-		None
-	} else {
-		Some(env.get_string(&user)
-			.map(|u| u.into())
-			.jexcept(&mut env)
-		)
-	};
-
+	null_check!(env, cursor, {});
 	let controller = unsafe { Box::leak(Box::from_raw(self_ptr as *mut crate::cursor::Controller)) };
-	super::tokio().block_on(controller.send(crate::api::Cursor {
-		start: (start_row, start_col),
-		end: (end_row, end_col),
-		buffer,
-		user
-	})).jexcept(&mut env);
+	let cursor = Cursor::deobjectify(&mut env, cursor);
+	if let Ok(cursor) = cursor {
+		tokio().block_on(controller.send(cursor)).jexcept(&mut env)
+	} else {
+		handle_error!(&mut env, cursor, {});
+	}
 }
 
 /// Registers a callback for cursor changes.
@@ -91,6 +58,7 @@ pub extern "system" fn Java_mp_code_CursorController_callback<'local>(
 	self_ptr: jlong,
 	cb: JObject<'local>,
 ) {
+	null_check!(env, cb, {});
 	let controller = unsafe { Box::leak(Box::from_raw(self_ptr as *mut crate::cursor::Controller)) };
 	
 	let Ok(cb_ref) = env.new_global_ref(cb) else {
@@ -142,7 +110,7 @@ pub extern "system" fn Java_mp_code_CursorController_poll(
 	self_ptr: jlong,
 ) {
 	let controller = unsafe { Box::leak(Box::from_raw(self_ptr as *mut crate::cursor::Controller)) };
-	super::tokio().block_on(controller.poll())
+	tokio().block_on(controller.poll())
 		.jexcept(&mut env);
 }
 

@@ -1,7 +1,7 @@
-use jni::{objects::{JClass, JObject, JObjectArray, JString, JValueGen}, sys::{jboolean, jlong, jobject, jobjectArray, jstring}, JNIEnv};
+use jni::{objects::{JClass, JObject, JString}, sys::{jboolean, jlong, jobject, jobjectArray, jstring}, JNIEnv};
 use crate::Workspace;
 
-use super::{JExceptable, JObjectify};
+use super::{handle_error, null_check, JExceptable, JObjectify};
 
 /// Get the workspace id.
 #[no_mangle]
@@ -31,14 +31,11 @@ pub extern "system" fn Java_mp_code_Workspace_get_1buffer<'local>(
 	mut env: JNIEnv<'local>,
 	_class: JClass<'local>,
 	self_ptr: jlong,
-	input: JString<'local>
+	path: JString<'local>
 ) -> jobject {
-	if input.is_null() {
-		return std::ptr::null_mut();
-	}
-
+	null_check!(env, path, std::ptr::null_mut());
 	let workspace = unsafe { Box::leak(Box::from_raw(self_ptr as *mut Workspace)) };
-	let path = unsafe { env.get_string_unchecked(&input) }
+	let path = unsafe { env.get_string_unchecked(&path) }
 		.map(|path| path.to_string_lossy().to_string())
 		.jexcept(&mut env);
 	workspace.buffer_by_name(&path)
@@ -105,15 +102,11 @@ pub extern "system" fn Java_mp_code_Workspace_create_1buffer<'local>(
 	mut env: JNIEnv,
 	_class: JClass<'local>,
 	self_ptr: jlong,
-	input: JString<'local>
+	path: JString<'local>
 ) {
-	if input.is_null() {
-		return env.throw_new("java/lang/NullPointerException", "Buffer name cannot be null!")
-			.expect("Failed to throw exception!");
-	}
-
+	null_check!(env, path, {});
 	let ws = unsafe { Box::leak(Box::from_raw(self_ptr as *mut Workspace)) };
-	let path = unsafe { env.get_string_unchecked(&input) }
+	let path = unsafe { env.get_string_unchecked(&path) }
 		.map(|path| path.to_string_lossy().to_string())
 		.jexcept(&mut env);
 	super::tokio().block_on(ws.create(&path))
@@ -126,10 +119,11 @@ pub extern "system" fn Java_mp_code_Workspace_attach_1to_1buffer<'local>(
 	mut env: JNIEnv,
 	_class: JClass<'local>,
 	self_ptr: jlong,
-	input: JString<'local>
+	path: JString<'local>
 ) -> jobject {
+	null_check!(env, path, std::ptr::null_mut());
 	let workspace = unsafe { Box::leak(Box::from_raw(self_ptr as *mut Workspace)) };
-	let path = unsafe { env.get_string_unchecked(&input) }
+	let path = unsafe { env.get_string_unchecked(&path) }
 		.map(|path| path.to_string_lossy().to_string())
 		.jexcept(&mut env);
 	super::tokio().block_on(workspace.attach(&path))
@@ -144,21 +138,15 @@ pub extern "system" fn Java_mp_code_Workspace_detach_1from_1buffer<'local>(
 	mut env: JNIEnv,
 	_class: JClass<'local>,
 	self_ptr: jlong,
-	input: JString<'local>
+	path: JString<'local>
 ) -> jobject {
+	null_check!(env, path, std::ptr::null_mut());
 	let workspace = unsafe { Box::leak(Box::from_raw(self_ptr as *mut Workspace)) };
-	let path = unsafe { env.get_string_unchecked(&input) }
+	let path = unsafe { env.get_string_unchecked(&path) }
 		.map(|path| path.to_string_lossy().to_string())
 		.jexcept(&mut env);
-	let name = match workspace.detach(&path) {
-		crate::workspace::DetachResult::NotAttached => "NOT_ATTACHED",
-		crate::workspace::DetachResult::Detaching => "DETACHED",
-		crate::workspace::DetachResult::AlreadyDetached => "ALREADY_DETACHED"
-	};
-
-	env.find_class("mp/code/data/DetachResult")
-		.and_then(|class| env.get_static_field(class, name, "Lmp/code/data/DetachResult;"))
-		.and_then(|res| res.l())
+	workspace.detach(&path)
+		.jobjectify(&mut env)
 		.jexcept(&mut env)
 		.as_raw()
 }
@@ -191,10 +179,11 @@ pub extern "system" fn Java_mp_code_Workspace_list_1buffer_1users<'local>(
 	mut env: JNIEnv,
 	_class: JClass<'local>,
 	self_ptr: jlong,
-	input: JString<'local>,
+	path: JString<'local>,
 ) -> jobjectArray {
+	null_check!(env, path, std::ptr::null_mut());
 	let workspace = unsafe { Box::leak(Box::from_raw(self_ptr as *mut Workspace)) };
-	let buffer = unsafe { env.get_string_unchecked(&input) }
+	let buffer = unsafe { env.get_string_unchecked(&path) }
 		.map(|buffer| buffer.to_string_lossy().to_string())
 		.jexcept(&mut env);
 	let users = super::tokio().block_on(workspace.list_buffer_users(&buffer))
@@ -221,10 +210,11 @@ pub extern "system" fn Java_mp_code_Workspace_delete_1buffer<'local>(
 	mut env: JNIEnv,
 	_class: JClass<'local>,
 	self_ptr: jlong,
-	input: JString<'local>,
+	path: JString<'local>,
 ) {
+	null_check!(env, path, {});
 	let workspace = unsafe { Box::leak(Box::from_raw(self_ptr as *mut Workspace)) };
-	let buffer = unsafe { env.get_string_unchecked(&input) }
+	let buffer = unsafe { env.get_string_unchecked(&path) }
 		.map(|buffer| buffer.to_string_lossy().to_string())
 		.jexcept(&mut env);
 	super::tokio().block_on(workspace.delete(&buffer))
@@ -239,30 +229,12 @@ pub extern "system" fn Java_mp_code_Workspace_event(
 	self_ptr: jlong
 ) -> jobject {
 	let workspace = unsafe { Box::leak(Box::from_raw(self_ptr as *mut Workspace)) };
-	super::tokio().block_on(workspace.event())
-		.map(|event| {
-			let (ordinal, arg) = match event {
-				crate::api::Event::UserJoin(arg) => (0, env.new_string(arg).unwrap_or_default()),
-				crate::api::Event::UserLeave(arg) => (1, env.new_string(arg).unwrap_or_default()),
-				crate::api::Event::FileTreeUpdated(arg) => (2, env.new_string(arg).unwrap_or_default()),
-			};
-
-			let event_type = env.find_class("mp/code/Workspace$Event$Type")
-				.and_then(|class| env.call_method(class, "getEnumConstants", "()[Ljava/lang/Object;", &[]))
-				.and_then(|enums| enums.l().map(|e| e.into()))
-				.and_then(|enums: JObjectArray| env.get_object_array_element(enums, ordinal))
-				.jexcept(&mut env);
-			env.find_class("mp/code/Workspace$Event").and_then(|class|
-				env.new_object(
-					class,
-					"(Lmp/code/Workspace$Event$Type;Ljava/lang/String;)V",
-					&[
-						JValueGen::Object(&event_type),
-						JValueGen::Object(&arg)
-					]
-				)
-			).jexcept(&mut env)
-		}).jexcept(&mut env).as_raw()
+	let event = super::tokio().block_on(workspace.event());
+	if let Ok(event) = event {
+		event.jobjectify(&mut env).jexcept(&mut env).as_raw()
+	} else {
+		handle_error!(&mut env, event, std::ptr::null_mut())
+	}
 }
 
 /// Called by the Java GC to drop a [Workspace].

@@ -1,75 +1,27 @@
-use jni::{objects::{JClass, JObject, JString, JValueGen}, sys::{jboolean, jint, jlong, jobject, jobjectArray}, JNIEnv};
-use crate::{api::Config, client::Client, Workspace};
+use jni::{objects::{JClass, JObject, JString}, sys::{jboolean, jlong, jobject, jobjectArray}, JNIEnv};
+use crate::{api::Config, client::Client, ffi::java::{handle_error, null_check}, Workspace};
 
-use super::{JExceptable, JObjectify};
+use super::{Deobjectify, JExceptable, JObjectify, tokio};
 
 /// Connect using the given credentials to the default server, and return a [Client] to interact with it.
 #[no_mangle]
 pub extern "system" fn Java_mp_code_Client_connect<'local>(
-	mut env: JNIEnv,
+	mut env: JNIEnv<'local>,
 	_class: JClass<'local>,
-	user: JString<'local>,
-	pwd: JString<'local>
+	config: JObject<'local>	
 ) -> jobject {
-	let username: String = env.get_string(&user)
-		.map(|s| s.into())
-		.jexcept(&mut env);
-	let password: String = env.get_string(&pwd)
-		.map(|s| s.into())
-		.jexcept(&mut env);
-	connect_internal(env, Config {
-		username,
-		password,
-		host: None,
-		port: None,
-		tls: None
-	})
-}
-
-/// Connect to a given URL and return a [Client] to interact with that server.
-#[no_mangle]
-#[allow(non_snake_case)]
-pub extern "system" fn Java_mp_code_Client_connectToServer<'local>(
-	mut env: JNIEnv,
-	_class: JClass<'local>,
-	user: JString<'local>,
-	pwd: JString<'local>,
-	host: JString<'local>,
-	port: jint,
-	tls: jboolean
-) -> jobject {
-	let username: String = env.get_string(&user)
-		.map(|s| s.into())
-		.jexcept(&mut env);
-	let password: String = env.get_string(&pwd)
-		.map(|s| s.into())
-		.jexcept(&mut env);
-	let host: String = env.get_string(&host)
-		.map(|s| s.into())
-		.jexcept(&mut env);
-
-	if port < 0 {
-		env.throw_new("mp/code/exceptions/JNIException", "Negative port number!")
-			.jexcept(&mut env);
+	null_check!(env, config, std::ptr::null_mut());
+	let config = Config::deobjectify(&mut env, config);
+	if config.is_err() {
+		handle_error!(&mut env, config, std::ptr::null_mut());
 	}
 
-	connect_internal(env, Config {
-		username,
-		password,
-		host: Some(host),
-		port: Some(port as u16),
-		tls: Some(tls != 0),
-	})
-}
-
-fn connect_internal(mut env: JNIEnv, config: Config) -> jobject {
-	super::tokio().block_on(Client::connect(config))
-		.map(|client| Box::into_raw(Box::new(client)) as jlong)
-		.map(|ptr| {
-			env.find_class("mp/code/Client")
-				.and_then(|class| env.new_object(class, "(J)V", &[JValueGen::Long(ptr)]))
-				.jexcept(&mut env)
-		}).jexcept(&mut env).as_raw()
+	let client = tokio().block_on(Client::connect(config.unwrap()));
+	if let Ok(client) = client {
+		client.jobjectify(&mut env).jexcept(&mut env).as_raw()
+	} else {
+		handle_error!(&mut env, client, std::ptr::null_mut());
+	}
 }
 
 /// Gets the current [crate::api::User].
@@ -92,20 +44,20 @@ pub extern "system" fn Java_mp_code_Client_join_1workspace<'local>(
 	mut env: JNIEnv<'local>,
 	_class: JClass<'local>,
 	self_ptr: jlong,
-	input: JString<'local>
+	workspace_id: JString<'local>
 ) -> jobject {
+	null_check!(env, workspace_id, std::ptr::null_mut());
 	let client = unsafe { Box::leak(Box::from_raw(self_ptr as *mut Client)) };
-	let workspace_id = unsafe { env.get_string_unchecked(&input) }
+	let workspace_id = unsafe { env.get_string_unchecked(&workspace_id) }
 		.map(|wid| wid.to_string_lossy().to_string())
 		.jexcept(&mut env);
-	super::tokio().block_on(client.join_workspace(workspace_id))
-		.map(|workspace| spawn_updater(workspace.clone()))
-		.map(|workspace| Box::into_raw(Box::new(workspace)) as jlong)
-		.map(|ptr| {
-			env.find_class("mp/code/Workspace")
-				.and_then(|class| env.new_object(class, "(J)V", &[JValueGen::Long(ptr)]))
-				.jexcept(&mut env)
-		}).jexcept(&mut env).as_raw()
+	let workspace = tokio().block_on(client.join_workspace(workspace_id))
+		.map(|workspace| spawn_updater(workspace.clone()));
+	if let Ok(workspace) = workspace {
+		workspace.jobjectify(&mut env).jexcept(&mut env).as_raw()
+	} else {
+		handle_error!(&mut env, workspace, std::ptr::null_mut())
+	}
 }
 
 /// Create a workspace on server, if allowed to.
@@ -114,13 +66,14 @@ pub extern "system" fn Java_mp_code_Client_create_1workspace<'local>(
 	mut env: JNIEnv<'local>,
 	_class: JClass<'local>,
 	self_ptr: jlong,
-	input: JString<'local>
+	workspace_id: JString<'local>
 ) {
+	null_check!(env, workspace_id, {});
 	let client = unsafe { Box::leak(Box::from_raw(self_ptr as *mut Client)) };
-	let workspace_id = unsafe { env.get_string_unchecked(&input) }
+	let workspace_id = unsafe { env.get_string_unchecked(&workspace_id) }
 		.map(|wid| wid.to_string_lossy().to_string())
 		.jexcept(&mut env);
-	super::tokio()
+	tokio()
 		.block_on(client.create_workspace(workspace_id))
 		.jexcept(&mut env);
 }
@@ -131,13 +84,14 @@ pub extern "system" fn Java_mp_code_Client_delete_1workspace<'local>(
 	mut env: JNIEnv<'local>,
 	_class: JClass<'local>,
 	self_ptr: jlong,
-	input: JString<'local>
+	workspace_id: JString<'local>
 ) {
+	null_check!(env, workspace_id, {});
 	let client = unsafe { Box::leak(Box::from_raw(self_ptr as *mut Client)) };
-	let workspace_id = unsafe { env.get_string_unchecked(&input) }
+	let workspace_id = unsafe { env.get_string_unchecked(&workspace_id) }
 		.map(|wid| wid.to_string_lossy().to_string())
 		.jexcept(&mut env);
-	super::tokio()
+	tokio()
 		.block_on(client.delete_workspace(workspace_id))
 		.jexcept(&mut env);
 }
@@ -148,17 +102,19 @@ pub extern "system" fn Java_mp_code_Client_invite_1to_1workspace<'local>(
 	mut env: JNIEnv<'local>,
 	_class: JClass<'local>,
 	self_ptr: jlong,
-	ws: JString<'local>,
-	usr: JString<'local>
+	workspace_id: JString<'local>,
+	user: JString<'local>
 ) {
+	null_check!(env, workspace_id, {});
+	null_check!(env, user, {});
 	let client = unsafe { Box::leak(Box::from_raw(self_ptr as *mut Client)) };
-	let workspace_id = unsafe { env.get_string_unchecked(&ws) }
+	let workspace_id = unsafe { env.get_string_unchecked(&workspace_id) }
 		.map(|wid| wid.to_string_lossy().to_string())
 		.jexcept(&mut env);
-	let user_name = unsafe { env.get_string_unchecked(&usr) }
+	let user_name = unsafe { env.get_string_unchecked(&user) }
 		.map(|wid| wid.to_string_lossy().to_string())
 		.jexcept(&mut env);
-	super::tokio()
+	tokio()
 		.block_on(client.invite_to_workspace(workspace_id, user_name))
 		.jexcept(&mut env);
 }
@@ -173,7 +129,7 @@ pub extern "system" fn Java_mp_code_Client_list_1workspaces<'local>(
 	invited: jboolean
 ) -> jobjectArray {
 	let client = unsafe { Box::leak(Box::from_raw(self_ptr as *mut Client)) };
-	let list = super::tokio()
+	let list = tokio()
 		.block_on(client.list_workspaces(owned != 0, invited != 0))
 		.jexcept(&mut env);
 	env.find_class("java/lang/String")
@@ -210,7 +166,7 @@ pub extern "system" fn Java_mp_code_Client_active_1workspaces<'local>(
 // TODO: this stays until we get rid of the arc then i'll have to find a better way
 fn spawn_updater(workspace: Workspace) -> Workspace {
 	let w = workspace.clone();
-	super::tokio().spawn(async move {
+	tokio().spawn(async move {
 		loop {
 			tokio::time::sleep(std::time::Duration::from_secs(60)).await;
 			w.fetch_buffers().await.unwrap();
@@ -226,10 +182,11 @@ pub extern "system" fn Java_mp_code_Client_leave_1workspace<'local>(
 	mut env: JNIEnv<'local>,
 	_class: JClass<'local>,
 	self_ptr: jlong,
-	input: JString<'local>
+	workspace_id: JString<'local>
 ) -> jboolean {
+	null_check!(env, workspace_id, false as jboolean);
 	let client = unsafe { Box::leak(Box::from_raw(self_ptr as *mut Client)) };
-	unsafe { env.get_string_unchecked(&input) }
+	unsafe { env.get_string_unchecked(&workspace_id) }
 		.map(|wid| wid.to_string_lossy().to_string())
 		.map(|wid| client.leave_workspace(&wid) as jboolean)
 		.jexcept(&mut env)
@@ -241,19 +198,18 @@ pub extern "system" fn Java_mp_code_Client_get_1workspace<'local>(
 	mut env: JNIEnv<'local>,
 	_class: JClass<'local>,
 	self_ptr: jlong,
-	input: JString<'local>
+	workspace_id: JString<'local>
 ) -> jobject {
+	null_check!(env, workspace_id, std::ptr::null_mut());
 	let client = unsafe { Box::leak(Box::from_raw(self_ptr as *mut Client)) };
-	let workspace_id = unsafe { env.get_string_unchecked(&input) }
+	let workspace_id = unsafe { env.get_string_unchecked(&workspace_id) }
 		.map(|wid| wid.to_string_lossy().to_string())
 		.jexcept(&mut env);
-	client.get_workspace(&workspace_id)
-		.map(|workspace| Box::into_raw(Box::new(workspace)) as jlong)
-		.map(|ptr| {
-			env.find_class("mp/code/Workspace")
-				.and_then(|class| env.new_object(class, "(J)V", &[JValueGen::Long(ptr)]))
-				.jexcept(&mut env)
-		}).unwrap_or_default().as_raw()
+	if let Some(workspace) = client.get_workspace(&workspace_id) {
+		workspace.jobjectify(&mut env).jexcept(&mut env).as_raw()
+	} else {
+		std::ptr::null_mut()
+	}
 }
 
 /// Refresh the client's session token.
@@ -264,7 +220,7 @@ pub extern "system" fn Java_mp_code_Client_refresh<'local>(
 	self_ptr: jlong,
 ) {
 	let client = unsafe { Box::leak(Box::from_raw(self_ptr as *mut Client)) };
-	super::tokio().block_on(client.refresh())
+	tokio().block_on(client.refresh())
 		.jexcept(&mut env);
 }
 

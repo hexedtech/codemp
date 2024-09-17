@@ -5,6 +5,7 @@ import mp.code.data.Cursor;
 import mp.code.data.TextChange;
 import mp.code.exceptions.ControllerException;
 
+import java.util.Objects;
 import java.util.Optional;
 
 public class BufferController {
@@ -36,12 +37,12 @@ public class BufferController {
 
 	private static native void send(long self, TextChange change) throws ControllerException;
 	public void send(TextChange change) throws ControllerException {
-		send(this.ptr, change);
+		send(this.ptr, Objects.requireNonNull(change));
 	}
 
 	private static native void callback(long self, Callback<BufferController> cb);
 	public void callback(Callback<BufferController> cb) {
-		callback(this.ptr, cb);
+		callback(this.ptr, Objects.requireNonNull(cb));
 	}
 
 	private static native void clear_callback(long self);

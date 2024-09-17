@@ -1,6 +1,6 @@
 use jni::{objects::{JClass, JString}, sys::{jboolean, jlong}, JNIEnv};
 
-use super::JExceptable;
+use super::{JExceptable, null_check};
 
 /// Calculate the XXH3 hash for a given String.
 #[no_mangle]
@@ -9,6 +9,7 @@ pub extern "system" fn Java_mp_code_Extensions_hash<'local>(
 	_class: JClass<'local>,
 	content: JString<'local>,
 ) -> jlong {
+	null_check!(env, content, 0 as jlong);
 	let content: String = env.get_string(&content)
 		.map(|s| s.into())
 		.jexcept(&mut env);

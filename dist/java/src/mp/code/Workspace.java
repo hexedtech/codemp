@@ -1,5 +1,6 @@
 package mp.code;
 
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -27,7 +28,7 @@ public class Workspace {
 
 	private static native BufferController get_buffer(long self, String path);
 	public Optional<BufferController> getBuffer(String path) {
-		return Optional.ofNullable(get_buffer(this.ptr, path));
+		return Optional.ofNullable(get_buffer(this.ptr, Objects.requireNonNull(path)));
 	}
 
 	private static native String[] get_file_tree(long self, String filter, boolean strict);
@@ -42,17 +43,17 @@ public class Workspace {
 
 	private static native void create_buffer(long self, String path) throws ConnectionRemoteException;
 	public void createBuffer(String path) throws ConnectionRemoteException {
-		create_buffer(this.ptr, path);
+		create_buffer(this.ptr, Objects.requireNonNull(path));
 	}
 
 	private static native BufferController attach_to_buffer(long self, String path) throws ConnectionException;
 	public BufferController attachToBuffer(String path) throws ConnectionException {
-		return attach_to_buffer(ptr, path);
+		return attach_to_buffer(ptr, Objects.requireNonNull(path));
 	}
 
 	private static native DetachResult detach_from_buffer(long self, String path);
 	public DetachResult detachFromBuffer(String path) {
-		return detach_from_buffer(this.ptr, path);
+		return detach_from_buffer(this.ptr, Objects.requireNonNull(path));
 	}
 
 	private static native void fetch_buffers(long self) throws ConnectionRemoteException;
@@ -67,12 +68,12 @@ public class Workspace {
 
 	private static native UUID[] list_buffer_users(long self, String path) throws ConnectionRemoteException;
 	public UUID[] listBufferUsers(String path) throws ConnectionRemoteException {
-		return list_buffer_users(this.ptr, path);
+		return list_buffer_users(this.ptr, Objects.requireNonNull(path));
 	}
 
 	private static native void delete_buffer(long self, String path) throws ConnectionRemoteException;
 	public void deleteBuffer(String path) throws ConnectionRemoteException {
-		delete_buffer(this.ptr, path);
+		delete_buffer(this.ptr, Objects.requireNonNull(path));
 	}
 
 	private static native Event event(long self) throws ControllerException;

@@ -1,8 +1,8 @@
 use jni::{objects::{JClass, JObject}, sys::{jboolean, jlong, jobject, jstring}, JNIEnv};
 
-use crate::api::Controller;
+use crate::api::{Controller, TextChange};
 
-use super::{JExceptable, JObjectify};
+use super::{handle_error, null_check, tokio, Deobjectify, JExceptable, JObjectify};
 
 /// Gets the name of the buffer. 
 #[no_mangle]
@@ -26,14 +26,14 @@ pub extern "system" fn Java_mp_code_BufferController_get_1content(
 	self_ptr: jlong,
 ) -> jstring {
 	let controller = unsafe { Box::leak(Box::from_raw(self_ptr as *mut crate::buffer::Controller)) };
-	let content = super::tokio().block_on(controller.content())
+	let content = tokio().block_on(controller.content())
 		.jexcept(&mut env);
 	env.new_string(content)
 		.jexcept(&mut env)
 		.as_raw()
 }
 
-/// Tries to fetch a [crate::api::TextChange], or returns null if there's nothing.
+/// Tries to fetch a [TextChange], or returns null if there's nothing.
 #[no_mangle]
 pub extern "system" fn Java_mp_code_BufferController_try_1recv(
 	mut env: JNIEnv,
@@ -41,13 +41,13 @@ pub extern "system" fn Java_mp_code_BufferController_try_1recv(
 	self_ptr: jlong,
 ) -> jobject {
 	let controller = unsafe { Box::leak(Box::from_raw(self_ptr as *mut crate::buffer::Controller)) };
-	super::tokio().block_on(controller.try_recv())
+	tokio().block_on(controller.try_recv())
 		.jexcept(&mut env)
 		.map(|change| change.jobjectify(&mut env).jexcept(&mut env).as_raw())
 		.unwrap_or_else(std::ptr::null_mut)
 }
 
-/// Blocks until it receives a [crate::api::TextChange].
+/// Blocks until it receives a [TextChange].
 #[no_mangle]
 pub extern "system" fn Java_mp_code_BufferController_recv(
 	mut env: JNIEnv,
@@ -55,66 +55,29 @@ pub extern "system" fn Java_mp_code_BufferController_recv(
 	self_ptr: jlong,
 ) -> jobject {
 	let controller = unsafe { Box::leak(Box::from_raw(self_ptr as *mut crate::buffer::Controller)) };
-	super::tokio().block_on(controller.recv())
+	tokio().block_on(controller.recv())
 		.jexcept(&mut env)
 		.jobjectify(&mut env)
 		.jexcept(&mut env)
 		.as_raw()
 }
 
-/// Receive from Java, converts and sends a [crate::api::TextChange].
+/// Receive from Java, converts and sends a [TextChange].
 #[no_mangle]
 pub extern "system" fn Java_mp_code_BufferController_send<'local>(
-	mut env: JNIEnv,
+	mut env: JNIEnv<'local>,
 	_class: JClass<'local>,
 	self_ptr: jlong,
-	input: JObject<'local>,
+	change: JObject<'local>,
 ) {
-	let Ok(start) = env.get_field(&input, "start", "J")
-		.and_then(|sr| sr.j())
-		.jexcept(&mut env)
-		.try_into()
-	else {
-		return env.throw_new("java/lang/IllegalArgumentException", "Start index cannot be negative!")
-			.expect("Failed to throw exception!");
-	};
-	
-	let Ok(end) = env.get_field(&input, "end", "J")
-		.and_then(|er| er.j())
-		.jexcept(&mut env)
-		.try_into()
-	else {
-		return env.throw_new("java/lang/IllegalArgumentException", "End index cannot be negative!")
-			.expect("Failed to throw exception!");
-	};
-
-	let content = env.get_field(&input, "content", "Ljava/lang/String;")
-		.and_then(|b| b.l())
-		.map(|b| b.into())
-		.jexcept(&mut env);
-	let content = env.get_string(&content)
-		.map(|b| b.into())
-		.jexcept(&mut env);
-
-	let hash = env.get_field(&input, "hash", "Ljava/util/OptionalLong;")
-		.and_then(|hash| hash.l())
-		.and_then(|hash| {
-			if env.call_method(&hash, "isPresent", "()Z", &[]).and_then(|r| r.z()).jexcept(&mut env) {
-				env.call_method(&hash, "getAsLong", "()J", &[])
-					.and_then(|r| r.j())
-					.map(Some)
-			} else {
-				Ok(None)
-			}
-		}).jexcept(&mut env);
-
+	null_check!(env, change, {});
 	let controller = unsafe { Box::leak(Box::from_raw(self_ptr as *mut crate::buffer::Controller)) };
-	super::tokio().block_on(controller.send(crate::api::TextChange {
-		start,
-		end,
-		content,
-		hash,
-	})).jexcept(&mut env);
+	let change = TextChange::deobjectify(&mut env, change);
+	if let Ok(change) = change {
+		tokio().block_on(controller.send(change)).jexcept(&mut env)
+	} else {
+		handle_error!(&mut env, change, {});
+	}
 }
 
 /// Registers a callback for buffer changes.
@@ -125,8 +88,8 @@ pub extern "system" fn Java_mp_code_BufferController_callback<'local>(
 	self_ptr: jlong,
 	cb: JObject<'local>,
 ) {
+	null_check!(env, cb, {});
 	let controller = unsafe { Box::leak(Box::from_raw(self_ptr as *mut crate::buffer::Controller)) };
-	
 	let Ok(cb_ref) = env.new_global_ref(cb) else {
 		env.throw_new("mp/code/exceptions/JNIException", "Failed to pin callback reference!")
 			.expect("Failed to throw exception!");
@@ -176,7 +139,7 @@ pub extern "system" fn Java_mp_code_BufferController_poll(
 	self_ptr: jlong,
 ) {
 	let controller = unsafe { Box::leak(Box::from_raw(self_ptr as *mut crate::buffer::Controller)) };
-	super::tokio().block_on(controller.poll())
+	tokio().block_on(controller.poll())
 		.jexcept(&mut env);
 }
 
