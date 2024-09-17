@@ -3,6 +3,7 @@ name: lua
 on:
   push:
     branches:
+      - dev
       - stable
 
 permissions:
@@ -20,59 +21,36 @@ jobs:
             target: linux-gnu
             pre: lib
             ext: so
+            buildcmd: cargo build --release --features=luajit
           - runner: windows-latest
             arch: x86_64
             target: windows-msvc
             pre:
             ext: dll
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: arduino/setup-protoc@v3
-        with:
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-      - run: cargo build --release --features=luajit
-      - run: mv target/release/${{matrix.platform.pre}}codemp.${{matrix.platform.ext}} dist/lua/codemp-lua-${{matrix.platform.arch}}-${{matrix.platform.target}}.${{matrix.platform.ext}}
-      - uses: actions/upload-artifact@v4
-        with:
-          name: codemp-lua-${{ matrix.platform.target }}
-          path: dist/lua/codemp-lua-${{matrix.platform.arch}}-${{matrix.platform.target}}.${{matrix.platform.ext}}
-
-  # macos requires some extra cargo config to make it work, but
-  # these settings make test fail so better limit them to this run
-  build-macos:
-    runs-on: ${{ matrix.platform.runner }}
-    strategy:
-      fail-fast: false
-      matrix:
-        platform:
+            buildcmd: cargo build --release --features=luajit
           - runner: macos-latest
             arch: aarch64
             target: darwin
             pre: lib
             ext: dylib
-          #- runner: macos-12
-          #  arch: x86_64
-          #  platform: darwin
-          #  pre: lib
-          #  ext: dylib
+            buildcmd: cargo rustc --release --features=luajit -- -C link-arg=-undefined -C link-arg=dynamic_lookup
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: arduino/setup-protoc@v3
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
-      - run: cargo rustc --release --features=luajit -- -C link-arg=-undefined -C link-arg=dynamic_lookup
+      - run: ${{ matrix.platform.buildcmd }}
       - run: mv target/release/${{matrix.platform.pre}}codemp.${{matrix.platform.ext}} dist/lua/codemp-lua-${{matrix.platform.arch}}-${{matrix.platform.target}}.${{matrix.platform.ext}}
       - uses: actions/upload-artifact@v4
         with:
           name: codemp-lua-${{ matrix.platform.target }}
           path: dist/lua/codemp-lua-${{matrix.platform.arch}}-${{matrix.platform.target}}.${{matrix.platform.ext}}
 
-  # TODO this just copies files on our server, maybe publish on luarocks? maybe do it properly with versions
+  # TODO this just copies files on our server, maybe consider other ways to distribute? maybe do it properly with versions?
   publish:
     runs-on: ubuntu-latest
-    needs: [build, build-macos]
+    needs: [build]
     steps:
       - uses: actions/checkout@v4
       - run: mkdir dist/lua/publish
