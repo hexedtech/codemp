@@ -14,20 +14,25 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
+    runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
       matrix:
+        runner:
+          - ubuntu-latest
+          - windows-latest
+          - macos-latest
         features:
           - rust
-          - luajit # should we test with lua54 instead?
+          - luajit
+          - lua54
           - java
           - js
           - py
         toolchain:
           - stable
-        #  - beta
-        #  - nightly
-        # TODO should re-enable future toolchains so we get warnings on breaking changes
+          - beta
+          - nightly
     steps:
       - uses: arduino/setup-protoc@v3
         with:
