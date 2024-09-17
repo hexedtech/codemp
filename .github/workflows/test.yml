@@ -52,10 +52,10 @@ jobs:
             action: build
             extra:
           - runner: windows-latest
-            buildcmd: build
+            action: build
             extra:
           - runner: macos-latest
-            buildcmd: rustc
+            action: rustc
             extra: -- -C link-arg=-undefined -C link-arg=dynamic_lookup
         features:
           - luajit
