@@ -451,6 +451,15 @@ impl Write for LuaLoggerProducer {
 // TODO can we make this less verbose?
 fn logger(_: &Lua, (printer, debug): (LuaValue, Option<bool>)) -> LuaResult<bool> {
 	let level = if debug.unwrap_or_default() { tracing::Level::DEBUG } else {tracing::Level::INFO };
+	let format = tracing_subscriber::fmt::format()
+		.with_level(true)
+		.with_target(true)
+		.with_thread_ids(false)
+		.with_thread_names(false)
+		.with_file(false)
+		.with_line_number(false)
+		.with_source_location(false);
+
 	let success = match printer {
 		LuaValue::Boolean(_)
 		| LuaValue::LightUserData(_)
@@ -461,15 +470,6 @@ fn logger(_: &Lua, (printer, debug): (LuaValue, Option<bool>)) -> LuaResult<bool
 		| LuaValue::UserData(_)
 		| LuaValue::Error(_) => return Err(LuaError::BindError), // TODO full BadArgument type??
 		LuaValue::Nil => {
-			let format = tracing_subscriber::fmt::format()
-				.with_level(true)
-				.with_target(true)
-				.with_thread_ids(true)
-				.with_thread_names(true)
-				.with_ansi(true)
-				.with_file(false)
-				.with_line_number(false)
-				.with_source_location(false);
 			tracing_subscriber::fmt()
 				.event_format(format)
 				.with_max_level(level)
@@ -479,37 +479,21 @@ fn logger(_: &Lua, (printer, debug): (LuaValue, Option<bool>)) -> LuaResult<bool
 		},
 		LuaValue::String(path) => {
 			let logfile = std::fs::File::create(path.to_string_lossy()).map_err(|e| LuaError::RuntimeError(e.to_string()))?;
-			let format = tracing_subscriber::fmt::format()
-				.with_level(true)
-				.with_target(true)
-				.with_thread_ids(true)
-				.with_thread_names(true)
-				.with_ansi(false)
-				.with_file(false)
-				.with_line_number(false)
-				.with_source_location(false);
 			tracing_subscriber::fmt()
 				.event_format(format)
 				.with_max_level(level)
 				.with_writer(Mutex::new(logfile))
+				.with_ansi(false)
 				.try_init()
 				.is_ok()
 		},
 		LuaValue::Function(cb) => {
 			let (tx, mut rx) = mpsc::unbounded_channel();
-			let format = tracing_subscriber::fmt::format()
-				.with_level(true)
-				.with_target(true)
-				.with_thread_ids(false)
-				.with_thread_names(false)
-				.with_ansi(false)
-				.with_file(false)
-				.with_line_number(false)
-				.with_source_location(false);
 			let res = tracing_subscriber::fmt()
 				.event_format(format)
 				.with_max_level(level)
 				.with_writer(Mutex::new(LuaLoggerProducer(tx)))
+				.with_ansi(false)
 				.try_init()
 				.is_ok();
 			if res {
