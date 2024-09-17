@@ -1,11 +1,12 @@
 [![codemp](https://code.mp/static/banner.png)](https://code.mp)
 
 [![Actions Status](https://github.com/hexedtech/codemp/actions/workflows/test.yml/badge.svg)](https://github.com/hexedtech/codemp/actions)
-[![docs.rs](https://img.shields.io/docsrs/codemp)](https://docs.rs/codemp/)
-[![Gitter](https://img.shields.io/gitter/room/hexedtech/codemp)](https://gitter.im/hexedtech/codemp)
+[![docs.rs Status](https://img.shields.io/docsrs/codemp)](https://docs.rs/codemp/)
+[![Gitter Chat](https://img.shields.io/gitter/room/hexedtech/codemp)](https://gitter.im/hexedtech/codemp)
 [![Crates.io Version](https://img.shields.io/crates/v/codemp)](https://crates.io/crates/codemp)
 [![NPM Version](https://img.shields.io/npm/v/codemp)](https://npmjs.org/package/codemp)
-[![PyPI - Version](https://img.shields.io/pypi/v/codemp)](https://pypi.org/project/codemp)
+[![PyPI Version](https://img.shields.io/pypi/v/codemp)](https://pypi.org/project/codemp)
+[![LuaRocks Version](https://img.shields.io/luarocks/v/alemi/codemp)](https://luarocks.org/modules/alemi/codemp)
 
 > `codemp` is a **collaborative** text editing solution to work remotely.
 
@@ -32,7 +33,7 @@ The full documentation is available on [docs.rs](https://docs.rs/codemp/0.7.0-be
  - [NeoVim](https://github.com/hexedtech/codemp-nvim)
  - [VSCode](https://github.com/hexedtech/codemp-vscode)
  - [Sublime Text](https://github.com/hexedtech/codemp-sublime)
-<!-- - [IntelliJ Platform](https://github.com/hexedtech/codemp-intellij) -->
+ - [IntelliJ Platform](https://github.com/hexedtech/codemp-intellij)
 
 ## Registration
 The `codemp` protocol is [openly available](https://github.com/hexedtech/codemp-proto/) and servers may be freely developed with it.
@@ -57,8 +58,8 @@ Just `cargo add codemp` and check the docs for some examples.
 We provide first-class bindings for:
  - [![JavaScript](https://github.com/hexedtech/codemp/actions/workflows/javascript.yml/badge.svg)](./dist/README.md#javascript) available from `npm` as [`codemp`](https://npmjs.org/package/codemp)
  - [![Python](https://github.com/hexedtech/codemp/actions/workflows/python.yml/badge.svg)](./dist/README.md#python) available from `PyPI` as [`codemp`](https://pypi.org/project/codemp)
- - [![Lua](https://github.com/hexedtech/codemp/actions/workflows/lua.yml/badge.svg)](./dist/README.md#lua) run `cargo build --features=lua`
- - [![Java](https://github.com/hexedtech/codemp/actions/workflows/java.yml/badge.svg)](./dist/README.md#java) run `gradle build` in `dist/java/` (requires Gradle)
+ - [![Lua](https://github.com/hexedtech/codemp/actions/workflows/lua.yml/badge.svg)](./dist/README.md#lua) available from `LuaRocks` as [`codemp`](https://luarocks.org/modules/alemi/codemp)
+ - [![Java](https://github.com/hexedtech/codemp/actions/workflows/java.yml/badge.svg)](./dist/README.md#java) available on `MavenCentral` **SOON**
 
 As a design philosophy, our binding APIs attempt to perfectly mimic their Rust counterparts, so the main documentation can still be referenced as source of truth.
 Refer to specific language documentation for specifics, differences and quirks.
