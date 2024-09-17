@@ -14,47 +14,47 @@
 
 ---@class (exact) NilPromise : Promise
 ---@field await fun(self: NilPromise): nil block until promise is ready
----@field and_then fun(cb: fun(x: nil)): nil run callback after promise is complete
+---@field and_then fun(self: NilPromise, cb: fun(x: nil)): nil run callback after promise is complete
 
 ---@class (exact) StringPromise : Promise
 ---@field await fun(self: StringPromise): string block until promise is ready and return value
----@field and_then fun(cb: fun(x: string)): nil run callback after promise is complete
+---@field and_then fun(self: StringPromise, cb: fun(x: string)): nil run callback after promise is complete
 
 ---@class (exact) StringArrayPromise : Promise
 ---@field await fun(self: StringArrayPromise): string[] block until promise is ready and return value
----@field and_then fun(cb: fun(x: string[])): nil run callback after promise is complete
+---@field and_then fun(self: StringArrayPromise, cb: fun(x: string[])): nil run callback after promise is complete
 
 ---@class (exact) ClientPromise : Promise
 ---@field await fun(self: ClientPromise): Client block until promise is ready and return value
----@field and_then fun(cb: fun(x: Client)): nil run callback after promise is complete
+---@field and_then fun(self: ClientPromise, cb: fun(x: Client)): nil run callback after promise is complete
 
 ---@class (exact) WorkspacePromise : Promise
 ---@field await fun(self: WorkspacePromise): Workspace block until promise is ready and return value
----@field and_then fun(cb: fun(x: Workspace)): nil run callback after promise is complete
+---@field and_then fun(self: WorkspacePromise, cb: fun(x: Workspace)): nil run callback after promise is complete
 
 ---@class (exact) WorkspaceEventPromise : Promise
 ---@field await fun(self: WorkspaceEventPromise): WorkspaceEvent block until promise is ready and return value
----@field and_then fun(cb: fun(x: WorkspaceEvent)): nil run callback after promise is complete
+---@field and_then fun(self: WorkspaceEventPromise, cb: fun(x: WorkspaceEvent)): nil run callback after promise is complete
 
 ---@class (exact) BufferControllerPromise : Promise
 ---@field await fun(self: BufferControllerPromise): BufferController block until promise is ready and return value
----@field and_then fun(cb: fun(x: BufferController)): nil run callback after promise is complete
+---@field and_then fun(self: BufferControllerPromise, cb: fun(x: BufferController)): nil run callback after promise is complete
 
 ---@class (exact) CursorPromise : Promise
 ---@field await fun(self: CursorPromise): Cursor block until promise is ready and return value
----@field and_then fun(cb: fun(x: Cursor)): nil run callback after promise is complete
+---@field and_then fun(self: CursorPromise, cb: fun(x: Cursor)): nil run callback after promise is complete
 
 ---@class (exact) MaybeCursorPromise : Promise
 ---@field await fun(self: MaybeCursorPromise): Cursor? block until promise is ready and return value
----@field and_then fun(cb: fun(x: Cursor | nil)): nil run callback after promise is complete
+---@field and_then fun(self: MaybeCursorPromise, cb: fun(x: Cursor | nil)): nil run callback after promise is complete
 
 ---@class (exact) TextChangePromise : Promise
 ---@field await fun(self: TextChangePromise): TextChange block until promise is ready and return value
----@field and_then fun(cb: fun(x: TextChange)): nil run callback after promise is complete
+---@field and_then fun(self: TextChangePromise, cb: fun(x: TextChange)): nil run callback after promise is complete
 
 ---@class (exact) MaybeTextChangePromise : Promise
 ---@field await fun(self: MaybeTextChangePromise): TextChange? block until promise is ready and return value
----@field and_then fun(cb: fun(x: TextChange | nil)): nil run callback after promise is complete
+---@field and_then fun(self: MaybeTextChangePromise, cb: fun(x: TextChange | nil)): nil run callback after promise is complete
 
 -- [[ END ASYNC STUFF ]]
 
