@@ -47,13 +47,58 @@ fn lua_tuple<T: IntoLua>(lua: &Lua, (a, b): (T, T)) -> LuaResult<LuaTable> {
 	Ok(table)
 }
 
-// TODO cannot do Box<dyn IntoLuaMulti> ?? maybe its temporary because im using betas
-#[allow(unused)] // TODO pass callback args!
-//struct CallbackArg<T: IntoLuaMulti>(tokio::sync::oneshot::Receiver<T>);
-struct CallbackArg;
+enum CallbackArg {
+	Nil,
+	Str(String),
+	VecStr(Vec<String>),
+	Client(CodempClient),
+	CursorController(CodempCursorController),
+	BufferController(CodempBufferController),
+	Workspace(CodempWorkspace),
+	Event(CodempEvent),
+	Cursor(CodempCursor),
+	MaybeCursor(Option<CodempCursor>),
+	TextChange(CodempTextChange),
+	MaybeTextChange(Option<CodempTextChange>),
+}
+
+impl IntoLua for CallbackArg {
+	// TODO this basically calls .into_lua() on all enum variants
+	//      i wish i could do this with a Box<dyn IntoLua> or an impl IntoLua
+	//      but IntoLua requires Sized so it can't be made into an object
+	fn into_lua(self, lua: &Lua) -> LuaResult<LuaValue> {
+		match self {
+			CallbackArg::Nil => Ok(LuaValue::Nil),
+			CallbackArg::Str(x) => x.into_lua(lua),
+			CallbackArg::Client(x) => x.into_lua(lua),
+			CallbackArg::CursorController(x) => x.into_lua(lua),
+			CallbackArg::BufferController(x) => x.into_lua(lua),
+			CallbackArg::Workspace(x) => x.into_lua(lua),
+			CallbackArg::VecStr(x) => x.into_lua(lua),
+			CallbackArg::Event(x) => x.into_lua(lua),
+			CallbackArg::Cursor(x) => x.into_lua(lua),
+			CallbackArg::MaybeCursor(x) => x.into_lua(lua),
+			CallbackArg::TextChange(x) => x.into_lua(lua),
+			CallbackArg::MaybeTextChange(x) => x.into_lua(lua),
+		}
+	}
+}
+
+impl From<()> for CallbackArg { fn from(_: ()) -> Self { CallbackArg::Nil } }
+impl From<String> for CallbackArg { fn from(value: String) -> Self { CallbackArg::Str(value) } }
+impl From<CodempClient> for CallbackArg { fn from(value: CodempClient) -> Self { CallbackArg::Client(value) } }
+impl From<CodempCursorController> for CallbackArg { fn from(value: CodempCursorController) -> Self { CallbackArg::CursorController(value) } }
+impl From<CodempBufferController> for CallbackArg { fn from(value: CodempBufferController) -> Self { CallbackArg::BufferController(value) } }
+impl From<CodempWorkspace> for CallbackArg { fn from(value: CodempWorkspace) -> Self { CallbackArg::Workspace(value) } }
+impl From<Vec<String>> for CallbackArg { fn from(value: Vec<String>) -> Self { CallbackArg::VecStr(value) } }
+impl From<CodempEvent> for CallbackArg { fn from(value: CodempEvent) -> Self { CallbackArg::Event(value) } }
+impl From<CodempCursor> for CallbackArg { fn from(value: CodempCursor) -> Self { CallbackArg::Cursor(value) } }
+impl From<Option<CodempCursor>> for CallbackArg { fn from(value: Option<CodempCursor>) -> Self { CallbackArg::MaybeCursor(value) } }
+impl From<CodempTextChange> for CallbackArg { fn from(value: CodempTextChange) -> Self { CallbackArg::TextChange(value) } }
+impl From<Option<CodempTextChange>> for CallbackArg { fn from(value: Option<CodempTextChange>) -> Self { CallbackArg::MaybeTextChange(value) } }
 
 struct CallbackChannel {
-	tx: tokio::sync::mpsc::UnboundedSender<(LuaFunction, CallbackArg)>,
+	tx: std::sync::Arc<tokio::sync::mpsc::UnboundedSender<(LuaFunction, CallbackArg)>>,
 	rx: std::sync::Mutex<tokio::sync::mpsc::UnboundedReceiver<(LuaFunction, CallbackArg)>>
 }
 
@@ -62,31 +107,31 @@ impl Default for CallbackChannel {
 		let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
 		let rx = std::sync::Mutex::new(rx);
 		Self {
-			tx, rx,
+			tx: std::sync::Arc::new(tx),
+			rx,
 		}
 	}
 }
 
 impl CallbackChannel {
-	fn send(&self, cb: LuaFunction, _arg: impl IntoLuaMulti) {
-		// let (tx, rx) = tokio::sync::oneshot::channel();
-		// tx.send(arg);
-		self.tx.send((cb, CallbackArg)).unwrap_or_warn("error scheduling callback")
+	fn send(&self, cb: LuaFunction, arg: impl Into<CallbackArg>) {
+		self.tx.send((cb, arg.into()))
+			.unwrap_or_warn("error scheduling callback")
 	}
 
 	fn recv(&self) -> Option<(LuaFunction, CallbackArg)> {
 		match self.rx.try_lock() {
+			Err(e) => {
+				tracing::warn!("could not acquire callback channel mutex: {e}");
+				None
+			},
 			Ok(mut lock) => match lock.try_recv() {
-				Ok(res) => Some(res),
 				Err(TryRecvError::Empty) => None,
 				Err(TryRecvError::Disconnected) => {
 					tracing::error!("callback channel closed");
 					None
 				},
-			},
-			Err(e) => {
-				tracing::warn!("could not acquire callback channel mutex: {e}");
-				None
+				Ok((cb, arg)) => Some((cb, arg)),
 			},
 		}
 	}
@@ -99,9 +144,9 @@ lazy_static::lazy_static! {
 
 
 
-struct Promise<T: Send + Sync + IntoLuaMulti>(Option<tokio::task::JoinHandle<LuaResult<T>>>);
+struct Promise(Option<tokio::task::JoinHandle<LuaResult<CallbackArg>>>);
 
-impl<T: Send + Sync + IntoLuaMulti + 'static> LuaUserData for Promise<T> {
+impl LuaUserData for Promise {
 	fn add_fields<F: LuaUserDataFields<Self>>(fields: &mut F) {
 		fields.add_field_method_get("ready", |_, this|
 			Ok(this.0.as_ref().map_or(true, |x| x.is_finished()))
@@ -118,24 +163,20 @@ impl<T: Send + Sync + IntoLuaMulti + 'static> LuaUserData for Promise<T> {
 					.map_err(LuaError::runtime)?
 			},
 		});
-		// methods.add_method_mut("and_then", |_, this, (cb,):(LuaFunction,)| match this.0.take() {
-		// 	None => Err(LuaError::runtime("Promise already awaited")),
-		// 	Some(x) => {
-		// 		tokio()
-		// 			.spawn(async move {
-		// 				match x.await {
-		// 					Err(e) => tracing::error!("could not join promise to run callback: {e}"),
-		// 					Ok(Err(e)) => tracing::error!("promise returned error: {e}"),
-		// 					Ok(Ok(res)) => {
-		// 						if let Err(e) = cb.call::<()>(res) {
-		// 							tracing::error!("error running promise callback: {e}");
-		// 						}
-		// 					},
-		// 				}
-		// 			});
-		// 		Ok(())
-		// 	},
-		// });
+		methods.add_method_mut("and_then", |_, this, (cb,):(LuaFunction,)| match this.0.take() {
+			None => Err(LuaError::runtime("Promise already awaited")),
+			Some(x) => {
+				tokio()
+					.spawn(async move {
+						match x.await {
+							Err(e) => tracing::error!("could not join promise to run callback: {e}"),
+							Ok(Err(e)) => tracing::error!("promise returned error: {e}"),
+							Ok(Ok(res)) => CHANNEL.send(cb, res),
+						}
+					});
+				Ok(())
+			},
+		});
 	}
 }
 
@@ -143,7 +184,7 @@ macro_rules! a_sync {
 	($($clone:ident)* => $x:expr) => {
 		{
 			$(let $clone = $clone.clone();)*
-			Ok(Promise(Some(tokio().spawn(async move { $x }))))
+			Ok(Promise(Some(tokio().spawn(async move { Ok(CallbackArg::from($x)) }))))
 		}
 	};
 }
@@ -206,27 +247,27 @@ impl LuaUserData for CodempClient {
 		methods.add_meta_method(LuaMetaMethod::ToString, |_, this, ()| Ok(format!("{:?}", this)));
 
 		methods.add_method("refresh", |_, this, ()|
-			a_sync! { this => Ok(this.refresh().await?) }
+			a_sync! { this => this.refresh().await? }
 		);
 
 		methods.add_method("join_workspace", |_, this, (ws,):(String,)|
-			a_sync! { this => Ok(this.join_workspace(ws).await?) }
+			a_sync! { this => this.join_workspace(ws).await? }
 		);
 
 		methods.add_method("create_workspace", |_, this, (ws,):(String,)|
-			a_sync! { this => Ok(this.create_workspace(ws).await?) }
+			a_sync! { this => this.create_workspace(ws).await? }
 		);
 
 		methods.add_method("delete_workspace", |_, this, (ws,):(String,)|
-			a_sync! { this => Ok(this.delete_workspace(ws).await?) }
+			a_sync! { this => this.delete_workspace(ws).await? }
 		);
 
 		methods.add_method("invite_to_workspace", |_, this, (ws,user):(String,String)|
-			a_sync! { this => Ok(this.invite_to_workspace(ws, user).await?) }
+			a_sync! { this => this.invite_to_workspace(ws, user).await? }
 		);
 
 		methods.add_method("list_workspaces", |_, this, (owned,invited):(Option<bool>,Option<bool>)|
-			a_sync! { this => Ok(this.list_workspaces(owned.unwrap_or(true), invited.unwrap_or(true)).await?) }
+			a_sync! { this => this.list_workspaces(owned.unwrap_or(true), invited.unwrap_or(true)).await? }
 		);
 
 		methods.add_method("leave_workspace", |_, this, (ws,):(String,)|
@@ -242,11 +283,11 @@ impl LuaUserData for CodempWorkspace {
 	fn add_methods<M: LuaUserDataMethods<Self>>(methods: &mut M) {
 		methods.add_meta_method(LuaMetaMethod::ToString, |_, this, ()| Ok(format!("{:?}", this)));
 		methods.add_method("create", |_, this, (name,):(String,)|
-			a_sync! { this => Ok(this.create(&name).await?) }
+			a_sync! { this => this.create(&name).await? }
 		);
 
 		methods.add_method("attach", |_, this, (name,):(String,)|
-			a_sync! { this => Ok(this.attach(&name).await?) }
+			a_sync! { this => this.attach(&name).await? }
 		);
 
 		methods.add_method("detach", |_, this, (name,):(String,)|
@@ -254,33 +295,21 @@ impl LuaUserData for CodempWorkspace {
 		);
 
 		methods.add_method("delete", |_, this, (name,):(String,)|
-			a_sync! { this => Ok(this.delete(&name).await?) }
+			a_sync! { this => this.delete(&name).await? }
 		);
 
 		methods.add_method("get_buffer", |_, this, (name,):(String,)| Ok(this.buffer_by_name(&name)));
 
 		methods.add_method("event", |_, this, ()|
-			a_sync! { this => Ok(this.event().await?) }
+			a_sync! { this => this.event().await? }
 		);
 
 		methods.add_method("fetch_buffers", |_, this, ()|
-			a_sync! { this => Ok(this.fetch_buffers().await?) }
+			a_sync! { this => this.fetch_buffers().await? }
 		);
 		methods.add_method("fetch_users", |_, this, ()|
-			a_sync! { this => Ok(this.fetch_users().await?) }
+			a_sync! { this => this.fetch_users().await? }
 		);
-
-		// methods.add_method("callback", |_, this, (cb,):(LuaFunction,)| {
-		// 	let _this = this.clone();
-		// 	tokio().spawn(async move {
-		// 		while let Ok(ev) = _this.event().await {
-		// 			if let Err(e) = cb.call::<()>(ev) {
-		// 				tracing::error!("error running workspace callback: {e}");
-		// 			}
-		// 		}
-		// 	});
-		// 	Ok(())
-		// });
 
 		methods.add_method("filetree", |_, this, (filter, strict,):(Option<String>, Option<bool>,)|
 			Ok(this.filetree(filter.as_deref(), strict.unwrap_or(false)))
@@ -322,13 +351,13 @@ impl LuaUserData for CodempCursorController {
 		methods.add_meta_method(LuaMetaMethod::ToString, |_, this, ()| Ok(format!("{:?}", this)));
 
 		methods.add_method("send", |_, this, (cursor,):(CodempCursor,)|
-			a_sync! { this => Ok(this.send(cursor).await?) }
+			a_sync! { this => this.send(cursor).await? }
 		);
 		methods.add_method("try_recv", |_, this, ()|
-			a_sync! { this => Ok(this.try_recv().await?) }
+			a_sync! { this => this.try_recv().await? }
 		);
-		methods.add_method("recv", |_, this, ()| a_sync! { this => Ok(this.recv().await?) });
-		methods.add_method("poll", |_, this, ()| a_sync! { this => Ok(this.poll().await?) });
+		methods.add_method("recv", |_, this, ()| a_sync! { this => this.recv().await? });
+		methods.add_method("poll", |_, this, ()| a_sync! { this => this.poll().await? });
 
 		methods.add_method("stop", |_, this, ()| Ok(this.stop()));
 
@@ -361,16 +390,16 @@ impl LuaUserData for CodempBufferController {
 		methods.add_meta_method(LuaMetaMethod::ToString, |_, this, ()| Ok(format!("{:?}", this)));
 
 		methods.add_method("send", |_, this, (change,): (CodempTextChange,)|
-			a_sync! { this => Ok(this.send(change).await?)}
+			a_sync! { this => this.send(change).await? }
 		);
 
-		methods.add_method("try_recv", |_, this, ()| a_sync! { this => Ok(this.try_recv().await?) });
-		methods.add_method("recv", |_, this, ()| a_sync! { this => Ok(this.recv().await?) });
-		methods.add_method("poll", |_, this, ()| a_sync! { this => Ok(this.poll().await?) });
+		methods.add_method("try_recv", |_, this, ()| a_sync! { this => this.try_recv().await? });
+		methods.add_method("recv", |_, this, ()| a_sync! { this => this.recv().await? });
+		methods.add_method("poll", |_, this, ()| a_sync! { this => this.poll().await? });
 
 		methods.add_method("stop", |_, this, ()| Ok(this.stop()));
 
-		methods.add_method("content", |_, this, ()| a_sync! { this => Ok(this.content().await?) });
+		methods.add_method("content", |_, this, ()| a_sync! { this => this.content().await? });
 
 		methods.add_method("clear_callback", |_, this, ()| { this.clear_callback(); Ok(()) });
 		methods.add_method("callback", |_, this, (cb,):(LuaFunction,)| {
@@ -510,7 +539,7 @@ fn entrypoint(lua: &Lua) -> LuaResult<LuaTable> {
 
 	// entrypoint
 	exports.set("connect", lua.create_function(|_, (config,):(CodempConfig,)|
-		a_sync! { => Ok(CodempClient::connect(config).await?) }
+		a_sync! { => CodempClient::connect(config).await? }
 	)?)?;
 
 	// utils
@@ -520,13 +549,14 @@ fn entrypoint(lua: &Lua) -> LuaResult<LuaTable> {
 
 	// runtime
 	exports.set("spawn_runtime_driver", lua.create_function(spawn_runtime_driver)?)?;
-	exports.set("poll_callback", lua.create_function(|_, ()| {
+	exports.set("poll_callback", lua.create_function(|lua, ()| {
 		// TODO pass args too
-		if let Some((cb, _arg)) = CHANNEL.recv() {
-			Ok(Some(cb))
-		} else {
-			Ok(None)
+		let mut val = LuaMultiValue::new();
+		if let Some((cb, arg)) = CHANNEL.recv() {
+			val.push_back(LuaValue::Function(cb));
+			val.push_back(arg.into_lua(lua)?);
 		}
+		Ok(val)
 	})?)?;
 
 	// logging
