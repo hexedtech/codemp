@@ -12,7 +12,7 @@ permissions:
   contents: read
 
 jobs:
-  test:
+  build:
     runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
@@ -40,4 +40,27 @@ jobs:
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ matrix.toolchain }}
-      - run: cargo test --verbose --features=${{ matrix.features }}
+      - run: cargo build --release --verbose --features=${{ matrix.features }}
+
+  test:
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        runner:
+          - ubuntu-latest
+          - windows-latest
+          - macos-latest
+        toolchain:
+          - stable
+          - beta
+          - nightly
+    steps:
+      - uses: arduino/setup-protoc@v3
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ matrix.toolchain }}
+      - run: cargo test --verbose
