@@ -47,7 +47,7 @@ public class Config {
 	 * @param username the username
 	 * @param password the password
 	 * @param host the host server
-	 * @param port the port CodeMP is running on, must be between 0 and 65535
+	 * @param port the port CodeMP is running on, must be between 0 and 65535 (will be clamped)
 	 * @param tls whether to use TLS
 	 */
 	public Config(String username, String password, String host, int port, boolean tls) {
@@ -55,14 +55,8 @@ public class Config {
 			username,
 			password,
 			Optional.of(host),
-			OptionalInt.of(checkPort(port)),
+			OptionalInt.of(port),
 			Optional.of(tls)
 		);
-	}
-
-	private static int checkPort(int port) {
-		if(port < 0 || port > 65535)
-			throw new IllegalArgumentException("Port value must be between 0 and 65535!");
-		return port;
 	}
 }

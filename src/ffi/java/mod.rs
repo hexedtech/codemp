@@ -126,7 +126,7 @@ macro_rules! jobjectify_error {
 			fn jobjectify($self, env: &mut jni::JNIEnv<'local>) -> Result<jni::objects::JObject<'local>, jni::errors::Error> {
 				let class = env.find_class($jclass)?;
 				let msg = env.new_string(format!("{:#?}", $self))?;
-				env.new_object(class, "(Ljava/lang/String)V", &[jni::objects::JValueGen::Object(&msg)])
+				env.new_object(class, "(Ljava/lang/String;)V", &[jni::objects::JValueGen::Object(&msg)])
 			}
 		}
 	};
@@ -332,7 +332,7 @@ impl<'local> Deobjectify<'local, Self> for crate::api::Config {
 		let port = {
 			let jfield = env.get_field(&config, "port", "Ljava/util/OptionalInt;")?.l()?;
 			if env.call_method(&jfield, "isPresent", "()Z", &[])?.z()? {
-				let ivalue = env.call_method(&jfield, "get", "()I", &[])?.i()?;
+				let ivalue = env.call_method(&jfield, "getAsInt", "()I", &[])?.i()?;
 				Some(ivalue.clamp(0, 65535) as u16)
 			} else {
 				None
@@ -343,7 +343,13 @@ impl<'local> Deobjectify<'local, Self> for crate::api::Config {
 			let jfield = env.get_field(&config, "host", "Ljava/util/Optional;")?.l()?;
 			if env.call_method(&jfield, "isPresent", "()Z", &[])?.z()? {
 				let field = env.call_method(&jfield, "get", "()Ljava/lang/Object;", &[])?.l()?;
-				Some(env.call_method(field, "booleanValue", "()Z", &[])?.z()?)
+				let bool_true = env.get_static_field("java/lang/Boolean", "TRUE", "Ljava/lang/Boolean;")?.l()?;
+				Some(env.call_method(
+					field,
+					"equals",
+					"(Ljava/lang/Object;)Z",
+					&[jni::objects::JValueGen::Object(&bool_true)]
+				)?.z()?) // what a joke
 			} else {
 				None
 			}
@@ -383,8 +389,8 @@ impl<'local> Deobjectify<'local, Self> for crate::api::Cursor {
 
 impl<'local> Deobjectify<'local, Self> for crate::api::TextChange {
 	fn deobjectify(env: &mut jni::JNIEnv<'local>, change: jni::objects::JObject<'local>) -> Result<Self, jni::errors::Error> {
-		let start = env.get_field(&change, "start", "I")?.j()?.max(0) as u32;
-		let end = env.get_field(&change, "end", "I")?.j()?.max(0) as u32;
+		let start = env.get_field(&change, "start", "J")?.j()?.clamp(0, u32::MAX.into()) as u32;
+		let end = env.get_field(&change, "end", "J")?.j()?.clamp(0, u32::MAX.into()) as u32;
 
 		let content = {
 			let jfield = env.get_field(&change, "content", "Ljava/lang/String;")?.l()?;

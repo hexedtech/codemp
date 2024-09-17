@@ -19,13 +19,13 @@ public class TextChange {
 	 * The starting position of the change.
 	 * If negative, it is clamped to 0.
 	 */
-	public final int start;
+	public final long start;
 
 	/**
 	 * The endomg position of the change.
 	 * If negative, it is clamped to 0.
 	 */
-	public final int end;
+	public final long end;
 
 	/**
 	 * The content of the change.
@@ -74,14 +74,14 @@ public class TextChange {
 	 * @return the mutated string
 	 */
 	public String apply(String input) {
-		int preIndex = Math.min(this.start, input.length());
+		long preIndex = Math.min(this.start, input.length());
 		String pre = "";
 		try {
-			pre = input.substring(0, preIndex);
+			pre = input.substring(0, (int) preIndex);
 		} catch(IndexOutOfBoundsException ignored) {}
 		String post = "";
 		try {
-			post = input.substring(this.end);
+			post = input.substring((int) this.end);
 		} catch(IndexOutOfBoundsException ignored) {}
 		return pre + this.content + post;
 	}
