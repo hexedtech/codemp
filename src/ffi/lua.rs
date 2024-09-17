@@ -515,8 +515,7 @@ fn logger(_: &Lua, (printer, debug): (LuaValue, Option<bool>)) -> LuaResult<bool
 			if res {
 				tokio().spawn(async move {
 					while let Some(msg) = rx.recv().await {
-						let _ = cb.call::<()>((msg,));
-						// if the logger fails logging who logs it?
+						CHANNEL.send(cb.clone(), msg);
 					}
 				});
 			}

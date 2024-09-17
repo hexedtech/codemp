@@ -13,48 +13,116 @@
 ---@field ready boolean true if promise completed
 
 ---@class (exact) NilPromise : Promise
----@field await fun(self: NilPromise): nil block until promise is ready
----@field and_then fun(self: NilPromise, cb: fun(x: nil)): nil run callback after promise is complete
+local NilPromise = {}
+
+--- block until promise is ready
+function NilPromise:await() end
+
+---@param cb fun() callback to invoke
+---invoke callback asynchronously as soon as promise is ready
+function NilPromise:and_then(cb) end
+
 
 ---@class (exact) StringPromise : Promise
----@field await fun(self: StringPromise): string block until promise is ready and return value
----@field and_then fun(self: StringPromise, cb: fun(x: string)): nil run callback after promise is complete
+local StringPromise = {}
+
+--- block until promise is ready and return value
+--- @return string
+function StringPromise:await() end
+
+---@param cb fun(x: string) callback to invoke
+---invoke callback asynchronously as soon as promise is ready
+function StringPromise:and_then(cb) end
+
 
 ---@class (exact) StringArrayPromise : Promise
----@field await fun(self: StringArrayPromise): string[] block until promise is ready and return value
----@field and_then fun(self: StringArrayPromise, cb: fun(x: string[])): nil run callback after promise is complete
+local StringArrayPromise = {}
+--- block until promise is ready and return value
+--- @return string[]
+function StringArrayPromise:await() end
+---@param cb fun(x: string[]) callback to invoke
+---invoke callback asynchronously as soon as promise is ready
+function StringArrayPromise:and_then(cb) end
+
 
 ---@class (exact) ClientPromise : Promise
----@field await fun(self: ClientPromise): Client block until promise is ready and return value
----@field and_then fun(self: ClientPromise, cb: fun(x: Client)): nil run callback after promise is complete
+local ClientPromise = {}
+--- block until promise is ready and return value
+--- @return Client
+function ClientPromise:await() end
+---@param cb fun(x: Client) callback to invoke
+---invoke callback asynchronously as soon as promise is ready
+function ClientPromise:and_then(cb) end
+
 
 ---@class (exact) WorkspacePromise : Promise
----@field await fun(self: WorkspacePromise): Workspace block until promise is ready and return value
----@field and_then fun(self: WorkspacePromise, cb: fun(x: Workspace)): nil run callback after promise is complete
+local WorkspacePromise = {}
+--- block until promise is ready and return value
+--- @return Workspace
+function WorkspacePromise:await() end
+---@param cb fun(x: Workspace) callback to invoke
+---invoke callback asynchronously as soon as promise is ready
+function WorkspacePromise:and_then(cb) end
+
 
 ---@class (exact) WorkspaceEventPromise : Promise
----@field await fun(self: WorkspaceEventPromise): WorkspaceEvent block until promise is ready and return value
----@field and_then fun(self: WorkspaceEventPromise, cb: fun(x: WorkspaceEvent)): nil run callback after promise is complete
+local WorkspaceEventPromise = {}
+--- block until promise is ready and return value
+--- @return WorkspaceEvent
+function WorkspaceEventPromise:await() end
+---@param cb fun(x: WorkspaceEvent) callback to invoke
+---invoke callback asynchronously as soon as promise is ready
+function WorkspaceEventPromise:and_then(cb) end
+
 
 ---@class (exact) BufferControllerPromise : Promise
----@field await fun(self: BufferControllerPromise): BufferController block until promise is ready and return value
----@field and_then fun(self: BufferControllerPromise, cb: fun(x: BufferController)): nil run callback after promise is complete
+local BufferControllerPromise = {}
+--- block until promise is ready and return value
+--- @return BufferController
+function BufferControllerPromise:await() end
+---@param cb fun(x: BufferController) callback to invoke
+---invoke callback asynchronously as soon as promise is ready
+function BufferControllerPromise:and_then(cb) end
+
 
 ---@class (exact) CursorPromise : Promise
----@field await fun(self: CursorPromise): Cursor block until promise is ready and return value
----@field and_then fun(self: CursorPromise, cb: fun(x: Cursor)): nil run callback after promise is complete
+local CursorPromise = {}
+--- block until promise is ready and return value
+--- @return Cursor
+function CursorPromise:await() end
+---@param cb fun(x: Cursor) callback to invoke
+---invoke callback asynchronously as soon as promise is ready
+function CursorPromise:and_then(cb) end
+
 
 ---@class (exact) MaybeCursorPromise : Promise
----@field await fun(self: MaybeCursorPromise): Cursor? block until promise is ready and return value
----@field and_then fun(self: MaybeCursorPromise, cb: fun(x: Cursor | nil)): nil run callback after promise is complete
+local MaybeCursorPromise = {}
+--- block until promise is ready and return value
+--- @return Cursor | nil
+function MaybeCursorPromise:await() end
+---@param cb fun(x: Cursor | nil) callback to invoke
+---invoke callback asynchronously as soon as promise is ready
+function MaybeCursorPromise:and_then(cb) end
+
 
 ---@class (exact) TextChangePromise : Promise
----@field await fun(self: TextChangePromise): TextChange block until promise is ready and return value
----@field and_then fun(self: TextChangePromise, cb: fun(x: TextChange)): nil run callback after promise is complete
+local TextChangePromise = {}
+--- block until promise is ready and return value
+--- @return TextChange
+function TextChangePromise:await() end
+---@param cb fun(x: TextChange) callback to invoke
+---invoke callback asynchronously as soon as promise is ready
+function TextChangePromise:and_then(cb) end
+
 
 ---@class (exact) MaybeTextChangePromise : Promise
----@field await fun(self: MaybeTextChangePromise): TextChange? block until promise is ready and return value
----@field and_then fun(self: MaybeTextChangePromise, cb: fun(x: TextChange | nil)): nil run callback after promise is complete
+local MaybeTextChangePromise = {}
+--- block until promise is ready and return value
+--- @return TextChange | nil
+function MaybeTextChangePromise:await() end
+---@param cb fun(x: TextChange | nil) callback to invoke
+---invoke callback asynchronously as soon as promise is ready
+function MaybeTextChangePromise:and_then(cb) end
 
 -- [[ END ASYNC STUFF ]]
 
@@ -329,14 +397,18 @@ function Codemp.poll_callback() end
 function Codemp.hash(data) end
 
 ---@class (exact) RuntimeDriver
----@field stop fun(self: RuntimeDriver): boolean stops the runtime thread without deleting the runtime itself, returns false if driver was already stopped
+local RuntimeDriver = {}
+
+---@return boolean
+---stops the runtime thread, returns false if driver was already stopped
+function RuntimeDriver:stop() end
 
 ---@return RuntimeDriver
 ---spawns a background thread and uses it to run the codemp runtime
 function Codemp.spawn_runtime_driver() end
 
----@param printer? string | fun(string) log sink used for printing, if string will go to file, otherwise use given function
----@param debug boolean? show more verbose debug logs, default false
+---@param printer? string | fun(string) | nil log sink used for printing, if string will go to file, otherwise use given function
+---@param debug? boolean show more verbose debug logs, default false
 ---@return boolean true if logger was setup correctly, false otherwise
 ---setup a global logger for codemp, note that can only be done once
 function Codemp.logger(printer, debug) end
