@@ -403,12 +403,14 @@ local RuntimeDriver = {}
 ---stops the runtime thread, returns false if driver was already stopped
 function RuntimeDriver:stop() end
 
----@return RuntimeDriver
+---@param block? boolean block current thread if true, otherwise spawn a background thread
+---@return RuntimeDriver | nil
 ---spawns a background thread and uses it to run the codemp runtime
-function Codemp.spawn_runtime_driver() end
+---returns the driver handle only if another thread has been spawned (block=true)
+function Codemp.setup_driver(block) end
 
 ---@param printer? string | fun(string) | nil log sink used for printing, if string will go to file, otherwise use given function
 ---@param debug? boolean show more verbose debug logs, default false
 ---@return boolean true if logger was setup correctly, false otherwise
 ---setup a global logger for codemp, note that can only be done once
-function Codemp.logger(printer, debug) end
+function Codemp.setup_tracing(printer, debug) end

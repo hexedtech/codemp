@@ -16,7 +16,7 @@ impl Write for LuaLoggerProducer {
 }
 
 // TODO can we make this less verbose?
-pub(crate) fn logger(_: &Lua, (printer, debug): (LuaValue, Option<bool>)) -> LuaResult<bool> {
+pub(crate) fn setup_tracing(_: &Lua, (printer, debug): (LuaValue, Option<bool>)) -> LuaResult<bool> {
 	let level = if debug.unwrap_or_default() { tracing::Level::DEBUG } else {tracing::Level::INFO };
 	let format = tracing_subscriber::fmt::format()
 		.with_level(true)

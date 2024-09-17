@@ -28,7 +28,7 @@ fn entrypoint(lua: &Lua) -> LuaResult<LuaTable> {
 	)?)?;
 
 	// runtime
-	exports.set("spawn_runtime_driver", lua.create_function(ext::a_sync::spawn_runtime_driver)?)?;
+	exports.set("setup_driver", lua.create_function(ext::a_sync::setup_driver)?)?;
 	exports.set("poll_callback", lua.create_function(|lua, ()| {
 		let mut val = LuaMultiValue::new();
 		match ext::callback().recv() {
@@ -45,7 +45,7 @@ fn entrypoint(lua: &Lua) -> LuaResult<LuaTable> {
 	})?)?;
 
 	// logging
-	exports.set("logger", lua.create_function(ext::log::logger)?)?;
+	exports.set("setup_tracing", lua.create_function(ext::log::setup_tracing)?)?;
 
 	Ok(exports)
 }
