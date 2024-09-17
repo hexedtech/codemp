@@ -3,16 +3,17 @@ use mlua::prelude::*;
 use crate::prelude::*;
 use crate::ext::IgnorableError;
 
-lazy_static::lazy_static! {
-	pub(crate) static ref CHANNEL: CallbackChannel = CallbackChannel::default();
+pub(crate) fn callback() -> &'static CallbackChannel<LuaCallback> {
+	static CHANNEL: std::sync::OnceLock<CallbackChannel<LuaCallback>> = std::sync::OnceLock::new();
+	CHANNEL.get_or_init(CallbackChannel::default)
 }
 
-pub(crate) struct CallbackChannel {
-	tx: std::sync::Arc<tokio::sync::mpsc::UnboundedSender<(LuaFunction, CallbackArg)>>,
-	rx: std::sync::Mutex<tokio::sync::mpsc::UnboundedReceiver<(LuaFunction, CallbackArg)>>
+pub(crate) struct CallbackChannel<T> {
+	tx: std::sync::Arc<tokio::sync::mpsc::UnboundedSender<T>>,
+	rx: std::sync::Mutex<tokio::sync::mpsc::UnboundedReceiver<T>>
 }
 
-impl Default for CallbackChannel {
+impl Default for CallbackChannel<LuaCallback> {
 	fn default() -> Self {
 		let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
 		let rx = std::sync::Mutex::new(rx);
@@ -23,28 +24,38 @@ impl Default for CallbackChannel {
 	}
 }
 
-impl CallbackChannel {
-	pub(crate) fn send(&self, cb: LuaFunction, arg: impl Into<CallbackArg>) {
-		self.tx.send((cb, arg.into()))
+impl CallbackChannel<LuaCallback> {
+	pub(crate) fn invoke(&self, cb: LuaFunction, arg: impl Into<CallbackArg>) {
+		self.tx.send(LuaCallback::Invoke(cb, arg.into()))
 			.unwrap_or_warn("error scheduling callback")
 	}
 
-	pub(crate) fn recv(&self) -> Option<(LuaFunction, CallbackArg)> {
+	pub(crate) fn failure(&self, err: impl std::error::Error) {
+		self.tx.send(LuaCallback::Fail(format!("promise failed with error: {err:?}")))
+			.unwrap_or_warn("error scheduling callback failure")
+	}
+
+	pub(crate) fn recv(&self) -> Option<LuaCallback> {
 		match self.rx.try_lock() {
 			Err(e) => {
-				tracing::warn!("could not acquire callback channel mutex: {e}");
+				tracing::debug!("backing off from callback mutex: {e}");
 				None
 			},
 			Ok(mut lock) => match lock.try_recv() {
-				Err(tokio::sync::mpsc::error::TryRecvError::Empty) => None,
 				Err(tokio::sync::mpsc::error::TryRecvError::Disconnected) => {
 					tracing::error!("callback channel closed");
 					None
 				},
-				Ok((cb, arg)) => Some((cb, arg)),
+				Err(tokio::sync::mpsc::error::TryRecvError::Empty) => None,
+				Ok(cb) => Some(cb),
 			},
 		}
 	}
+}
+
+pub(crate) enum LuaCallback {
+	Fail(String),
+	Invoke(LuaFunction, CallbackArg),
 }
 
 pub(crate) enum CallbackArg {

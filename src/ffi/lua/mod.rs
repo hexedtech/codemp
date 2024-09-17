@@ -30,11 +30,16 @@ fn entrypoint(lua: &Lua) -> LuaResult<LuaTable> {
 	// runtime
 	exports.set("spawn_runtime_driver", lua.create_function(ext::a_sync::spawn_runtime_driver)?)?;
 	exports.set("poll_callback", lua.create_function(|lua, ()| {
-		// TODO pass args too
 		let mut val = LuaMultiValue::new();
-		if let Some((cb, arg)) = ext::callback::CHANNEL.recv() {
-			val.push_back(LuaValue::Function(cb));
-			val.push_back(arg.into_lua(lua)?);
+		match ext::callback().recv() {
+			None => {},
+			Some(ext::callback::LuaCallback::Invoke(cb, arg)) => {
+				val.push_back(LuaValue::Function(cb));
+				val.push_back(arg.into_lua(lua)?);
+			}
+			Some(ext::callback::LuaCallback::Fail(msg)) => {
+				return Err(LuaError::runtime(msg));
+			},
 		}
 		Ok(val)
 	})?)?;

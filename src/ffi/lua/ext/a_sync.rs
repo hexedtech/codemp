@@ -1,8 +1,6 @@
 use mlua_codemp_patch as mlua;
 use mlua::prelude::*;
 
-use super::callback::CHANNEL;
-
 pub(crate) fn tokio() -> &'static tokio::runtime::Runtime {
 	use std::sync::OnceLock;
 	static RT: OnceLock<tokio::runtime::Runtime> = OnceLock::new();
@@ -60,8 +58,10 @@ impl LuaUserData for Promise {
 					.spawn(async move {
 						match x.await {
 							Err(e) => tracing::error!("could not join promise to run callback: {e}"),
-							Ok(Err(e)) => tracing::error!("promise returned error: {e}"),
-							Ok(Ok(res)) => CHANNEL.send(cb, res),
+							Ok(res) => match res {
+								Err(e) => super::callback().failure(e),
+								Ok(val) => super::callback().invoke(cb, val),
+							},
 						}
 					});
 				Ok(())

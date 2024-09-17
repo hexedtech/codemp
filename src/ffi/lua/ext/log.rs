@@ -66,7 +66,7 @@ pub(crate) fn logger(_: &Lua, (printer, debug): (LuaValue, Option<bool>)) -> Lua
 			if res {
 				super::a_sync::tokio().spawn(async move {
 					while let Some(msg) = rx.recv().await {
-						super::callback::CHANNEL.send(cb.clone(), msg);
+						super::callback().invoke(cb.clone(), msg);
 					}
 				});
 			}

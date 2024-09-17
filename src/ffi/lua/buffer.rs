@@ -4,7 +4,6 @@ use crate::prelude::*;
 
 use super::ext::a_sync::a_sync;
 use super::ext::from_lua_serde;
-use super::ext::callback::CHANNEL;
 
 
 impl LuaUserData for CodempBufferController {
@@ -25,7 +24,7 @@ impl LuaUserData for CodempBufferController {
 
 		methods.add_method("clear_callback", |_, this, ()| { this.clear_callback(); Ok(()) });
 		methods.add_method("callback", |_, this, (cb,):(LuaFunction,)| {
-			this.callback(move |controller: CodempBufferController| CHANNEL.send(cb.clone(), controller));
+			this.callback(move |controller: CodempBufferController| super::ext::callback().invoke(cb.clone(), controller));
 			Ok(())
 		});
 	}
