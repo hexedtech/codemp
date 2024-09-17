@@ -26,20 +26,20 @@ thiserror = "1.0"
 diamond-types = "1.0"
 # proto
 codemp-proto = "0.7"
-uuid = { version = "1.7", features = ["v4"] }
+uuid = { version = "1.10", features = ["v4"] }
 tonic = { version = "0.12", features = ["tls", "tls-roots"] }
 # api
-tokio = { version = "1.0", features = ["macros", "rt-multi-thread", "sync"] }
+tokio = { version = "1.40", features = ["macros", "rt-multi-thread", "sync"] }
 xxhash-rust = { version = "0.8", features = ["xxh3"] }
 # client
 tokio-stream = "0.1"
-dashmap = "5.5"
+dashmap = "6.1"
 
 # glue (multiple)
 tracing-subscriber = { version = "0.3", optional = true }
 
 # glue (java)
-lazy_static = { version = "1.4", optional = true }
+lazy_static = { version = "1.5", optional = true }
 jni = { version = "0.21", features = ["invocation"], optional = true }
 
 # glue (lua)
@@ -58,9 +58,9 @@ serde = { version = "1.0", features = ["derive"], optional = true }
 
 [build-dependencies]
 # glue (js)
-napi-build = { version = "2", optional = true }
+napi-build = { version = "2.1", optional = true }
 # glue (python)
-pyo3-build-config = { version = "0.19", optional = true }
+pyo3-build-config = { version = "0.22", optional = true }
 
 [features]
 default = []
