@@ -1,4 +1,4 @@
-use jni::{objects::{JClass, JObject, JString, JValueGen}, sys::{jboolean, jlong, jobject, jobjectArray, jstring}, JNIEnv};
+use jni::{objects::{JClass, JObject, JObjectArray, JString, JValueGen}, sys::{jboolean, jlong, jobject, jobjectArray, jstring}, JNIEnv};
 use crate::Workspace;
 
 use super::{JExceptable, JObjectify};
@@ -47,22 +47,6 @@ pub extern "system" fn Java_mp_code_Workspace_get_1buffer<'local>(
 		.as_raw()
 }
 
-/// Create a new buffer.
-#[no_mangle]
-pub extern "system" fn Java_mp_code_Workspace_create_1buffer<'local>(
-	mut env: JNIEnv,
-	_class: JClass<'local>,
-	self_ptr: jlong,
-	input: JString<'local>
-) {
-	let ws = unsafe { Box::leak(Box::from_raw(self_ptr as *mut Workspace)) };
-	let path = unsafe { env.get_string_unchecked(&input) }
-		.map(|path| path.to_string_lossy().to_string())
-		.jexcept(&mut env);
-	super::tokio().block_on(ws.create(&path))
-		.jexcept(&mut env);
-}
-
 /// Get the filetree.
 #[no_mangle]
 pub extern "system" fn Java_mp_code_Workspace_get_1file_1tree(
@@ -93,6 +77,47 @@ pub extern "system" fn Java_mp_code_Workspace_get_1file_1tree(
 					.jexcept(&mut env)
 			}
 		}).jexcept(&mut env).as_raw()
+}
+
+/// Gets a list of the active buffers.
+#[no_mangle]
+pub extern "system" fn Java_mp_code_Workspace_active_1buffers(
+	mut env: JNIEnv,
+	_class: JClass,
+	self_ptr: jlong
+) -> jobjectArray {
+	let workspace = unsafe { Box::leak(Box::from_raw(self_ptr as *mut Workspace)) };	
+	let active_buffer_list = workspace.buffer_list();
+	env.find_class("java/lang/String")
+		.and_then(|class| env.new_object_array(active_buffer_list.len() as i32, class, JObject::null()))
+		.inspect(|arr| {
+			for (idx, path) in active_buffer_list.iter().enumerate() {
+				env.new_string(path)
+					.and_then(|path| env.set_object_array_element(arr, idx as i32, path))
+					.jexcept(&mut env)
+			}
+		}).jexcept(&mut env).as_raw()
+}
+
+/// Create a new buffer.
+#[no_mangle]
+pub extern "system" fn Java_mp_code_Workspace_create_1buffer<'local>(
+	mut env: JNIEnv,
+	_class: JClass<'local>,
+	self_ptr: jlong,
+	input: JString<'local>
+) {
+	if input.is_null() {
+		return env.throw_new("java/lang/NullPointerException", "Buffer name cannot be null!")
+			.expect("Failed to throw exception!");
+	}
+
+	let ws = unsafe { Box::leak(Box::from_raw(self_ptr as *mut Workspace)) };
+	let path = unsafe { env.get_string_unchecked(&input) }
+		.map(|path| path.to_string_lossy().to_string())
+		.jexcept(&mut env);
+	super::tokio().block_on(ws.create(&path))
+		.jexcept(&mut env);
 }
 
 /// Attach to a buffer and return a pointer to its [crate::buffer::Controller].
@@ -175,6 +200,10 @@ pub extern "system" fn Java_mp_code_Workspace_list_1buffer_1users<'local>(
 	let users = super::tokio().block_on(workspace.list_buffer_users(&buffer))
 		.jexcept(&mut env);
 
+	if env.exception_check().unwrap_or(false) { // prevent illegal state
+		return std::ptr::null_mut();
+	}
+
 	env.find_class("java/util/UUID")
 		.and_then(|class| env.new_object_array(users.len() as i32, &class, JObject::null()))
 		.inspect(|arr| {
@@ -212,19 +241,21 @@ pub extern "system" fn Java_mp_code_Workspace_event(
 	let workspace = unsafe { Box::leak(Box::from_raw(self_ptr as *mut Workspace)) };
 	super::tokio().block_on(workspace.event())
 		.map(|event| {
-			let (name, arg) = match event {
-				crate::api::Event::FileTreeUpdated(arg) => ("FILE_TREE_UPDATED", env.new_string(arg).unwrap_or_default()),
-				crate::api::Event::UserJoin(arg) => ("USER_JOIN", env.new_string(arg).unwrap_or_default()),
-				crate::api::Event::UserLeave(arg) => ("USER_LEAVE", env.new_string(arg).unwrap_or_default()),
+			let (ordinal, arg) = match event {
+				crate::api::Event::UserJoin(arg) => (0, env.new_string(arg).unwrap_or_default()),
+				crate::api::Event::UserLeave(arg) => (1, env.new_string(arg).unwrap_or_default()),
+				crate::api::Event::FileTreeUpdated(arg) => (2, env.new_string(arg).unwrap_or_default()),
 			};
+
 			let event_type = env.find_class("mp/code/Workspace$Event$Type")
-				.and_then(|class| env.get_static_field(class, name, "Lmp/code/Workspace/Event/Type;"))
-				.and_then(|f| f.l())
+				.and_then(|class| env.call_method(class, "getEnumConstants", "()[Ljava/lang/Object;", &[]))
+				.and_then(|enums| enums.l().map(|e| e.into()))
+				.and_then(|enums: JObjectArray| env.get_object_array_element(enums, ordinal))
 				.jexcept(&mut env);
 			env.find_class("mp/code/Workspace$Event").and_then(|class|
 				env.new_object(
 					class,
-					"(Lmp/code/Workspace/Event/Type;Ljava/lang/String;)V",
+					"(Lmp/code/Workspace$Event$Type;Ljava/lang/String;)V",
 					&[
 						JValueGen::Object(&event_type),
 						JValueGen::Object(&arg)
@@ -232,35 +263,6 @@ pub extern "system" fn Java_mp_code_Workspace_event(
 				)
 			).jexcept(&mut env)
 		}).jexcept(&mut env).as_raw()
-}
-
-/// Poll a list of buffers, returning the first ready one.
-#[no_mangle]
-pub extern "system" fn Java_mp_code_Workspace_select_1buffer(
-	mut env: JNIEnv,
-	_class: JClass,
-	self_ptr: jlong,
-	timeout: jlong
-) -> jobject {
-	let workspace = unsafe { Box::leak(Box::from_raw(self_ptr as *mut Workspace)) };
-	let buffers = workspace.buffer_list();
-	let mut controllers = Vec::default();
-	for buffer in buffers {
-		if let Some(controller) = workspace.buffer_by_name(&buffer) {
-			controllers.push(controller);
-		}
-	}
-
-	super::tokio().block_on(crate::ext::select_buffer(
-		&controllers,
-		Some(std::time::Duration::from_millis(timeout as u64)),
-		super::tokio(),
-	)).jexcept(&mut env)
-		.map(|buf| {
-			env.find_class("mp/code/BufferController").and_then(|class|
-				env.new_object(class, "(J)V", &[JValueGen::Long(Box::into_raw(Box::new(buf)) as jlong)])
-			).jexcept(&mut env)
-		}).unwrap_or_default().as_raw()
 }
 
 /// Called by the Java GC to drop a [Workspace].

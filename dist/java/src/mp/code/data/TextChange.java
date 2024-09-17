@@ -14,4 +14,18 @@ public class TextChange {
 		this.content = content;
 		this.hash = hash;
 	}
+
+	public boolean isDelete() {
+		return this.start != this.end;
+	}
+
+	public boolean isInsert() {
+		return !this.content.isEmpty();
+	}
+
+	public boolean isEmpty() {
+		return !this.isDelete() && !this.isInsert();
+	}
+
+	//TODO: apply()
 }

@@ -1,11 +1,9 @@
 package mp.code;
 
-import cz.adamh.utils.NativeUtils;
 import mp.code.data.User;
 import mp.code.exceptions.ConnectionException;
 import mp.code.exceptions.ConnectionRemoteException;
 
-import java.io.IOException;
 import java.util.Optional;
 
 public class Client {
@@ -74,16 +72,8 @@ public class Client {
 		free(this.ptr);
 	}
 
-	private static native void setup_tracing(String path);
 	static {
-		try {
-			if(System.getProperty("os.name").startsWith("Windows"))
-				NativeUtils.loadLibraryFromJar("/natives/codemp.dll");
-			else NativeUtils.loadLibraryFromJar("/natives/libcodemp.so");
-			setup_tracing(System.getenv().get("CODEMP_TRACING_LOG"));
-		} catch(IOException e) {
-			throw new RuntimeException(e);
-		}
+		Extensions.loadLibraryIfNotPresent();
 	}
 }
 

@@ -268,22 +268,6 @@ pub extern "system" fn Java_mp_code_Client_refresh<'local>(
 		.jexcept(&mut env);
 }
 
-/// Set up the tracing subscriber.
-#[no_mangle]
-pub extern "system" fn Java_mp_code_Client_setup_1tracing<'local>(
-	mut env: JNIEnv,
-	_class: JClass<'local>,
-	path: JString<'local>
-) {
-	super::setup_logger(
-		true,
-		Some(path)
-			.filter(|p| !p.is_null())
-			.map(|p| env.get_string(&p).map(|s| s.into())
-			.jexcept(&mut env))
-	);
-}
-
 /// Called by the Java GC to drop a [Client].
 #[no_mangle]
 pub extern "system" fn Java_mp_code_Client_free(_env: JNIEnv, _class: JClass, input: jlong) {

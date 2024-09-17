@@ -32,3 +32,20 @@ pub extern "system" fn Java_mp_code_Extensions_drive(
 	}
 }
 
+/// Set up the tracing subscriber.
+#[no_mangle]
+#[allow(non_snake_case)]
+pub extern "system" fn Java_mp_code_Extensions_setupTracing<'local>(
+	mut env: JNIEnv,
+	_class: JClass<'local>,
+	path: JString<'local>,
+	debug: jboolean
+) {
+	super::setup_logger(
+		debug != 0,
+		Some(path)
+			.filter(|p| !p.is_null())
+			.map(|p| env.get_string(&p).map(|s| s.into())
+			.jexcept(&mut env))
+	);
+}

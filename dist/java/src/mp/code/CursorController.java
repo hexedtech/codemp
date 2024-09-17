@@ -33,9 +33,28 @@ public class CursorController {
 		callback(this.ptr, cb);
 	}
 
+	private static native void clear_callback(long self);
+	public void clearCallback() {
+		clear_callback(this.ptr);
+	}
+
+	private static native void poll(long self);
+	public void poll() {
+		poll(this.ptr);
+	}
+
+	private static native boolean stop(long self);
+	public boolean stop() {
+		return stop(this.ptr);
+	}
+
 	private static native void free(long self);
 	@Override
 	protected void finalize() {
 		free(this.ptr);
+	}
+
+	static {
+		Extensions.loadLibraryIfNotPresent();
 	}
 }

@@ -87,7 +87,7 @@ impl<T> JExceptable<T> for crate::errors::RemoteResult<T> where T: Default {
 	fn jexcept(self, env: &mut jni::JNIEnv) -> T {
 		if let Err(err) = &self {
 			let msg = format!("{err}");
-			env.throw_new("mp/code/exceptions/connection/RemoteException", msg).jexcept(env);
+			env.throw_new("mp/code/exceptions/ConnectionRemoteException", msg).jexcept(env);
 		}
 		self.unwrap_or_default()
 	}
@@ -202,5 +202,61 @@ impl<'local> JObjectify<'local> for crate::buffer::Controller {
 				jni::objects::JValueGen::Long(Box::into_raw(Box::new(self)) as jni::sys::jlong)
 			]
 		)
+	}
+}
+
+impl<'local> JObjectify<'local> for crate::api::TextChange {
+	type Error = jni::errors::Error;
+
+	fn jobjectify(self, env: &mut jni::JNIEnv<'local>) -> Result<jni::objects::JObject<'local>, Self::Error> {
+		let content = env.new_string(self.content)?;
+
+		let hash = env.find_class("java/util/OptionalLong").and_then(|class| {
+			if let Some(h) = self.hash {
+				env.call_static_method(class, "of", "(J)Ljava/util/OptionalLong;", &[jni::objects::JValueGen::Long(h)])
+			} else {
+				env.call_static_method(class, "empty", "()Ljava/util/OptionalLong;", &[])
+			}
+		}).and_then(|o| o.l())?;
+		env.find_class("mp/code/data/TextChange").and_then(|class| {
+			env.new_object(
+				class,
+				"(JJLjava/lang/String;Ljava/util/OptionalLong;)V",
+				&[
+					jni::objects::JValueGen::Long(jni::sys::jlong::from(self.start)),
+					jni::objects::JValueGen::Long(jni::sys::jlong::from(self.end)),
+					jni::objects::JValueGen::Object(&content),
+					jni::objects::JValueGen::Object(&hash)
+				]
+			)
+		})
+	}
+}
+
+impl<'local> JObjectify<'local> for crate::api::Cursor {
+	type Error = jni::errors::Error;
+
+	fn jobjectify(self, env: &mut jni::JNIEnv<'local>) -> Result<jni::objects::JObject<'local>, Self::Error> {
+		env.find_class("mp/code/data/Cursor").and_then(|class| {
+			let buffer = env.new_string(&self.buffer)?;
+			let user = if let Some(user) = self.user {
+				env.new_string(user)?.into()
+			} else {
+				jni::objects::JObject::null()
+			};
+
+			env.new_object(
+				class,
+				"(IIIILjava/lang/String;Ljava/lang/String;)V",
+				&[
+					jni::objects::JValueGen::Int(self.start.0),
+					jni::objects::JValueGen::Int(self.start.1),
+					jni::objects::JValueGen::Int(self.end.0),
+					jni::objects::JValueGen::Int(self.end.1),
+					jni::objects::JValueGen::Object(&buffer),
+					jni::objects::JValueGen::Object(&user)
+				]
+			)
+		})
 	}
 }

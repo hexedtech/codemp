@@ -35,9 +35,14 @@ public class Workspace {
 		return get_file_tree(this.ptr, filter.orElse(null), strict);
 	}
 
-	private static native void create_buffer(String path) throws ConnectionRemoteException;
+	private static native String[] active_buffers(long self);
+	public String[] activeBuffers() {
+		return active_buffers(this.ptr);
+	}
+
+	private static native void create_buffer(long self, String path) throws ConnectionRemoteException;
 	public void createBuffer(String path) throws ConnectionRemoteException {
-		create_buffer(path);
+		create_buffer(this.ptr, path);
 	}
 
 	private static native BufferController attach_to_buffer(long self, String path) throws ConnectionException;
@@ -75,15 +80,14 @@ public class Workspace {
 		return event(this.ptr);
 	}
 
-	private static native BufferController select_buffer(long self, long timeout) throws ControllerException;
-	public Optional<BufferController> selectBuffer(long timeout) throws ControllerException {
-		return Optional.ofNullable(select_buffer(this.ptr, timeout));
-	}
-
 	private static native void free(long self);
 	@Override
 	protected void finalize() {
 		free(this.ptr);
+	}
+
+	static {
+		Extensions.loadLibraryIfNotPresent();
 	}
 	
 	public static class Event {
@@ -113,7 +117,7 @@ public class Workspace {
 			} else return Optional.empty();
 		}
 
-		private enum Type {
+		enum Type {
 			USER_JOIN,
 			USER_LEAVE,
 			FILE_TREE_UPDATED
