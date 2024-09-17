@@ -38,7 +38,8 @@ fn entrypoint(lua: &Lua) -> LuaResult<LuaTable> {
 				val.push_back(arg.into_lua(lua)?);
 			}
 			Some(ext::callback::LuaCallback::Fail(msg)) => {
-				return Err(LuaError::runtime(msg));
+				val.push_back(false.into_lua(lua)?);
+				val.push_back(msg.into_lua(lua)?);
 			},
 		}
 		Ok(val)
