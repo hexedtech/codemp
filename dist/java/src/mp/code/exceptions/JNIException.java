@@ -6,6 +6,11 @@ package mp.code.exceptions;
  * Only catch this if you are aware of the implications.
  */
 public class JNIException extends RuntimeException {
+
+	/**
+	 * Creates a new exception with the given message.
+	 * @param message the message
+	 */
 	public JNIException(String message) {
 		super(message);
 	}

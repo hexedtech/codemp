@@ -103,11 +103,10 @@ pub extern "system" fn Java_mp_code_BufferController_callback<'local>(
 		if let Err(e) = env.with_local_frame(5, |env| {
 			use crate::ffi::java::JObjectify;
 			let jcontroller = controller.jobjectify(env)?;
-			let sig = format!("(L{};)V", "java/lang/Object");
 			if let Err(e) = env.call_method(
 				&cb_ref,
-				"invoke",
-				&sig,
+				"accept",
+				"(Ljava/lang/Object;)V",
 				&[jni::objects::JValueGen::Object(&jcontroller)]
 			) {
 				tracing::error!("error invoking callback: {e:?}");

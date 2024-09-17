@@ -5,7 +5,12 @@ package mp.code.exceptions;
  * fulfilling the request, without rejecting it first.
  */
 public class ControllerUnfulfilledException extends ControllerException {
-	protected ControllerUnfulfilledException(String msg) {
-		super(msg);
+
+	/**
+	 * Creates a new exception with the given message.
+	 * @param message the message
+	 */
+	public ControllerUnfulfilledException(String message) {
+		super(message);
 	}
 }
