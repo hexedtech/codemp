@@ -304,11 +304,14 @@ impl LuaUserData for CodempEvent {
 	fn add_fields<F: LuaUserDataFields<Self>>(fields: &mut F) {
 		fields.add_field_method_get("type", |_, this| match this {
 			CodempEvent::FileTreeUpdated(_) => Ok("filetree"),
-			CodempEvent::UserJoin(_) | CodempEvent::UserLeave(_) => Ok("user"),
+			CodempEvent::UserJoin(_) => Ok("join"),
+			CodempEvent::UserLeave(_) => Ok("leave"),
 		});
 		fields.add_field_method_get("value", |_, this| match this {
-			CodempEvent::FileTreeUpdated(x) => Ok(x.clone()),
-			CodempEvent::UserJoin(x) | CodempEvent::UserLeave(x) => Ok(x.clone()),
+			CodempEvent::FileTreeUpdated(x)
+				| CodempEvent::UserJoin(x)
+				| CodempEvent::UserLeave(x)
+				=> Ok(x.clone()),
 		});
 	}
 }
