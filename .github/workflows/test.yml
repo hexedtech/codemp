@@ -13,7 +13,6 @@ permissions:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
     runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
