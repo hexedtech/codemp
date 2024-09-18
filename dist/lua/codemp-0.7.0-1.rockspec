@@ -1,5 +1,5 @@
 package = "codemp"
-version = "0.0.7-1"
+version = "0.7.0-1"
 
 source = {
 	url = "git+https://github.com/hexedtech/codemp",

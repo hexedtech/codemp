@@ -149,7 +149,7 @@ impl Workspace {
 
 	/// Detach from an active buffer.
 	///
-	/// This option will be carried in background. [`buffer::worker::BufferWorker`] will be stopped and dropped.
+	/// This option will be carried in background. `BufferWorker` will be stopped and dropped.
 	/// There may still be some events enqueued in buffers to poll, but the [buffer::Controller] itself won't be
 	/// accessible anymore from [`Workspace`].
 	pub fn detach(&self, path: &str) -> DetachResult {

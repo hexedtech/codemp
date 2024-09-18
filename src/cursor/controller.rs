@@ -1,5 +1,5 @@
 //! ### Cursor Controller
-//! A [Controller] implementation for [Cursor] actions in a [crate::Workspace]
+//! A [Controller] implementation for [crate::api::Cursor] actions in a [crate::Workspace]
 
 use std::sync::Arc;
 
