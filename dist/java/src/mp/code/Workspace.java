@@ -11,11 +11,10 @@ import mp.code.exceptions.ControllerException;
 /**
  * Represents a CodeMP workspace, which broadly speaking is a collection
  * of buffers across which edits and cursor movements are tracked.
- * @apiNote Generally, it is safer to avoid storing this directly.
- *          Instead, users should let the native library manage as
- *          much as possible for them.
- *          They should store the workspace ID and retrieve the object
- *          whenever needed with {@link Client#getWorkspace(String)}.
+ * Generally, it is safer to avoid storing this directly. Instead,
+ * users should let the native library manage as much as possible for
+ * them. They should store the workspace ID and retrieve the object
+ * whenever needed with {@link Client#getWorkspace(String)}.
  */
 public final class Workspace {
 	private final long ptr;
