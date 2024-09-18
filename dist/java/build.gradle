@@ -15,8 +15,8 @@ java {
 import com.vanniktech.maven.publish.SonatypeHost
 
 mavenPublishing {
-	publishToMavenCentral(SonatypeHost.DEFAULT)
-	// publishToMavenCentral(SonatypeHost.CENTRAL_PORTAL)
+	// publishToMavenCentral(SonatypeHost.DEFAULT)
+	publishToMavenCentral(SonatypeHost.CENTRAL_PORTAL)
 
 	signAllPublications()
 
