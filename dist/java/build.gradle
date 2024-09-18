@@ -50,7 +50,7 @@ processResources {
 
 import com.vanniktech.maven.publish.SonatypeHost
 mavenPublishing {
-	publishToMavenCentral(SonatypeHost.CENTRAL_PORTAL)
+	publishToMavenCentral(SonatypeHost.CENTRAL_PORTAL, true)
 	signAllPublications()
 	coordinates(project.group, rootProject.name, project.version)
 
