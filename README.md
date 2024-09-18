@@ -6,6 +6,7 @@
 [![Crates.io Version](https://img.shields.io/crates/v/codemp)](https://crates.io/crates/codemp)
 [![NPM Version](https://img.shields.io/npm/v/codemp)](https://npmjs.org/package/codemp)
 [![PyPI Version](https://img.shields.io/pypi/v/codemp)](https://pypi.org/project/codemp)
+[![Maven Central Version](https://img.shields.io/maven-central/v/mp.code/codemp)](https://central.sonatype.com/artifact/mp.code/codemp)
 [![LuaRocks Version](https://img.shields.io/luarocks/v/alemi/codemp)](https://luarocks.org/modules/alemi/codemp)
 
 > `codemp` is a **collaborative** text editing solution to work remotely.
