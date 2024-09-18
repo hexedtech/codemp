@@ -1,8 +1,10 @@
+import com.vanniktech.maven.publish.SonatypeHost
+
 plugins {
 	id 'java-library'
-	id 'maven-publish'
 	id "com.vanniktech.maven.publish" version "0.29.0"
 	id 'com.github.johnrengelman.shadow' version '8.1.1'
+	id 'com.google.osdetector' version '1.7.3'
 }
 
 group = 'mp.code'
@@ -10,9 +12,57 @@ version = '0.0.1'
 
 java {
 	sourceCompatibility = targetCompatibility = JavaVersion.VERSION_11
+	withSourcesJar()
+	withJavadocJar()
 }
 
-import com.vanniktech.maven.publish.SonatypeHost
+repositories {
+	mavenCentral()
+	maven { url 'https://jitpack.io' }
+}
+
+sourceSets {
+	main.java.srcDirs = ['src/']
+}
+
+dependencies {
+	implementation 'com.github.adamheinrich:native-utils:master-SNAPSHOT'
+	compileOnly 'org.projectlombok:lombok:1.18.34'
+	annotationProcessor 'org.projectlombok:lombok:1.18.34'
+}
+
+shadowJar {
+	jar.archiveClassifier = archiveClassifier = osdetector.classifier
+	dependencies {
+		include(dependency('com.github.adamheinrich:native-utils:master-SNAPSHOT'))
+	}
+}
+
+def rustDir = projectDir.toPath()
+	.parent
+	.parent
+	.resolve('target')
+	.resolve('release')
+	.toFile()
+
+processResources {
+	outputs.upToDateWhen { false } // no caching
+	from(rustDir) {
+		include('*.dll')
+		include('*.so')
+		include('*dylib')
+		into('natives/')
+	}
+}
+
+tasks.register('cargoBuild', Exec) {
+	workingDir '.'
+	commandLine 'cargo', 'build', '--release', '--features=java'
+}
+
+processResources.dependsOn cargoBuild
+build.finalizedBy shadowJar
+
 
 mavenPublishing {
 	//publishToMavenCentral(SonatypeHost.S01) // for snapshots
@@ -48,50 +98,3 @@ mavenPublishing {
 		}
 	}
 }
-
-repositories {
-	mavenCentral()
-	maven { url 'https://jitpack.io' }
-}
-
-sourceSets {
-	main.java.srcDirs = ['src/']
-}
-
-dependencies {
-	implementation 'com.github.adamheinrich:native-utils:master-SNAPSHOT'
-	compileOnly 'org.projectlombok:lombok:1.18.34'
-	annotationProcessor 'org.projectlombok:lombok:1.18.34'
-}
-
-shadowJar {
-	archiveClassifier.set('')
-	dependencies {
-		include(dependency('com.github.adamheinrich:native-utils:master-SNAPSHOT'))
-	}
-}
-
-def rustDir = projectDir.toPath()
-	.parent
-	.parent
-	.resolve('target')
-	.resolve('release')
-	.toFile()
-
-processResources {
-	outputs.upToDateWhen { false } // no caching
-	from(rustDir) {
-		include('*.dll')
-		include('*.so')
-		include('*dylib')
-		into('natives/')
-	}
-}
-
-tasks.register('cargoBuild', Exec) {
-	workingDir '.'
-	commandLine 'cargo', 'build', '--release', '--features=java'
-}
-
-processResources.dependsOn cargoBuild
-build.finalizedBy shadowJar
