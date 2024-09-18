@@ -1,20 +1,18 @@
 plugins {
 	id 'java-library'
-	id 'maven-publish'
-	id 'com.github.johnrengelman.shadow' version '8.1.1'
-	id 'com.palantir.git-version' version '3.1.0'
+	id "com.vanniktech.maven.publish" version "0.29.0"
+	id 'com.google.osdetector' version '1.7.3'
 }
 
 group = 'mp.code'
-version = versionDetails().lastTag.substring(1)
+version = '0.0.3'
 
 java {
-	sourceCompatibility = targetCompatibility = JavaVersion.VERSION_1_8
+	sourceCompatibility = targetCompatibility = JavaVersion.VERSION_11
 }
 
 repositories {
 	mavenCentral()
-	maven { url 'https://jitpack.io' }
 }
 
 sourceSets {
@@ -22,17 +20,16 @@ sourceSets {
 }
 
 dependencies {
-	implementation 'com.github.adamheinrich:native-utils:master-SNAPSHOT'
 	compileOnly 'org.projectlombok:lombok:1.18.34'
 	annotationProcessor 'org.projectlombok:lombok:1.18.34'
 }
 
-shadowJar {
-	archiveClassifier.set('')
-	dependencies {
-		include(dependency('com.github.adamheinrich:native-utils:master-SNAPSHOT'))
-	}
+tasks.register('cargoBuild', Exec) {
+	workingDir '.'
+	commandLine 'cargo', 'build', '--release', '--features=java'
 }
+
+jar.archiveClassifier = osdetector.classifier
 
 def rustDir = projectDir.toPath()
 	.parent
@@ -41,6 +38,7 @@ def rustDir = projectDir.toPath()
 	.resolve('release')
 	.toFile()
 processResources {
+	dependsOn cargoBuild
 	outputs.upToDateWhen { false } // no caching
 	from(rustDir) {
 		include('*.dll')
@@ -50,54 +48,34 @@ processResources {
 	}
 }
 
-tasks.register('cargoBuild', Exec) {
-	workingDir '.'
-	commandLine 'cargo', 'build', '--release', '--features=java'
-}
+import com.vanniktech.maven.publish.SonatypeHost
+mavenPublishing {
+	publishToMavenCentral(SonatypeHost.CENTRAL_PORTAL)
+	signAllPublications()
+	coordinates(project.group, rootProject.name, project.version)
 
-processResources.dependsOn cargoBuild
-build.finalizedBy shadowJar
-
-publishing {
-	publications {
-		mavenJava(MavenPublication) {
-			artifactId = 'my-library'
-			from components.java
-			versionMapping {
-				usage('java-api') {
-					fromResolutionOf('runtimeClasspath')
-				}
-				usage('java-runtime') {
-					fromResolutionResult()
-				}
+	pom {
+		name = rootProject.name
+		description = "A collaborative editor plugin ecosystem"
+		inceptionYear = "2022"
+		url = "https://code.mp/"
+		licenses {
+			license {
+				name = "The GNU General Public License v3.0"
+				url = "https://www.gnu.org/licenses/gpl-3.0.txt"
 			}
-			pom {
-				name = 'My Library'
-				description = 'A concise description of my library'
-				url = 'http://www.example.com/library'
-				properties = [
-					myProp: "value",
-					"prop.with.dots": "anotherValue"
-				]
-				licenses {
-					license {
-						name = 'The Apache License, Version 2.0'
-						url = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
-					}
-				}
-				developers {
-					developer {
-						id = 'johnd'
-						name = 'John Doe'
-						email = 'john.doe@example.com'
-					}
-				}
-				scm {
-					connection = 'scm:git:git://example.com/my-library.git'
-					developerConnection = 'scm:git:ssh://example.com/my-library.git'
-					url = 'http://example.com/my-library/'
-				}
+		}
+		developers {
+			developer {
+				id = "zaaarf"
+				name = "zaaarf"
+				email = "zaaarf@codemp.dev"
 			}
+		}
+		scm {
+			url = "https://github.com/hexedtech/codemp/"
+			connection = "scm:git:git://github.com/hexedtech/codemp.git"
+			developerConnection = "scm:git:ssh://git@github.com/hexedtech/codemp.git"
 		}
 	}
 }

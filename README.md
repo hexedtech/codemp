@@ -2,11 +2,11 @@
 
 [![Actions Status](https://github.com/hexedtech/codemp/actions/workflows/test.yml/badge.svg)](https://github.com/hexedtech/codemp/actions)
 [![docs.rs Status](https://img.shields.io/docsrs/codemp)](https://docs.rs/codemp/)
-[![Gitter Chat](https://img.shields.io/gitter/room/hexedtech/codemp)](https://gitter.im/hexedtech/codemp)
 [![Crates.io Version](https://img.shields.io/crates/v/codemp)](https://crates.io/crates/codemp)
-[![NPM Version](https://img.shields.io/npm/v/codemp)](https://npmjs.org/package/codemp)
-[![PyPI Version](https://img.shields.io/pypi/v/codemp)](https://pypi.org/project/codemp)
-[![LuaRocks Version](https://img.shields.io/luarocks/v/alemi/codemp)](https://luarocks.org/modules/alemi/codemp)
+[![Gitter Chat](https://img.shields.io/gitter/room/hexedtech/codemp)](https://gitter.im/hexedtech/codemp)
+[![GitHub last commit](https://img.shields.io/github/last-commit/hexedtech/codemp)](https://github.com/hexedtech/codemp/commits/dev/)
+[![GitHub commits since tagged version](https://img.shields.io/github/commits-since/hexedtech/codemp/v0.6.2)](https://github.com/hexedtech/codemp/releases/tag/v0.6.2)
+[![Crates.io License](https://img.shields.io/crates/l/codemp)](https://github.com/hexedtech/codemp/blob/dev/LICENSE)
 
 > `codemp` is a **collaborative** text editing solution to work remotely.
 
@@ -55,11 +55,17 @@ Adding a dependency on `codemp` is **easy**:
 Just `cargo add codemp` and check the docs for some examples.
 
 ### From supported languages
-We provide first-class bindings for:
- - [![JavaScript](https://github.com/hexedtech/codemp/actions/workflows/javascript.yml/badge.svg)](./dist/README.md#javascript) available from `npm` as [`codemp`](https://npmjs.org/package/codemp)
- - [![Python](https://github.com/hexedtech/codemp/actions/workflows/python.yml/badge.svg)](./dist/README.md#python) available from `PyPI` as [`codemp`](https://pypi.org/project/codemp)
- - [![Lua](https://github.com/hexedtech/codemp/actions/workflows/lua.yml/badge.svg)](./dist/README.md#lua) available from `LuaRocks` as [`codemp`](https://luarocks.org/modules/alemi/codemp)
- - [![Java](https://github.com/hexedtech/codemp/actions/workflows/java.yml/badge.svg)](./dist/README.md#java) available on `MavenCentral` **SOON**
+We provide first-class bindings for these other programming languages:
+
+
+|            | Build Status                                                                                                                                                                | Package                                                                                                                                 | Build Instructions                    |
+| ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------- |
+| JavaScript | [![JavaScript Build](https://github.com/hexedtech/codemp/actions/workflows/javascript.yml/badge.svg)](https://github.com/hexedtech/codemp/actions/workflows/javascript.yml) | [![NPM Version](https://img.shields.io/npm/v/codemp)](https://npmjs.org/package/codemp)                                                 | [README](./dist/README.md#javascript) |
+| Python     | [![Python Build](https://github.com/hexedtech/codemp/actions/workflows/python.yml/badge.svg)](https://github.com/hexedtech/codemp/actions/workflows/python.yml)             | [![PyPI Version](https://img.shields.io/pypi/v/codemp)](https://pypi.org/project/codemp)                                                | [README](./dist/README.md#python)     |
+| Java       | [![Java Build](https://github.com/hexedtech/codemp/actions/workflows/java.yml/badge.svg)](https://github.com/hexedtech/codemp/actions/workflows/java.yml)                   | [![LuaRocks Version](https://img.shields.io/luarocks/v/alemi/codemp)](https://luarocks.org/modules/alemi/codemp)                        | [README](./dist/README.md#java)       |
+| Lua        | [![Lua Build](https://github.com/hexedtech/codemp/actions/workflows/lua.yml/badge.svg)](https://github.com/hexedtech/codemp/actions/workflows/lua.yml)                      | [![Maven Central Version](https://img.shields.io/maven-central/v/mp.code/codemp)](https://central.sonatype.com/artifact/mp.code/codemp) | [README](./dist/README.md#lua)        |
+
+
 
 As a design philosophy, our binding APIs attempt to perfectly mimic their Rust counterparts, so the main documentation can still be referenced as source of truth.
 Refer to specific language documentation for specifics, differences and quirks.

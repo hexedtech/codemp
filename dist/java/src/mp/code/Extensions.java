@@ -1,6 +1,6 @@
 package mp.code;
 
-import java.io.IOException;
+import java.lang.ref.Cleaner;
 
 /**
  * A class holding utility functions, as well as functions which are specific
@@ -8,6 +8,9 @@ import java.io.IOException;
  * broader CodeMP API.
  */
 public final class Extensions {
+	/** A {@link Cleaner} handling freeing of memory for library objects. */
+	static final Cleaner CLEANER = Cleaner.create();
+
 	/**
 	 * Hashes the given {@link String} using CodeMP's hashing algorithm (xxh3).
 	 * @param input the string to hash
@@ -37,21 +40,7 @@ public final class Extensions {
 	 */
 	public static native void setupTracing(String path, boolean debug);
 
-	private static boolean loaded = false;
-	static synchronized void loadLibraryIfNotPresent() {
-		if(loaded) return;
-		try {
-			String filename = System.getProperty("os.name").startsWith("Windows")
-				? "/natives/codemp.dll"
-				: "/natives/libcodemp.so";
-			cz.adamh.utils.NativeUtils.loadLibraryFromJar(filename);
-			loaded = true;
-		} catch(IOException e) {
-			throw new RuntimeException(e);
-		}
-	}
-
 	static {
-		Extensions.loadLibraryIfNotPresent();
+		NativeUtils.loadLibraryIfNeeded();
 	}
 }

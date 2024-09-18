@@ -16,6 +16,7 @@ public final class CursorController {
 
 	CursorController(long ptr) {
 		this.ptr = ptr;
+		Extensions.CLEANER.register(this, () -> free(ptr));
 	}
 
 	private static native Cursor try_recv(long self) throws ControllerException;
@@ -93,12 +94,8 @@ public final class CursorController {
 	}
 
 	private static native void free(long self);
-	@Override
-	protected void finalize() {
-		free(this.ptr);
-	}
 
 	static {
-		Extensions.loadLibraryIfNotPresent();
+		NativeUtils.loadLibraryIfNeeded();
 	}
 }
