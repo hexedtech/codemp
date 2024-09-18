@@ -48,8 +48,13 @@ processResources {
 	}
 }
 
-generateMetadataFileForBinaryAndSourcesPublication.enabled = false
-generateMetadataFileForBinaryPublication.enabled = false
+generateMetadataFileForBinaryAndSourcesPublication.configure {
+	enabled = false
+}
+
+generateMetadataFileForBinaryPublication.configure {
+	enabled = false
+}
 
 import com.vanniktech.maven.publish.SonatypeHost
 mavenPublishing {
