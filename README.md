@@ -20,7 +20,7 @@ no matter the order or the timing due to unreliable networks or constrained reso
 changes will always carry their original intention. On top of this baseline, `codemp`'s protocol is optimized for speed 
 and low network footprint, meaning even slow connections can provide stable real-time editing.
 
-The full documentation is available on [docs.rs](https://docs.rs/codemp/0.7.0-beta44/codemp/).
+The full documentation is available on [docs.rs](https://docs.rs/codemp/).
 
 # Usage
 `codemp` is primarily used as a plugin in your editor of choice.
