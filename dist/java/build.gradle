@@ -9,36 +9,36 @@ group = 'mp.code'
 version = '0.0.1'
 
 java {
-	sourceCompatibility = targetCompatibility = JavaVersion.VERSION_1_8
+	sourceCompatibility = targetCompatibility = JavaVersion.VERSION_11
 }
 
 import com.vanniktech.maven.publish.SonatypeHost
 
 mavenPublishing {
-	// publishToMavenCentral(SonatypeHost.S01) // for snapshots
+	//publishToMavenCentral(SonatypeHost.S01) // for snapshots
 	publishToMavenCentral(SonatypeHost.CENTRAL_PORTAL) // central repository
-	// publishToMavenCentral(SonatypeHost.DEFAULT) // ????
+	// publishToMavenCentral(SonatypeHost.DEFAULT) // default
 
 	signAllPublications()
 
-	coordinates("mp.code", "codemp", "0.0.1")
+	coordinates(project.group, rootProject.name, project.version)
 
 	pom {
-		name = "codemp"
-		description = "a collaborative editor plugin ecosystem"
+		name = rootProject.name
+		description = "A collaborative editor plugin ecosystem"
 		inceptionYear = "2022"
 		url = "https://code.mp/"
 		licenses {
 			license {
 				name = "The GNU General Public License v3.0"
 				url = "https://www.gnu.org/licenses/gpl-3.0.txt"
-				distribution = "https://www.gnu.org/licenses/gpl-3.0.txt"
 			}
 		}
 		developers {
 			developer {
 				id = "zaaarf"
 				name = "zaaarf"
+				email = "zaaarf@codemp.dev"
 			}
 		}
 		scm {

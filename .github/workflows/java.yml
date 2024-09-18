@@ -31,6 +31,10 @@ jobs:
       - uses: arduino/setup-protoc@v3
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/setup-java@v4
+        with:
+            distribution: 'temurin'
+            java-version: '11'
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "8.10" # Quotes required to prevent YAML converting to number
