@@ -41,6 +41,7 @@ jobs:
           name: codemp-java-${{ matrix.platform.target }}
           path: dist/java/build/libs
       - run: gradle publish
+        working-directory: dist/java
         env:
           MAVEN_CENTRAL_USERNAME: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
           MAVEN_CENTRAL_PASSWORD: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
