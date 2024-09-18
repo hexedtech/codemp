@@ -1,12 +1,12 @@
 plugins {
 	id 'java-library'
 	id 'maven-publish'
+	id 'signing'
 	id 'com.github.johnrengelman.shadow' version '8.1.1'
-	id 'com.palantir.git-version' version '3.1.0'
 }
 
 group = 'mp.code'
-version = versionDetails().lastTag.substring(1)
+version = '0.0.1-SNAPSHOT'
 
 java {
 	sourceCompatibility = targetCompatibility = JavaVersion.VERSION_1_8
@@ -61,43 +61,49 @@ build.finalizedBy shadowJar
 publishing {
 	publications {
 		mavenJava(MavenPublication) {
-			artifactId = 'my-library'
+			artifactId = rootProject.name
+			version = project.version
 			from components.java
-			versionMapping {
-				usage('java-api') {
-					fromResolutionOf('runtimeClasspath')
-				}
-				usage('java-runtime') {
-					fromResolutionResult()
-				}
-			}
 			pom {
-				name = 'My Library'
-				description = 'A concise description of my library'
-				url = 'http://www.example.com/library'
-				properties = [
-					myProp: "value",
-					"prop.with.dots": "anotherValue"
-				]
+				name = 'codemp'
+				description = 'A collaborative editor plugin ecosystem'
+				url = 'https://code.mp'
 				licenses {
 					license {
-						name = 'The Apache License, Version 2.0'
-						url = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+						name = 'The GNU General Public License v3.0'
+						url = 'https://www.gnu.org/licenses/gpl-3.0.txt'
 					}
 				}
 				developers {
 					developer {
-						id = 'johnd'
-						name = 'John Doe'
-						email = 'john.doe@example.com'
+						id = 'zaaarf'
+						email = 'zaaarf@codemp.dev'
 					}
 				}
 				scm {
-					connection = 'scm:git:git://example.com/my-library.git'
-					developerConnection = 'scm:git:ssh://example.com/my-library.git'
-					url = 'http://example.com/my-library/'
+					connection = 'scm:git:git://github.com/hexedtech/codemp.git'
+					developerConnection = 'scm:git:ssh://github.com/hexedtech/codemp.git'
+					url = 'https://github.com/hexedtech/codemp/'
 				}
 			}
 		}
 	}
+	repositories {
+		maven {
+			name = "centralManualTesting"
+			url "https://central.sonatype.com/api/v1/publisher/deployments/download/"
+			credentials {
+				username = System.getenv('MAVEN_CENTRAL_USERNAME')
+				password = System.getenv('MAVEN_CENTRAL_PASSWORD')
+			}
+		}
+		mavenCentral()
+	}
+}
+
+signing {
+	def signingKey = System.getenv('MAVEN_CENTRAL_GPG_SECRET_KEY')
+	def signingPassword = System.getenv('MAVEN_CENTRAL_GPG_PASSWORD')
+	useInMemoryPgpKeys(signingKey, signingPassword)
+	sign publishing.publications.mavenJava
 }

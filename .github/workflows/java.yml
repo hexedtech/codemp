@@ -40,5 +40,11 @@ jobs:
         with:
           name: codemp-java-${{ matrix.platform.target }}
           path: dist/java/build/libs
+      - run: gradle publish
+        env:
+          MAVEN_CENTRAL_USERNAME: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
+          MAVEN_CENTRAL_PASSWORD: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
+          MAVEN_CENTRAL_GPG_SECRET_KEY: ${{ secrets.MAVEN_CENTRAL_GPG_SECRET_KEY }}
+          MAVEN_CENTRAL_GPG_PASSWORD: ${{ secrets.MAVEN_CENTRAL_GPG_PASSWORD }}
 
   # TODO add a publish step to maven central

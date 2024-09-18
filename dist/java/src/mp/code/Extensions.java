@@ -41,10 +41,16 @@ public final class Extensions {
 	static synchronized void loadLibraryIfNotPresent() {
 		if(loaded) return;
 		try {
-			String filename = System.getProperty("os.name").startsWith("Windows")
-				? "/natives/codemp.dll"
-				: "/natives/libcodemp.so";
+			String os = System.getProperty("os.name").toLowerCase();
+
+			String filename;
+			if(os.startsWith("windows")) {
+				filename = "/natives/codemp.dll";
+			} else if(os.startsWith("mac")) {
+				filename = "/natives/libcodemp.dylib";;
+			} else filename = "/natives/libcodemp.so";
 			cz.adamh.utils.NativeUtils.loadLibraryFromJar(filename);
+
 			loaded = true;
 		} catch(IOException e) {
 			throw new RuntimeException(e);
