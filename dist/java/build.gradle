@@ -1,7 +1,7 @@
 plugins {
 	id 'java-library'
 	id 'maven-publish'
-	id 'signing'
+	id "com.vanniktech.maven.publish" version "0.29.0"
 	id 'com.github.johnrengelman.shadow' version '8.1.1'
 }
 
@@ -10,6 +10,42 @@ version = '0.0.1-SNAPSHOT'
 
 java {
 	sourceCompatibility = targetCompatibility = JavaVersion.VERSION_1_8
+}
+
+import com.vanniktech.maven.publish.SonatypeHost
+
+mavenPublishing {
+	publishToMavenCentral(SonatypeHost.DEFAULT)
+	// publishToMavenCentral(SonatypeHost.CENTRAL_PORTAL)
+
+	signAllPublications()
+
+	coordinates("mp.code", "codemp", "0.0.1-SNAPSHOT")
+
+	pom {
+		name = "codemp"
+		description = "a collaborative editor plugin ecosystem"
+		inceptionYear = "2022"
+		url = "https://code.mp/"
+		licenses {
+			license {
+				name = "The GNU General Public License v3.0"
+				url = "https://www.gnu.org/licenses/gpl-3.0.txt"
+				distribution = "https://www.gnu.org/licenses/gpl-3.0.txt"
+			}
+		}
+		developers {
+			developer {
+				id = "zaaarf"
+				name = "zaaarf"
+			}
+		}
+		scm {
+			url = "https://github.com/hexedtech/codemp/"
+			connection = "scm:git:git://github.com/hexedtech/codemp.git"
+			developerConnection = "scm:git:ssh://git@github.com/hexedtech/codemp.git"
+		}
+	}
 }
 
 repositories {
@@ -40,6 +76,7 @@ def rustDir = projectDir.toPath()
 	.resolve('target')
 	.resolve('release')
 	.toFile()
+
 processResources {
 	outputs.upToDateWhen { false } // no caching
 	from(rustDir) {
@@ -57,53 +94,3 @@ tasks.register('cargoBuild', Exec) {
 
 processResources.dependsOn cargoBuild
 build.finalizedBy shadowJar
-
-publishing {
-	publications {
-		mavenJava(MavenPublication) {
-			artifactId = rootProject.name
-			version = project.version
-			from components.java
-			pom {
-				name = 'codemp'
-				description = 'A collaborative editor plugin ecosystem'
-				url = 'https://code.mp'
-				licenses {
-					license {
-						name = 'The GNU General Public License v3.0'
-						url = 'https://www.gnu.org/licenses/gpl-3.0.txt'
-					}
-				}
-				developers {
-					developer {
-						id = 'zaaarf'
-						email = 'zaaarf@codemp.dev'
-					}
-				}
-				scm {
-					connection = 'scm:git:git://github.com/hexedtech/codemp.git'
-					developerConnection = 'scm:git:ssh://github.com/hexedtech/codemp.git'
-					url = 'https://github.com/hexedtech/codemp/'
-				}
-			}
-		}
-	}
-	repositories {
-		maven {
-			name = "centralManualTesting"
-			url "https://central.sonatype.com/api/v1/publisher/deployments/download/"
-			credentials {
-				username = System.getenv('MAVEN_CENTRAL_USERNAME')
-				password = System.getenv('MAVEN_CENTRAL_PASSWORD')
-			}
-		}
-		mavenCentral()
-	}
-}
-
-signing {
-	def signingKey = System.getenv('MAVEN_CENTRAL_GPG_SECRET_KEY')
-	def signingPassword = System.getenv('MAVEN_CENTRAL_GPG_PASSWORD')
-	useInMemoryPgpKeys(signingKey, signingPassword)
-	sign publishing.publications.mavenJava
-}
