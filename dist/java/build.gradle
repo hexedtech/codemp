@@ -31,11 +31,9 @@ dependencies {
 	annotationProcessor 'org.projectlombok:lombok:1.18.34'
 }
 
-shadowJar {
-	jar.archiveClassifier = archiveClassifier = osdetector.classifier
-	dependencies {
-		include(dependency('com.github.adamheinrich:native-utils:master-SNAPSHOT'))
-	}
+tasks.register('cargoBuild', Exec) {
+	workingDir '.'
+	commandLine 'cargo', 'build', '--release', '--features=java'
 }
 
 def rustDir = projectDir.toPath()
@@ -44,8 +42,8 @@ def rustDir = projectDir.toPath()
 	.resolve('target')
 	.resolve('release')
 	.toFile()
-
-processResources {
+shadowJar {
+	dependsOn cargoBuild
 	outputs.upToDateWhen { false } // no caching
 	from(rustDir) {
 		include('*.dll')
@@ -53,16 +51,14 @@ processResources {
 		include('*dylib')
 		into('natives/')
 	}
+
+	archiveClassifier = osdetector.classifier
+	dependencies {
+		include(dependency('com.github.adamheinrich:native-utils:master-SNAPSHOT'))
+	}
 }
 
-tasks.register('cargoBuild', Exec) {
-	workingDir '.'
-	commandLine 'cargo', 'build', '--release', '--features=java'
-}
-
-processResources.dependsOn cargoBuild
 build.finalizedBy shadowJar
-
 
 mavenPublishing {
 	//publishToMavenCentral(SonatypeHost.S01) // for snapshots
