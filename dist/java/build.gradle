@@ -6,7 +6,7 @@ plugins {
 }
 
 group = 'mp.code'
-version = '0.0.1-SNAPSHOT'
+version = '0.0.1'
 
 java {
 	sourceCompatibility = targetCompatibility = JavaVersion.VERSION_1_8
@@ -15,13 +15,13 @@ java {
 import com.vanniktech.maven.publish.SonatypeHost
 
 mavenPublishing {
-	publishToMavenCentral(SonatypeHost.S01) // for snapshots
-	// publishToMavenCentral(SonatypeHost.CENTRAL_PORTAL) // central repository
+	// publishToMavenCentral(SonatypeHost.S01) // for snapshots
+	publishToMavenCentral(SonatypeHost.CENTRAL_PORTAL) // central repository
 	// publishToMavenCentral(SonatypeHost.DEFAULT) // ????
 
 	signAllPublications()
 
-	coordinates("mp.code", "codemp", "0.0.1-SNAPSHOT")
+	coordinates("mp.code", "codemp", "0.0.1")
 
 	pom {
 		name = "codemp"
