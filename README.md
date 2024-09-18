@@ -5,7 +5,7 @@
 [![Crates.io Version](https://img.shields.io/crates/v/codemp)](https://crates.io/crates/codemp)
 [![Gitter Chat](https://img.shields.io/gitter/room/hexedtech/codemp)](https://gitter.im/hexedtech/codemp)
 [![GitHub last commit](https://img.shields.io/github/last-commit/hexedtech/codemp)](https://github.com/hexedtech/codemp/commits/dev/)
-[![GitHub commits since tagged version](https://img.shields.io/github/commits-since/hexedtech/codemp/v0.6.2)](https://github.com/hexedtech/codemp/releases/tag/v0.6.2)
+[![GitHub commits since tagged version](https://img.shields.io/github/commits-since/hexedtech/codemp/v0.7.0)](https://github.com/hexedtech/codemp/releases/tag/v0.7.0)
 [![Crates.io License](https://img.shields.io/crates/l/codemp)](https://github.com/hexedtech/codemp/blob/dev/LICENSE)
 
 > `codemp` is a **collaborative** text editing solution to work remotely.
