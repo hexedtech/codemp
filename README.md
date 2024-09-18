@@ -6,7 +6,6 @@
 [![Gitter Chat](https://img.shields.io/gitter/room/hexedtech/codemp)](https://gitter.im/hexedtech/codemp)
 [![GitHub last commit](https://img.shields.io/github/last-commit/hexedtech/codemp)](https://github.com/hexedtech/codemp/commits/dev/)
 [![GitHub commits since tagged version](https://img.shields.io/github/commits-since/hexedtech/codemp/v0.7.0)](https://github.com/hexedtech/codemp/releases/tag/v0.7.0)
-[![Crates.io License](https://img.shields.io/crates/l/codemp)](https://github.com/hexedtech/codemp/blob/dev/LICENSE)
 
 > `codemp` is a **collaborative** text editing solution to work remotely.
 
@@ -62,8 +61,8 @@ We provide first-class bindings for these other programming languages:
 | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------- |
 | JavaScript | [![JavaScript Build](https://github.com/hexedtech/codemp/actions/workflows/javascript.yml/badge.svg)](https://github.com/hexedtech/codemp/actions/workflows/javascript.yml) | [![NPM Version](https://img.shields.io/npm/v/codemp)](https://npmjs.org/package/codemp)                                                 | [README](./dist/README.md#javascript) |
 | Python     | [![Python Build](https://github.com/hexedtech/codemp/actions/workflows/python.yml/badge.svg)](https://github.com/hexedtech/codemp/actions/workflows/python.yml)             | [![PyPI Version](https://img.shields.io/pypi/v/codemp)](https://pypi.org/project/codemp)                                                | [README](./dist/README.md#python)     |
-| Java       | [![Java Build](https://github.com/hexedtech/codemp/actions/workflows/java.yml/badge.svg)](https://github.com/hexedtech/codemp/actions/workflows/java.yml)                   | [![LuaRocks Version](https://img.shields.io/luarocks/v/alemi/codemp)](https://luarocks.org/modules/alemi/codemp)                        | [README](./dist/README.md#java)       |
-| Lua        | [![Lua Build](https://github.com/hexedtech/codemp/actions/workflows/lua.yml/badge.svg)](https://github.com/hexedtech/codemp/actions/workflows/lua.yml)                      | [![Maven Central Version](https://img.shields.io/maven-central/v/mp.code/codemp)](https://central.sonatype.com/artifact/mp.code/codemp) | [README](./dist/README.md#lua)        |
+| Java       | [![Java Build](https://github.com/hexedtech/codemp/actions/workflows/java.yml/badge.svg)](https://github.com/hexedtech/codemp/actions/workflows/java.yml)                   | [![Maven Central Version](https://img.shields.io/maven-central/v/mp.code/codemp)](https://central.sonatype.com/artifact/mp.code/codemp) | [README](./dist/README.md#java)       |
+| Lua        | [![Lua Build](https://github.com/hexedtech/codemp/actions/workflows/lua.yml/badge.svg)](https://github.com/hexedtech/codemp/actions/workflows/lua.yml)                      | [![LuaRocks Version](https://img.shields.io/luarocks/v/alemi/codemp)](https://luarocks.org/modules/alemi/codemp)                        | [README](./dist/README.md#lua)        |
 
 
 
