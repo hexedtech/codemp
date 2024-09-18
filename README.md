@@ -57,10 +57,10 @@ Just `cargo add codemp` and check the docs for some examples.
 
 ### From supported languages
 We provide first-class bindings for:
- - [![JavaScript](https://github.com/hexedtech/codemp/actions/workflows/javascript.yml/badge.svg)](./dist/README.md#javascript) available from `npm` as [`codemp`](https://npmjs.org/package/codemp)
- - [![Python](https://github.com/hexedtech/codemp/actions/workflows/python.yml/badge.svg)](./dist/README.md#python) available from `PyPI` as [`codemp`](https://pypi.org/project/codemp)
- - [![Lua](https://github.com/hexedtech/codemp/actions/workflows/lua.yml/badge.svg)](./dist/README.md#lua) available from `LuaRocks` as [`codemp`](https://luarocks.org/modules/alemi/codemp)
- - [![Java](https://github.com/hexedtech/codemp/actions/workflows/java.yml/badge.svg)](./dist/README.md#java) available on `MavenCentral` **SOON**
+ - [![JavaScript](https://github.com/hexedtech/codemp/actions/workflows/javascript.yml/badge.svg)](./dist/README.md#javascript) available from **npm** as [`codemp`](https://npmjs.org/package/codemp)
+ - [![Python](https://github.com/hexedtech/codemp/actions/workflows/python.yml/badge.svg)](./dist/README.md#python) available from **PyPI** as [`codemp`](https://pypi.org/project/codemp)
+ - [![Lua](https://github.com/hexedtech/codemp/actions/workflows/lua.yml/badge.svg)](./dist/README.md#lua) available from **LuaRocks** as [`codemp`](https://luarocks.org/modules/alemi/codemp)
+ - [![Java](https://github.com/hexedtech/codemp/actions/workflows/java.yml/badge.svg)](./dist/README.md#java) available on **MavenCentral** as [`codemp`](https://central.sonatype.com/artifact/mp.code/codemp)
 
 As a design philosophy, our binding APIs attempt to perfectly mimic their Rust counterparts, so the main documentation can still be referenced as source of truth.
 Refer to specific language documentation for specifics, differences and quirks.
