@@ -177,7 +177,7 @@ public final class Workspace {
 	}
 
 	static {
-		Extensions.loadLibraryIfNotPresent();
+		NativeUtils.loadLibraryIfNeeded();
 	}
 
 	/**

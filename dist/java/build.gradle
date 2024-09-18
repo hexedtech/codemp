@@ -1,14 +1,11 @@
-import com.vanniktech.maven.publish.SonatypeHost
-
 plugins {
 	id 'java-library'
 	id "com.vanniktech.maven.publish" version "0.29.0"
-	id 'com.github.johnrengelman.shadow' version '8.1.1'
 	id 'com.google.osdetector' version '1.7.3'
 }
 
 group = 'mp.code'
-version = '0.0.1'
+version = '0.0.2'
 
 java {
 	sourceCompatibility = targetCompatibility = JavaVersion.VERSION_11
@@ -16,7 +13,6 @@ java {
 
 repositories {
 	mavenCentral()
-	maven { url 'https://jitpack.io' }
 }
 
 sourceSets {
@@ -24,7 +20,6 @@ sourceSets {
 }
 
 dependencies {
-	implementation 'com.github.adamheinrich:native-utils:master-SNAPSHOT'
 	compileOnly 'org.projectlombok:lombok:1.18.34'
 	annotationProcessor 'org.projectlombok:lombok:1.18.34'
 }
@@ -34,13 +29,15 @@ tasks.register('cargoBuild', Exec) {
 	commandLine 'cargo', 'build', '--release', '--features=java'
 }
 
+jar.archiveClassifier = osdetector.classifier
+
 def rustDir = projectDir.toPath()
 	.parent
 	.parent
 	.resolve('target')
 	.resolve('release')
 	.toFile()
-shadowJar {
+processResources {
 	dependsOn cargoBuild
 	outputs.upToDateWhen { false } // no caching
 	from(rustDir) {
@@ -49,22 +46,12 @@ shadowJar {
 		include('*dylib')
 		into('natives/')
 	}
-
-	archiveClassifier = osdetector.classifier
-	dependencies {
-		include(dependency('com.github.adamheinrich:native-utils:master-SNAPSHOT'))
-	}
 }
 
-build.finalizedBy shadowJar
-
+import com.vanniktech.maven.publish.SonatypeHost
 mavenPublishing {
-	//publishToMavenCentral(SonatypeHost.S01) // for snapshots
-	publishToMavenCentral(SonatypeHost.CENTRAL_PORTAL) // central repository
-	// publishToMavenCentral(SonatypeHost.DEFAULT) // default
-
+	publishToMavenCentral(SonatypeHost.CENTRAL_PORTAL, true)
 	signAllPublications()
-
 	coordinates(project.group, rootProject.name, project.version)
 
 	pom {

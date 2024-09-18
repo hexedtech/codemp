@@ -122,6 +122,6 @@ public final class BufferController {
 	}
 
 	static {
-		Extensions.loadLibraryIfNotPresent();
+		NativeUtils.loadLibraryIfNeeded();
 	}
 }

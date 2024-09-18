@@ -37,27 +37,7 @@ public final class Extensions {
 	 */
 	public static native void setupTracing(String path, boolean debug);
 
-	private static boolean loaded = false;
-	static synchronized void loadLibraryIfNotPresent() {
-		if(loaded) return;
-		try {
-			String os = System.getProperty("os.name").toLowerCase();
-
-			String filename;
-			if(os.startsWith("windows")) {
-				filename = "/natives/codemp.dll";
-			} else if(os.startsWith("mac")) {
-				filename = "/natives/libcodemp.dylib";;
-			} else filename = "/natives/libcodemp.so";
-			cz.adamh.utils.NativeUtils.loadLibraryFromJar(filename);
-
-			loaded = true;
-		} catch(IOException e) {
-			throw new RuntimeException(e);
-		}
-	}
-
 	static {
-		Extensions.loadLibraryIfNotPresent();
+		NativeUtils.loadLibraryIfNeeded();
 	}
 }

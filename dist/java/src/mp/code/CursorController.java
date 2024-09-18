@@ -99,6 +99,6 @@ public final class CursorController {
 	}
 
 	static {
-		Extensions.loadLibraryIfNotPresent();
+		NativeUtils.loadLibraryIfNeeded();
 	}
 }

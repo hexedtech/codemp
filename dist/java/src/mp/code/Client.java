@@ -152,6 +152,6 @@ public final class Client {
 	}
 
 	static {
-		Extensions.loadLibraryIfNotPresent();
+		NativeUtils.loadLibraryIfNeeded();
 	}
 }
