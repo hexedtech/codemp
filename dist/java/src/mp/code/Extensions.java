@@ -1,6 +1,6 @@
 package mp.code;
 
-import java.io.IOException;
+import java.lang.ref.Cleaner;
 
 /**
  * A class holding utility functions, as well as functions which are specific
@@ -8,6 +8,9 @@ import java.io.IOException;
  * broader CodeMP API.
  */
 public final class Extensions {
+	/** A {@link Cleaner} handling freeing of memory for library objects. */
+	static final Cleaner CLEANER = Cleaner.create();
+
 	/**
 	 * Hashes the given {@link String} using CodeMP's hashing algorithm (xxh3).
 	 * @param input the string to hash

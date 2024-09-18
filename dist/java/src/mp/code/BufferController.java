@@ -17,6 +17,7 @@ public final class BufferController {
 
 	BufferController(long ptr) {
 		this.ptr = ptr;
+		Extensions.CLEANER.register(this, () -> free(ptr));
 	}
 
 	private static native String get_name(long self);
@@ -116,10 +117,6 @@ public final class BufferController {
 	}
 
 	private static native void free(long self);
-	@Override
-	protected void finalize() {
-		free(this.ptr);
-	}
 
 	static {
 		NativeUtils.loadLibraryIfNeeded();

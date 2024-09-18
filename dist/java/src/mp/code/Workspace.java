@@ -22,6 +22,7 @@ public final class Workspace {
 
 	Workspace(long ptr) {
 		this.ptr = ptr;
+		Extensions.CLEANER.register(this, () -> free(ptr));
 	}
 
 	private static native String get_workspace_id(long self);
@@ -171,10 +172,6 @@ public final class Workspace {
 	}
 
 	private static native void free(long self);
-	@Override
-	protected void finalize() {
-		free(this.ptr);
-	}
 
 	static {
 		NativeUtils.loadLibraryIfNeeded();

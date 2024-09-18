@@ -22,6 +22,7 @@ public final class Client {
 
 	Client(long ptr) {
 		this.ptr = ptr;
+		Extensions.CLEANER.register(this, () -> free(ptr));
 	}
 
 	/**
@@ -146,10 +147,6 @@ public final class Client {
 	}
 
 	private static native void free(long self);
-	@Override
-	protected void finalize() {
-		free(this.ptr);
-	}
 
 	static {
 		NativeUtils.loadLibraryIfNeeded();
