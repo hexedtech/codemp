@@ -48,9 +48,12 @@ processResources {
 	}
 }
 
+generateMetadataFileForBinaryAndSourcesPublication.enabled = false
+generateMetadataFileForBinaryPublication.enabled = false
+
 import com.vanniktech.maven.publish.SonatypeHost
 mavenPublishing {
-	publishToMavenCentral(SonatypeHost.CENTRAL_PORTAL, true)
+	publishToMavenCentral(SonatypeHost.CENTRAL_PORTAL)
 	signAllPublications()
 	coordinates(project.group, rootProject.name, project.version)
 
