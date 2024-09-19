@@ -120,7 +120,7 @@ jobs:
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
-          name: codemp-py-windows-${{ matrix.platform.target }}
+          name: codemp-${{ matrix.versions.features }}-windows-${{ matrix.platform.target }}
           path: dist/py/build
 
   macos:
