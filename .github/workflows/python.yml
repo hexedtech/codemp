@@ -9,7 +9,6 @@ on:
   push:
     branches:
       - stable
-      - fix-ci-python
 
 permissions:
   contents: read
