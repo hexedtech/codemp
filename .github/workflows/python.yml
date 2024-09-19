@@ -9,6 +9,7 @@ on:
   push:
     branches:
       - stable
+      - fix-ci-python
 
 permissions:
   contents: read
@@ -89,6 +90,11 @@ jobs:
     runs-on: ${{ matrix.platform.runner }}
     strategy:
       matrix:
+        versions:
+          - python: 3.8
+            features: py-noabi
+          - python: 3.x
+            features: py
         platform:
           - runner: windows-latest
             target: x64
@@ -101,7 +107,7 @@ jobs:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/setup-python@v5
         with:
-          python-version: 3.x
+          python-version: ${{ matrix.versions.python }}
           architecture: ${{ matrix.platform.target }}
       - name: Build wheels
         uses: PyO3/maturin-action@v1
@@ -109,7 +115,7 @@ jobs:
           working-directory: dist/py
           target: ${{ matrix.platform.target }}
           container: 'off'
-          args: --release --out ./build
+          args: --release --out ./build --features ${{ matrix.versions.features }}
           sccache: 'true'
       - name: Upload wheels
         uses: actions/upload-artifact@v4
