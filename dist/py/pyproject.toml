@@ -2,7 +2,7 @@
 name = "codemp"
 version = "0.7.0"
 description = "code multiplexer"
-requires-python = ">= 3.8"
+requires-python = ">=3.8"
 license = "GPL-3.0-only"
 keywords = ["codemp", "cooperative", "rust", "python"]
 authors = [
@@ -28,7 +28,7 @@ requires = ["maturin>=1.0,<2.0"]
 build-backend = "maturin"
 
 [tool.maturin]
-features = ["py", "pyo3/extension-module"]
+features = ["py"]
 manifest-path = "../../Cargo.toml"
 python-source = "src"
 

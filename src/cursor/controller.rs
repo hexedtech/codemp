@@ -5,14 +5,20 @@ use std::sync::Arc;
 
 use tokio::sync::{mpsc, oneshot, watch};
 
-use crate::{api::{controller::ControllerCallback, Controller, Cursor}, errors::ControllerResult};
-use codemp_proto::{cursor::{CursorPosition, RowCol}, files::BufferNode};
+use crate::{
+	api::{controller::ControllerCallback, Controller, Cursor},
+	errors::ControllerResult,
+};
+use codemp_proto::{
+	cursor::{CursorPosition, RowCol},
+	files::BufferNode,
+};
 
 /// A [Controller] for asynchronously sending and receiving [Cursor] event.
 ///
 /// An unique [CursorController] exists for each active [crate::Workspace].
 #[derive(Debug, Clone)]
-#[cfg_attr(feature = "py", pyo3::pyclass)]
+#[cfg_attr(any(feature = "py", feature = "py-noabi"), pyo3::pyclass)]
 #[cfg_attr(feature = "js", napi_derive::napi)]
 pub struct CursorController(pub(crate) Arc<CursorControllerInner>);
 
@@ -31,11 +37,23 @@ impl Controller<Cursor> for CursorController {
 		if cursor.start > cursor.end {
 			std::mem::swap(&mut cursor.start, &mut cursor.end);
 		}
-		Ok(self.0.op.send(CursorPosition {
-			buffer: BufferNode { path: cursor.buffer },
-			start: RowCol { row: cursor.start.0, col: cursor.start.1 },
-			end: RowCol { row: cursor.end.0, col: cursor.end.1 },
-		}).await?)
+		Ok(self
+			.0
+			.op
+			.send(CursorPosition {
+				buffer: BufferNode {
+					path: cursor.buffer,
+				},
+				start: RowCol {
+					row: cursor.start.0,
+					col: cursor.start.1,
+				},
+				end: RowCol {
+					row: cursor.end.0,
+					col: cursor.end.1,
+				},
+			})
+			.await?)
 	}
 
 	async fn try_recv(&self) -> ControllerResult<Option<Cursor>> {

@@ -2,7 +2,7 @@
 //! A high-level representation of a change within a given buffer.
 
 /// An editor-friendly representation of a text change in a given buffer.
-/// 
+///
 /// It's expressed with a range of characters and a string of content that should replace them,
 /// allowing representation of any combination of deletions, insertions or replacements.
 ///
@@ -22,7 +22,7 @@
 ///
 #[derive(Clone, Debug, Default)]
 #[cfg_attr(feature = "js", napi_derive::napi(object))]
-#[cfg_attr(feature = "py", pyo3::pyclass(get_all))]
+#[cfg_attr(any(feature = "py", feature = "py-noabi"), pyo3::pyclass(get_all))]
 #[cfg_attr(feature = "serialize", derive(serde::Serialize, serde::Deserialize))]
 pub struct TextChange {
 	/// Range start of text change, as char indexes in buffer previous state.
@@ -43,7 +43,7 @@ impl TextChange {
 	}
 }
 
-#[cfg_attr(feature = "py", pyo3::pymethods)]
+#[cfg_attr(any(feature = "py", feature = "py-noabi"), pyo3::pymethods)]
 impl TextChange {
 	/// Returns true if this [`TextChange`] deletes existing text.
 	///

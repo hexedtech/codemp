@@ -9,7 +9,7 @@ use crate::{
 	cursor::{self, worker::CursorWorker},
 	errors::{ConnectionResult, ControllerResult, RemoteResult},
 	ext::InternallyMutable,
-	network::Services
+	network::Services,
 };
 
 use codemp_proto::{
@@ -33,7 +33,7 @@ use uuid::Uuid;
 use napi_derive::napi;
 
 #[derive(Debug, Clone)]
-#[cfg_attr(feature = "py", pyo3::pyclass)]
+#[cfg_attr(any(feature = "py", feature = "py-noabi"), pyo3::pyclass)]
 #[cfg_attr(feature = "js", napi)]
 pub struct Workspace(Arc<WorkspaceInner>);
 
@@ -59,7 +59,8 @@ impl Workspace {
 		claims: tokio::sync::watch::Receiver<codemp_proto::common::Token>, // TODO ughh receiving this
 	) -> ConnectionResult<Self> {
 		let workspace_claim = InternallyMutable::new(token);
-		let services = Services::try_new(&config.endpoint(), claims, workspace_claim.channel()).await?;
+		let services =
+			Services::try_new(&config.endpoint(), claims, workspace_claim.channel()).await?;
 		let ws_stream = services.ws().attach(Empty {}).await?.into_inner();
 
 		let (tx, rx) = mpsc::channel(128);
@@ -126,12 +127,12 @@ impl Workspace {
 
 		let (tx, rx) = mpsc::channel(256);
 		let mut req = tonic::Request::new(tokio_stream::wrappers::ReceiverStream::new(rx));
-		req.metadata_mut()
-			.insert(
-				"buffer",
-				tonic::metadata::MetadataValue::try_from(credentials.token)
-					.map_err(|e| tonic::Status::internal(format!("failed representing token to string: {e}")))?,
-			);
+		req.metadata_mut().insert(
+			"buffer",
+			tonic::metadata::MetadataValue::try_from(credentials.token).map_err(|e| {
+				tonic::Status::internal(format!("failed representing token to string: {e}"))
+			})?,
+		);
 		let stream = self.0.services.buf().attach(req).await?.into_inner();
 
 		let worker = BufferWorker::new(self.0.user.id, path);
@@ -282,14 +283,18 @@ impl Workspace {
 	/// A filter may be applied, and it may be strict (equality check) or not (starts_with check).
 	// #[cfg_attr(feature = "js", napi)] // https://github.com/napi-rs/napi-rs/issues/1120
 	pub fn filetree(&self, filter: Option<&str>, strict: bool) -> Vec<String> {
-		self.0.filetree.iter()
-			.filter(|f| filter.map_or(true, |flt| {
-				if strict {
-					f.as_str() == flt
-				} else {
-					f.starts_with(flt)
-				}
-			}))
+		self.0
+			.filetree
+			.iter()
+			.filter(|f| {
+				filter.map_or(true, |flt| {
+					if strict {
+						f.as_str() == flt
+					} else {
+						f.starts_with(flt)
+					}
+				})
+			})
 			.map(|f| f.clone())
 			.collect()
 	}
@@ -315,9 +320,7 @@ impl Workspace {
 						match ev {
 							// user
 							WorkspaceEventInner::Join(UserJoin { user }) => {
-								inner
-									.users
-									.insert(user.id.uuid(), user.into());
+								inner.users.insert(user.id.uuid(), user.into());
 							}
 							WorkspaceEventInner::Leave(UserLeave { user }) => {
 								inner.users.remove(&user.id.uuid());
@@ -364,8 +367,8 @@ impl Drop for WorkspaceInner {
 	}
 }
 
-#[cfg_attr(feature = "py", pyo3::pyclass(eq, eq_int))]
-#[cfg_attr(feature = "py", derive(PartialEq))]
+#[cfg_attr(any(feature = "py", feature = "py-noabi"), pyo3::pyclass(eq, eq_int))]
+#[cfg_attr(any(feature = "py", feature = "py-noabi"), derive(PartialEq))]
 pub enum DetachResult {
 	NotAttached,
 	Detaching,
