@@ -7,7 +7,6 @@ class Driver:
 	"""
 	def stop(self) -> None: ...
 
-def get_default_config() -> Config: ...
 class Config:
 	"""
 	Configuration data structure for codemp clients
@@ -17,6 +16,8 @@ class Config:
 	host: Optional[str]
 	port: Optional[int]
 	tls: Optional[bool]
+
+	def __new__(cls, *, username: str, password: str, **kwargs) -> Config: ...
 
 def init() -> Driver: ...
 def set_logger(logger_cb: Callable[[str], None], debug: bool) -> bool: ...
