@@ -11,7 +11,7 @@ use crate::{
 
 use pyo3::prelude::*;
 use pyo3::{
-	exceptions::{PyAttributeError, PyConnectionError, PyRuntimeError, PySystemError},
+	exceptions::{PyConnectionError, PyRuntimeError, PySystemError},
 	types::PyDict,
 };
 
@@ -166,21 +166,21 @@ impl Config {
 		password: String,
 		kwds: Option<Bound<'_, PyDict>>,
 	) -> PyResult<Self> {
-		let config = kwds.map_or(Config::new(username, password), |dict| {
-			let host: Option<String> = dict.get_item("host")?.map(|s| s.extract());
-			let port: Option<u16> = dict.get_item("port")?.map(|p| p.extract());
-			let tls: Option<bool> = dict.get_item("tls")?.map(|t| t.extract());
+		if let Some(kwgs) = kwds {
+			let host = kwgs.get_item("host")?.map(|e| e.extract().ok()).flatten();
+			let port = kwgs.get_item("port")?.map(|e| e.extract().ok()).flatten();
+			let tls = kwgs.get_item("tls")?.map(|e| e.extract().ok()).flatten();
 
-			Config {
+			Ok(Config {
 				username,
 				password,
 				host,
 				port,
 				tls,
-			}
-		});
-
-		Ok(config)
+			})
+		} else {
+			Ok(Config::new(username, password))
+		}
 	}
 }
 
@@ -271,6 +271,7 @@ fn codemp(m: &Bound<'_, PyModule>) -> PyResult<()> {
 
 	m.add_class::<Workspace>()?;
 	m.add_class::<Client>()?;
+	m.add_class::<Config>()?;
 
 	Ok(())
 }
