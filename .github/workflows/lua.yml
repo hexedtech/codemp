@@ -64,7 +64,7 @@ jobs:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
       - uses: leafo/gh-actions-lua@v9
       - uses: leafo/gh-actions-luarocks@v4
-      - run: luarocks upload codemp-*.rockspec
+      - run: luarocks upload codemp-*.rockspec --api-key ${{ secrets.LUAROCKS_TOKEN }}
         working-directory: dist/lua
 
   upload:
