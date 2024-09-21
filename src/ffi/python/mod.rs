@@ -3,14 +3,17 @@ pub mod controllers;
 pub mod workspace;
 
 use crate::{
-	api::{Cursor, TextChange},
+	api::{Config, Cursor, TextChange},
 	buffer::Controller as BufferController,
 	cursor::Controller as CursorController,
 	Client, Workspace,
 };
 
-use pyo3::exceptions::{PyConnectionError, PyRuntimeError, PySystemError};
 use pyo3::prelude::*;
+use pyo3::{
+	exceptions::{PyConnectionError, PyRuntimeError, PySystemError},
+	types::PyDict,
+};
 
 use std::sync::OnceLock;
 use tokio::sync::{mpsc, oneshot};
@@ -154,9 +157,36 @@ fn get_default_config() -> crate::api::Config {
 	conf
 }
 
+#[pymethods]
+impl Config {
+	#[new]
+	#[pyo3(signature = (*, username, password, **kwds))]
+	pub fn pynew(
+		username: String,
+		password: String,
+		kwds: Option<Bound<'_, PyDict>>,
+	) -> PyResult<Self> {
+		if let Some(kwgs) = kwds {
+			let host = kwgs.get_item("host")?.map(|e| e.extract().ok()).flatten();
+			let port = kwgs.get_item("port")?.map(|e| e.extract().ok()).flatten();
+			let tls = kwgs.get_item("tls")?.map(|e| e.extract().ok()).flatten();
+
+			Ok(Config {
+				username,
+				password,
+				host,
+				port,
+				tls,
+			})
+		} else {
+			Ok(Config::new(username, password))
+		}
+	}
+}
+
 #[pyfunction]
-fn connect(py: Python, config: Py<crate::api::Config>) -> PyResult<Promise> {
-	let conf: crate::api::Config = config.extract(py)?;
+fn connect(py: Python, config: Py<Config>) -> PyResult<Promise> {
+	let conf: Config = config.extract(py)?;
 	a_sync!(Client::connect(conf).await)
 }
 
@@ -241,6 +271,7 @@ fn codemp(m: &Bound<'_, PyModule>) -> PyResult<()> {
 
 	m.add_class::<Workspace>()?;
 	m.add_class::<Client>()?;
+	m.add_class::<Config>()?;
 
 	Ok(())
 }
