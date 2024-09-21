@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - stable
+      - feat/lua-rock
 
 permissions:
   contents: read
