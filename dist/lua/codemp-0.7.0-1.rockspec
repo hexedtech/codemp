@@ -3,7 +3,7 @@ version = "0.7.0-1"
 
 source = {
 	url = "git+https://github.com/hexedtech/codemp",
-	branch = "dev",
+	tag = "v0.7.0",
 }
 
 dependencies = {
