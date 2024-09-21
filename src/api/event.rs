@@ -4,7 +4,7 @@ use codemp_proto::workspace::workspace_event::Event as WorkspaceEventInner;
 
 /// Event in a [crate::Workspace].
 #[derive(Debug, Clone)]
-#[cfg_attr(feature = "py", pyo3::pyclass)]
+#[cfg_attr(any(feature = "py", feature = "py-noabi"), pyo3::pyclass)]
 #[cfg_attr(feature = "serialize", derive(serde::Serialize, serde::Deserialize))]
 pub enum Event {
 	/// Fired when the file tree changes.

@@ -50,7 +50,7 @@ napi = { version = "2.16", features = ["full"], optional = true }
 napi-derive = { version="2.16",  optional = true}
 
 # glue (python)
-pyo3 = { version = "0.22", features = ["extension-module", "abi3-py38"], optional = true}
+pyo3 = { version = "0.22", features = ["extension-module"], optional = true}
 
 # extra
 async-trait = { version = "0.1", optional = true }
@@ -71,7 +71,8 @@ serialize = ["dep:serde", "uuid/serde"]
 rust = [] # used for ci matrix
 java = ["lazy_static", "jni", "tracing-subscriber"]
 js = ["napi-build", "tracing-subscriber", "napi", "napi-derive"]
-py = ["pyo3", "tracing-subscriber", "pyo3-build-config"]
+py-noabi = ["pyo3", "tracing-subscriber", "pyo3-build-config"]
+py = ["py-noabi", "pyo3/abi3-py38"]
 lua = ["mlua-codemp-patch", "tracing-subscriber", "lazy_static", "serialize"]
 lua54 =["lua", "mlua-codemp-patch/lua54"] 
 luajit = ["lua", "mlua-codemp-patch/luajit"]
