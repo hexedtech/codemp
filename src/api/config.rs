@@ -27,10 +27,10 @@ pub struct Config {
 
 impl Config {
 	/// construct a new Config object, with given username and password
-	pub fn new(username: String, password: String) -> Self {
+	pub fn new(username: impl ToString, password: impl ToString) -> Self {
 		Self {
-			username,
-			password,
+			username: username.to_string(),
+			password: password.to_string(),
 			host: None,
 			port: None,
 			tls: None,
