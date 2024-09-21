@@ -16,7 +16,7 @@ exclude = ["dist/*"]
 
 [lib]
 name = "codemp"
-crate-type = ["cdylib"]
+crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 # core
