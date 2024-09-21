@@ -40,14 +40,31 @@ jobs:
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
       - run: ${{ matrix.platform.buildcmd }}
-      - run: mv target/release/${{matrix.platform.pre}}codemp.${{matrix.platform.ext}} dist/lua/codemp-lua-${{matrix.platform.arch}}-${{matrix.platform.target}}.${{matrix.platform.ext}}
+      - id: previoustag
+        uses: "WyriHaximus/github-action-get-previous-tag@v1"
+        with:
+          fallback: v0.0.0
+      - run: mv target/release/${{matrix.platform.pre}}codemp.${{matrix.platform.ext}} dist/lua/codemp-lua-${{steps.previoustag.outputs.tag}}-${{matrix.platform.arch}}-${{matrix.platform.target}}.${{matrix.platform.ext}}
       - uses: actions/upload-artifact@v4
         with:
           name: codemp-lua-${{ matrix.platform.target }}
-          path: dist/lua/codemp-lua-${{matrix.platform.arch}}-${{matrix.platform.target}}.${{matrix.platform.ext}}
+          path: dist/lua/codemp-lua-*
 
-  # TODO this just copies files on our server, maybe consider other ways to distribute? maybe do it properly with versions?
   publish:
+    runs-on: ubuntu-latest
+    needs: [build]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: arduino/setup-protoc@v3
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: leafo/gh-actions-lua@v9
+      - uses: leafo/gh-actions-luarocks@v4
+      - run: luarock upload codemp-*.rockspec
+        working-directory: dist/lua
+
+  upload:
     runs-on: ubuntu-latest
     needs: [build]
     steps:
