@@ -36,6 +36,8 @@ jobs:
             buildcmd: cargo rustc --release --features=luajit -- -C link-arg=-undefined -C link-arg=dynamic_lookup
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # necessary to get last tag
       - uses: dtolnay/rust-toolchain@stable
       - uses: arduino/setup-protoc@v3
         with:
@@ -62,7 +64,7 @@ jobs:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
       - uses: leafo/gh-actions-lua@v9
       - uses: leafo/gh-actions-luarocks@v4
-      - run: luarock upload codemp-*.rockspec
+      - run: luarocks upload codemp-*.rockspec
         working-directory: dist/lua
 
   upload:
