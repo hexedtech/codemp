@@ -133,6 +133,11 @@ impl Driver {
 }
 
 #[pyfunction]
+fn version() -> String {
+	crate::version()
+}
+
+#[pyfunction]
 fn init() -> PyResult<Driver> {
 	let (rt_stop_tx, mut rt_stop_rx) = oneshot::channel::<()>();
 	std::thread::spawn(move || {
@@ -257,6 +262,7 @@ impl IntoPy<PyObject> for crate::api::User {
 
 #[pymodule]
 fn codemp(m: &Bound<'_, PyModule>) -> PyResult<()> {
+	m.add_function(wrap_pyfunction!(version, m)?)?;
 	m.add_function(wrap_pyfunction!(init, m)?)?;
 	m.add_function(wrap_pyfunction!(get_default_config, m)?)?;
 	m.add_function(wrap_pyfunction!(connect, m)?)?;
