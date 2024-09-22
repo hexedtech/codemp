@@ -20,6 +20,15 @@
 /// To delete a the fourth character we should send a.
 ///     `TextChange { start: 3, end: 4, content: "".into(), hash: None }`
 ///
+/// ```rust
+/// let change = codemp::api::TextChange {
+///   start: 6, end: 11,
+///   content: "mom".to_string(), hash: None
+/// };
+/// let before = "hello world!";
+/// let after = change.apply(before);
+/// assert_eq!(after, "hello mom!");
+/// ```
 #[derive(Clone, Debug, Default)]
 #[cfg_attr(feature = "js", napi_derive::napi(object))]
 #[cfg_attr(any(feature = "py", feature = "py-noabi"), pyo3::pyclass(get_all))]

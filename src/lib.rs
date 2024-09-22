@@ -19,11 +19,12 @@
 //! a supported remote server and returns a [`Client`] handle to interact with it.
 //!
 //! ```rust
-//! # async fn main() {
+//! # async fn main_fn() {
 //! let client = codemp::Client::connect(
-//!   "https://api.code.mp",    // default server, by hexed.technology
-//!   "mail@example.net",       // your username, on hexed.technology it's the email
-//!   "dont-use-this-password"  // your password
+//!   codemp::api::Config::new(
+//!     "mail@example.net",
+//!     "dont-use-this-password"
+//!   )
 //! )
 //!   .await
 //!   .expect("failed to connect!");
@@ -33,26 +34,26 @@
 //! A [`Client`] can acquire a [`Workspace`] handle by joining an existing one it can access with
 //! [`Client::join_workspace`] or create a new one with [`Client::create_workspace`].
 //!
-//! ```rust,no_run
-//! # async fn main() {
-//! #  let client = codemp::Client::connect("", "", "").await.unwrap();
+//! ```rust, run
+//! # async fn main_fn() {
+//! #  let client = codemp::Client::connect(codemp::api::Config::new("", "")).await.unwrap();
 //! client.create_workspace("my-workspace").await.expect("failed to create workspace!");
-//! let workspace = client.attach_workspace("my-workspace").await.expect("failed to attach!");
+//! let workspace = client.join_workspace("my-workspace").await.expect("failed to attach!");
 //! # }
 //! ```
 //!
 //! A [`Workspace`] handle can be used to acquire a [`cursor::Controller`] to track remote [`api::Cursor`]s
 //! and one or more [`buffer::Controller`] to send and receive [`api::TextChange`]s.
 //!
-//! ```rust,no_run
-//! # async fn main() {
-//! #  let client = codemp::Client::connect("", "", "").await.unwrap();
+//! ```rust
+//! # async fn main_fn() {
+//! #  let client = codemp::Client::connect(codemp::api::Config::new("", "")).await.unwrap();
 //! # client.create_workspace("").await.unwrap();
-//! # let workspace = client.attach_workspace("").await.unwrap();
+//! # let workspace = client.join_workspace("").await.unwrap();
 //! use codemp::api::Controller; // needed to access trait methods 
 //! let cursor = workspace.cursor();
 //! let event = cursor.recv().await.expect("disconnected while waiting for event!");
-//! println!("user {event.user} moved on buffer {event.buffer}");
+//! println!("user {} moved on buffer {}", event.user.unwrap_or_default(), event.buffer);
 //! # }
 //! ```
 //!
@@ -60,16 +61,16 @@
 //! eventual consistency. Each [`api::TextChange`] is translated in a network counterpart that is
 //! guaranteed to converge.
 //!
-//! ```rust,no_run
-//! # async fn main() {
-//! #  let client = codemp::Client::connect("", "", "").await.unwrap();
+//! ```rust
+//! # async fn main_fn() {
+//! #  let client = codemp::Client::connect(codemp::api::Config::new("", "")).await.unwrap();
 //! # client.create_workspace("").await.unwrap();
-//! # let workspace = client.attach_workspace("").await.unwrap();
+//! # let workspace = client.join_workspace("").await.unwrap();
 //! # use codemp::api::Controller;
-//! let buffer = workspace.attach_buffer("/some/file.txt").await.expect("failed to attach");
+//! let buffer = workspace.attach("/some/file.txt").await.expect("failed to attach");
 //! buffer.content(); // force-sync
 //! if let Some(change) = buffer.try_recv().await.unwrap() {
-//!   println!("content: {change.content}, span: {change.span.start}-{change.span.end}");
+//!   println!("content: {}, span: {}-{}", change.content, change.start, change.end);
 //! } // if None, no changes are currently available
 //! # }
 //! ```

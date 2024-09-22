@@ -32,6 +32,12 @@ use uuid::Uuid;
 #[cfg(feature = "js")]
 use napi_derive::napi;
 
+/// A currently active shared development environment
+///
+/// Workspaces encapsulate a working environment: cursor positions, filetree, user list
+/// and more. Each holds a [cursor::Controller] and a map of [buffer::Controller]s.
+/// Using a workspace handle, it's possible to receive events (user join/leave, filetree updates)
+/// and create/delete/attach to new buffers.
 #[derive(Debug, Clone)]
 #[cfg_attr(any(feature = "py", feature = "py-noabi"), pyo3::pyclass)]
 #[cfg_attr(feature = "js", napi)]
@@ -150,7 +156,7 @@ impl Workspace {
 
 	/// Detach from an active buffer.
 	///
-	/// This option will be carried in background. `BufferWorker` will be stopped and dropped.
+	/// This option will be carried in background. BufferWorker will be stopped and dropped.
 	/// There may still be some events enqueued in buffers to poll, but the [buffer::Controller] itself won't be
 	/// accessible anymore from [`Workspace`].
 	pub fn detach(&self, path: &str) -> DetachResult {
