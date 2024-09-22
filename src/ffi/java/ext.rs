@@ -1,7 +1,4 @@
-use jni::{objects::{JClass, JString}, JNIEnv};
 use jni_toolbox::jni;
-
-use super::{JExceptable, null_check};
 
 /// Calculate the XXH3 hash for a given String.
 #[jni(package = "mp.code", class = "Extensions")]
@@ -23,6 +20,7 @@ fn drive(block: bool) {
 }
 
 /// Set up the tracing subscriber.
+#[allow(non_snake_case)]
 #[jni(package = "mp.code", class = "Extensions")]
 fn setupTracing(path: Option<String>, debug: bool) {
 	super::setup_logger(debug, path);

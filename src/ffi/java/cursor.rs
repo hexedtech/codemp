@@ -1,66 +1,31 @@
-use jni::{objects::{JClass, JObject}, sys::{jboolean, jlong, jobject}, JNIEnv};
-use crate::api::{Controller, Cursor};
+use jni::{objects::JObject, JNIEnv};
+use jni_toolbox::jni;
+use crate::{api::{Controller, Cursor}, errors::ControllerError};
 
-use super::{handle_error, null_check, tokio, Deobjectify, JExceptable, JObjectify};
+use super::null_check;
 
 /// Try to fetch a [Cursor], or returns null if there's nothing.
-#[no_mangle]
-pub extern "system" fn Java_mp_code_CursorController_try_1recv(
-	mut env: JNIEnv,
-	_class: JClass,
-	self_ptr: jlong,
-) -> jobject {
-	let controller = unsafe { Box::leak(Box::from_raw(self_ptr as *mut crate::cursor::Controller)) };
-	tokio().block_on(controller.try_recv())
-		.jexcept(&mut env)
-		.map(|change| change.jobjectify(&mut env).jexcept(&mut env).as_raw())
-		.unwrap_or_else(std::ptr::null_mut)
+#[jni(package = "mp.code", class = "CursorController", ptr)]
+fn try_recv(controller: &mut crate::cursor::Controller) -> Result<Option<Cursor>, ControllerError> {
+	super::tokio().block_on(controller.try_recv())
 }
 
 /// Block until it receives a [Cursor].
-#[no_mangle]
-pub extern "system" fn Java_mp_code_CursorController_recv(
-	mut env: JNIEnv,
-	_class: JClass,
-	self_ptr: jlong,
-) -> jobject {
-	let controller = unsafe { Box::leak(Box::from_raw(self_ptr as *mut crate::cursor::Controller)) };
-	tokio().block_on(controller.recv())
-		.jexcept(&mut env)
-		.jobjectify(&mut env)
-		.jexcept(&mut env)
-		.as_raw()
+#[jni(package = "mp.code", class = "CursorController", ptr)]
+fn recv(controller: &mut crate::cursor::Controller) -> Result<Cursor, ControllerError> {
+	super::tokio().block_on(controller.recv())
 }
 
 /// Receive from Java, converts and sends a [Cursor].
-#[no_mangle]
-pub extern "system" fn Java_mp_code_CursorController_send<'local>(
-	mut env: JNIEnv<'local>,
-	_class: JClass<'local>,
-	self_ptr: jlong,
-	cursor: JObject<'local>,
-) {
-	null_check!(env, cursor, {});
-	let controller = unsafe { Box::leak(Box::from_raw(self_ptr as *mut crate::cursor::Controller)) };
-	let cursor = Cursor::deobjectify(&mut env, cursor);
-	if let Ok(cursor) = cursor {
-		tokio().block_on(controller.send(cursor)).jexcept(&mut env)
-	} else {
-		handle_error!(&mut env, cursor, {});
-	}
+#[jni(package = "mp.code", class = "CursorController")]
+fn send(controller: &mut crate::cursor::Controller, cursor: Cursor) -> Result<(), ControllerError> {
+	super::tokio().block_on(controller.send(cursor))
 }
 
-/// Registers a callback for cursor changes.
-#[no_mangle]
-pub extern "system" fn Java_mp_code_CursorController_callback<'local>(
-	mut env: JNIEnv,
-	_class: JClass<'local>,
-	self_ptr: jlong,
-	cb: JObject<'local>,
-) {
-	null_check!(env, cb, {});
-	let controller = unsafe { Box::leak(Box::from_raw(self_ptr as *mut crate::cursor::Controller)) };
-	
+/// Register a callback for cursor changes.
+#[jni(package = "mp.code", class = "CursorController")]
+fn callback<'local>(env: &mut JNIEnv<'local>, controller: &mut crate::cursor::Controller, cb: JObject<'local>) {
+	null_check!(env, cb, {});	
 	let Ok(cb_ref) = env.new_global_ref(cb) else {
 		env.throw_new("mp/code/exceptions/JNIException", "Failed to pin callback reference!")
 			.expect("Failed to throw exception!");
@@ -72,8 +37,8 @@ pub extern "system" fn Java_mp_code_CursorController_callback<'local>(
 		let mut env = jvm.attach_current_thread_permanently()
 			.expect("failed attaching to main JVM thread");
 		if let Err(e) = env.with_local_frame(5, |env| {
-			use crate::ffi::java::JObjectify;
-			let jcontroller = controller.jobjectify(env)?;
+			use jni_toolbox::IntoJavaObject;
+			let jcontroller = controller.into_java(env)?;
 			if let Err(e) = env.call_method(
 				&cb_ref,
 				"accept",
@@ -90,46 +55,26 @@ pub extern "system" fn Java_mp_code_CursorController_callback<'local>(
 	});
 }
 
-/// Clears the callback for cursor changes.
-#[no_mangle]
-pub extern "system" fn Java_mp_code_CursorController_clear_1callback(
-	_env: JNIEnv,
-	_class: JClass,
-	self_ptr: jlong,
-) {
-	unsafe { Box::leak(Box::from_raw(self_ptr as *mut crate::cursor::Controller)) }
-		.clear_callback();
+/// Clear the callback for cursor changes.
+#[jni(package = "mp.code", class = "CursorController")]
+fn clear_callback(controller: &mut crate::cursor::Controller) {
+	controller.clear_callback()	
 }
 
-/// Blocks until there is a new value available.
-#[no_mangle]
-pub extern "system" fn Java_mp_code_CursorController_poll(
-	mut env: JNIEnv,
-	_class: JClass,
-	self_ptr: jlong,
-) {
-	let controller = unsafe { Box::leak(Box::from_raw(self_ptr as *mut crate::cursor::Controller)) };
-	tokio().block_on(controller.poll())
-		.jexcept(&mut env);
+/// Block until there is a new value available.
+#[jni(package = "mp.code", class = "CursorController")]
+fn poll(controller: &mut crate::cursor::Controller) -> Result<(), ControllerError> {
+	super::tokio().block_on(controller.poll())
 }
 
-/// Stops the controller.
-#[no_mangle]
-pub extern "system" fn Java_mp_code_CursorController_stop(
-	_env: JNIEnv,
-	_class: JClass,
-	self_ptr: jlong,
-) -> jboolean {
-	let controller = unsafe { Box::leak(Box::from_raw(self_ptr as *mut crate::cursor::Controller)) };
-	controller.stop() as jboolean
+/// Stop the controller.
+#[jni(package = "mp.code", class = "CursorController")]
+fn stop(controller: &mut crate::cursor::Controller) -> bool {
+	controller.stop()	
 }
 
 /// Called by the Java GC to drop a [crate::cursor::Controller].
-#[no_mangle]
-pub extern "system" fn Java_mp_code_CursorController_free(
-	_env: JNIEnv,
-	_class: JClass,
-	self_ptr: jlong,
-) {
-	let _ = unsafe { Box::from_raw(self_ptr as *mut crate::cursor::Controller) };
+#[jni(package = "mp.code", class = "CursorController")]
+fn free(input: jni::sys::jlong) {
+	let _ = unsafe { Box::from_raw(input as *mut crate::cursor::Controller) };
 }

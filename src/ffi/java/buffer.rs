@@ -1,95 +1,44 @@
-use jni::{objects::{JClass, JObject}, sys::{jboolean, jlong, jobject, jstring}, JNIEnv};
+use jni::{objects::JObject, JNIEnv};
+use jni_toolbox::jni;
 
-use crate::api::{Controller, TextChange};
+use crate::{api::{Controller, TextChange}, errors::ControllerError};
 
-use super::{handle_error, null_check, tokio, Deobjectify, JExceptable, JObjectify};
+use super::null_check;
 
-/// Gets the name of the buffer. 
-#[no_mangle]
-pub extern "system" fn Java_mp_code_BufferController_get_1name(
-	mut env: JNIEnv,
-	_class: JClass,
-	self_ptr: jlong,
-) -> jstring {
-	let controller = unsafe { Box::leak(Box::from_raw(self_ptr as *mut crate::buffer::Controller)) };
-	let content = controller.path();
-	env.new_string(content)
-		.jexcept(&mut env)
-		.as_raw()
+/// Get the name of the buffer. 
+#[jni(package = "mp.code", class = "BufferController", ptr)]
+fn get_name(controller: &mut crate::buffer::Controller) -> String {
+	controller.path().to_string() //TODO: &str is built into the newer version
 }
 
-/// Gets the contents of the buffers.
-#[no_mangle]
-pub extern "system" fn Java_mp_code_BufferController_get_1content(
-	mut env: JNIEnv,
-	_class: JClass,
-	self_ptr: jlong,
-) -> jstring {
-	let controller = unsafe { Box::leak(Box::from_raw(self_ptr as *mut crate::buffer::Controller)) };
-	let content = tokio().block_on(controller.content())
-		.jexcept(&mut env);
-	env.new_string(content)
-		.jexcept(&mut env)
-		.as_raw()
+/// Get the contents of the buffers.
+#[jni(package = "mp.code", class = "BufferController", ptr)]
+fn get_content(controller: &mut crate::buffer::Controller) -> Result<String, ControllerError> {
+	super::tokio().block_on(controller.content())
 }
 
-/// Tries to fetch a [TextChange], or returns null if there's nothing.
-#[no_mangle]
-pub extern "system" fn Java_mp_code_BufferController_try_1recv(
-	mut env: JNIEnv,
-	_class: JClass,
-	self_ptr: jlong,
-) -> jobject {
-	let controller = unsafe { Box::leak(Box::from_raw(self_ptr as *mut crate::buffer::Controller)) };
-	tokio().block_on(controller.try_recv())
-		.jexcept(&mut env)
-		.map(|change| change.jobjectify(&mut env).jexcept(&mut env).as_raw())
-		.unwrap_or_else(std::ptr::null_mut)
+/// Try to fetch a [TextChange], or return null if there's nothing.
+#[jni(package = "mp.code", class = "BufferController", ptr)]
+fn try_recv(controller: &mut crate::buffer::Controller) -> Result<Option<TextChange>, ControllerError> {
+	super::tokio().block_on(controller.try_recv())
 }
 
-/// Blocks until it receives a [TextChange].
-#[no_mangle]
-pub extern "system" fn Java_mp_code_BufferController_recv(
-	mut env: JNIEnv,
-	_class: JClass,
-	self_ptr: jlong,
-) -> jobject {
-	let controller = unsafe { Box::leak(Box::from_raw(self_ptr as *mut crate::buffer::Controller)) };
-	tokio().block_on(controller.recv())
-		.jexcept(&mut env)
-		.jobjectify(&mut env)
-		.jexcept(&mut env)
-		.as_raw()
+/// Block until it receives a [TextChange].
+#[jni(package = "mp.code", class = "BufferController", ptr)]
+fn recv(controller: &mut crate::buffer::Controller) -> Result<TextChange, ControllerError> {
+	super::tokio().block_on(controller.recv())
 }
 
-/// Receive from Java, converts and sends a [TextChange].
-#[no_mangle]
-pub extern "system" fn Java_mp_code_BufferController_send<'local>(
-	mut env: JNIEnv<'local>,
-	_class: JClass<'local>,
-	self_ptr: jlong,
-	change: JObject<'local>,
-) {
-	null_check!(env, change, {});
-	let controller = unsafe { Box::leak(Box::from_raw(self_ptr as *mut crate::buffer::Controller)) };
-	let change = TextChange::deobjectify(&mut env, change);
-	if let Ok(change) = change {
-		tokio().block_on(controller.send(change)).jexcept(&mut env)
-	} else {
-		handle_error!(&mut env, change, {});
-	}
+/// Send a [TextChange] to the server.
+#[jni(package = "mp.code", class = "BufferController")]
+fn send(controller: &mut crate::buffer::Controller, change: TextChange) -> Result<(), ControllerError> {
+	super::tokio().block_on(controller.send(change))
 }
 
-/// Registers a callback for buffer changes.
-#[no_mangle]
-pub extern "system" fn Java_mp_code_BufferController_callback<'local>(
-	mut env: JNIEnv,
-	_class: JClass<'local>,
-	self_ptr: jlong,
-	cb: JObject<'local>,
-) {
+/// Register a callback for buffer changes.
+#[jni(package = "mp.code", class = "BufferController")]
+fn callback<'local>(env: &mut JNIEnv<'local>, controller: &mut crate::buffer::Controller, cb: JObject<'local>) {
 	null_check!(env, cb, {});
-	let controller = unsafe { Box::leak(Box::from_raw(self_ptr as *mut crate::buffer::Controller)) };
 	let Ok(cb_ref) = env.new_global_ref(cb) else {
 		env.throw_new("mp/code/exceptions/JNIException", "Failed to pin callback reference!")
 			.expect("Failed to throw exception!");
@@ -101,8 +50,8 @@ pub extern "system" fn Java_mp_code_BufferController_callback<'local>(
 		let mut env = jvm.attach_current_thread_permanently()
 			.expect("failed attaching to main JVM thread");
 		if let Err(e) = env.with_local_frame(5, |env| {
-			use crate::ffi::java::JObjectify;
-			let jcontroller = controller.jobjectify(env)?;
+			use jni_toolbox::IntoJavaObject;
+			let jcontroller = controller.into_java(env)?;
 			if let Err(e) = env.call_method(
 				&cb_ref,
 				"accept",
@@ -119,46 +68,26 @@ pub extern "system" fn Java_mp_code_BufferController_callback<'local>(
 	});
 }
 
-/// Clears the callback for buffer changes.
-#[no_mangle]
-pub extern "system" fn Java_mp_code_BufferController_clear_1callback(
-	_env: JNIEnv,
-	_class: JClass,
-	self_ptr: jlong,
-) {
-	unsafe { Box::leak(Box::from_raw(self_ptr as *mut crate::buffer::Controller)) }
-		.clear_callback();
+/// Clear the callback for buffer changes.
+#[jni(package = "mp.code", class = "BufferController")]
+fn clear_callback(controller: &mut crate::buffer::Controller) {
+	controller.clear_callback()
 }
 
-/// Blocks until there is a new value available.
-#[no_mangle]
-pub extern "system" fn Java_mp_code_BufferController_poll(
-	mut env: JNIEnv,
-	_class: JClass,
-	self_ptr: jlong,
-) {
-	let controller = unsafe { Box::leak(Box::from_raw(self_ptr as *mut crate::buffer::Controller)) };
-	tokio().block_on(controller.poll())
-		.jexcept(&mut env);
+/// Block until there is a new value available.
+#[jni(package = "mp.code", class = "BufferController")]
+fn poll(controller: &mut crate::buffer::Controller) -> Result<(), ControllerError> {
+	super::tokio().block_on(controller.poll())
 }
 
-/// Stops the controller.
-#[no_mangle]
-pub extern "system" fn Java_mp_code_BufferController_stop(
-	_env: JNIEnv,
-	_class: JClass,
-	self_ptr: jlong,
-) -> jboolean {
-	let controller = unsafe { Box::leak(Box::from_raw(self_ptr as *mut crate::buffer::Controller)) };
-	controller.stop() as jboolean
+/// Stop the controller.
+#[jni(package = "mp.code", class = "BufferController")]
+fn stop(controller: &mut crate::buffer::Controller) -> bool {
+	controller.stop()
 }
 
 /// Called by the Java GC to drop a [crate::buffer::Controller].
-#[no_mangle]
-pub extern "system" fn Java_mp_code_BufferController_free(
-	_env: JNIEnv,
-	_class: JClass,
-	self_ptr: jlong,
-) {
-	let _ = unsafe { Box::from_raw(self_ptr as *mut crate::buffer::Controller) };
+#[jni(package = "mp.code", class = "BufferController")]
+fn free(input: jni::sys::jlong) {
+	let _ = unsafe { Box::from_raw(input as *mut crate::buffer::Controller) };
 }
