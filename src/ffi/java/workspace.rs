@@ -1,4 +1,5 @@
 use jni::{objects::{JClass, JObject, JString}, sys::{jboolean, jlong, jobject, jobjectArray, jstring}, JNIEnv};
+use jni_toolbox::jni;
 use crate::Workspace;
 
 use super::{handle_error, null_check, JExceptable, JObjectify};
@@ -45,35 +46,30 @@ pub extern "system" fn Java_mp_code_Workspace_get_1buffer<'local>(
 }
 
 /// Get the filetree.
-#[no_mangle]
-pub extern "system" fn Java_mp_code_Workspace_get_1file_1tree(
+#[jni(package = "mp.code", class = "Workspace", ptr)]
+fn file_tree(
 	mut env: JNIEnv,
 	_class: JClass,
 	self_ptr: jlong,
 	filter: JString,
 	strict: jboolean
-) -> jobjectArray {
+) -> Result<jobjectArray, jni::errors::Error> {
 	let workspace = unsafe { Box::leak(Box::from_raw(self_ptr as *mut Workspace)) };
 	let filter: Option<String> = if filter.is_null() {
 		None
 	} else {
-		Some(
-			env.get_string(&filter)
-				.map(|s| s.into())
-				.jexcept(&mut env)
-		)
+		Some(env.get_string(&filter)?.into())
 	};
 
 	let file_tree = workspace.filetree(filter.as_deref(), strict != 0);
-	env.find_class("java/lang/String")
-		.and_then(|class| env.new_object_array(file_tree.len() as i32, class, JObject::null()))
-		.inspect(|arr| {
-			for (idx, path) in file_tree.iter().enumerate() {
-				env.new_string(path)
-					.and_then(|path| env.set_object_array_element(arr, idx as i32, path))
-					.jexcept(&mut env)
-			}
-		}).jexcept(&mut env).as_raw()
+	let class = env.find_class("java/lang/String")?;
+	let array = env.new_object_array(file_tree.len() as i32, class, JObject::null())?;
+	for (idx, path) in file_tree.iter().enumerate() {
+		let element = env.new_string(path)?;
+		env.set_object_array_element(&array, idx as i32, element)?;
+	}
+
+	Ok(array.as_raw())
 }
 
 /// Gets a list of the active buffers.
