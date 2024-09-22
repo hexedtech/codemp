@@ -203,13 +203,4 @@ impl Client {
 	pub fn user(&self) -> &User {
 		&self.0.user
 	}
-
-	/// Get the current version of the client
-	pub fn version() -> String {
-		let version = env!("CARGO_PKG_VERSION");
-		let name = env!("CARGO_PKG_NAME");
-		let license = env!("CARGO_PKG_LICENSE");
-
-		format!("{name} - {version} ({license})")
-	}
 }

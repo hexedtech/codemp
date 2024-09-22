@@ -14,7 +14,7 @@
 //! The library also provides ready-to-use bindings in a growing number of other programming languages,
 //! to support a potentially infinite number of editors.
 //!
-//! # Overview 
+//! # Overview
 //! The main entrypoint is [`Client::connect`], which establishes an authenticated connection with
 //! a supported remote server and returns a [`Client`] handle to interact with it.
 //!
@@ -75,7 +75,7 @@
 //! # };
 //! ```
 //!
-//! ## FFI 
+//! ## FFI
 //! As mentioned, we provide bindings in various programming languages. To obtain them, you can
 //! compile with the appropriate feature flag. Currently, the following are supported:
 //! * `lua`
@@ -121,3 +121,8 @@ pub mod ffi;
 
 /// internal network services and interceptors
 pub(crate) mod network;
+
+/// Get the current version of the client
+pub fn version() -> String {
+	env!("CARGO_PKG_VERSION").to_owned()
+}
