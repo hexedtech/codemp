@@ -750,18 +750,17 @@ checksum = "8eaf4bc02d17cbdd7ff4c7438cafcdf7fb9a4613313ad11b4f8fefe7d3fa0130"
 [[package]]
 name = "jni-toolbox"
 version = "0.1.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "40c14725e4fd3fe9ea885cea9df1ff1fa9f4d45a6f4253f6b90802f0941335f6"
+source = "git+https://github.com/hexedtech/jni-toolbox?rev=10547d92b02b1af622706443cef835110efcdd0d#10547d92b02b1af622706443cef835110efcdd0d"
 dependencies = [
  "jni",
  "jni-toolbox-macro",
+ "uuid",
 ]
 
 [[package]]
 name = "jni-toolbox-macro"
 version = "0.1.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9970cad895bb316f70956593710d675d27a480ddbb8099f7e313042463a16d9b"
+source = "git+https://github.com/hexedtech/jni-toolbox?rev=10547d92b02b1af622706443cef835110efcdd0d#10547d92b02b1af622706443cef835110efcdd0d"
 dependencies = [
  "proc-macro2",
  "quote",

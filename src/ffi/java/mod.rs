@@ -105,9 +105,8 @@ impl jni_toolbox::JniToolboxError for crate::errors::ControllerError {
 macro_rules! into_java_ptr_class {
 	($type: ty, $jclass: literal) => {
 		impl<'j> jni_toolbox::IntoJavaObject<'j> for $type {
-			type T = jni::objects::JObject<'j>;
 			const CLASS: &'static str = $jclass;
-			fn into_java(self, env: &mut jni::JNIEnv<'j>) -> Result<Self::T, jni::errors::Error> {
+			fn into_java_object(self, env: &mut jni::JNIEnv<'j>) -> Result<jni::objects::JObject<'j>, jni::errors::Error> {
 				let class = env.find_class(Self::CLASS)?;
 				env.new_object(
 					class,
@@ -125,10 +124,9 @@ into_java_ptr_class!(crate::cursor::Controller, "mp/code/CursorController");
 into_java_ptr_class!(crate::buffer::Controller, "mp/code/BufferController");
 
 impl<'j> jni_toolbox::IntoJavaObject<'j> for crate::api::User {
-	type T = jni::objects::JObject<'j>;
 	const CLASS: &'static str = "mp/code/data/User";
-	fn into_java(self, env: &mut jni::JNIEnv<'j>) -> Result<Self::T, jni::errors::Error> {
-		let id_field = self.id.into_java(env)?;
+	fn into_java_object(self, env: &mut jni::JNIEnv<'j>) -> Result<jni::objects::JObject<'j>, jni::errors::Error> {
+		let id_field = self.id.into_java_object(env)?;
 		let name_field = env.new_string(self.name)?;
 		let class = env.find_class(Self::CLASS)?;
 		env.new_object(
@@ -143,9 +141,8 @@ impl<'j> jni_toolbox::IntoJavaObject<'j> for crate::api::User {
 }
 
 impl<'j> jni_toolbox::IntoJavaObject<'j> for crate::api::Event {
-	type T = jni::objects::JObject<'j>;
 	const CLASS: &'static str = "mp/code/Workspace$Event";
-	fn into_java(self, env: &mut jni::JNIEnv<'j>) -> Result<Self::T, jni::errors::Error> { 
+	fn into_java_object(self, env: &mut jni::JNIEnv<'j>) -> Result<jni::objects::JObject<'j>, jni::errors::Error> { 
 		let (ordinal, arg) = match self {
 			crate::api::Event::UserJoin(arg) => (0, env.new_string(arg)?),
 			crate::api::Event::UserLeave(arg) => (1, env.new_string(arg)?),
@@ -174,9 +171,8 @@ impl<'j> jni_toolbox::IntoJavaObject<'j> for crate::api::Event {
 }
 
 impl<'j> jni_toolbox::IntoJavaObject<'j> for crate::workspace::DetachResult {
-	type T = jni::objects::JObject<'j>;
 	const CLASS: &'static str = "mp/code/data/DetachResult";
-	fn into_java(self, env: &mut jni::JNIEnv<'j>) -> Result<Self::T, jni::errors::Error> {
+	fn into_java_object(self, env: &mut jni::JNIEnv<'j>) -> Result<jni::objects::JObject<'j>, jni::errors::Error> {
 		let ordinal = match self {
 			crate::workspace::DetachResult::NotAttached => 0,
 			crate::workspace::DetachResult::Detaching => 1,
@@ -195,9 +191,8 @@ impl<'j> jni_toolbox::IntoJavaObject<'j> for crate::workspace::DetachResult {
 }
 
 impl<'j> jni_toolbox::IntoJavaObject<'j> for crate::api::TextChange {
-	type T = jni::objects::JObject<'j>;
 	const CLASS: &'static str = "mp/code/data/TextChange";
-	fn into_java(self, env: &mut jni::JNIEnv<'j>) -> Result<Self::T, jni::errors::Error> {
+	fn into_java_object(self, env: &mut jni::JNIEnv<'j>) -> Result<jni::objects::JObject<'j>, jni::errors::Error> {
 		let content = env.new_string(self.content)?;
 
 		let hash_class = env.find_class("java/util/OptionalLong")?;
@@ -222,9 +217,8 @@ impl<'j> jni_toolbox::IntoJavaObject<'j> for crate::api::TextChange {
 }
 
 impl<'j> jni_toolbox::IntoJavaObject<'j> for crate::api::Cursor {
-	type T = jni::objects::JObject<'j>;
 	const CLASS: &'static str = "mp/code/data/Cursor";
-	fn into_java(self, env: &mut jni::JNIEnv<'j>) -> Result<Self::T, jni::errors::Error> {
+	fn into_java_object(self, env: &mut jni::JNIEnv<'j>) -> Result<jni::objects::JObject<'j>, jni::errors::Error> {
 		let class = env.find_class("mp/code/data/Cursor")?;
 		let buffer = env.new_string(&self.buffer)?;
 		let user = if let Some(user) = self.user {
@@ -250,10 +244,11 @@ impl<'j> jni_toolbox::IntoJavaObject<'j> for crate::api::Cursor {
 
 macro_rules! from_java_ptr {
 	($type: ty) => {
-		impl<'j> jni_toolbox::FromJava<'j> for &mut $type {
-			type T = jni::sys::jobject;
-			fn from_java(_env: &mut jni::JNIEnv<'j>, value: Self::T) -> Result<Self, jni::errors::Error> {
-				Ok(unsafe { Box::leak(Box::from_raw(value as *mut $type)) })
+		impl<'j> jni_toolbox::FromJava<'j> for $type {
+			type From = jni::sys::jobject;
+			fn from_java(_env: &mut jni::JNIEnv<'j>, value: Self::From) -> Result<Self, jni::errors::Error> {
+				let original_ptr = unsafe { Box::leak(Box::from_raw(value as *mut $type)) };
+				Ok(original_ptr.clone())
 			}
 		}
 	};
@@ -265,8 +260,8 @@ from_java_ptr!(crate::cursor::Controller);
 from_java_ptr!(crate::buffer::Controller);
 
 impl<'j> jni_toolbox::FromJava<'j> for crate::api::Config {
-	type T = jni::objects::JObject<'j>;
-	fn from_java(env: &mut jni::JNIEnv<'j>, config: Self::T) -> Result<Self, jni::errors::Error> {
+	type From = jni::objects::JObject<'j>;
+	fn from_java(env: &mut jni::JNIEnv<'j>, config: Self::From) -> Result<Self, jni::errors::Error> {
 		let username = {
 			let jfield = env.get_field(&config, "username", "Ljava/lang/String;")?.l()?;
 			if jfield.is_null() {
@@ -324,8 +319,8 @@ impl<'j> jni_toolbox::FromJava<'j> for crate::api::Config {
 }
 
 impl<'j> jni_toolbox::FromJava<'j> for crate::api::Cursor {
-	type T = jni::objects::JObject<'j>;
-	fn from_java(env: &mut jni::JNIEnv<'j>, cursor: Self::T) -> Result<Self, jni::errors::Error> {
+	type From = jni::objects::JObject<'j>;
+	fn from_java(env: &mut jni::JNIEnv<'j>, cursor: Self::From) -> Result<Self, jni::errors::Error> {
 		let start_row = env.get_field(&cursor, "startRow", "I")?.i()?;
 		let start_col = env.get_field(&cursor, "startCol", "I")?.i()?;
 		let end_row = env.get_field(&cursor, "endRow", "I")?.i()?;
@@ -353,8 +348,8 @@ impl<'j> jni_toolbox::FromJava<'j> for crate::api::Cursor {
 }
 
 impl<'j> jni_toolbox::FromJava<'j> for crate::api::TextChange {
-	type T = jni::objects::JObject<'j>;
-	fn from_java(env: &mut jni::JNIEnv<'j>, change: Self::T) -> Result<Self, jni::errors::Error> {
+	type From = jni::objects::JObject<'j>;
+	fn from_java(env: &mut jni::JNIEnv<'j>, change: Self::From) -> Result<Self, jni::errors::Error> {
 		let start = env.get_field(&change, "start", "J")?.j()?.clamp(0, u32::MAX.into()) as u32;
 		let end = env.get_field(&change, "end", "J")?.j()?.clamp(0, u32::MAX.into()) as u32;
 
