@@ -41,7 +41,7 @@ tracing-subscriber = { version = "0.3", optional = true }
 # glue (java)
 lazy_static = { version = "1.5", optional = true }
 jni = { version = "0.21", features = ["invocation"], optional = true }
-jni-toolbox = { git = "https://github.com/hexedtech/jni-toolbox", rev = "10547d92b02b1af622706443cef835110efcdd0d", optional = true, features = ["uuid"] }
+jni-toolbox = { version = "0.2.0", optional = true, features = ["uuid"] }
 
 # glue (lua)
 mlua-codemp-patch = { version = "0.10.0-beta.2", features = ["module", "send", "serialize"], optional = true }
