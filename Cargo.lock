@@ -238,6 +238,7 @@ dependencies = [
  "dashmap",
  "diamond-types",
  "jni",
+ "jni-toolbox",
  "lazy_static",
  "mlua-codemp-patch",
  "napi",
@@ -745,6 +746,28 @@ name = "jni-sys"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8eaf4bc02d17cbdd7ff4c7438cafcdf7fb9a4613313ad11b4f8fefe7d3fa0130"
+
+[[package]]
+name = "jni-toolbox"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "eeae2881d819e208fcfceea81eb5a8ca6c131c6fb1605dfe2f3a31dea061ec7c"
+dependencies = [
+ "jni",
+ "jni-toolbox-macro",
+ "uuid",
+]
+
+[[package]]
+name = "jni-toolbox-macro"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6e480850db18f0cc95120e7bf86af772c31b3c0f0dd3d3600682d8bd8399f4ae"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.77",
+]
 
 [[package]]
 name = "js-sys"

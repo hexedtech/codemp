@@ -62,26 +62,9 @@ pub(crate) fn setup_logger(debug: bool, path: Option<String>) {
 	}
 }
 
-/// Utility macro that attempts to handle an error in a [Result].
-/// MUST be called within a $result.is_err() block or similar. Failure to do so is UB.
-/// Will return early with a provided return value, or panic if it fails to throw a Java exception.
-macro_rules! handle_error {
-	($env: expr, $result: ident, $return: expr) => {
-		{
-			let err = unsafe { $result.unwrap_err_unchecked() };
-			tracing::info!("Attempting to throw error {err:#?} as a Java exception...");
-			if let Err(e) = err.jobjectify($env).map(|t| t.into()).and_then(|t: jni::objects::JThrowable| $env.throw(&t)) {
-				panic!("Failed to throw exception: {e}");
-			}
-			return $return;
-		}
-	};
-}
-pub(crate) use handle_error;
-
 /// Performs a null check on the given variable and throws a NullPointerException on the Java side
 /// if it is null. Finally, it returns with the given default value.
-macro_rules! null_check {
+macro_rules! null_check { // TODO replace
 	($env: ident, $var: ident, $return: expr) => {
 		if $var.is_null() {
 			let mut message = stringify!($var).to_string();
@@ -94,76 +77,37 @@ macro_rules! null_check {
 }
 pub(crate) use null_check;
 
-
-/// A trait meant for our local result type to make converting it to Java easier.
-/// jni-rs technically has [jni::errors::ToException], but this approach keeps it stream-like.
-pub(crate) trait JExceptable<'local, T: Default> {
-	/// Unwrap it and throws an appropriate Java exception if it's an error.
-	/// Theoretically it returns the type's default value, but the exception makes the value ignored.
-	fn jexcept(self, env: &mut jni::JNIEnv<'local>) -> T;
-}
-
-impl<'local, T: Default, E: JObjectify<'local> + std::fmt::Debug> JExceptable<'local, T> for Result<T, E> {
-	fn jexcept(self, env: &mut jni::JNIEnv<'local>) -> T {
-		if let Ok(res) = self {
-			res
-		} else {
-			handle_error!(env, self, Default::default());
-		}
+impl jni_toolbox::JniToolboxError for crate::errors::ConnectionError {
+	fn jclass(&self) -> String {
+		match self { 
+			crate::errors::ConnectionError::Transport(_) => "mp/code/exceptions/ConnectionTransportException",
+			crate::errors::ConnectionError::Remote(_) => "mp/code/exceptions/ConnectionRemoteException"
+		}.to_string()
 	}
 }
 
-/// Allows easy conversion for various types into Java objects.
-/// This is similar to [TryInto], but for Java types.
-pub(crate) trait JObjectify<'local> {
-	/// Attempt to convert the given object to a [jni::objects::JObject].
-	fn jobjectify(self, env: &mut jni::JNIEnv<'local>) -> Result<jni::objects::JObject<'local>, jni::errors::Error>;
+impl jni_toolbox::JniToolboxError for crate::errors::RemoteError {
+	fn jclass(&self) -> String {
+		"mp/code/exceptions/ConnectionRemoteException".to_string()
+	}
 }
 
-macro_rules! jobjectify_error {
-	($self: ident, $type: ty, $jclass: expr) => {
-		impl<'local> JObjectify<'local> for $type {
-			fn jobjectify($self, env: &mut jni::JNIEnv<'local>) -> Result<jni::objects::JObject<'local>, jni::errors::Error> {
-				let class = env.find_class($jclass)?;
-				let msg = env.new_string(format!("{:#?}", $self))?;
-				env.new_object(class, "(Ljava/lang/String;)V", &[jni::objects::JValueGen::Object(&msg)])
-			}
-		}
-	};
-}
-
-jobjectify_error!(self, crate::errors::RemoteError, "mp/code/exceptions/ConnectionRemoteException");
-jobjectify_error!(self, jni::errors::Error, match self {
-	jni::errors::Error::NullPtr(_) => "java/lang/NullPointerException",
-	_ => "mp/code/exceptions/JNIException"
-});
-jobjectify_error!(self, uuid::Error, "java/lang/IllegalArgumentException");
-jobjectify_error!(self, crate::errors::ConnectionError, match self { 
-	crate::errors::ConnectionError::Transport(_) => "mp/code/exceptions/ConnectionTransportException",
-	crate::errors::ConnectionError::Remote(_) => "mp/code/exceptions/ConnectionRemoteException"
-});
-jobjectify_error!(self, crate::errors::ControllerError, match self { 
-	crate::errors::ControllerError::Stopped => "mp/code/exceptions/ControllerStoppedException",
-	crate::errors::ControllerError::Unfulfilled => "mp/code/exceptions/ControllerUnfulfilledException",
-});
-
-
-impl<'local> JObjectify<'local> for uuid::Uuid {
-	fn jobjectify(self, env: &mut jni::JNIEnv<'local>) -> Result<jni::objects::JObject<'local>, jni::errors::Error> {
-		let class = env.find_class("java/util/UUID")?;
-		let (msb, lsb) = self.as_u64_pair();
-		let msb = i64::from_ne_bytes(msb.to_ne_bytes());
-		let lsb = i64::from_ne_bytes(lsb.to_ne_bytes());
-		env.new_object(&class, "(JJ)V", &[jni::objects::JValueGen::Long(msb), jni::objects::JValueGen::Long(lsb)])
+impl jni_toolbox::JniToolboxError for crate::errors::ControllerError {
+	fn jclass(&self) -> String {
+		match self { 
+			crate::errors::ControllerError::Stopped => "mp/code/exceptions/ControllerStoppedException",
+			crate::errors::ControllerError::Unfulfilled => "mp/code/exceptions/ControllerUnfulfilledException",
+		}.to_string()
 	}
 }
 
 /// Generates a [JObjectify] implementation for a class that is just a holder for a pointer.
-macro_rules! jobjectify_ptr_class {
+macro_rules! into_java_ptr_class {
 	($type: ty, $jclass: literal) => {
-		impl<'local> JObjectify<'local> for $type {
-			fn jobjectify(self, env: &mut jni::JNIEnv<'local>) -> Result<jni::objects::JObject<'local>, jni::errors::Error> {
-				let class = env.find_class($jclass)?;
+		impl<'j> jni_toolbox::IntoJavaObject<'j> for $type {
+			const CLASS: &'static str = $jclass;
+			fn into_java_object(self, env: &mut jni::JNIEnv<'j>) -> Result<jni::objects::JObject<'j>, jni::errors::Error> {
+				let class = env.find_class(Self::CLASS)?;
 				env.new_object(
 					class,
 					"(J)V",
@@ -174,16 +118,17 @@ macro_rules! jobjectify_ptr_class {
 	};
 }
 
-jobjectify_ptr_class!(crate::Client, "mp/code/Client");
-jobjectify_ptr_class!(crate::Workspace, "mp/code/Workspace");
-jobjectify_ptr_class!(crate::cursor::Controller, "mp/code/CursorController");
-jobjectify_ptr_class!(crate::buffer::Controller, "mp/code/BufferController");
+into_java_ptr_class!(crate::Client, "mp/code/Client");
+into_java_ptr_class!(crate::Workspace, "mp/code/Workspace");
+into_java_ptr_class!(crate::cursor::Controller, "mp/code/CursorController");
+into_java_ptr_class!(crate::buffer::Controller, "mp/code/BufferController");
 
-impl<'local> JObjectify<'local> for crate::api::User {
-	fn jobjectify(self, env: &mut jni::JNIEnv<'local>) -> Result<jni::objects::JObject<'local>, jni::errors::Error> {
-		let id_field = self.id.jobjectify(env)?;
+impl<'j> jni_toolbox::IntoJavaObject<'j> for crate::api::User {
+	const CLASS: &'static str = "mp/code/data/User";
+	fn into_java_object(self, env: &mut jni::JNIEnv<'j>) -> Result<jni::objects::JObject<'j>, jni::errors::Error> {
+		let id_field = self.id.into_java_object(env)?;
 		let name_field = env.new_string(self.name)?;
-		let class = env.find_class("mp/code/data/User")?;
+		let class = env.find_class(Self::CLASS)?;
 		env.new_object(
 			&class,
 			"(Ljava/util/UUID;Ljava/lang/String;)V",
@@ -195,8 +140,9 @@ impl<'local> JObjectify<'local> for crate::api::User {
 	}
 }
 
-impl<'local> JObjectify<'local> for crate::api::Event {
-	fn jobjectify(self, env: &mut jni::JNIEnv<'local>) -> Result<jni::objects::JObject<'local>, jni::errors::Error> {
+impl<'j> jni_toolbox::IntoJavaObject<'j> for crate::api::Event {
+	const CLASS: &'static str = "mp/code/Workspace$Event";
+	fn into_java_object(self, env: &mut jni::JNIEnv<'j>) -> Result<jni::objects::JObject<'j>, jni::errors::Error> { 
 		let (ordinal, arg) = match self {
 			crate::api::Event::UserJoin(arg) => (0, env.new_string(arg)?),
 			crate::api::Event::UserLeave(arg) => (1, env.new_string(arg)?),
@@ -212,7 +158,7 @@ impl<'local> JObjectify<'local> for crate::api::Event {
 		)?.l()?.into();
 		let event_type = env.get_object_array_element(variants, ordinal)?;
 		
-		let event_class = env.find_class("mp/code/Workspace$Event")?;
+		let event_class = env.find_class(Self::CLASS)?;
 		env.new_object(
 			event_class,
 			"(Lmp/code/Workspace$Event$Type;Ljava/lang/String;)V",
@@ -224,15 +170,16 @@ impl<'local> JObjectify<'local> for crate::api::Event {
 	}
 }
 
-impl<'local> JObjectify<'local> for crate::workspace::DetachResult {
-	fn jobjectify(self, env: &mut jni::JNIEnv<'local>) -> Result<jni::objects::JObject<'local>, jni::errors::Error> {
+impl<'j> jni_toolbox::IntoJavaObject<'j> for crate::workspace::DetachResult {
+	const CLASS: &'static str = "mp/code/data/DetachResult";
+	fn into_java_object(self, env: &mut jni::JNIEnv<'j>) -> Result<jni::objects::JObject<'j>, jni::errors::Error> {
 		let ordinal = match self {
 			crate::workspace::DetachResult::NotAttached => 0,
 			crate::workspace::DetachResult::Detaching => 1,
 			crate::workspace::DetachResult::AlreadyDetached => 2
 		};
 
-		let class = env.find_class("mp/code/data/DetachResult")?;
+		let class = env.find_class(Self::CLASS)?;
 		let variants: jni::objects::JObjectArray = env.call_method(
 			class,
 			"getEnumConstants",
@@ -243,66 +190,77 @@ impl<'local> JObjectify<'local> for crate::workspace::DetachResult {
 	}
 }
 
-impl<'local> JObjectify<'local> for crate::api::TextChange {
-	fn jobjectify(self, env: &mut jni::JNIEnv<'local>) -> Result<jni::objects::JObject<'local>, jni::errors::Error> {
+impl<'j> jni_toolbox::IntoJavaObject<'j> for crate::api::TextChange {
+	const CLASS: &'static str = "mp/code/data/TextChange";
+	fn into_java_object(self, env: &mut jni::JNIEnv<'j>) -> Result<jni::objects::JObject<'j>, jni::errors::Error> {
 		let content = env.new_string(self.content)?;
 
-		let hash = env.find_class("java/util/OptionalLong").and_then(|class| {
-			if let Some(h) = self.hash {
-				env.call_static_method(class, "of", "(J)Ljava/util/OptionalLong;", &[jni::objects::JValueGen::Long(h)])
-			} else {
-				env.call_static_method(class, "empty", "()Ljava/util/OptionalLong;", &[])
+		let hash_class = env.find_class("java/util/OptionalLong")?;
+		let hash = if let Some(h) = self.hash {
+			env.call_static_method(hash_class, "of", "(J)Ljava/util/OptionalLong;", &[jni::objects::JValueGen::Long(h)])
+		} else {
+			env.call_static_method(hash_class, "empty", "()Ljava/util/OptionalLong;", &[])
+		}?.l()?;
+
+		let class = env.find_class(Self::CLASS)?;
+		env.new_object(
+			class,
+			"(JJLjava/lang/String;Ljava/util/OptionalLong;)V",
+			&[
+				jni::objects::JValueGen::Long(self.start.into()),
+				jni::objects::JValueGen::Long(self.end.into()),
+				jni::objects::JValueGen::Object(&content),
+				jni::objects::JValueGen::Object(&hash)
+			]
+		)
+	}
+}
+
+impl<'j> jni_toolbox::IntoJavaObject<'j> for crate::api::Cursor {
+	const CLASS: &'static str = "mp/code/data/Cursor";
+	fn into_java_object(self, env: &mut jni::JNIEnv<'j>) -> Result<jni::objects::JObject<'j>, jni::errors::Error> {
+		let class = env.find_class("mp/code/data/Cursor")?;
+		let buffer = env.new_string(&self.buffer)?;
+		let user = if let Some(user) = self.user {
+			env.new_string(user)?.into()
+		} else {
+			jni::objects::JObject::null()
+		};
+
+		env.new_object(
+			class,
+			"(IIIILjava/lang/String;Ljava/lang/String;)V",
+			&[
+				jni::objects::JValueGen::Int(self.start.0),
+				jni::objects::JValueGen::Int(self.start.1),
+				jni::objects::JValueGen::Int(self.end.0),
+				jni::objects::JValueGen::Int(self.end.1),
+				jni::objects::JValueGen::Object(&buffer),
+				jni::objects::JValueGen::Object(&user)
+			]
+		)
+	}
+}
+
+macro_rules! from_java_ptr {
+	($type: ty) => {
+		impl<'j> jni_toolbox::FromJava<'j> for &mut $type {
+			type From = jni::sys::jobject;
+			fn from_java(_env: &mut jni::JNIEnv<'j>, value: Self::From) -> Result<Self, jni::errors::Error> {
+				Ok(unsafe { Box::leak(Box::from_raw(value as *mut $type)) })
 			}
-		}).and_then(|o| o.l())?;
-		env.find_class("mp/code/data/TextChange").and_then(|class| {
-			env.new_object(
-				class,
-				"(JJLjava/lang/String;Ljava/util/OptionalLong;)V",
-				&[
-					jni::objects::JValueGen::Long(self.start.into()),
-					jni::objects::JValueGen::Long(self.end.into()),
-					jni::objects::JValueGen::Object(&content),
-					jni::objects::JValueGen::Object(&hash)
-				]
-			)
-		})
-	}
+		}
+	};
 }
 
-impl<'local> JObjectify<'local> for crate::api::Cursor {
-	fn jobjectify(self, env: &mut jni::JNIEnv<'local>) -> Result<jni::objects::JObject<'local>, jni::errors::Error> {
-		env.find_class("mp/code/data/Cursor").and_then(|class| {
-			let buffer = env.new_string(&self.buffer)?;
-			let user = if let Some(user) = self.user {
-				env.new_string(user)?.into()
-			} else {
-				jni::objects::JObject::null()
-			};
+from_java_ptr!(crate::Client);
+from_java_ptr!(crate::Workspace);
+from_java_ptr!(crate::cursor::Controller);
+from_java_ptr!(crate::buffer::Controller);
 
-			env.new_object(
-				class,
-				"(IIIILjava/lang/String;Ljava/lang/String;)V",
-				&[
-					jni::objects::JValueGen::Int(self.start.0),
-					jni::objects::JValueGen::Int(self.start.1),
-					jni::objects::JValueGen::Int(self.end.0),
-					jni::objects::JValueGen::Int(self.end.1),
-					jni::objects::JValueGen::Object(&buffer),
-					jni::objects::JValueGen::Object(&user)
-				]
-			)
-		})
-	}
-}
-
-/// Allows easy conversion of Java types into their Rust counterparts.
-pub(crate) trait Deobjectify<'local, T: Sized> {
-	/// Attempt to convert the given [jni::objects::JObject] into its Rust counterpart.
-	fn deobjectify(env: &mut jni::JNIEnv<'local>, jobject: jni::objects::JObject<'local>) -> Result<T, jni::errors::Error>;
-}
-
-impl<'local> Deobjectify<'local, Self> for crate::api::Config {
-	fn deobjectify(env: &mut jni::JNIEnv<'local>, config: jni::objects::JObject<'local>) -> Result<Self, jni::errors::Error> {
+impl<'j> jni_toolbox::FromJava<'j> for crate::api::Config {
+	type From = jni::objects::JObject<'j>;
+	fn from_java(env: &mut jni::JNIEnv<'j>, config: Self::From) -> Result<Self, jni::errors::Error> {
 		let username = {
 			let jfield = env.get_field(&config, "username", "Ljava/lang/String;")?.l()?;
 			if jfield.is_null() {
@@ -359,8 +317,9 @@ impl<'local> Deobjectify<'local, Self> for crate::api::Config {
 	}
 }
 
-impl<'local> Deobjectify<'local, Self> for crate::api::Cursor {
-	fn deobjectify(env: &mut jni::JNIEnv<'local>, cursor: jni::objects::JObject<'local>) -> Result<Self, jni::errors::Error> {
+impl<'j> jni_toolbox::FromJava<'j> for crate::api::Cursor {
+	type From = jni::objects::JObject<'j>;
+	fn from_java(env: &mut jni::JNIEnv<'j>, cursor: Self::From) -> Result<Self, jni::errors::Error> {
 		let start_row = env.get_field(&cursor, "startRow", "I")?.i()?;
 		let start_col = env.get_field(&cursor, "startCol", "I")?.i()?;
 		let end_row = env.get_field(&cursor, "endRow", "I")?.i()?;
@@ -387,8 +346,9 @@ impl<'local> Deobjectify<'local, Self> for crate::api::Cursor {
 	}
 }
 
-impl<'local> Deobjectify<'local, Self> for crate::api::TextChange {
-	fn deobjectify(env: &mut jni::JNIEnv<'local>, change: jni::objects::JObject<'local>) -> Result<Self, jni::errors::Error> {
+impl<'j> jni_toolbox::FromJava<'j> for crate::api::TextChange {
+	type From = jni::objects::JObject<'j>;
+	fn from_java(env: &mut jni::JNIEnv<'j>, change: Self::From) -> Result<Self, jni::errors::Error> {
 		let start = env.get_field(&change, "start", "J")?.j()?.clamp(0, u32::MAX.into()) as u32;
 		let end = env.get_field(&change, "end", "J")?.j()?.clamp(0, u32::MAX.into()) as u32;
 
