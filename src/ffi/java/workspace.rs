@@ -76,27 +76,6 @@ pub extern "system" fn Java_mp_code_Workspace_get_1file_1tree(
 		}).jexcept(&mut env).as_raw()
 }
 
-/// Get the user list.
-#[no_mangle]
-pub extern "system" fn Java_mp_code_Workspace_user_1list(
-	mut env: JNIEnv,
-	_class: JClass,
-	self_ptr: jlong,
-) -> jobjectArray {
-	let workspace = unsafe { Box::leak(Box::from_raw(self_ptr as *mut Workspace)) };
-
-	let user_list = workspace.user_list();
-	env.find_class("java/lang/String")
-		.and_then(|class| env.new_object_array(user_list.len() as i32, class, JObject::null()))
-		.inspect(|arr| {
-			for (idx, path) in user_list.iter().enumerate() {
-				env.new_string(path)
-					.and_then(|path| env.set_object_array_element(arr, idx as i32, path))
-					.jexcept(&mut env)
-			}
-		}).jexcept(&mut env).as_raw()
-}
-
 /// Gets a list of the active buffers.
 #[no_mangle]
 pub extern "system" fn Java_mp_code_Workspace_active_1buffers(

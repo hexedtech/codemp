@@ -69,16 +69,6 @@ public final class Workspace {
 		return get_file_tree(this.ptr, filter.orElse(null), strict);
 	}
 
-	private static native String[] user_list(long self);
-
-	/**
-	 * Get names of all users currently in this workspace
-	 * @return an array containing user display names
-	 */
-	public String[] userList() {
-		return user_list(this.ptr);
-	}
-
 	private static native String[] active_buffers(long self);
 
 	/**
