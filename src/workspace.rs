@@ -285,6 +285,15 @@ impl Workspace {
 			.collect()
 	}
 
+	/// Get all names of users currently in this workspace
+	pub fn user_list(&self) -> Vec<String> {
+		self.0
+			.users
+			.iter()
+			.map(|elem| elem.value().name.clone())
+			.collect()
+	}
+
 	/// Get the filetree as it is currently cached.
 	/// A filter may be applied, and it may be strict (equality check) or not (starts_with check).
 	// #[cfg_attr(feature = "js", napi)] // https://github.com/napi-rs/napi-rs/issues/1120

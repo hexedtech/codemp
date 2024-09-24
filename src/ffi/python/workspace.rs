@@ -86,4 +86,9 @@ impl Workspace {
 	fn pyfiletree(&self, filter: Option<&str>, strict: bool) -> Vec<String> {
 		self.filetree(filter, strict)
 	}
+
+	#[pyo3(name = "user_list")]
+	fn pyuser_list(&self) -> Vec<String> {
+		self.user_list()
+	}
 }

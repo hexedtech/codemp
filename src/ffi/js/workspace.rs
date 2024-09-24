@@ -16,6 +16,11 @@ impl Workspace {
 		self.filetree(filter, strict)
 	}
 
+	#[napi(js_name = "user_list")]
+	pub fn js_user_list(&self) -> Vec<String> {
+		self.user_list()
+	}
+
 	#[napi(js_name = "cursor")]
 	pub fn js_cursor(&self) -> CursorController {
 		self.cursor()

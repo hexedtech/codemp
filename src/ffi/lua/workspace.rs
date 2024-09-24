@@ -41,6 +41,10 @@ impl LuaUserData for CodempWorkspace {
 		methods.add_method("filetree", |_, this, (filter, strict,):(Option<String>, Option<bool>,)|
 			Ok(this.filetree(filter.as_deref(), strict.unwrap_or(false)))
 		);
+
+		methods.add_method("user_list", |_, this, ()|
+			Ok(this.user_list())
+		);
 	}
 
 	fn add_fields<F: LuaUserDataFields<Self>>(fields: &mut F) {
