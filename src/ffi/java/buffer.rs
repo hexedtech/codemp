@@ -7,37 +7,37 @@ use super::null_check;
 
 /// Get the name of the buffer. 
 #[jni(package = "mp.code", class = "BufferController")]
-fn get_name(controller: crate::buffer::Controller) -> String {
+fn get_name(controller: &mut crate::buffer::Controller) -> String {
 	controller.path().to_string() //TODO: &str is built into the newer version
 }
 
 /// Get the contents of the buffers.
 #[jni(package = "mp.code", class = "BufferController")]
-fn get_content(controller: crate::buffer::Controller) -> Result<String, ControllerError> {
+fn get_content(controller: &mut crate::buffer::Controller) -> Result<String, ControllerError> {
 	super::tokio().block_on(controller.content())
 }
 
 /// Try to fetch a [TextChange], or return null if there's nothing.
 #[jni(package = "mp.code", class = "BufferController")]
-fn try_recv(controller: crate::buffer::Controller) -> Result<Option<TextChange>, ControllerError> {
+fn try_recv(controller: &mut crate::buffer::Controller) -> Result<Option<TextChange>, ControllerError> {
 	super::tokio().block_on(controller.try_recv())
 }
 
 /// Block until it receives a [TextChange].
 #[jni(package = "mp.code", class = "BufferController")]
-fn recv(controller: crate::buffer::Controller) -> Result<TextChange, ControllerError> {
+fn recv(controller: &mut crate::buffer::Controller) -> Result<TextChange, ControllerError> {
 	super::tokio().block_on(controller.recv())
 }
 
 /// Send a [TextChange] to the server.
 #[jni(package = "mp.code", class = "BufferController")]
-fn send(controller: crate::buffer::Controller, change: TextChange) -> Result<(), ControllerError> {
+fn send(controller: &mut crate::buffer::Controller, change: TextChange) -> Result<(), ControllerError> {
 	super::tokio().block_on(controller.send(change))
 }
 
 /// Register a callback for buffer changes.
 #[jni(package = "mp.code", class = "BufferController")]
-fn callback<'local>(env: &mut JNIEnv<'local>, controller: crate::buffer::Controller, cb: JObject<'local>) {
+fn callback<'local>(env: &mut JNIEnv<'local>, controller: &mut crate::buffer::Controller, cb: JObject<'local>) {
 	null_check!(env, cb, {});
 	let Ok(cb_ref) = env.new_global_ref(cb) else {
 		env.throw_new("mp/code/exceptions/JNIException", "Failed to pin callback reference!")
@@ -70,19 +70,19 @@ fn callback<'local>(env: &mut JNIEnv<'local>, controller: crate::buffer::Control
 
 /// Clear the callback for buffer changes.
 #[jni(package = "mp.code", class = "BufferController")]
-fn clear_callback(controller: crate::buffer::Controller) {
+fn clear_callback(controller: &mut crate::buffer::Controller) {
 	controller.clear_callback()
 }
 
 /// Block until there is a new value available.
 #[jni(package = "mp.code", class = "BufferController")]
-fn poll(controller: crate::buffer::Controller) -> Result<(), ControllerError> {
+fn poll(controller: &mut crate::buffer::Controller) -> Result<(), ControllerError> {
 	super::tokio().block_on(controller.poll())
 }
 
 /// Stop the controller.
 #[jni(package = "mp.code", class = "BufferController")]
-fn stop(controller: crate::buffer::Controller) -> bool {
+fn stop(controller: &mut crate::buffer::Controller) -> bool {
 	controller.stop()
 }
 

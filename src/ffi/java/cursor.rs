@@ -6,25 +6,25 @@ use super::null_check;
 
 /// Try to fetch a [Cursor], or returns null if there's nothing.
 #[jni(package = "mp.code", class = "CursorController")]
-fn try_recv(controller: crate::cursor::Controller) -> Result<Option<Cursor>, ControllerError> {
+fn try_recv(controller: &mut crate::cursor::Controller) -> Result<Option<Cursor>, ControllerError> {
 	super::tokio().block_on(controller.try_recv())
 }
 
 /// Block until it receives a [Cursor].
 #[jni(package = "mp.code", class = "CursorController")]
-fn recv(controller: crate::cursor::Controller) -> Result<Cursor, ControllerError> {
+fn recv(controller: &mut crate::cursor::Controller) -> Result<Cursor, ControllerError> {
 	super::tokio().block_on(controller.recv())
 }
 
 /// Receive from Java, converts and sends a [Cursor].
 #[jni(package = "mp.code", class = "CursorController")]
-fn send(controller: crate::cursor::Controller, cursor: Cursor) -> Result<(), ControllerError> {
+fn send(controller: &mut crate::cursor::Controller, cursor: Cursor) -> Result<(), ControllerError> {
 	super::tokio().block_on(controller.send(cursor))
 }
 
 /// Register a callback for cursor changes.
 #[jni(package = "mp.code", class = "CursorController")]
-fn callback<'local>(env: &mut JNIEnv<'local>, controller: crate::cursor::Controller, cb: JObject<'local>) {
+fn callback<'local>(env: &mut JNIEnv<'local>, controller: &mut crate::cursor::Controller, cb: JObject<'local>) {
 	null_check!(env, cb, {});	
 	let Ok(cb_ref) = env.new_global_ref(cb) else {
 		env.throw_new("mp/code/exceptions/JNIException", "Failed to pin callback reference!")
@@ -57,19 +57,19 @@ fn callback<'local>(env: &mut JNIEnv<'local>, controller: crate::cursor::Control
 
 /// Clear the callback for cursor changes.
 #[jni(package = "mp.code", class = "CursorController")]
-fn clear_callback(controller: crate::cursor::Controller) {
+fn clear_callback(controller: &mut crate::cursor::Controller) {
 	controller.clear_callback()	
 }
 
 /// Block until there is a new value available.
 #[jni(package = "mp.code", class = "CursorController")]
-fn poll(controller: crate::cursor::Controller) -> Result<(), ControllerError> {
+fn poll(controller: &mut crate::cursor::Controller) -> Result<(), ControllerError> {
 	super::tokio().block_on(controller.poll())
 }
 
 /// Stop the controller.
 #[jni(package = "mp.code", class = "CursorController")]
-fn stop(controller: crate::cursor::Controller) -> bool {
+fn stop(controller: &mut crate::cursor::Controller) -> bool {
 	controller.stop()	
 }
 

@@ -244,11 +244,10 @@ impl<'j> jni_toolbox::IntoJavaObject<'j> for crate::api::Cursor {
 
 macro_rules! from_java_ptr {
 	($type: ty) => {
-		impl<'j> jni_toolbox::FromJava<'j> for $type {
+		impl<'j> jni_toolbox::FromJava<'j> for &mut $type {
 			type From = jni::sys::jobject;
 			fn from_java(_env: &mut jni::JNIEnv<'j>, value: Self::From) -> Result<Self, jni::errors::Error> {
-				let original_ptr = unsafe { Box::leak(Box::from_raw(value as *mut $type)) };
-				Ok(original_ptr.clone())
+				Ok(unsafe { Box::leak(Box::from_raw(value as *mut $type)) })
 			}
 		}
 	};
