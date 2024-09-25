@@ -1,7 +1,7 @@
 name: test
 
 on:
-  push
+  push:
   pull_request:
     types: [synchronize, review_requested]
 
