@@ -33,3 +33,4 @@ dist/java/bin/
 dist/java/gradle/
 dist/java/gradlew
 dist/java/gradlew.bat
+dist/java/.factorypath
