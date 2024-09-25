@@ -1,11 +1,9 @@
 name: test
 
 on:
-  push:
-    branches:
-      - dev
+  push
   pull_request:
-    types: [review_requested, synchronize]
+    types: [synchronize, review_requested]
 
 env:
   CARGO_TERM_COLOR: always
