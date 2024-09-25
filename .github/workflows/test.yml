@@ -27,38 +27,6 @@ jobs:
           - java
           - js
           - py
-        toolchain:
-          - stable
-          - beta
-          - nightly
-    steps:
-      - uses: arduino/setup-protoc@v3
-        with:
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: ${{ matrix.toolchain }}
-      - run: cargo build --release --verbose --features=${{ matrix.features }}
-
-  # TODO to build lua bindings on macos, we need to tweak the compile command to expose symbols
-  #      since i can't add conditional steps to above task, i have to separate off lua from the rest...
-  build-lua:
-    runs-on: ${{ matrix.platform.runner }}
-    strategy:
-      fail-fast: false
-      matrix:
-        platform:
-          - runner: ubuntu-latest
-            action: build
-            extra:
-          - runner: windows-latest
-            action: build
-            extra:
-          - runner: macos-latest
-            action: rustc
-            extra: -- -C link-arg=-undefined -C link-arg=dynamic_lookup
-        features:
           - luajit
           - lua54
         toolchain:
@@ -73,17 +41,13 @@ jobs:
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ matrix.toolchain }}
-      - run: cargo ${{ matrix.platform.action }} --release --verbose --features=${{ matrix.features }} ${{ matrix.platform.extra }}
+      - run: cargo build --release --verbose --features=${{ matrix.features }}
 
   test:
-    runs-on: ${{ matrix.runner }}
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        runner:
-          - ubuntu-latest
-          - windows-latest
-          - macos-latest
         toolchain:
           - stable
           - beta

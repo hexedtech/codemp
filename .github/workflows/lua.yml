@@ -20,19 +20,16 @@ jobs:
             target: linux-gnu
             pre: lib
             ext: so
-            buildcmd: cargo build --release --features=luajit
           - runner: windows-latest
             arch: x86_64
             target: windows-msvc
             pre:
             ext: dll
-            buildcmd: cargo build --release --features=luajit
           - runner: macos-latest
             arch: aarch64
             target: darwin
             pre: lib
             ext: dylib
-            buildcmd: cargo rustc --release --features=luajit -- -C link-arg=-undefined -C link-arg=dynamic_lookup
     steps:
       - uses: actions/checkout@v4
         with:
@@ -41,7 +38,7 @@ jobs:
       - uses: arduino/setup-protoc@v3
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
-      - run: ${{ matrix.platform.buildcmd }}
+      - run: cargo build --release --features=luajit
       - id: previoustag
         uses: "WyriHaximus/github-action-get-previous-tag@v1"
         with:
