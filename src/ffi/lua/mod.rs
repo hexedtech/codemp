@@ -27,6 +27,10 @@ fn entrypoint(lua: &Lua) -> LuaResult<LuaTable> {
 		Ok(crate::ext::hash(txt))
 	)?)?;
 
+	exports.set("version", lua.create_function(|_, ()|
+		Ok(crate::version())
+	)?)?;
+
 	// runtime
 	exports.set("setup_driver", lua.create_function(ext::a_sync::setup_driver)?)?;
 	exports.set("poll_callback", lua.create_function(|lua, ()| {

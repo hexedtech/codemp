@@ -31,6 +31,6 @@ build = {
 	modules = { "codemp" },
 	target_path = "../..",
 	include = {
-		["codemp-annotations.lua"] = "dist/lua/annotations.lua",
+		["dist/lua/annotations.lua"] = "codemp-annotations.lua",
 	}
 }
