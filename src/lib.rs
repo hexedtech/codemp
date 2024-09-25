@@ -19,7 +19,7 @@
 //! a supported remote server and returns a [`Client`] handle to interact with it.
 //!
 //! ```rust
-//! # async fn main_fn() {
+//! # async fn main() {
 //! let client = codemp::Client::connect(
 //!   codemp::api::Config::new(
 //!     "mail@example.net",
@@ -35,7 +35,7 @@
 //! [`Client::join_workspace`] or create a new one with [`Client::create_workspace`].
 //!
 //! ```rust, run
-//! # async fn main_fn() {
+//! # async fn main() {
 //! #  let client = codemp::Client::connect(codemp::api::Config::new("", "")).await.unwrap();
 //! client.create_workspace("my-workspace").await.expect("failed to create workspace!");
 //! let workspace = client.join_workspace("my-workspace").await.expect("failed to attach!");
@@ -46,7 +46,7 @@
 //! and one or more [`buffer::Controller`] to send and receive [`api::TextChange`]s.
 //!
 //! ```rust
-//! # async fn main_fn() {
+//! # async fn main() {
 //! #  let client = codemp::Client::connect(codemp::api::Config::new("", "")).await.unwrap();
 //! # client.create_workspace("").await.unwrap();
 //! # let workspace = client.join_workspace("").await.unwrap();
@@ -62,7 +62,7 @@
 //! guaranteed to converge.
 //!
 //! ```rust
-//! # async fn main_fn() {
+//! # async fn main() {
 //! #  let client = codemp::Client::connect(codemp::api::Config::new("", "")).await.unwrap();
 //! # client.create_workspace("").await.unwrap();
 //! # let workspace = client.join_workspace("").await.unwrap();
