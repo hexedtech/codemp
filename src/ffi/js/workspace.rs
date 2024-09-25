@@ -3,6 +3,21 @@ use crate::Workspace;
 use crate::buffer::controller::BufferController;
 use crate::cursor::controller::CursorController;
 
+#[napi(object, js_name = "Event")]
+pub struct JsEvent {
+	pub r#type: String,
+	pub value: String,
+}
+
+impl From<crate::api::Event> for JsEvent {
+	fn from(value: crate::api::Event) -> Self {
+		match value {
+			crate::api::Event::FileTreeUpdated(value) => Self { r#type: "filetree".into(), value },
+			crate::api::Event::UserJoin(value) => Self { r#type: "join".into(), value },
+			crate::api::Event::UserLeave(value) => Self { r#type: "leave".into(), value },
+		}
+	}
+}
 
 #[napi]
 impl Workspace {
@@ -46,4 +61,8 @@ impl Workspace {
 		Ok(self.delete(&path).await?)
 	}
 
+	#[napi(js_name = "event")]
+	pub async fn js_event(&self) -> napi::Result<JsEvent> {
+		Ok(JsEvent::from(self.event().await?))
+	}
 }

@@ -2,7 +2,6 @@ pub mod client;
 pub mod workspace;
 pub mod cursor;
 pub mod buffer;
-pub mod op_cache;
 pub mod ext;
 
 
