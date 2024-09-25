@@ -18,8 +18,8 @@
 //! The main entrypoint is [`Client::connect`], which establishes an authenticated connection with
 //! a supported remote server and returns a [`Client`] handle to interact with it.
 //!
-//! ```rust
-//! # async fn main_fn() {
+//! ```no_run
+//! # async {
 //! let client = codemp::Client::connect(
 //!   codemp::api::Config::new(
 //!     "mail@example.net",
@@ -28,25 +28,25 @@
 //! )
 //!   .await
 //!   .expect("failed to connect!");
-//! # }
+//! # };
 //! ```
 //!
 //! A [`Client`] can acquire a [`Workspace`] handle by joining an existing one it can access with
 //! [`Client::join_workspace`] or create a new one with [`Client::create_workspace`].
 //!
-//! ```rust, run
-//! # async fn main_fn() {
+//! ```no_run
+//! # async {
 //! #  let client = codemp::Client::connect(codemp::api::Config::new("", "")).await.unwrap();
 //! client.create_workspace("my-workspace").await.expect("failed to create workspace!");
 //! let workspace = client.join_workspace("my-workspace").await.expect("failed to attach!");
-//! # }
+//! # };
 //! ```
 //!
 //! A [`Workspace`] handle can be used to acquire a [`cursor::Controller`] to track remote [`api::Cursor`]s
 //! and one or more [`buffer::Controller`] to send and receive [`api::TextChange`]s.
 //!
-//! ```rust
-//! # async fn main_fn() {
+//! ```no_run
+//! # async {
 //! #  let client = codemp::Client::connect(codemp::api::Config::new("", "")).await.unwrap();
 //! # client.create_workspace("").await.unwrap();
 //! # let workspace = client.join_workspace("").await.unwrap();
@@ -54,15 +54,15 @@
 //! let cursor = workspace.cursor();
 //! let event = cursor.recv().await.expect("disconnected while waiting for event!");
 //! println!("user {} moved on buffer {}", event.user.unwrap_or_default(), event.buffer);
-//! # }
+//! # };
 //! ```
 //!
 //! Internally, [`buffer::Controller`]s store the buffer state as a [diamond_types] CRDT, guaranteeing
 //! eventual consistency. Each [`api::TextChange`] is translated in a network counterpart that is
 //! guaranteed to converge.
 //!
-//! ```rust
-//! # async fn main_fn() {
+//! ```no_run
+//! # async {
 //! #  let client = codemp::Client::connect(codemp::api::Config::new("", "")).await.unwrap();
 //! # client.create_workspace("").await.unwrap();
 //! # let workspace = client.join_workspace("").await.unwrap();
@@ -72,7 +72,7 @@
 //! if let Some(change) = buffer.try_recv().await.unwrap() {
 //!   println!("content: {}, span: {}-{}", change.content, change.start, change.end);
 //! } // if None, no changes are currently available
-//! # }
+//! # };
 //! ```
 //!
 //! ## FFI 
