@@ -69,7 +69,6 @@ default = []
 async-trait = ["dep:async-trait"]
 serialize = ["dep:serde", "uuid/serde"]
 # ffi
-rust = [] # used for ci matrix
 java = ["lazy_static", "jni", "tracing-subscriber", "jni-toolbox"]
 js = ["napi-build", "tracing-subscriber", "napi", "napi-derive"]
 py-noabi = ["pyo3", "tracing-subscriber", "pyo3-build-config"]

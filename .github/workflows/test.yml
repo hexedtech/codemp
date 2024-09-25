@@ -4,8 +4,8 @@ on:
   push:
     branches:
       - dev
-  pull_request_review:
-    types: [edited, dismissed]
+  pull_request:
+    types: [review_requested, synchronize]
 
 env:
   CARGO_TERM_COLOR: always
@@ -24,7 +24,6 @@ jobs:
           - windows-latest
           - macos-latest
         features:
-          - rust
           - java
           - js
           - py
