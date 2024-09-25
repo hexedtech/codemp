@@ -80,6 +80,16 @@ public final class Workspace {
 		return active_buffers(this.ptr);
 	}
 
+	private static native String[] user_list(long self);
+
+	/**
+	 * Returns the users currently in the workspace.
+	 * @return an array containing the names of the users in the workspace
+	 */
+	public String[] userList() {
+		return user_list(this.ptr);
+	}
+
 	private static native void create_buffer(long self, String path) throws ConnectionRemoteException;
 
 	/**

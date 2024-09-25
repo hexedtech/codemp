@@ -222,7 +222,7 @@ function Workspace:get_buffer(path) end
 function Workspace:attach(path) end
 
 ---@param path string relative path ("name") of buffer to detach from
----@return boolean
+---@return boolean success
 ---detach from an active buffer, closing all streams. returns false if buffer was no longer active
 function Workspace:detach(path) end
 
@@ -297,7 +297,7 @@ function BufferController:recv() end
 ---block until next text change without returning it
 function BufferController:poll() end
 
----@return boolean
+---@return boolean success
 ---stop buffer worker and disconnect, returns false if was already stopped
 function BufferController:stop() end
 
@@ -354,7 +354,7 @@ function CursorController:recv() end
 ---block until next cursor event without returning it
 function CursorController:poll() end
 
----@return boolean
+---@return boolean success
 ---stop cursor worker and disconnect, returns false if was already stopped
 function CursorController:stop() end
 
@@ -396,6 +396,10 @@ function Codemp.poll_callback() end
 ---use xxh3 hash, returns an i64 from any string
 function Codemp.hash(data) end
 
+---@return string
+---get current library version as string, in semver format
+function Codemp.version() end
+
 ---@class (exact) RuntimeDriver
 local RuntimeDriver = {}
 
@@ -411,6 +415,6 @@ function Codemp.setup_driver(block) end
 
 ---@param printer? string | fun(string) | nil log sink used for printing, if string will go to file, otherwise use given function
 ---@param debug? boolean show more verbose debug logs, default false
----@return boolean true if logger was setup correctly, false otherwise
+---@return boolean success if logger was setup correctly, false otherwise
 ---setup a global logger for codemp, note that can only be done once
 function Codemp.setup_tracing(printer, debug) end

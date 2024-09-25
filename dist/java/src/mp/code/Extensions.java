@@ -12,7 +12,13 @@ public final class Extensions {
 	static final Cleaner CLEANER = Cleaner.create();
 
 	/**
-	 * Hashes the given {@link String} using CodeMP's hashing algorithm (xxh3).
+	 * Returns the version of the Rust crate as a String.
+	 * @return the current version
+	 */
+	public static native String version();
+
+	/**
+	 * Hashes the given String using CodeMP's hashing algorithm (xxh3).
 	 * @param input the string to hash
 	 * @return the hash
 	 */

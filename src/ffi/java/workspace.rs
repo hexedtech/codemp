@@ -31,6 +31,12 @@ fn active_buffers(workspace: &mut Workspace) -> Vec<String> {
 	workspace.buffer_list()
 }
 
+/// Gets a list of the active buffers.
+#[jni(package = "mp.code", class = "Workspace")]
+fn user_list(workspace: &mut Workspace) -> Vec<String> {
+	workspace.user_list()
+}
+
 /// Create a new buffer.
 #[jni(package = "mp.code", class = "Workspace")]
 fn create_buffer(workspace: &mut Workspace, path: String) -> Result<(), RemoteError> {
