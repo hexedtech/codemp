@@ -19,6 +19,7 @@
 //! a supported remote server and returns a [`Client`] handle to interact with it.
 //!
 //! ```no_run
+//! # fn main() {}
 //! # async fn main_fn() {
 //! let client = codemp::Client::connect(
 //!   codemp::api::Config::new(
@@ -35,6 +36,7 @@
 //! [`Client::join_workspace`] or create a new one with [`Client::create_workspace`].
 //!
 //! ```no_run
+//! # fn main() {}
 //! # async fn main_fn() {
 //! #  let client = codemp::Client::connect(codemp::api::Config::new("", "")).await.unwrap();
 //! client.create_workspace("my-workspace").await.expect("failed to create workspace!");
@@ -46,6 +48,7 @@
 //! and one or more [`buffer::Controller`] to send and receive [`api::TextChange`]s.
 //!
 //! ```no_run
+//! # fn main() {}
 //! # async fn main_fn() {
 //! #  let client = codemp::Client::connect(codemp::api::Config::new("", "")).await.unwrap();
 //! # client.create_workspace("").await.unwrap();
@@ -62,6 +65,7 @@
 //! guaranteed to converge.
 //!
 //! ```no_run
+//! # fn main() {}
 //! # async fn main_fn() {
 //! #  let client = codemp::Client::connect(codemp::api::Config::new("", "")).await.unwrap();
 //! # client.create_workspace("").await.unwrap();
