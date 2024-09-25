@@ -18,7 +18,7 @@
 //! The main entrypoint is [`Client::connect`], which establishes an authenticated connection with
 //! a supported remote server and returns a [`Client`] handle to interact with it.
 //!
-//! ```rust
+//! ```no_run
 //! # async fn main_fn() {
 //! let client = codemp::Client::connect(
 //!   codemp::api::Config::new(
@@ -34,7 +34,7 @@
 //! A [`Client`] can acquire a [`Workspace`] handle by joining an existing one it can access with
 //! [`Client::join_workspace`] or create a new one with [`Client::create_workspace`].
 //!
-//! ```rust, run
+//! ```no_run
 //! # async fn main_fn() {
 //! #  let client = codemp::Client::connect(codemp::api::Config::new("", "")).await.unwrap();
 //! client.create_workspace("my-workspace").await.expect("failed to create workspace!");
@@ -45,7 +45,7 @@
 //! A [`Workspace`] handle can be used to acquire a [`cursor::Controller`] to track remote [`api::Cursor`]s
 //! and one or more [`buffer::Controller`] to send and receive [`api::TextChange`]s.
 //!
-//! ```rust
+//! ```no_run
 //! # async fn main_fn() {
 //! #  let client = codemp::Client::connect(codemp::api::Config::new("", "")).await.unwrap();
 //! # client.create_workspace("").await.unwrap();
@@ -61,7 +61,7 @@
 //! eventual consistency. Each [`api::TextChange`] is translated in a network counterpart that is
 //! guaranteed to converge.
 //!
-//! ```rust
+//! ```no_run
 //! # async fn main_fn() {
 //! #  let client = codemp::Client::connect(codemp::api::Config::new("", "")).await.unwrap();
 //! # client.create_workspace("").await.unwrap();
