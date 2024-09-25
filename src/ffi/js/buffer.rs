@@ -27,15 +27,14 @@ impl BufferController {
 	}
 
 	#[napi(js_name = "clear_callback")]
-	pub fn js_clear_callback(&self) -> napi::Result<()> {
+	pub fn js_clear_callback(&self) -> () {
 		self.clear_callback();
-		Ok(())
 	}
 
 
 	#[napi(js_name = "get_path")]
-	pub fn js_path(&self) -> napi::Result<&str> {
-		Ok(self.path())
+	pub fn js_path(&self) -> &str {
+		self.path()
 	}
 
 	#[napi(js_name = "poll")]

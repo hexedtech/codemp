@@ -41,8 +41,8 @@ impl Client {
 
 	#[napi(js_name = "leave_workspace")]
 	/// leave workspace and disconnect, returns true if workspace was active
-	pub async fn js_leave_workspace(&self, workspace: String) -> napi::Result<bool> {
-		Ok(self.leave_workspace(&workspace))
+	pub async fn js_leave_workspace(&self, workspace: String) -> bool {
+		self.leave_workspace(&workspace)
 	}
 
 	#[napi(js_name = "get_workspace")]
