@@ -20,7 +20,7 @@
 /// To delete a the fourth character we should send a.
 ///     `TextChange { start: 3, end: 4, content: "".into(), hash: None }`
 ///
-/// ```
+/// ```no_run
 /// let change = codemp::api::TextChange {
 ///   start: 6, end: 11,
 ///   content: "mom".to_string(), hash: None

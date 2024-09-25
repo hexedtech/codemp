@@ -5,7 +5,7 @@ plugins {
 }
 
 group = 'mp.code'
-version = '0.7.0'
+version = '0.7.1'
 
 java {
 	sourceCompatibility = targetCompatibility = JavaVersion.VERSION_11
