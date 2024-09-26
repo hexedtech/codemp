@@ -66,6 +66,11 @@ impl Workspace {
 		Ok(self.delete(&path).await?)
 	}
 
+	#[napi(js_name = "detach")]
+	pub async fn js_detach(&self, path: String) -> bool {
+		self.detach(&path)
+	}
+
 	#[napi(js_name = "event")]
 	pub async fn js_event(&self) -> napi::Result<JsEvent> {
 		Ok(JsEvent::from(self.event().await?))
