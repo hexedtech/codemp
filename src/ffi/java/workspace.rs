@@ -51,7 +51,7 @@ fn attach_to_buffer(workspace: &mut Workspace, path: String) -> Result<crate::bu
 
 /// Detach from a buffer.
 #[jni(package = "mp.code", class = "Workspace")]
-fn detach_from_buffer(workspace: &mut Workspace, path: String) -> crate::workspace::DetachResult {
+fn detach_from_buffer(workspace: &mut Workspace, path: String) -> bool {
 	workspace.detach(&path)
 }
 

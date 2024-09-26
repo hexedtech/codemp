@@ -113,14 +113,14 @@ public final class Workspace {
 		return attach_to_buffer(ptr, path);
 	}
 
-	private static native DetachResult detach_from_buffer(long self, String path);
+	private static native boolean detach_from_buffer(long self, String path);
 
 	/**
 	 * Detaches from a given buffer.
 	 * @param path the path of the buffer to detach from
-	 * @return a {@link DetachResult} representing the outcome of the operation
+	 * @return a boolean, true only if there are still dangling references preventing controller from stopping
 	 */
-	public DetachResult detachFromBuffer(String path) {
+	public boolean detachFromBuffer(String path) {
 		return detach_from_buffer(this.ptr, path);
 	}
 

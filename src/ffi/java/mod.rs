@@ -170,26 +170,6 @@ impl<'j> jni_toolbox::IntoJavaObject<'j> for crate::api::Event {
 	}
 }
 
-impl<'j> jni_toolbox::IntoJavaObject<'j> for crate::workspace::DetachResult {
-	const CLASS: &'static str = "mp/code/data/DetachResult";
-	fn into_java_object(self, env: &mut jni::JNIEnv<'j>) -> Result<jni::objects::JObject<'j>, jni::errors::Error> {
-		let ordinal = match self {
-			crate::workspace::DetachResult::NotAttached => 0,
-			crate::workspace::DetachResult::Detaching => 1,
-			crate::workspace::DetachResult::AlreadyDetached => 2
-		};
-
-		let class = env.find_class(Self::CLASS)?;
-		let variants: jni::objects::JObjectArray = env.call_method(
-			class,
-			"getEnumConstants",
-			"()[Ljava/lang/Object;",
-			&[]
-		)?.l()?.into();
-		env.get_object_array_element(variants, ordinal)
-	}
-}
-
 impl<'j> jni_toolbox::IntoJavaObject<'j> for crate::api::TextChange {
 	const CLASS: &'static str = "mp/code/data/TextChange";
 	fn into_java_object(self, env: &mut jni::JNIEnv<'j>) -> Result<jni::objects::JObject<'j>, jni::errors::Error> {

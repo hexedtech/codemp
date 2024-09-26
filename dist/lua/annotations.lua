@@ -223,7 +223,7 @@ function Workspace:attach(path) end
 
 ---@param path string relative path ("name") of buffer to detach from
 ---@return boolean success
----detach from an active buffer, closing all streams. returns false if buffer was no longer active
+---detach from an active buffer, closing all streams. returns false if there are still dangling references
 function Workspace:detach(path) end
 
 ---@param filter? string apply a filter to the return elements
@@ -231,6 +231,10 @@ function Workspace:detach(path) end
 ---@return string[]
 ---return the list of available buffers in this workspace, as relative paths from workspace root
 function Workspace:filetree(filter, strict) end
+
+---@return string[]
+---return all names of users currently in this workspace
+function Workspace:user_list() end
 
 ---@return NilPromise
 ---@async
@@ -297,10 +301,6 @@ function BufferController:recv() end
 ---block until next text change without returning it
 function BufferController:poll() end
 
----@return boolean success
----stop buffer worker and disconnect, returns false if was already stopped
-function BufferController:stop() end
-
 ---clears any previously registered buffer callback
 function BufferController:clear_callback() end
 
@@ -353,10 +353,6 @@ function CursorController:recv() end
 ---@nodiscard
 ---block until next cursor event without returning it
 function CursorController:poll() end
-
----@return boolean success
----stop cursor worker and disconnect, returns false if was already stopped
-function CursorController:stop() end
 
 ---clears any previously registered cursor callback
 function CursorController:clear_callback() end

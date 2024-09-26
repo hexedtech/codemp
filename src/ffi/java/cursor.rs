@@ -67,12 +67,6 @@ fn poll(controller: &mut crate::cursor::Controller) -> Result<(), ControllerErro
 	super::tokio().block_on(controller.poll())
 }
 
-/// Stop the controller.
-#[jni(package = "mp.code", class = "CursorController")]
-fn stop(controller: &mut crate::cursor::Controller) -> bool {
-	controller.stop()	
-}
-
 /// Called by the Java GC to drop a [crate::cursor::Controller].
 #[jni(package = "mp.code", class = "CursorController")]
 fn free(input: jni::sys::jlong) {

@@ -172,9 +172,9 @@ impl Config {
 		kwds: Option<Bound<'_, PyDict>>,
 	) -> PyResult<Self> {
 		if let Some(kwgs) = kwds {
-			let host = kwgs.get_item("host")?.map(|e| e.extract().ok()).flatten();
-			let port = kwgs.get_item("port")?.map(|e| e.extract().ok()).flatten();
-			let tls = kwgs.get_item("tls")?.map(|e| e.extract().ok()).flatten();
+			let host = kwgs.get_item("host")?.and_then(|e| e.extract().ok());
+			let port = kwgs.get_item("port")?.and_then(|e| e.extract().ok());
+			let tls = kwgs.get_item("tls")?.and_then(|e| e.extract().ok());
 
 			Ok(Config {
 				username,
