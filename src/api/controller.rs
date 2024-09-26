@@ -5,27 +5,22 @@
 
 use crate::errors::ControllerResult;
 
-pub(crate) trait ControllerWorker<T : Sized + Send + Sync> {
-	type Controller : Controller<T>;
-	type Tx;
-	type Rx;
-
-	fn controller(&self) -> Self::Controller;
-	async fn work(self, tx: Self::Tx, rx: Self::Rx);
-}
-
 // note that we don't use thiserror's #[from] because we don't want the error structs to contain
 // these foreign types, and also we want these to be easily constructable
 
 /// Asynchronous and thread-safe handle to a generic bidirectional stream.
 ///
-/// This generic trait is implemented by actors managing stream procedures.
+/// This generic trait is implemented by actors managing stream procedures, and will generally
+/// imply a background worker.
 /// 
 /// Events can be enqueued for dispatching without blocking with [`Controller::send`].
 ///
 /// For receiving events from the server, an asynchronous API with [`Controller::recv`] is
 /// provided; if that is not feasible, consider using [`Controller::callback`] or, alternatively,
 /// [`Controller::poll`] combined with [`Controller::try_recv`].
+///
+/// Every [`Controller`]'s worker will stop cleanly when all references to its [`Controller`] have
+/// been dropped.
 ///
 /// [`crate::ext::select_buffer`] may provide a useful helper for managing multiple controllers.
 #[allow(async_fn_in_trait)]
@@ -57,15 +52,6 @@ pub trait Controller<T : Sized + Send + Sync> : Sized + Send + Sync {
 
 	/// Attempt to receive a value, return None if nothing is currently available.
 	async fn try_recv(&self) -> ControllerResult<Option<T>>;
-
-	/// Stop underlying worker.
-	///
-	/// After this is called, nothing can be received or sent anymore; however, existing
-	/// controllers will still be accessible until all handles are dropped.
-	/// 
-	/// Returns true if the stop signal was successfully sent, false if channel was
-	/// closed (probably because worker had already been stopped).
-	fn stop(&self) -> bool;
 }
 
 

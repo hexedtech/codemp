@@ -28,7 +28,6 @@ pub(crate) struct CursorControllerInner {
 	pub(crate) stream: mpsc::Sender<oneshot::Sender<Option<Cursor>>>,
 	pub(crate) poll: mpsc::UnboundedSender<oneshot::Sender<()>>,
 	pub(crate) callback: watch::Sender<Option<ControllerCallback<CursorController>>>,
-	pub(crate) stop: mpsc::UnboundedSender<()>,
 }
 
 #[cfg_attr(feature = "async-trait", async_trait::async_trait)]
@@ -80,9 +79,5 @@ impl Controller<Cursor> for CursorController {
 		if self.0.callback.send(None).is_err() {
 			tracing::warn!("no active cursor worker to clear callback");
 		}
-	}
-
-	fn stop(&self) -> bool {
-		self.0.stop.send(()).is_ok()
 	}
 }

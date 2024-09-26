@@ -47,7 +47,6 @@ pub(crate) struct BufferControllerInner {
 	pub(crate) last_update: InternallyMutable<diamond_types::LocalVersion>,
 	pub(crate) ops_in: mpsc::UnboundedSender<(TextChange, oneshot::Sender<LocalVersion>)>,
 	pub(crate) poller: mpsc::UnboundedSender<oneshot::Sender<()>>,
-	pub(crate) stopper: mpsc::UnboundedSender<()>, // just exist
 	pub(crate) content_request: mpsc::Sender<oneshot::Sender<String>>,
 	pub(crate) delta_request: mpsc::Sender<DeltaRequest>,
 	pub(crate) callback: watch::Sender<Option<ControllerCallback<BufferController>>>,
@@ -100,9 +99,5 @@ impl Controller<TextChange> for BufferController {
 		if self.0.callback.send(None).is_err() {
 			tracing::warn!("no active buffer worker to clear callback");
 		}
-	}
-
-	fn stop(&self) -> bool {
-		self.0.stopper.send(()).is_ok()
 	}
 }

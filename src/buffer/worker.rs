@@ -5,7 +5,7 @@ use tokio::sync::{mpsc, oneshot, watch};
 use tonic::Streaming;
 use uuid::Uuid;
 
-use crate::api::controller::{ControllerCallback, ControllerWorker};
+use crate::api::controller::ControllerCallback;
 use crate::api::TextChange;
 use crate::ext::{IgnorableError, InternallyMutable};
 
@@ -16,21 +16,21 @@ use super::controller::{BufferController, BufferControllerInner};
 pub(crate) type DeltaOp = (LocalVersion, Option<TextChange>);
 pub(crate) type DeltaRequest = (LocalVersion, oneshot::Sender<DeltaOp>);
 
-pub(crate) struct BufferWorker {
+struct BufferWorker {
 	user_id: Uuid,
+	path: String,
 	latest_version: watch::Sender<diamond_types::LocalVersion>,
 	ops_in: mpsc::UnboundedReceiver<(TextChange, oneshot::Sender<LocalVersion>)>,
 	poller: mpsc::UnboundedReceiver<oneshot::Sender<()>>,
 	pollers: Vec<oneshot::Sender<()>>,
 	content_checkout: mpsc::Receiver<oneshot::Sender<String>>,
 	delta_req: mpsc::Receiver<DeltaRequest>,
-	stop: mpsc::UnboundedReceiver<()>,
-	controller: BufferController,
+	controller: std::sync::Weak<BufferControllerInner>,
 	callback: watch::Receiver<Option<ControllerCallback<BufferController>>>,
 }
 
-impl BufferWorker {
-	pub fn new(user_id: Uuid, path: &str) -> Self {
+impl BufferController {
+	pub(crate) fn spawn(user_id: Uuid, path: &str, tx: mpsc::Sender<Operation>, rx: Streaming<BufferEvent>) -> Self {
 		let init = diamond_types::LocalVersion::default();
 
 		let (latest_version_tx, latest_version_rx) = watch::channel(init.clone());
@@ -42,67 +42,63 @@ impl BufferWorker {
 
 		let (poller_tx, poller_rx) = mpsc::unbounded_channel();
 
-		let (end_tx, end_rx) = mpsc::unbounded_channel();
-
-		let controller = BufferControllerInner {
+		let controller = Arc::new(BufferControllerInner {
 			name: path.to_string(),
 			latest_version: latest_version_rx,
 			last_update: InternallyMutable::new(diamond_types::LocalVersion::default()),
 			ops_in: opin_tx,
 			poller: poller_tx,
-			stopper: end_tx,
 			content_request: req_tx,
 			delta_request: recv_tx,
 			callback: cb_tx,
-		};
+		});
 
-		BufferWorker {
+		let weak = Arc::downgrade(&controller);
+
+		let worker = BufferWorker {
 			user_id,
+			path: path.to_string(),
 			latest_version: latest_version_tx,
 			ops_in: opin_rx,
 			poller: poller_rx,
 			pollers: Vec::new(),
-			stop: end_rx,
-			controller: BufferController(Arc::new(controller)),
+			controller: weak,
 			content_checkout: req_rx,
 			delta_req: recv_rx,
 			callback: cb_rx,
-		}
-	}
-}
+		};
 
-impl ControllerWorker<TextChange> for BufferWorker {
-	type Controller = BufferController;
-	type Tx = mpsc::Sender<Operation>;
-	type Rx = Streaming<BufferEvent>;
+		tokio::spawn(async move {
+			BufferController::work(worker, tx, rx).await
+		});
 
-	fn controller(&self) -> BufferController {
-		self.controller.clone()
+		BufferController(controller)
 	}
 
-	async fn work(mut self, tx: Self::Tx, mut rx: Self::Rx) {
+	async fn work(mut worker: BufferWorker, tx: mpsc::Sender<Operation>, mut rx: Streaming<BufferEvent>) {
 		let mut branch = diamond_types::list::Branch::new();
 		let mut oplog = diamond_types::list::OpLog::new();
 		let mut timer = Timer::new(10); // TODO configurable!!
+		tracing::debug!("controller worker started");
+
 		loop {
+			if worker.controller.upgrade().is_none() { break };
+
 			// block until one of these is ready
 			tokio::select! {
 				biased;
 
-				// received stop signal
-				_ = self.stop.recv() => break,
-
 				// received a new poller, add it to collection
-				res = self.poller.recv() => match res {
+				res = worker.poller.recv() => match res {
 					None => break tracing::error!("poller channel closed"),
-					Some(tx) => self.pollers.push(tx),
+					Some(tx) => worker.pollers.push(tx),
 				},
 
 				// received a text change from editor
-				res = self.ops_in.recv() => match res {
+				res = worker.ops_in.recv() => match res {
 					None => break tracing::debug!("stopping: editor closed channel"),
 					Some((change, ack)) => {
-						let agent_id = oplog.get_or_create_agent_id(&self.user_id.to_string());
+						let agent_id = oplog.get_or_create_agent_id(&worker.user_id.to_string());
 						let last_ver = oplog.local_version();
 						// clip to buffer extents
 						let clip_end = std::cmp::min(branch.len(), change.end as usize);
@@ -120,7 +116,7 @@ impl ControllerWorker<TextChange> for BufferWorker {
 						if change.is_delete() || change.is_insert() {
 							tx.send(Operation { data: oplog.encode_from(Default::default(), &last_ver) }).await
 								.unwrap_or_warn("failed to send change!");
-							self.latest_version.send(oplog.local_version())
+							worker.latest_version.send(oplog.local_version())
 								.unwrap_or_warn("failed to update latest version!");
 						}
 						ack.send(branch.local_version()).unwrap_or_warn("controller didn't wait for ack");
@@ -129,18 +125,19 @@ impl ControllerWorker<TextChange> for BufferWorker {
 
 				// received a message from server: add to oplog and update latest version (+unlock pollers)
 				res = rx.message() => match res {
-					Err(_e) => break,
-					Ok(None) => break,
-					Ok(Some(change)) => {
-						match oplog.decode_and_add(&change.op.data) {
+					Err(e) => break tracing::warn!("error receiving from server for buffer {}: {e}", worker.path),
+					Ok(None) => break tracing::info!("disconnected from buffer {}", worker.path),
+					Ok(Some(change)) => match worker.controller.upgrade() {
+						None => break, // clean exit actually, just weird we caught it here
+						Some(controller) => match oplog.decode_and_add(&change.op.data) {
 							Ok(local_version) => {
-								self.latest_version.send(local_version)
+								worker.latest_version.send(local_version)
 									.unwrap_or_warn("failed to update latest version!");
-								for tx in self.pollers.drain(..) {
+								for tx in worker.pollers.drain(..) {
 									tx.send(()).unwrap_or_warn("could not wake up poller");
 								}
-								if let Some(cb) = self.callback.borrow().as_ref() {
-									cb.call(self.controller.clone()); // TODO should we run this on another task/thread?
+								if let Some(cb) = worker.callback.borrow().as_ref() {
+									cb.call(BufferController(controller)); // TODO should we run this on another task/thread?
 								}
 							},
 							Err(e) => tracing::error!("could not deserialize operation from server: {}", e),
@@ -149,7 +146,7 @@ impl ControllerWorker<TextChange> for BufferWorker {
 				},
 
 				// controller is ready to apply change and recv(), calculate it and send it back
-				res = self.delta_req.recv() => match res {
+				res = worker.delta_req.recv() => match res {
 					None => break tracing::error!("no more active controllers: can't send changes"),
 					Some((last_ver, tx)) => {
 						if let Some((lv, Some(dtop))) = oplog.iter_xf_operations_from(&last_ver, oplog.local_version_ref()).next() {
@@ -194,7 +191,7 @@ impl ControllerWorker<TextChange> for BufferWorker {
 				},
 
 				// received a request for full CRDT content
-				res = self.content_checkout.recv() => match res {
+				res = worker.content_checkout.recv() => match res {
 					None => break tracing::error!("no more active controllers: can't update content"),
 					Some(tx) => {
 						branch.merge(&oplog, oplog.local_version_ref());
@@ -204,6 +201,8 @@ impl ControllerWorker<TextChange> for BufferWorker {
 				}
 			}
 		}
+
+		tracing::debug!("controller worker stopped");
 	}
 }
 
