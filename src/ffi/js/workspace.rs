@@ -36,6 +36,11 @@ impl Workspace {
 		self.user_list()
 	}
 
+	#[napi(js_name = "buffer_list")]
+	pub fn js_buffer_list(&self) -> Vec<String> {
+		self.buffer_list()
+	}
+
 	#[napi(js_name = "cursor")]
 	pub fn js_cursor(&self) -> CursorController {
 		self.cursor()
