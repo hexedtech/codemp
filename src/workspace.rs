@@ -4,9 +4,8 @@
 //! Buffers are typically organized in a filetree-like reminiscent of POSIX filesystems.
 
 use crate::{
-	api::{controller::ControllerWorker, Controller, Event, User},
-	buffer::{self, worker::BufferWorker},
-	cursor::{self, worker::CursorWorker},
+	api::{Event, User},
+	buffer,	cursor,
 	errors::{ConnectionResult, ControllerResult, RemoteResult},
 	ext::InternallyMutable,
 	network::Services,
@@ -49,9 +48,11 @@ struct WorkspaceInner {
 	user: User, // TODO back-reference to global user id... needed for buffer controllers
 	cursor: cursor::Controller,
 	buffers: DashMap<String, buffer::Controller>,
+	services: Services,
+	// TODO these two are Arced so that the inner worker can hold them without holding the
+	//      WorkspaceInner itself, otherwise its impossible to drop Workspace
 	filetree: DashSet<String>,
 	users: Arc<DashMap<Uuid, User>>,
-	services: Services,
 	// TODO can we drop the mutex?
 	events: tokio::sync::Mutex<mpsc::UnboundedReceiver<crate::api::Event>>,
 }
@@ -79,13 +80,7 @@ impl Workspace {
 
 		let users = Arc::new(DashMap::default());
 
-		let worker = CursorWorker::new(users.clone());
-		let controller = worker.controller();
-		tokio::spawn(async move {
-			tracing::debug!("controller worker started");
-			worker.work(tx, cur_stream).await;
-			tracing::debug!("controller worker stopped");
-		});
+		let controller = cursor::Controller::spawn(users.clone(), tx, cur_stream);
 
 		let ws = Self(Arc::new(WorkspaceInner {
 			name,
@@ -141,14 +136,7 @@ impl Workspace {
 		);
 		let stream = self.0.services.buf().attach(req).await?.into_inner();
 
-		let worker = BufferWorker::new(self.0.user.id, path);
-		let controller = worker.controller();
-		tokio::spawn(async move {
-			tracing::debug!("controller worker started");
-			worker.work(tx, stream).await;
-			tracing::debug!("controller worker stopped");
-		});
-
+		let controller = buffer::Controller::spawn(self.0.user.id, path, tx, stream);
 		self.0.buffers.insert(path.to_string(), controller.clone());
 
 		Ok(controller)
@@ -156,18 +144,19 @@ impl Workspace {
 
 	/// Detach from an active buffer.
 	///
-	/// This option will be carried in background. BufferWorker will be stopped and dropped.
-	/// There may still be some events enqueued in buffers to poll, but the [buffer::Controller] itself won't be
-	/// accessible anymore from [`Workspace`].
-	pub fn detach(&self, path: &str) -> DetachResult {
+	/// This will stop and drop its [`buffer::Controller`].
+	///
+	/// Returns `true` if connectly dropped or wasn't present, `false` if dropped but wasn't last ref
+	///
+	/// If this method returns `false` you have a dangling ref, maybe just waiting for garbage
+	/// collection or maybe preventing the controller from being dropped completely
+	#[allow(clippy::redundant_pattern_matching)] // all cases are clearer this way
+	pub fn detach(&self, path: &str) -> bool {
 		match self.0.buffers.remove(path) {
-			None => DetachResult::NotAttached,
-			Some((_name, controller)) => {
-				if controller.stop() {
-					DetachResult::Detaching
-				} else {
-					DetachResult::AlreadyDetached
-				}
+			None => true, // noop: we werent attached in the first place
+			Some((_name, controller)) => match Arc::into_inner(controller.0) {
+				None => false, // dangling ref! we can't drop this
+				Some(_) => true, // dropping it now
 			}
 		}
 	}
@@ -241,6 +230,8 @@ impl Workspace {
 
 	/// Delete a buffer.
 	pub async fn delete(&self, path: &str) -> RemoteResult<()> {
+		self.detach(path); // just in case
+
 		let mut workspace_client = self.0.services.ws();
 		workspace_client
 			.delete_buffer(tonic::Request::new(BufferNode {
@@ -248,9 +239,6 @@ impl Workspace {
 			}))
 			.await?;
 
-		if let Some((_name, controller)) = self.0.buffers.remove(path) {
-			controller.stop();
-		}
 
 		self.0.filetree.remove(path);
 
@@ -320,17 +308,24 @@ impl Workspace {
 		tx: mpsc::UnboundedSender<crate::api::Event>,
 	) {
 		// TODO for buffer and cursor controller we invoke the tokio::spawn outside, but here inside..?
-		let inner = self.0.clone();
+		let weak = Arc::downgrade(&self.0);
 		let name = self.id();
 		tokio::spawn(async move {
 			loop {
-				match stream.message().await {
+				// TODO can we stop responsively rather than poll for Arc being dropped?
+				if weak.upgrade().is_none() { break };
+				let Some(res) = tokio::select!(
+					x = stream.message() => Some(x),
+					_ = tokio::time::sleep(std::time::Duration::from_secs(5)) => None,
+				) else { continue };
+				match res {
 					Err(e) => break tracing::error!("workspace '{}' stream closed: {}", name, e),
 					Ok(None) => break tracing::info!("leaving workspace {}", name),
 					Ok(Some(WorkspaceEvent { event: None })) => {
 						tracing::warn!("workspace {} received empty event", name)
 					}
 					Ok(Some(WorkspaceEvent { event: Some(ev) })) => {
+						let Some(inner) = weak.upgrade() else { break };
 						let update = crate::api::Event::from(&ev);
 						match ev {
 							// user
@@ -350,9 +345,7 @@ impl Workspace {
 							}
 							WorkspaceEventInner::Delete(FileDelete { path }) => {
 								inner.filetree.remove(&path);
-								if let Some((_name, controller)) = inner.buffers.remove(&path) {
-									controller.stop();
-								}
+								let _ = inner.buffers.remove(&path);
 							}
 						}
 						if tx.send(update).is_err() {
@@ -363,29 +356,4 @@ impl Workspace {
 			}
 		});
 	}
-}
-
-impl Drop for WorkspaceInner {
-	fn drop(&mut self) {
-		for entry in self.buffers.iter() {
-			if !entry.value().stop() {
-				tracing::warn!(
-					"could not stop buffer worker {} for workspace {}",
-					entry.value().path(),
-					self.name
-				);
-			}
-		}
-		if !self.cursor.stop() {
-			tracing::warn!("could not stop cursor worker for workspace {}", self.name);
-		}
-	}
-}
-
-#[cfg_attr(any(feature = "py", feature = "py-noabi"), pyo3::pyclass(eq, eq_int))]
-#[cfg_attr(any(feature = "py", feature = "py-noabi"), derive(PartialEq))]
-pub enum DetachResult {
-	NotAttached,
-	Detaching,
-	AlreadyDetached,
 }

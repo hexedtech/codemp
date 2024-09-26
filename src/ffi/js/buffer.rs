@@ -27,7 +27,7 @@ impl BufferController {
 	}
 
 	#[napi(js_name = "clear_callback")]
-	pub fn js_clear_callback(&self) -> () {
+	pub fn js_clear_callback(&self) {
 		self.clear_callback();
 	}
 

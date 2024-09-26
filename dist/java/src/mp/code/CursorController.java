@@ -83,16 +83,6 @@ public final class CursorController {
 		poll(this.ptr);
 	}
 
-	private static native boolean stop(long self);
-
-	/**
-	 * Stops the controller. Any further calls to it will fail.
-	 * @return true if it was stopped successfully
-	 */
-	public boolean stop() {
-		return stop(this.ptr);
-	}
-
 	private static native void free(long self);
 
 	static {

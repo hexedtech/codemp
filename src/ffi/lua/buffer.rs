@@ -18,8 +18,6 @@ impl LuaUserData for CodempBufferController {
 		methods.add_method("recv", |_, this, ()| a_sync! { this => this.recv().await? });
 		methods.add_method("poll", |_, this, ()| a_sync! { this => this.poll().await? });
 
-		methods.add_method("stop", |_, this, ()| Ok(this.stop()));
-
 		methods.add_method("content", |_, this, ()| a_sync! { this => this.content().await? });
 
 		methods.add_method("clear_callback", |_, this, ()| { this.clear_callback(); Ok(()) });
