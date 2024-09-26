@@ -1,7 +1,7 @@
 plugins {
 	id 'java-library'
-	id "com.vanniktech.maven.publish.base" version "0.30.0"
-	id 'com.google.osdetector' version '1.7.3'
+	alias libs.plugins.maven.publish
+	alias libs.plugins.osdetector
 }
 
 group = 'mp.code'
@@ -107,11 +107,18 @@ repositories {
 
 sourceSets {
 	main.java.srcDirs = ['src/']
+	test.java.srcDirs = ['src-test/']
 }
 
 dependencies {
-	compileOnly 'org.projectlombok:lombok:1.18.34'
-	annotationProcessor 'org.projectlombok:lombok:1.18.34'
+	compileOnly libs.lombok
+	annotationProcessor libs.lombok
+	testImplementation libs.junit.jupiter
+	testImplementation(platform(libs.junit.bom))
+}
+
+test {
+	useJUnitPlatform()
 }
 
 tasks.register('cargoBuild', Exec) {
@@ -156,7 +163,7 @@ import com.vanniktech.maven.publish.SonatypeHost
 mavenPublishing {
 	publishToMavenCentral(SonatypeHost.CENTRAL_PORTAL, true) 
 	signAllPublications()
-	coordinates(project.group, rootProject.name, project.version)
+	coordinates(project.group as String, rootProject.name, project.version as String)
 
 	pom {
 		name = rootProject.name
@@ -183,3 +190,6 @@ mavenPublishing {
 		}
 	}
 }
+
+// useful for debugging
+test.doFirst { environment 'RUST_BACKTRACE', 'full' }
