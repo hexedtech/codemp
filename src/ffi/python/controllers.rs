@@ -67,11 +67,6 @@ impl CursorController {
 	fn pyclear_callback(&self) {
 		self.clear_callback();
 	}
-
-	#[pyo3(name = "stop")]
-	fn pystop(&self) -> bool {
-		self.stop()
-	}
 }
 
 // need to do manually since Controller is a trait implementation
@@ -136,11 +131,6 @@ impl BufferController {
 	#[pyo3(name = "clear_callback")]
 	fn pyclear_callback(&self) {
 		self.clear_callback();
-	}
-
-	#[pyo3(name = "stop")]
-	fn pystop(&self) -> bool {
-		self.stop()
 	}
 }
 

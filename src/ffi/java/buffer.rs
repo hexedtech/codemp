@@ -80,12 +80,6 @@ fn poll(controller: &mut crate::buffer::Controller) -> Result<(), ControllerErro
 	super::tokio().block_on(controller.poll())
 }
 
-/// Stop the controller.
-#[jni(package = "mp.code", class = "BufferController")]
-fn stop(controller: &mut crate::buffer::Controller) -> bool {
-	controller.stop()
-}
-
 /// Called by the Java GC to drop a [crate::buffer::Controller].
 #[jni(package = "mp.code", class = "BufferController")]
 fn free(input: jni::sys::jlong) {

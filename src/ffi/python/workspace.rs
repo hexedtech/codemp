@@ -23,11 +23,7 @@ impl Workspace {
 
 	#[pyo3(name = "detach")]
 	fn pydetach(&self, path: String) -> bool {
-		match self.detach(path.as_str()) {
-			crate::workspace::DetachResult::NotAttached => false,
-			crate::workspace::DetachResult::Detaching => true,
-			crate::workspace::DetachResult::AlreadyDetached => true,
-		}
+		self.detach(path.as_str())
 	}
 
 	#[pyo3(name = "event")]

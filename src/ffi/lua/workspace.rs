@@ -1,7 +1,6 @@
 use mlua_codemp_patch as mlua;
 use mlua::prelude::*;
 use crate::prelude::*;
-use crate::workspace::DetachResult;
 
 use super::ext::a_sync::a_sync;
 use super::ext::from_lua_serde;
@@ -18,7 +17,7 @@ impl LuaUserData for CodempWorkspace {
 		);
 
 		methods.add_method("detach", |_, this, (name,):(String,)|
-			Ok(matches!(this.detach(&name), DetachResult::Detaching | DetachResult::AlreadyDetached))
+			Ok(this.detach(&name))
 		);
 
 		methods.add_method("delete", |_, this, (name,):(String,)|
