@@ -62,7 +62,10 @@ impl CursorController {
 		Ok(())
 	}
 
-
+	#[napi(js_name = "clear_callback")]
+	pub fn js_clear_callback(&self) {
+		self.clear_callback();
+	}
 
 	#[napi(js_name = "send")]
 	pub async fn js_send(&self, pos: JsCursor) -> napi::Result<()> {
