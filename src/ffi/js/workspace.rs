@@ -2,6 +2,7 @@ use napi_derive::napi;
 use crate::Workspace;
 use crate::buffer::controller::BufferController;
 use crate::cursor::controller::CursorController;
+use crate::ffi::js::client::JsUser;
 
 #[napi(object, js_name = "Event")]
 pub struct JsEvent {
@@ -74,5 +75,28 @@ impl Workspace {
 	#[napi(js_name = "event")]
 	pub async fn js_event(&self) -> napi::Result<JsEvent> {
 		Ok(JsEvent::from(self.event().await?))
+	}
+
+	/// Re-fetch remote buffer list
+	#[napi(js_name = "fetch_buffers")]
+	pub async fn js_fetch_buffers(&self) -> napi::Result<()> {
+		Ok(self.fetch_buffers().await?)
+	}
+	/// Re-fetch the list of all users in the workspace.
+	#[napi(js_name = "fetch_users")]
+	pub async fn js_fetch_users(&self) -> napi::Result<()> {
+		Ok(self.fetch_users().await?)
+	}
+
+	/// List users attached to a specific buffer
+	#[napi(js_name = "list_buffer_users")]
+	pub async fn js_list_buffer_users(&self, path: String) -> napi::Result<Vec<JsUser>> {
+		Ok(
+			self
+				.list_buffer_users(&path)
+				.await?
+				.into_iter()
+				.map(JsUser::from)
+				.collect())
 	}
 }
