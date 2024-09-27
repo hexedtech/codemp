@@ -58,3 +58,7 @@ pub mod js;
 /// python bindings, built with [pyo3]
 #[cfg(any(feature = "py", feature = "py-noabi"))]
 pub mod python;
+
+/// c bindings, generated with [cbindgen]
+#[cfg(feature = "c")]
+pub mod c;

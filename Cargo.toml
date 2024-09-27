@@ -62,6 +62,8 @@ serde = { version = "1.0", features = ["derive"], optional = true }
 napi-build = { version = "2.1", optional = true }
 # glue (python)
 pyo3-build-config = { version = "0.22", optional = true }
+# glue (C)
+cbindgen = { version = "0.24", optional = true }
 
 [features]
 default = []
@@ -73,6 +75,7 @@ java = ["lazy_static", "jni", "tracing-subscriber", "jni-toolbox"]
 js = ["napi-build", "tracing-subscriber", "napi", "napi-derive"]
 py-noabi = ["pyo3", "tracing-subscriber", "pyo3-build-config"]
 py = ["py-noabi", "pyo3/abi3-py38"]
+c = ["cbindgen"]
 lua = ["mlua-codemp-patch", "tracing-subscriber", "lazy_static", "serialize"]
 lua54 =["lua", "mlua-codemp-patch/lua54"] 
 luajit = ["lua", "mlua-codemp-patch/luajit"]
