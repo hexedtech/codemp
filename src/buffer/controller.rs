@@ -6,7 +6,7 @@ use std::sync::Arc;
 use diamond_types::LocalVersion;
 use tokio::sync::{mpsc, oneshot, watch};
 
-use crate::api::controller::{Controller, ControllerCallback};
+use crate::api::controller::{AsyncReceiver, AsyncSender, Controller, ControllerCallback};
 use crate::api::TextChange;
 use crate::errors::ControllerResult;
 use crate::ext::InternallyMutable;
@@ -53,7 +53,21 @@ pub(crate) struct BufferControllerInner {
 }
 
 #[cfg_attr(feature = "async-trait", async_trait::async_trait)]
-impl Controller<TextChange> for BufferController {
+impl Controller<TextChange> for BufferController {}
+
+#[cfg_attr(feature = "async-trait", async_trait::async_trait)]
+impl AsyncSender<TextChange> for BufferController {
+	async fn send(&self, op: TextChange) -> ControllerResult<()> {
+		// we let the worker do the updating to the last version and send it back.
+		let (tx, rx) = oneshot::channel();
+		self.0.ops_in.send((op, tx))?;
+		self.0.last_update.set(rx.await?);
+		Ok(())
+	}
+}
+
+#[cfg_attr(feature = "async-trait", async_trait::async_trait)]
+impl AsyncReceiver<TextChange> for BufferController {
 	async fn poll(&self) -> ControllerResult<()> {
 		if self.0.last_update.get() != *self.0.latest_version.borrow() {
 			return Ok(());
@@ -78,14 +92,6 @@ impl Controller<TextChange> for BufferController {
 		let (v, change) = rx.await?;
 		self.0.last_update.set(v);
 		Ok(change)
-	}
-
-	async fn send(&self, op: TextChange) -> ControllerResult<()> {
-		// we let the worker do the updating to the last version and send it back.
-		let (tx, rx) = oneshot::channel();
-		self.0.ops_in.send((op, tx))?;
-		self.0.last_update.set(rx.await?);
-		Ok(())
 	}
 
 	fn callback(&self, cb: impl Into<ControllerCallback<BufferController>>) {

@@ -6,7 +6,7 @@ use std::sync::Arc;
 use tokio::sync::{mpsc, oneshot, watch};
 
 use crate::{
-	api::{controller::ControllerCallback, Controller, Cursor},
+	api::{controller::{AsyncReceiver, AsyncSender, ControllerCallback}, Controller, Cursor},
 	errors::ControllerResult,
 };
 use codemp_proto::{
@@ -31,7 +31,10 @@ pub(crate) struct CursorControllerInner {
 }
 
 #[cfg_attr(feature = "async-trait", async_trait::async_trait)]
-impl Controller<Cursor> for CursorController {
+impl Controller<Cursor> for CursorController {}
+
+#[cfg_attr(feature = "async-trait", async_trait::async_trait)]
+impl AsyncSender<Cursor> for CursorController {
 	async fn send(&self, mut cursor: Cursor) -> ControllerResult<()> {
 		if cursor.start > cursor.end {
 			std::mem::swap(&mut cursor.start, &mut cursor.end);
@@ -54,7 +57,10 @@ impl Controller<Cursor> for CursorController {
 			})
 			.await?)
 	}
+}
 
+#[cfg_attr(feature = "async-trait", async_trait::async_trait)]
+impl AsyncReceiver<Cursor> for CursorController {
 	async fn try_recv(&self) -> ControllerResult<Option<Cursor>> {
 		let (tx, rx) = oneshot::channel();
 		self.0.stream.send(tx).await?;
