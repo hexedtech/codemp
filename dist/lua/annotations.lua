@@ -19,7 +19,7 @@ local NilPromise = {}
 function NilPromise:await() end
 
 --- cancel promise execution
-function NilPromise:abort() end
+function NilPromise:cancel() end
 
 ---@param cb fun() callback to invoke
 ---invoke callback asynchronously as soon as promise is ready
@@ -34,7 +34,7 @@ local StringPromise = {}
 function StringPromise:await() end
 
 --- cancel promise execution
-function StringPromise:abort() end
+function StringPromise:cancel() end
 
 ---@param cb fun(x: string) callback to invoke
 ---invoke callback asynchronously as soon as promise is ready
@@ -47,7 +47,7 @@ local StringArrayPromise = {}
 --- @return string[]
 function StringArrayPromise:await() end
 --- cancel promise execution
-function StringArrayPromise:abort() end
+function StringArrayPromise:cancel() end
 ---@param cb fun(x: string[]) callback to invoke
 ---invoke callback asynchronously as soon as promise is ready
 function StringArrayPromise:and_then(cb) end
@@ -59,7 +59,7 @@ local ClientPromise = {}
 --- @return Client
 function ClientPromise:await() end
 --- cancel promise execution
-function ClientPromise:abort() end
+function ClientPromise:cancel() end
 ---@param cb fun(x: Client) callback to invoke
 ---invoke callback asynchronously as soon as promise is ready
 function ClientPromise:and_then(cb) end
@@ -71,7 +71,7 @@ local WorkspacePromise = {}
 --- @return Workspace
 function WorkspacePromise:await() end
 --- cancel promise execution
-function WorkspacePromise:abort() end
+function WorkspacePromise:cancel() end
 ---@param cb fun(x: Workspace) callback to invoke
 ---invoke callback asynchronously as soon as promise is ready
 function WorkspacePromise:and_then(cb) end
@@ -83,7 +83,7 @@ local WorkspaceEventPromise = {}
 --- @return WorkspaceEvent
 function WorkspaceEventPromise:await() end
 --- cancel promise execution
-function WorkspaceEventPromise:abort() end
+function WorkspaceEventPromise:cancel() end
 ---@param cb fun(x: WorkspaceEvent) callback to invoke
 ---invoke callback asynchronously as soon as promise is ready
 function WorkspaceEventPromise:and_then(cb) end
@@ -95,7 +95,7 @@ local BufferControllerPromise = {}
 --- @return BufferController
 function BufferControllerPromise:await() end
 --- cancel promise execution
-function BufferControllerPromise:abort() end
+function BufferControllerPromise:cancel() end
 ---@param cb fun(x: BufferController) callback to invoke
 ---invoke callback asynchronously as soon as promise is ready
 function BufferControllerPromise:and_then(cb) end
@@ -107,7 +107,7 @@ local CursorPromise = {}
 --- @return Cursor
 function CursorPromise:await() end
 --- cancel promise execution
-function CursorPromise:abort() end
+function CursorPromise:cancel() end
 ---@param cb fun(x: Cursor) callback to invoke
 ---invoke callback asynchronously as soon as promise is ready
 function CursorPromise:and_then(cb) end
@@ -119,7 +119,7 @@ local MaybeCursorPromise = {}
 --- @return Cursor | nil
 function MaybeCursorPromise:await() end
 --- cancel promise execution
-function MaybeCursorPromise:abort() end
+function MaybeCursorPromise:cancel() end
 ---@param cb fun(x: Cursor | nil) callback to invoke
 ---invoke callback asynchronously as soon as promise is ready
 function MaybeCursorPromise:and_then(cb) end
@@ -131,7 +131,7 @@ local TextChangePromise = {}
 --- @return TextChange
 function TextChangePromise:await() end
 --- cancel promise execution
-function TextChangePromise:abort() end
+function TextChangePromise:cancel() end
 ---@param cb fun(x: TextChange) callback to invoke
 ---invoke callback asynchronously as soon as promise is ready
 function TextChangePromise:and_then(cb) end
@@ -143,7 +143,7 @@ local MaybeTextChangePromise = {}
 --- @return TextChange | nil
 function MaybeTextChangePromise:await() end
 --- cancel promise execution
-function MaybeTextChangePromise:abort() end
+function MaybeTextChangePromise:cancel() end
 ---@param cb fun(x: TextChange | nil) callback to invoke
 ---invoke callback asynchronously as soon as promise is ready
 function MaybeTextChangePromise:and_then(cb) end
