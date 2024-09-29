@@ -4,7 +4,6 @@ use napi::threadsafe_function::{ThreadsafeFunction, ThreadSafeCallContext, Threa
 use crate::api::Controller;
 use crate::cursor::controller::CursorController;
 
-
 #[napi(object, js_name = "Cursor")]
 pub struct JsCursor {
 	/// range of text change, as char indexes in buffer previous state
@@ -26,6 +25,7 @@ impl From<JsCursor> for crate::api::Cursor {
 		}
 	}
 }
+
 impl From<crate::api::Cursor> for JsCursor {
 	fn from(value: crate::api::Cursor) -> Self {
 		JsCursor {
@@ -44,6 +44,8 @@ impl From<crate::api::Cursor> for JsCursor {
 #[napi]
 impl CursorController {
 
+	/// Register a callback to be called on receive.
+	/// There can only be one callback registered at any given time.
 	#[napi(js_name = "callback", ts_args_type = "fun: (event: CursorController) => void")]
 	pub fn js_callback(&self, fun: napi::JsFunction) -> napi::Result<()>{
 		let tsfn : ThreadsafeFunction<crate::cursor::controller::CursorController, Fatal> = 
@@ -53,29 +55,35 @@ impl CursorController {
 			}
 		)?;
 		self.callback(move |controller : CursorController| {
-
-			tsfn.call(controller.clone(), ThreadsafeFunctionCallMode::Blocking); //check this with tracing also we could use Ok(event) to get the error
+			tsfn.call(controller.clone(), ThreadsafeFunctionCallMode::Blocking);
+			//check this with tracing also we could use Ok(event) to get the error
 			// If it blocks the main thread too many time we have to change this
-
 		});
 
 		Ok(())
 	}
 
+	/// Clear the registered callback
+	#[napi(js_name = "clear_callback")]
+	pub fn js_clear_callback(&self) {
+		self.clear_callback();
+	}
 
-
+	/// Send a new cursor event to remote
 	#[napi(js_name = "send")]
 	pub async fn js_send(&self, pos: JsCursor) -> napi::Result<()> {
 		Ok(self.send(crate::api::Cursor::from(pos)).await?)
 	}
 
 
+	/// Get next cursor event if available without blocking
 	#[napi(js_name= "try_recv")]
 	pub async fn js_try_recv(&self) -> napi::Result<Option<JsCursor>> {
 		Ok(self.try_recv().await?
 		.map(JsCursor::from))
 	}
 
+  /// Block until next 
 	#[napi(js_name= "recv")]
 	pub async fn js_recv(&self) -> napi::Result<JsCursor> {
 		Ok(self.recv().await?.into())
