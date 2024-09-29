@@ -4,6 +4,9 @@ extern crate napi_build;
 #[cfg(any(feature = "py", feature = "py-noabi"))]
 extern crate pyo3_build_config;
 
+#[cfg(feature = "c")]
+extern crate cbindgen;
+
 /// The main method of the buildscript, required by some glue modules.
 fn main() {
 	#[cfg(feature = "js")]
@@ -20,7 +23,16 @@ fn main() {
 	{
 		if let Ok("macos") = std::env::var("CARGO_CFG_TARGET_OS").as_deref() {
 			println!("cargo:rustc-cdylib-link-arg=-undefined");
-  		println!("cargo:rustc-cdylib-link-arg=dynamic_lookup");
-  	}
+			println!("cargo:rustc-cdylib-link-arg=dynamic_lookup");
+		}
+	}
+
+	#[cfg(feature = "c")]
+	{
+		cbindgen::Builder::new()
+			.with_crate(std::env::var("CARGO_MANIFEST_DIR").unwrap())
+			.generate()
+			.expect("Unable to generate bindings")
+			.write_to_file("dist/c/codemp.h");
 	}
 }
