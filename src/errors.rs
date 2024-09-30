@@ -16,6 +16,7 @@ pub type RemoteResult<T> = std::result::Result<T, RemoteError>;
 #[derive(Debug, thiserror::Error)]
 pub enum ConnectionError {
 	/// Underlying [`tonic::transport::Error`].
+	#[cfg(feature = "pc")]
 	#[error("transport error: {0:?}")]
 	Transport(#[from] tonic::transport::Error),
 
