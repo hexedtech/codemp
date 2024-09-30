@@ -70,7 +70,7 @@ default = ["pc"]
 # extra
 async-trait = ["dep:async-trait"]
 serialize = ["dep:serde", "uuid/serde"]
-pc = ["tonic/tls-roots"] # runs on pc
+pc = ["tonic/tls-roots", "codemp-proto/client"] # runs on pc
 web = ["getrandom"] # runs on web, wasm
 
 # ffi
