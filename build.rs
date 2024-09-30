@@ -20,7 +20,7 @@ fn main() {
 	{
 		if let Ok("macos") = std::env::var("CARGO_CFG_TARGET_OS").as_deref() {
 			println!("cargo:rustc-cdylib-link-arg=-undefined");
-  		println!("cargo:rustc-cdylib-link-arg=dynamic_lookup");
-  	}
+			println!("cargo:rustc-cdylib-link-arg=dynamic_lookup");
+		}
 	}
 }

@@ -2,17 +2,11 @@
 //! All-in-one renamed imports with `use codemp::prelude::*`.
 
 pub use crate::api::{
-	Controller as CodempController,
-	TextChange as CodempTextChange,
-	Cursor as CodempCursor,
-	User as CodempUser,
-	Event as CodempEvent,
-	Config as CodempConfig,
+	Config as CodempConfig, Controller as CodempController, Cursor as CodempCursor,
+	Event as CodempEvent, TextChange as CodempTextChange, User as CodempUser,
 };
-	
+
 pub use crate::{
-	client::Client as CodempClient,
-	workspace::Workspace as CodempWorkspace,
-	cursor::Controller as CodempCursorController,
-	buffer::Controller as CodempBufferController,
+	buffer::Controller as CodempBufferController, client::Client as CodempClient,
+	cursor::Controller as CodempCursorController, workspace::Workspace as CodempWorkspace,
 };

@@ -1,5 +1,10 @@
+use crate::{
+	api::Config,
+	client::Client,
+	errors::{ConnectionError, RemoteError},
+	Workspace,
+};
 use jni_toolbox::jni;
-use crate::{api::Config, client::Client, errors::{ConnectionError, RemoteError}, Workspace};
 
 /// Connect using the given credentials to the default server, and return a [Client] to interact with it.
 #[jni(package = "mp.code", class = "Client", ptr)]
@@ -33,13 +38,21 @@ fn delete_workspace(client: &mut Client, workspace: String) -> Result<(), Remote
 
 /// Invite another user to an owned workspace.
 #[jni(package = "mp.code", class = "Client")]
-fn invite_to_workspace(client: &mut Client, workspace: String, user: String) -> Result<(), RemoteError> {
+fn invite_to_workspace(
+	client: &mut Client,
+	workspace: String,
+	user: String,
+) -> Result<(), RemoteError> {
 	super::tokio().block_on(client.invite_to_workspace(workspace, user))
 }
 
 /// List available workspaces.
 #[jni(package = "mp.code", class = "Client")]
-fn list_workspaces(client: &mut Client, owned: bool, invited: bool) -> Result<Vec<String>, RemoteError> {
+fn list_workspaces(
+	client: &mut Client,
+	owned: bool,
+	invited: bool,
+) -> Result<Vec<String>, RemoteError> {
 	super::tokio().block_on(client.list_workspaces(owned, invited))
 }
 
@@ -52,7 +65,7 @@ fn active_workspaces(client: &mut Client) -> Vec<String> {
 /// Leave a [Workspace] and return whether or not the client was in such workspace.
 #[jni(package = "mp.code", class = "Client")]
 fn leave_workspace(client: &mut Client, workspace: String) -> bool {
-		client.leave_workspace(&workspace)
+	client.leave_workspace(&workspace)
 }
 
 /// Get a [Workspace] by name and returns a pointer to it.

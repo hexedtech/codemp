@@ -2,8 +2,8 @@ pub mod a_sync;
 pub mod callback;
 pub mod log;
 
-use mlua_codemp_patch as mlua;
 use mlua::prelude::*;
+use mlua_codemp_patch as mlua;
 
 pub(crate) use a_sync::tokio;
 pub(crate) use callback::callback;

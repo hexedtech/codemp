@@ -19,9 +19,9 @@ pub mod event;
 /// data structure for remote users
 pub mod user;
 
-pub use controller::Controller;
 pub use change::TextChange;
 pub use config::Config;
+pub use controller::Controller;
 pub use cursor::Cursor;
 pub use event::Event;
 pub use user::User;

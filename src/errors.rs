@@ -61,4 +61,3 @@ impl From<tokio::sync::oneshot::error::RecvError> for ControllerError {
 
 /// Wraps [std::result::Result] with a [ControllerError].
 pub type ControllerResult<T> = std::result::Result<T, ControllerError>;
-
