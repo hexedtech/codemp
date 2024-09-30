@@ -286,7 +286,7 @@ impl Workspace {
 	/// A filter may be applied, and it may be strict (equality check) or not (starts_with check).
 	// #[cfg_attr(feature = "js", napi)] // https://github.com/napi-rs/napi-rs/issues/1120
 	pub fn filetree(&self, filter: Option<&str>, strict: bool) -> Vec<String> {
-		self.0
+		let mut tree = self.0
 			.filetree
 			.iter()
 			.filter(|f| {
@@ -299,7 +299,9 @@ impl Workspace {
 				})
 			})
 			.map(|f| f.clone())
-			.collect()
+			.collect::<Vec<String>>();
+		tree.sort();
+		tree
 	}
 
 	pub(crate) fn run_actor(
