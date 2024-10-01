@@ -1,5 +1,5 @@
 use codemp_proto::{
-	common::Token, buffer::buffer_client::BufferClient, cursor::cursor_client::CursorClient,
+	buffer::buffer_client::BufferClient, common::Token, cursor::cursor_client::CursorClient,
 	workspace::workspace_client::WorkspaceClient,
 };
 use tonic::{
@@ -14,10 +14,7 @@ type AuthedService = InterceptedService<Channel, WorkspaceInterceptor>;
 #[derive(Debug, Clone)]
 pub struct SessionInterceptor(pub tokio::sync::watch::Receiver<codemp_proto::common::Token>);
 impl tonic::service::Interceptor for SessionInterceptor {
-	fn call(
-		&mut self,
-		mut request: tonic::Request<()>,
-	) -> tonic::Result<tonic::Request<()>> {
+	fn call(&mut self, mut request: tonic::Request<()>) -> tonic::Result<tonic::Request<()>> {
 		if let Ok(token) = self.0.borrow().token.parse() {
 			request.metadata_mut().insert("session", token);
 		}

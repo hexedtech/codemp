@@ -1,7 +1,7 @@
-use mlua_codemp_patch as mlua;
-use mlua::prelude::*;
-use crate::prelude::*;
 use crate::ext::IgnorableError;
+use crate::prelude::*;
+use mlua::prelude::*;
+use mlua_codemp_patch as mlua;
 
 pub(crate) fn callback() -> &'static CallbackChannel<LuaCallback> {
 	static CHANNEL: std::sync::OnceLock<CallbackChannel<LuaCallback>> = std::sync::OnceLock::new();
@@ -10,7 +10,7 @@ pub(crate) fn callback() -> &'static CallbackChannel<LuaCallback> {
 
 pub(crate) struct CallbackChannel<T> {
 	tx: std::sync::Arc<tokio::sync::mpsc::UnboundedSender<T>>,
-	rx: std::sync::Mutex<tokio::sync::mpsc::UnboundedReceiver<T>>
+	rx: std::sync::Mutex<tokio::sync::mpsc::UnboundedReceiver<T>>,
 }
 
 impl Default for CallbackChannel<LuaCallback> {
@@ -26,12 +26,16 @@ impl Default for CallbackChannel<LuaCallback> {
 
 impl CallbackChannel<LuaCallback> {
 	pub(crate) fn invoke(&self, cb: LuaFunction, arg: impl Into<CallbackArg>) {
-		self.tx.send(LuaCallback::Invoke(cb, arg.into()))
+		self.tx
+			.send(LuaCallback::Invoke(cb, arg.into()))
 			.unwrap_or_warn("error scheduling callback")
 	}
 
 	pub(crate) fn failure(&self, err: impl std::error::Error) {
-		self.tx.send(LuaCallback::Fail(format!("promise failed with error: {err:?}")))
+		self.tx
+			.send(LuaCallback::Fail(format!(
+				"promise failed with error: {err:?}"
+			)))
 			.unwrap_or_warn("error scheduling callback failure")
 	}
 
@@ -40,12 +44,12 @@ impl CallbackChannel<LuaCallback> {
 			Err(e) => {
 				tracing::debug!("backing off from callback mutex: {e}");
 				None
-			},
+			}
 			Ok(mut lock) => match lock.try_recv() {
 				Err(tokio::sync::mpsc::error::TryRecvError::Disconnected) => {
 					tracing::error!("callback channel closed");
 					None
-				},
+				}
 				Err(tokio::sync::mpsc::error::TryRecvError::Empty) => None,
 				Ok(cb) => Some(cb),
 			},
@@ -95,15 +99,63 @@ impl IntoLua for CallbackArg {
 	}
 }
 
-impl From<()> for CallbackArg { fn from(_: ()) -> Self { CallbackArg::Nil } }
-impl From<String> for CallbackArg { fn from(value: String) -> Self { CallbackArg::Str(value) } }
-impl From<CodempClient> for CallbackArg { fn from(value: CodempClient) -> Self { CallbackArg::Client(value) } }
-impl From<CodempCursorController> for CallbackArg { fn from(value: CodempCursorController) -> Self { CallbackArg::CursorController(value) } }
-impl From<CodempBufferController> for CallbackArg { fn from(value: CodempBufferController) -> Self { CallbackArg::BufferController(value) } }
-impl From<CodempWorkspace> for CallbackArg { fn from(value: CodempWorkspace) -> Self { CallbackArg::Workspace(value) } }
-impl From<Vec<String>> for CallbackArg { fn from(value: Vec<String>) -> Self { CallbackArg::VecStr(value) } }
-impl From<CodempEvent> for CallbackArg { fn from(value: CodempEvent) -> Self { CallbackArg::Event(value) } }
-impl From<CodempCursor> for CallbackArg { fn from(value: CodempCursor) -> Self { CallbackArg::Cursor(value) } }
-impl From<Option<CodempCursor>> for CallbackArg { fn from(value: Option<CodempCursor>) -> Self { CallbackArg::MaybeCursor(value) } }
-impl From<CodempTextChange> for CallbackArg { fn from(value: CodempTextChange) -> Self { CallbackArg::TextChange(value) } }
-impl From<Option<CodempTextChange>> for CallbackArg { fn from(value: Option<CodempTextChange>) -> Self { CallbackArg::MaybeTextChange(value) } }
+impl From<()> for CallbackArg {
+	fn from(_: ()) -> Self {
+		CallbackArg::Nil
+	}
+}
+impl From<String> for CallbackArg {
+	fn from(value: String) -> Self {
+		CallbackArg::Str(value)
+	}
+}
+impl From<CodempClient> for CallbackArg {
+	fn from(value: CodempClient) -> Self {
+		CallbackArg::Client(value)
+	}
+}
+impl From<CodempCursorController> for CallbackArg {
+	fn from(value: CodempCursorController) -> Self {
+		CallbackArg::CursorController(value)
+	}
+}
+impl From<CodempBufferController> for CallbackArg {
+	fn from(value: CodempBufferController) -> Self {
+		CallbackArg::BufferController(value)
+	}
+}
+impl From<CodempWorkspace> for CallbackArg {
+	fn from(value: CodempWorkspace) -> Self {
+		CallbackArg::Workspace(value)
+	}
+}
+impl From<Vec<String>> for CallbackArg {
+	fn from(value: Vec<String>) -> Self {
+		CallbackArg::VecStr(value)
+	}
+}
+impl From<CodempEvent> for CallbackArg {
+	fn from(value: CodempEvent) -> Self {
+		CallbackArg::Event(value)
+	}
+}
+impl From<CodempCursor> for CallbackArg {
+	fn from(value: CodempCursor) -> Self {
+		CallbackArg::Cursor(value)
+	}
+}
+impl From<Option<CodempCursor>> for CallbackArg {
+	fn from(value: Option<CodempCursor>) -> Self {
+		CallbackArg::MaybeCursor(value)
+	}
+}
+impl From<CodempTextChange> for CallbackArg {
+	fn from(value: CodempTextChange) -> Self {
+		CallbackArg::TextChange(value)
+	}
+}
+impl From<Option<CodempTextChange>> for CallbackArg {
+	fn from(value: Option<CodempTextChange>) -> Self {
+		CallbackArg::MaybeTextChange(value)
+	}
+}

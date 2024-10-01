@@ -1,8 +1,8 @@
-use napi_derive::napi;
-use crate::Workspace;
 use crate::buffer::controller::BufferController;
 use crate::cursor::controller::CursorController;
 use crate::ffi::js::client::JsUser;
+use crate::Workspace;
+use napi_derive::napi;
 
 #[napi(object, js_name = "Event")]
 pub struct JsEvent {
@@ -13,9 +13,18 @@ pub struct JsEvent {
 impl From<crate::api::Event> for JsEvent {
 	fn from(value: crate::api::Event) -> Self {
 		match value {
-			crate::api::Event::FileTreeUpdated(value) => Self { r#type: "filetree".into(), value },
-			crate::api::Event::UserJoin(value) => Self { r#type: "join".into(), value },
-			crate::api::Event::UserLeave(value) => Self { r#type: "leave".into(), value },
+			crate::api::Event::FileTreeUpdated(value) => Self {
+				r#type: "filetree".into(),
+				value,
+			},
+			crate::api::Event::UserJoin(value) => Self {
+				r#type: "join".into(),
+				value,
+			},
+			crate::api::Event::UserLeave(value) => Self {
+				r#type: "leave".into(),
+				value,
+			},
 		}
 	}
 }
@@ -27,7 +36,7 @@ impl Workspace {
 	pub fn js_id(&self) -> String {
 		self.id()
 	}
-	
+
 	/// List all available buffers in this workspace
 	#[napi(js_name = "filetree")]
 	pub fn js_filetree(&self, filter: Option<&str>, strict: bool) -> Vec<String> {
@@ -64,13 +73,12 @@ impl Workspace {
 		Ok(self.create(&path).await?)
 	}
 
-	
 	/// Attach to a workspace buffer, starting a BufferController
 	#[napi(js_name = "attach")]
 	pub async fn js_attach(&self, path: String) -> napi::Result<BufferController> {
 		Ok(self.attach(&path).await?)
 	}
-	
+
 	/// Delete a buffer from workspace
 	#[napi(js_name = "delete")]
 	pub async fn js_delete(&self, path: String) -> napi::Result<()> {
@@ -105,12 +113,11 @@ impl Workspace {
 	/// List users attached to a specific buffer
 	#[napi(js_name = "list_buffer_users")]
 	pub async fn js_list_buffer_users(&self, path: String) -> napi::Result<Vec<JsUser>> {
-		Ok(
-			self
-				.list_buffer_users(&path)
-				.await?
-				.into_iter()
-				.map(JsUser::from)
-				.collect())
+		Ok(self
+			.list_buffer_users(&path)
+			.await?
+			.into_iter()
+			.map(JsUser::from)
+			.collect())
 	}
 }

@@ -1,6 +1,6 @@
-use mlua_codemp_patch as mlua;
-use mlua::prelude::*;
 use crate::prelude::*;
+use mlua::prelude::*;
+use mlua_codemp_patch as mlua;
 
 use super::ext::a_sync::a_sync;
 use super::ext::from_lua_serde;
@@ -13,22 +13,28 @@ impl LuaUserData for CodempClient {
 	}
 
 	fn add_methods<M: LuaUserDataMethods<Self>>(methods: &mut M) {
-		methods.add_meta_method(LuaMetaMethod::ToString, |_, this, ()| Ok(format!("{:?}", this)));
+		methods.add_meta_method(LuaMetaMethod::ToString, |_, this, ()| {
+			Ok(format!("{:?}", this))
+		});
 
-		methods.add_method("refresh", |_, this, ()|
-			a_sync! { this => this.refresh().await? }
+		methods.add_method(
+			"refresh",
+			|_, this, ()| a_sync! { this => this.refresh().await? },
 		);
 
-		methods.add_method("join_workspace", |_, this, (ws,):(String,)|
-			a_sync! { this => this.join_workspace(ws).await? }
+		methods.add_method(
+			"join_workspace",
+			|_, this, (ws,): (String,)| a_sync! { this => this.join_workspace(ws).await? },
 		);
 
-		methods.add_method("create_workspace", |_, this, (ws,):(String,)|
-			a_sync! { this => this.create_workspace(ws).await? }
+		methods.add_method(
+			"create_workspace",
+			|_, this, (ws,): (String,)| a_sync! { this => this.create_workspace(ws).await? },
 		);
 
-		methods.add_method("delete_workspace", |_, this, (ws,):(String,)|
-			a_sync! { this => this.delete_workspace(ws).await? }
+		methods.add_method(
+			"delete_workspace",
+			|_, this, (ws,): (String,)| a_sync! { this => this.delete_workspace(ws).await? },
 		);
 
 		methods.add_method("invite_to_workspace", |_, this, (ws,user):(String,String)|
@@ -39,11 +45,13 @@ impl LuaUserData for CodempClient {
 			a_sync! { this => this.list_workspaces(owned.unwrap_or(true), invited.unwrap_or(true)).await? }
 		);
 
-		methods.add_method("leave_workspace", |_, this, (ws,):(String,)|
+		methods.add_method("leave_workspace", |_, this, (ws,): (String,)| {
 			Ok(this.leave_workspace(&ws))
-		);
-		
-		methods.add_method("get_workspace", |_, this, (ws,):(String,)| Ok(this.get_workspace(&ws)));
+		});
+
+		methods.add_method("get_workspace", |_, this, (ws,): (String,)| {
+			Ok(this.get_workspace(&ws))
+		});
 	}
 }
 

@@ -5,7 +5,7 @@
 
 use crate::{
 	api::{Event, User},
-	buffer,	cursor,
+	buffer, cursor,
 	errors::{ConnectionResult, ControllerResult, RemoteResult},
 	ext::InternallyMutable,
 	network::Services,
@@ -155,9 +155,9 @@ impl Workspace {
 		match self.0.buffers.remove(path) {
 			None => true, // noop: we werent attached in the first place
 			Some((_name, controller)) => match Arc::into_inner(controller.0) {
-				None => false, // dangling ref! we can't drop this
+				None => false,   // dangling ref! we can't drop this
 				Some(_) => true, // dropping it now
-			}
+			},
 		}
 	}
 
@@ -239,7 +239,6 @@ impl Workspace {
 			}))
 			.await?;
 
-
 		self.0.filetree.remove(path);
 
 		Ok(())
@@ -315,11 +314,15 @@ impl Workspace {
 		tokio::spawn(async move {
 			loop {
 				// TODO can we stop responsively rather than poll for Arc being dropped?
-				if weak.upgrade().is_none() { break };
+				if weak.upgrade().is_none() {
+					break;
+				};
 				let Some(res) = tokio::select!(
 					x = stream.message() => Some(x),
 					_ = tokio::time::sleep(std::time::Duration::from_secs(5)) => None,
-				) else { continue };
+				) else {
+					continue;
+				};
 				match res {
 					Err(e) => break tracing::error!("workspace '{}' stream closed: {}", name, e),
 					Ok(None) => break tracing::info!("leaving workspace {}", name),
