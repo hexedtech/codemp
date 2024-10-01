@@ -1,5 +1,5 @@
-use napi_derive::napi;
 use crate::{Client, Workspace};
+use napi_derive::napi;
 
 #[napi(object, js_name = "User")]
 pub struct JsUser {
@@ -28,7 +28,7 @@ impl From<crate::api::User> for JsUser {
 
 #[napi]
 /// connect to codemp servers and return a client session
-pub async fn connect(config: crate::api::Config) -> napi::Result<crate::Client>{
+pub async fn connect(config: crate::api::Config) -> napi::Result<crate::Client> {
 	Ok(crate::Client::connect(config).await?)
 }
 
@@ -48,13 +48,21 @@ impl Client {
 
 	#[napi(js_name = "list_workspaces")]
 	/// list available workspaces
-	pub async fn js_list_workspaces(&self, owned: bool, invited: bool) -> napi::Result<Vec<String>> {
+	pub async fn js_list_workspaces(
+		&self,
+		owned: bool,
+		invited: bool,
+	) -> napi::Result<Vec<String>> {
 		Ok(self.list_workspaces(owned, invited).await?)
 	}
 
 	#[napi(js_name = "invite_to_workspace")]
 	/// invite user to given workspace, if able to
-	pub async fn js_invite_to_workspace(&self, workspace: String, user: String) -> napi::Result<()> {
+	pub async fn js_invite_to_workspace(
+		&self,
+		workspace: String,
+		user: String,
+	) -> napi::Result<()> {
 		Ok(self.invite_to_workspace(workspace, user).await?)
 	}
 

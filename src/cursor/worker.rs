@@ -4,8 +4,11 @@ use tokio::sync::{mpsc, oneshot, watch};
 use tonic::Streaming;
 use uuid::Uuid;
 
-use crate::{api::{controller::ControllerCallback, Cursor, User}, ext::IgnorableError};
-use codemp_proto::cursor::{CursorPosition, CursorEvent};
+use crate::{
+	api::{controller::ControllerCallback, Cursor, User},
+	ext::IgnorableError,
+};
+use codemp_proto::cursor::{CursorEvent, CursorPosition};
 
 use super::controller::{CursorController, CursorControllerInner};
 
@@ -21,7 +24,11 @@ struct CursorWorker {
 }
 
 impl CursorController {
-	pub(crate) fn spawn(user_map: Arc<dashmap::DashMap<Uuid, User>>, tx: mpsc::Sender<CursorPosition>, rx: Streaming<CursorEvent>) -> Self {
+	pub(crate) fn spawn(
+		user_map: Arc<dashmap::DashMap<Uuid, User>>,
+		tx: mpsc::Sender<CursorPosition>,
+		rx: Streaming<CursorEvent>,
+	) -> Self {
 		// TODO we should tweak the channel buffer size to better propagate backpressure
 		let (op_tx, op_rx) = mpsc::channel(64);
 		let (stream_tx, stream_rx) = mpsc::channel(1);
@@ -52,11 +59,17 @@ impl CursorController {
 		CursorController(controller)
 	}
 
-	async fn work(mut worker: CursorWorker, tx: mpsc::Sender<CursorPosition>, mut rx: Streaming<CursorEvent>) {
+	async fn work(
+		mut worker: CursorWorker,
+		tx: mpsc::Sender<CursorPosition>,
+		mut rx: Streaming<CursorEvent>,
+	) {
 		loop {
 			tracing::debug!("cursor worker polling");
-			if worker.controller.upgrade().is_none() { break }; // clean exit: all controllers dropped
-			tokio::select!{
+			if worker.controller.upgrade().is_none() {
+				break;
+			}; // clean exit: all controllers dropped
+			tokio::select! {
 				biased;
 
 				// new poller

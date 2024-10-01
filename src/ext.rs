@@ -16,7 +16,7 @@ use tokio::sync::mpsc;
 pub async fn select_buffer(
 	buffers: &[crate::buffer::Controller],
 	timeout: Option<std::time::Duration>,
-	runtime: &tokio::runtime::Runtime
+	runtime: &tokio::runtime::Runtime,
 ) -> ControllerResult<Option<crate::buffer::Controller>> {
 	let (tx, mut rx) = mpsc::unbounded_channel();
 	let mut tasks = Vec::new();
@@ -46,13 +46,13 @@ pub async fn select_buffer(
 					t.abort();
 				}
 				return Ok(x);
-			},
+			}
 		}
 	}
 }
 
 /// Hash a given byte array with the internally used algorithm.
-/// 
+///
 /// Currently, it uses [`xxhash_rust::xxh3::xxh3_64`].
 pub fn hash(data: impl AsRef<[u8]>) -> i64 {
 	let hash = xxhash_rust::xxh3::xxh3_64(data.as_ref());
@@ -104,11 +104,13 @@ pub trait IgnorableError {
 }
 
 impl<T, E> IgnorableError for std::result::Result<T, E>
-where E : std::fmt::Debug {
+where
+	E: std::fmt::Debug,
+{
 	/// Logs the error as a warning and returns a unit.
 	fn unwrap_or_warn(self, msg: &str) {
 		match self {
-			Ok(_) => {},
+			Ok(_) => {}
 			Err(e) => tracing::warn!("{}: {:?}", msg, e),
 		}
 	}

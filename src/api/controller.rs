@@ -1,5 +1,5 @@
 //! # Controller
-//! 
+//!
 //! A bidirectional stream handler to easily manage asynchronous operations between local buffers
 //! and the server.
 
@@ -12,7 +12,7 @@ use crate::errors::ControllerResult;
 ///
 /// This generic trait is implemented by actors managing stream procedures, and will generally
 /// imply a background worker.
-/// 
+///
 /// Events can be enqueued for dispatching without blocking with [`Controller::send`].
 ///
 /// For receiving events from the server, an asynchronous API with [`Controller::recv`] is
@@ -25,7 +25,7 @@ use crate::errors::ControllerResult;
 /// [`crate::ext::select_buffer`] may provide a useful helper for managing multiple controllers.
 #[allow(async_fn_in_trait)]
 #[cfg_attr(feature = "async-trait", async_trait::async_trait)]
-pub trait Controller<T : Sized + Send + Sync> : Sized + Send + Sync {
+pub trait Controller<T: Sized + Send + Sync>: Sized + Send + Sync {
 	/// Enqueue a new value to be sent to all other users.
 	async fn send(&self, x: T) -> ControllerResult<()>;
 
@@ -53,7 +53,6 @@ pub trait Controller<T : Sized + Send + Sync> : Sized + Send + Sync {
 	/// Attempt to receive a value, return None if nothing is currently available.
 	async fn try_recv(&self) -> ControllerResult<Option<T>>;
 }
-
 
 /// Type wrapper for Boxed dynamic callback.
 pub struct ControllerCallback<T>(pub Box<dyn Sync + Send + Fn(T)>);
