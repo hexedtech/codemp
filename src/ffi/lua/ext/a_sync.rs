@@ -49,6 +49,13 @@ impl LuaUserData for Promise {
 			None => Err(LuaError::runtime("Promise already awaited")),
 			Some(x) => tokio().block_on(x).map_err(LuaError::runtime)?,
 		});
+		methods.add_method_mut("cancel", |_, this, ()| match this.0.take() {
+			None => Err(LuaError::runtime("Promise already awaited")),
+			Some(x) => {
+				x.abort();
+				Ok(())
+			},
+		});
 		methods.add_method_mut("and_then", |_, this, (cb,): (LuaFunction,)| {
 			match this.0.take() {
 				None => Err(LuaError::runtime("Promise already awaited")),
