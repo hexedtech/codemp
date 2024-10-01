@@ -182,7 +182,10 @@ impl Client {
 
 	/// Leave the [`Workspace`] with the given name.
 	pub fn leave_workspace(&self, id: &str) -> bool {
-		self.0.workspaces.remove(id).is_some()
+		match self.0.workspaces.remove(id) {
+			None => true,
+			Some(x) => x.1.consume(),
+		}
 	}
 
 	/// Gets a [`Workspace`] handle by name.

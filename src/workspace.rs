@@ -100,6 +100,11 @@ impl Workspace {
 		Ok(ws)
 	}
 
+	/// drop arc, return true if was last
+	pub(crate) fn consume(self) -> bool {
+		Arc::into_inner(self.0).is_some()
+	}
+
 	/// Create a new buffer in the current workspace.
 	pub async fn create(&self, path: &str) -> RemoteResult<()> {
 		let mut workspace_client = self.0.services.ws();
@@ -312,6 +317,7 @@ impl Workspace {
 		let weak = Arc::downgrade(&self.0);
 		let name = self.id();
 		tokio::spawn(async move {
+			tracing::debug!("workspace worker starting");
 			loop {
 				// TODO can we stop responsively rather than poll for Arc being dropped?
 				if weak.upgrade().is_none() {
@@ -359,6 +365,7 @@ impl Workspace {
 					}
 				}
 			}
+			tracing::debug!("workspace worker stopping");
 		});
 	}
 }
