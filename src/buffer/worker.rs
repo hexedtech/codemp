@@ -86,6 +86,7 @@ impl BufferController {
 		let mut branch = diamond_types::list::Branch::new();
 		let mut oplog = diamond_types::list::OpLog::new();
 		let mut timer = Timer::new(10); // TODO configurable!!
+		let agent_id = oplog.get_or_create_agent_id(&worker.user_id.to_string());
 		tracing::debug!("controller worker started");
 
 		loop {
@@ -107,11 +108,15 @@ impl BufferController {
 				res = worker.ops_in.recv() => match res {
 					None => break tracing::debug!("stopping: editor closed channel"),
 					Some((change, ack)) => {
-						let agent_id = oplog.get_or_create_agent_id(&worker.user_id.to_string());
 						let last_ver = oplog.local_version();
 						// clip to buffer extents
-						let clip_end = std::cmp::min(branch.len(), change.end as usize);
-						let clip_start = std::cmp::max(0, change.start as usize);
+						let clip_start = change.start as usize;
+						let mut clip_end = change.end as usize;
+						let b_len = branch.len();
+						if clip_end > b_len {
+							tracing::warn!("clipping TextChange end span from {clip_end} to {b_len}");
+							clip_end = b_len;
+						};
 
 						// in case we have a "replace" span
 						if change.is_delete() {
@@ -128,7 +133,8 @@ impl BufferController {
 							worker.latest_version.send(oplog.local_version())
 								.unwrap_or_warn("failed to update latest version!");
 						}
-						ack.send(branch.local_version()).unwrap_or_warn("controller didn't wait for ack");
+						ack.send(branch.local_version())
+							.unwrap_or_warn("controller didn't wait for ack");
 					},
 				},
 
@@ -173,7 +179,10 @@ impl BufferController {
 							let tc = match dtop.kind {
 								diamond_types::list::operation::OpKind::Ins => {
 									if dtop.end() - dtop.start() != dtop.content_as_str().unwrap_or_default().len() {
-										tracing::error!("[?!?!] Insert span differs from effective content len (TODO remove this error after a bit)");
+										tracing::warn!(
+											"Insert span ({}, {}) differs from effective content len ({})",
+											dtop.start(), dtop.end(), dtop.content_as_str().unwrap_or_default().len()
+										);
 									}
 									crate::api::change::TextChange {
 										start: dtop.start() as u32,
