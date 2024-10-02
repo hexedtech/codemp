@@ -26,7 +26,11 @@ use crate::errors::ControllerResult;
 /// [`crate::ext::select_buffer`] may provide a useful helper for managing multiple controllers.
 #[allow(async_fn_in_trait)]
 #[cfg_attr(feature = "async-trait", async_trait::async_trait)]
-pub trait Controller<T : Sized + Send + Sync> : AsyncSender<T> + AsyncReceiver<T> {}
+pub trait Controller<Tx, Rx = Tx> : AsyncSender<Tx> + AsyncReceiver<Rx>
+where
+	Tx: Sized + Sync + Send,
+	Rx: Sized + Sync + Send,
+{}
 
 /// Asynchronous and thread-safe handle to send data over a stream.
 /// See [`Controller`]'s documentation for details.
