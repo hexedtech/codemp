@@ -14,7 +14,7 @@ use crate::ext::IgnorableError;
 
 use super::worker::DeltaRequest;
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub(crate) struct BufferAck {
 	pub(crate) tx: mpsc::UnboundedSender<LocalVersion>,
 	pub(crate) version: LocalVersion,
