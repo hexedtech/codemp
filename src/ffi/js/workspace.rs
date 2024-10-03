@@ -1,11 +1,14 @@
-use napi::threadsafe_function::ErrorStrategy::Fatal;
-use napi::threadsafe_function::{ThreadSafeCallContext, ThreadsafeFunction, ThreadsafeFunctionCallMode};
-use napi_derive::napi;
-use crate::Workspace;
+use crate::api::controller::AsyncReceiver;
 use crate::buffer::controller::BufferController;
 use crate::cursor::controller::CursorController;
-use crate::api::controller::AsyncReceiver;
+use crate::Workspace;
+use napi::threadsafe_function::ErrorStrategy::Fatal;
+use napi::threadsafe_function::{
+	ThreadSafeCallContext, ThreadsafeFunction, ThreadsafeFunctionCallMode,
+};
+use napi_derive::napi;
 
+use super::client::JsUser;
 
 #[napi(object, js_name = "Event")]
 pub struct JsEvent {
@@ -111,18 +114,14 @@ impl Workspace {
 	}
 
 	#[napi(js_name = "callback", ts_args_type = "fun: (event: Workspace) => void")]
-	pub fn js_callback(&self, fun: napi::JsFunction) -> napi::Result<()>{
-		let tsfn : ThreadsafeFunction<crate::Workspace, Fatal> = 
-		fun.create_threadsafe_function(0,
-			|ctx : ThreadSafeCallContext<crate::Workspace>| {
+	pub fn js_callback(&self, fun: napi::JsFunction) -> napi::Result<()> {
+		let tsfn: ThreadsafeFunction<crate::Workspace, Fatal> = fun
+			.create_threadsafe_function(0, |ctx: ThreadSafeCallContext<crate::Workspace>| {
 				Ok(vec![ctx.value])
-			}
-		)?;
-		self.callback(move |controller : Workspace| {
-
+			})?;
+		self.callback(move |controller: Workspace| {
 			tsfn.call(controller.clone(), ThreadsafeFunctionCallMode::Blocking); //check this with tracing also we could use Ok(event) to get the error
-			// If it blocks the main thread too many time we have to change this
-
+			                                                            // If it blocks the main thread too many time we have to change this
 		});
 
 		Ok(())

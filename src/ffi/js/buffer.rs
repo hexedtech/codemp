@@ -1,7 +1,5 @@
-use napi::threadsafe_function::{ErrorStrategy::Fatal, ThreadSafeCallContext, ThreadsafeFunction, ThreadsafeFunctionCallMode};
-use napi_derive::napi;
-use crate::api::TextChange;
 use crate::api::controller::{AsyncReceiver, AsyncSender};
+use crate::api::TextChange;
 use crate::buffer::controller::BufferController;
 use napi::threadsafe_function::{
 	ErrorStrategy::Fatal, ThreadSafeCallContext, ThreadsafeFunction, ThreadsafeFunctionCallMode,

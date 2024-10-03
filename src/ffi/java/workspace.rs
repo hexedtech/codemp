@@ -1,8 +1,10 @@
 use crate::{
 	api::controller::AsyncReceiver,
 	errors::{ConnectionError, ControllerError, RemoteError},
+	ffi::java::null_check,
 	Workspace,
 };
+use jni::{objects::JObject, JNIEnv};
 use jni_toolbox::jni;
 
 /// Get the workspace id.
@@ -115,17 +117,25 @@ fn clear_callback(workspace: &mut Workspace) {
 
 /// Register a callback for workspace events.
 #[jni(package = "mp.code", class = "Workspace")]
-fn callback<'local>(env: &mut JNIEnv<'local>, controller: &mut crate::Workspace, cb: JObject<'local>) {
+fn callback<'local>(
+	env: &mut JNIEnv<'local>,
+	controller: &mut crate::Workspace,
+	cb: JObject<'local>,
+) {
 	null_check!(env, cb, {});
 	let Ok(cb_ref) = env.new_global_ref(cb) else {
-		env.throw_new("mp/code/exceptions/JNIException", "Failed to pin callback reference!")
-			.expect("Failed to throw exception!");
+		env.throw_new(
+			"mp/code/exceptions/JNIException",
+			"Failed to pin callback reference!",
+		)
+		.expect("Failed to throw exception!");
 		return;
 	};
 
 	controller.callback(move |workspace: crate::Workspace| {
 		let jvm = super::jvm();
-		let mut env = jvm.attach_current_thread_permanently()
+		let mut env = jvm
+			.attach_current_thread_permanently()
 			.expect("failed attaching to main JVM thread");
 		if let Err(e) = env.with_local_frame(5, |env| {
 			use jni_toolbox::IntoJavaObject;
@@ -134,7 +144,7 @@ fn callback<'local>(env: &mut JNIEnv<'local>, controller: &mut crate::Workspace,
 				&cb_ref,
 				"accept",
 				"(Ljava/lang/Object;)V",
-				&[jni::objects::JValueGen::Object(&jworkspace)]
+				&[jni::objects::JValueGen::Object(&jworkspace)],
 			) {
 				tracing::error!("error invoking callback: {e:?}");
 			};

@@ -6,7 +6,10 @@ use std::sync::Arc;
 use tokio::sync::{mpsc, oneshot, watch};
 
 use crate::{
-	api::{controller::{AsyncReceiver, AsyncSender, ControllerCallback}, Controller, Cursor},
+	api::{
+		controller::{AsyncReceiver, AsyncSender, ControllerCallback},
+		Controller, Cursor,
+	},
 	errors::ControllerResult,
 };
 use codemp_proto::{

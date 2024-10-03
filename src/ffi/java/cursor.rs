@@ -1,13 +1,12 @@
 use crate::{
-	api::{Controller, Cursor},
+	api::{
+		controller::{AsyncReceiver, AsyncSender},
+		Cursor,
+	},
 	errors::ControllerError,
 };
 use jni::{objects::JObject, JNIEnv};
 use jni_toolbox::jni;
-use crate::{
-	api::{controller::{AsyncSender, AsyncReceiver}, Cursor},
-	errors::ControllerError
-};
 
 use super::null_check;
 
