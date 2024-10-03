@@ -27,7 +27,7 @@ pub struct CursorController(pub(crate) Arc<CursorControllerInner>);
 
 #[derive(Debug)]
 pub(crate) struct CursorControllerInner {
-	pub(crate) op: mpsc::Sender<CursorPosition>,
+	pub(crate) op: mpsc::UnboundedSender<CursorPosition>,
 	pub(crate) stream: mpsc::Sender<oneshot::Sender<Option<Cursor>>>,
 	pub(crate) poll: mpsc::UnboundedSender<oneshot::Sender<()>>,
 	pub(crate) callback: watch::Sender<Option<ControllerCallback<CursorController>>>,
@@ -38,7 +38,7 @@ impl Controller<Cursor> for CursorController {}
 
 #[cfg_attr(feature = "async-trait", async_trait::async_trait)]
 impl AsyncSender<Cursor> for CursorController {
-	async fn send(&self, mut cursor: Cursor) -> ControllerResult<()> {
+	fn send(&self, mut cursor: Cursor) -> ControllerResult<()> {
 		if cursor.start > cursor.end {
 			std::mem::swap(&mut cursor.start, &mut cursor.end);
 		}
@@ -57,8 +57,7 @@ impl AsyncSender<Cursor> for CursorController {
 					row: cursor.end.0,
 					col: cursor.end.1,
 				},
-			})
-			.await?)
+			})?)
 	}
 }
 

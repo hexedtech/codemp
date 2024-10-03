@@ -6,22 +6,26 @@ use tokio::sync::{mpsc, oneshot, watch};
 use tonic::Streaming;
 use uuid::Uuid;
 
+use crate::api::change::Delta;
 use crate::api::controller::ControllerCallback;
 use crate::api::TextChange;
-use crate::ext::{IgnorableError, InternallyMutable};
+use crate::ext::IgnorableError;
 
 use codemp_proto::buffer::{BufferEvent, Operation};
 
-use super::controller::{BufferController, BufferControllerInner};
+use super::controller::{BufferAck, BufferController, BufferControllerInner};
 
-pub(crate) type DeltaOp = (LocalVersion, Option<TextChange>);
+pub(crate) type DeltaOp = Option<Delta<BufferAck>>;
 pub(crate) type DeltaRequest = (LocalVersion, oneshot::Sender<DeltaOp>);
 
 struct BufferWorker {
 	user_id: Uuid,
 	path: String,
 	latest_version: watch::Sender<diamond_types::LocalVersion>,
-	ops_in: mpsc::UnboundedReceiver<(TextChange, oneshot::Sender<LocalVersion>)>,
+	local_version: watch::Sender<diamond_types::LocalVersion>,
+	ack_rx: mpsc::UnboundedReceiver<LocalVersion>,
+	ack_tx: mpsc::UnboundedSender<LocalVersion>,
+	ops_in: mpsc::UnboundedReceiver<TextChange>,
 	poller: mpsc::UnboundedReceiver<oneshot::Sender<()>>,
 	pollers: Vec<oneshot::Sender<()>>,
 	content_checkout: mpsc::Receiver<oneshot::Sender<String>>,
@@ -43,7 +47,9 @@ impl BufferController {
 		let init = diamond_types::LocalVersion::default();
 
 		let (latest_version_tx, latest_version_rx) = watch::channel(init.clone());
+		let (my_version_tx, my_version_rx) = watch::channel(init.clone());
 		let (opin_tx, opin_rx) = mpsc::unbounded_channel();
+		let (ack_tx, ack_rx) = mpsc::unbounded_channel();
 
 		let (req_tx, req_rx) = mpsc::channel(1);
 		let (recv_tx, recv_rx) = mpsc::channel(1);
@@ -54,7 +60,7 @@ impl BufferController {
 		let controller = Arc::new(BufferControllerInner {
 			name: path.to_string(),
 			latest_version: latest_version_rx,
-			last_update: InternallyMutable::new(diamond_types::LocalVersion::default()),
+			local_version: my_version_rx,
 			ops_in: opin_tx,
 			poller: poller_tx,
 			content_request: req_tx,
@@ -68,6 +74,8 @@ impl BufferController {
 			user_id,
 			path: path.to_string(),
 			latest_version: latest_version_tx,
+			local_version: my_version_tx,
+			ack_tx, ack_rx,
 			ops_in: opin_rx,
 			poller: poller_rx,
 			pollers: Vec::new(),
@@ -106,10 +114,18 @@ impl BufferController {
 					Some(tx) => worker.pollers.push(tx),
 				},
 
+				// received new change ack, merge editor branch up to that version
+				res = worker.ack_rx.recv() => match res {
+					None => break tracing::error!("ack channel closed"),
+					Some(v) => {
+						worker.branch.merge(&worker.oplog, &v)
+					},
+				},
+
 				// received a text change from editor
 				res = worker.ops_in.recv() => match res {
 					None => break tracing::debug!("stopping: editor closed channel"),
-					Some((change, ack)) => worker.handle_editor_change(change, ack, &tx).await,
+					Some(change) => worker.handle_editor_change(change, &tx).await,
 				},
 
 				// received a message from server: add to oplog and update latest version (+unlock pollers)
@@ -142,12 +158,7 @@ impl BufferController {
 }
 
 impl BufferWorker {
-	async fn handle_editor_change(
-		&mut self,
-		change: TextChange,
-		ack: oneshot::Sender<LocalVersion>,
-		tx: &mpsc::Sender<Operation>,
-	) {
+	async fn handle_editor_change(&mut self, change: TextChange, tx: &mpsc::Sender<Operation>) {
 		let agent_id = self.oplog.get_or_create_agent_id(&self.user_id.to_string());
 		let last_ver = self.oplog.local_version();
 		// clip to buffer extents
@@ -174,9 +185,9 @@ impl BufferWorker {
 			self.latest_version
 				.send(self.oplog.local_version())
 				.unwrap_or_warn("failed to update latest version!");
+			self.local_version.send(self.branch.local_version())
+				.unwrap_or_warn("failed to update local version!");
 		}
-		ack.send(self.branch.local_version())
-			.unwrap_or_warn("controller didn't wait for ack");
 	}
 
 	async fn handle_server_change(&mut self, change: BufferEvent) -> bool {
@@ -243,11 +254,17 @@ impl BufferWorker {
 					hash,
 				},
 			};
-			tx.send((new_local_v, Some(tc)))
-				.unwrap_or_warn("could not update ops channel -- is controller dead?");
+			let delta = Delta {
+				change: tc,
+				ack: BufferAck {
+					tx: self.ack_tx.clone(),
+					version: step_ver,
+				},
+			};
+			self.local_version.send(new_local_v).unwrap_or_warn("could not update local version");
+			tx.send(Some(delta)).unwrap_or_warn("could not update ops channel -- is controller dead?");
 		} else {
-			tx.send((last_ver, None))
-				.unwrap_or_warn("could not update ops channel -- is controller dead?");
+			tx.send(None).unwrap_or_warn("could not update ops channel -- is controller dead?");
 		}
 	}
 }

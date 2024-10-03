@@ -13,7 +13,7 @@ use codemp_proto::cursor::{CursorEvent, CursorPosition};
 use super::controller::{CursorController, CursorControllerInner};
 
 struct CursorWorker {
-	op: mpsc::Receiver<CursorPosition>,
+	op: mpsc::UnboundedReceiver<CursorPosition>,
 	map: Arc<dashmap::DashMap<Uuid, User>>,
 	stream: mpsc::Receiver<oneshot::Sender<Option<Cursor>>>,
 	poll: mpsc::UnboundedReceiver<oneshot::Sender<()>>,
@@ -30,7 +30,7 @@ impl CursorController {
 		rx: Streaming<CursorEvent>,
 	) -> Self {
 		// TODO we should tweak the channel buffer size to better propagate backpressure
-		let (op_tx, op_rx) = mpsc::channel(64);
+		let (op_tx, op_rx) = mpsc::unbounded_channel();
 		let (stream_tx, stream_rx) = mpsc::channel(1);
 		let (cb_tx, cb_rx) = watch::channel(None);
 		let (poll_tx, poll_rx) = mpsc::unbounded_channel();

@@ -6,12 +6,26 @@ use std::sync::Arc;
 use diamond_types::LocalVersion;
 use tokio::sync::{mpsc, oneshot, watch};
 
+use crate::api::change::{Acknowledgeable, Delta};
 use crate::api::controller::{AsyncReceiver, AsyncSender, Controller, ControllerCallback};
 use crate::api::TextChange;
 use crate::errors::ControllerResult;
-use crate::ext::InternallyMutable;
+use crate::ext::IgnorableError;
 
 use super::worker::DeltaRequest;
+
+#[derive(Debug)]
+pub(crate) struct BufferAck {
+	pub(crate) tx: mpsc::UnboundedSender<LocalVersion>,
+	pub(crate) version: LocalVersion,
+}
+
+impl Acknowledgeable for BufferAck {
+	fn send(&mut self) {
+		self.tx.send(self.version.clone())
+			.unwrap_or_warn("no worker to receive sent ack");
+	}
+}
 
 /// A [Controller] to asynchronously interact with remote buffers.
 ///
@@ -33,9 +47,6 @@ impl BufferController {
 		let (tx, rx) = oneshot::channel();
 		self.0.content_request.send(tx).await?;
 		let content = rx.await?;
-		self.0
-			.last_update
-			.set(self.0.latest_version.borrow().clone());
 		Ok(content)
 	}
 }
@@ -44,8 +55,8 @@ impl BufferController {
 pub(crate) struct BufferControllerInner {
 	pub(crate) name: String,
 	pub(crate) latest_version: watch::Receiver<diamond_types::LocalVersion>,
-	pub(crate) last_update: InternallyMutable<diamond_types::LocalVersion>,
-	pub(crate) ops_in: mpsc::UnboundedSender<(TextChange, oneshot::Sender<LocalVersion>)>,
+	pub(crate) local_version: watch::Receiver<diamond_types::LocalVersion>,
+	pub(crate) ops_in: mpsc::UnboundedSender<TextChange>,
 	pub(crate) poller: mpsc::UnboundedSender<oneshot::Sender<()>>,
 	pub(crate) content_request: mpsc::Sender<oneshot::Sender<String>>,
 	pub(crate) delta_request: mpsc::Sender<DeltaRequest>,
@@ -53,23 +64,19 @@ pub(crate) struct BufferControllerInner {
 }
 
 #[cfg_attr(feature = "async-trait", async_trait::async_trait)]
-impl Controller<TextChange> for BufferController {}
+impl Controller<TextChange, Delta<BufferAck>> for BufferController {}
 
-#[cfg_attr(feature = "async-trait", async_trait::async_trait)]
 impl AsyncSender<TextChange> for BufferController {
-	async fn send(&self, op: TextChange) -> ControllerResult<()> {
-		// we let the worker do the updating to the last version and send it back.
-		let (tx, rx) = oneshot::channel();
-		self.0.ops_in.send((op, tx))?;
-		self.0.last_update.set(rx.await?);
+	fn send(&self, op: TextChange) -> ControllerResult<()> {
+		self.0.ops_in.send(op)?;
 		Ok(())
 	}
 }
 
 #[cfg_attr(feature = "async-trait", async_trait::async_trait)]
-impl AsyncReceiver<TextChange> for BufferController {
+impl AsyncReceiver<Delta<BufferAck>> for BufferController {
 	async fn poll(&self) -> ControllerResult<()> {
-		if self.0.last_update.get() != *self.0.latest_version.borrow() {
+		if *self.0.local_version.borrow() != *self.0.latest_version.borrow() {
 			return Ok(());
 		}
 
@@ -79,8 +86,8 @@ impl AsyncReceiver<TextChange> for BufferController {
 		Ok(())
 	}
 
-	async fn try_recv(&self) -> ControllerResult<Option<TextChange>> {
-		let last_update = self.0.last_update.get();
+	async fn try_recv(&self) -> ControllerResult<Option<Delta<BufferAck>>> {
+		let last_update = self.0.local_version.borrow().clone();
 		let latest_version = self.0.latest_version.borrow().clone();
 
 		if last_update == latest_version {
@@ -89,16 +96,11 @@ impl AsyncReceiver<TextChange> for BufferController {
 
 		let (tx, rx) = oneshot::channel();
 		self.0.delta_request.send((last_update, tx)).await?;
-		let (v, change) = rx.await?;
-		self.0.last_update.set(v);
-		Ok(change)
+		Ok(rx.await?)
 	}
 
 	fn callback(&self, cb: impl Into<ControllerCallback<BufferController>>) {
-		if self.0.callback.send(Some(cb.into())).is_err() {
-			// TODO should we panic? we failed what we were supposed to do
-			tracing::error!("no active buffer worker to run registered callback!");
-		}
+		self.0.callback.send_replace(Some(cb.into()));
 	}
 
 	fn clear_callback(&self) {
