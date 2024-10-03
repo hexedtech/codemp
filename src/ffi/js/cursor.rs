@@ -1,9 +1,14 @@
 use crate::api::controller::{AsyncReceiver, AsyncSender};
 use crate::cursor::controller::CursorController;
 use napi::threadsafe_function::ErrorStrategy::Fatal;
+use napi::threadsafe_function::ErrorStrategy::Fatal;
 use napi::threadsafe_function::{
 	ThreadSafeCallContext, ThreadsafeFunction, ThreadsafeFunctionCallMode,
 };
+use napi::threadsafe_function::{
+	ThreadSafeCallContext, ThreadsafeFunction, ThreadsafeFunctionCallMode,
+};
+use napi_derive::napi;
 use napi_derive::napi;
 
 #[napi(object, js_name = "Cursor")]
@@ -74,8 +79,8 @@ impl CursorController {
 
 	/// Send a new cursor event to remote
 	#[napi(js_name = "send")]
-	pub async fn js_send(&self, pos: JsCursor) -> napi::Result<()> {
-		Ok(self.send(crate::api::Cursor::from(pos)).await?)
+	pub fn js_send(&self, pos: JsCursor) -> napi::Result<()> {
+		Ok(self.send(crate::api::Cursor::from(pos))?)
 	}
 
 	/// Get next cursor event if available without blocking

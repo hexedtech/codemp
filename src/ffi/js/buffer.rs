@@ -1,9 +1,14 @@
+use crate::api::change::Delta;
 use crate::api::controller::{AsyncReceiver, AsyncSender};
 use crate::api::TextChange;
 use crate::buffer::controller::BufferController;
 use napi::threadsafe_function::{
 	ErrorStrategy::Fatal, ThreadSafeCallContext, ThreadsafeFunction, ThreadsafeFunctionCallMode,
 };
+use napi::threadsafe_function::{
+	ErrorStrategy::Fatal, ThreadSafeCallContext, ThreadsafeFunction, ThreadsafeFunctionCallMode,
+};
+use napi_derive::napi;
 use napi_derive::napi;
 
 #[napi]
@@ -51,20 +56,20 @@ impl BufferController {
 
 	/// Return next buffer event if present
 	#[napi(js_name = "try_recv")]
-	pub async fn js_try_recv(&self) -> napi::Result<Option<TextChange>> {
+	pub async fn js_try_recv(&self) -> napi::Result<Option<Delta<BufferAck>>> {
 		Ok(self.try_recv().await?)
 	}
 
 	/// Wait for next buffer event and return it
 	#[napi(js_name = "recv")]
-	pub async fn js_recv(&self) -> napi::Result<TextChange> {
+	pub async fn js_recv(&self) -> napi::Result<Delta<BufferAck>> {
 		Ok(self.recv().await?)
 	}
 
 	/// Send a buffer update to workspace
 	#[napi(js_name = "send")]
-	pub async fn js_send(&self, op: TextChange) -> napi::Result<()> {
-		Ok(self.send(op).await?)
+	pub fn js_send(&self, op: TextChange) -> napi::Result<()> {
+		Ok(self.send(op)?)
 	}
 
 	/// Return buffer whole content

@@ -75,7 +75,8 @@ impl BufferController {
 			path: path.to_string(),
 			latest_version: latest_version_tx,
 			local_version: my_version_tx,
-			ack_tx, ack_rx,
+			ack_tx,
+			ack_rx,
 			ops_in: opin_rx,
 			poller: poller_rx,
 			pollers: Vec::new(),
@@ -185,7 +186,8 @@ impl BufferWorker {
 			self.latest_version
 				.send(self.oplog.local_version())
 				.unwrap_or_warn("failed to update latest version!");
-			self.local_version.send(self.branch.local_version())
+			self.local_version
+				.send(self.branch.local_version())
 				.unwrap_or_warn("failed to update local version!");
 		}
 	}
@@ -261,10 +263,14 @@ impl BufferWorker {
 					version: step_ver,
 				},
 			};
-			self.local_version.send(new_local_v).unwrap_or_warn("could not update local version");
-			tx.send(Some(delta)).unwrap_or_warn("could not update ops channel -- is controller dead?");
+			self.local_version
+				.send(new_local_v)
+				.unwrap_or_warn("could not update local version");
+			tx.send(Some(delta))
+				.unwrap_or_warn("could not update ops channel -- is controller dead?");
 		} else {
-			tx.send(None).unwrap_or_warn("could not update ops channel -- is controller dead?");
+			tx.send(None)
+				.unwrap_or_warn("could not update ops channel -- is controller dead?");
 		}
 	}
 }

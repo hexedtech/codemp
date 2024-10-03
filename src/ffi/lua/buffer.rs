@@ -11,10 +11,10 @@ impl LuaUserData for CodempBufferController {
 			Ok(format!("{:?}", this))
 		});
 
-		methods.add_method(
-			"send",
-			|_, this, (change,): (CodempTextChange,)| a_sync! { this => this.send(change).await? },
-		);
+		methods.add_method("send", |_, this, (change,): (CodempTextChange,)| {
+			this.send(change)?;
+			Ok(())
+		});
 
 		methods.add_method(
 			"try_recv",

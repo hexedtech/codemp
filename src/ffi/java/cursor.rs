@@ -5,6 +5,10 @@ use crate::{
 	},
 	errors::ControllerError,
 };
+use crate::{
+	api::{Controller, Cursor},
+	errors::ControllerError,
+};
 use jni::{objects::JObject, JNIEnv};
 use jni_toolbox::jni;
 
@@ -25,7 +29,7 @@ fn recv(controller: &mut crate::cursor::Controller) -> Result<Cursor, Controller
 /// Receive from Java, converts and sends a [Cursor].
 #[jni(package = "mp.code", class = "CursorController")]
 fn send(controller: &mut crate::cursor::Controller, cursor: Cursor) -> Result<(), ControllerError> {
-	super::tokio().block_on(controller.send(cursor))
+	controller.send(cursor)
 }
 
 /// Register a callback for cursor changes.

@@ -12,10 +12,10 @@ impl LuaUserData for CodempCursorController {
 			Ok(format!("{:?}", this))
 		});
 
-		methods.add_method(
-			"send",
-			|_, this, (cursor,): (CodempCursor,)| a_sync! { this => this.send(cursor).await? },
-		);
+		methods.add_method("send", |_, this, (cursor,): (CodempCursor,)| {
+			this.send(cursor)?;
+			Ok(())
+		});
 		methods.add_method(
 			"try_recv",
 			|_, this, ()| a_sync! { this => this.try_recv().await? },

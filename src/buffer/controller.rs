@@ -22,7 +22,8 @@ pub(crate) struct BufferAck {
 
 impl Acknowledgeable for BufferAck {
 	fn send(&mut self) {
-		self.tx.send(self.version.clone())
+		self.tx
+			.send(self.version.clone())
 			.unwrap_or_warn("no worker to receive sent ack");
 	}
 }

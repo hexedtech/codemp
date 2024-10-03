@@ -15,11 +15,11 @@ impl CursorController {
 	#[pyo3(name = "send")]
 	fn pysend(
 		&self,
-		py: Python,
+		_py: Python,
 		path: String,
 		start: (i32, i32),
 		end: (i32, i32),
-	) -> PyResult<Promise> {
+	) -> PyResult<()> {
 		let pos = Cursor {
 			start,
 			end,
@@ -27,7 +27,8 @@ impl CursorController {
 			user: None,
 		};
 		let this = self.clone();
-		a_sync_allow_threads!(py, this.send(pos).await)
+		this.send(pos)?;
+		Ok(())
 	}
 
 	#[pyo3(name = "try_recv")]
@@ -84,7 +85,7 @@ impl BufferController {
 	}
 
 	#[pyo3(name = "send")]
-	fn pysend(&self, py: Python, start: u32, end: u32, txt: String) -> PyResult<Promise> {
+	fn pysend(&self, _py: Python, start: u32, end: u32, txt: String) -> PyResult<()> {
 		let op = TextChange {
 			start,
 			end,
@@ -92,7 +93,8 @@ impl BufferController {
 			hash: None,
 		};
 		let this = self.clone();
-		a_sync_allow_threads!(py, this.send(op).await)
+		this.send(op)?;
+		Ok(())
 	}
 
 	#[pyo3(name = "try_recv")]

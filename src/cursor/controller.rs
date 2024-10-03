@@ -42,22 +42,19 @@ impl AsyncSender<Cursor> for CursorController {
 		if cursor.start > cursor.end {
 			std::mem::swap(&mut cursor.start, &mut cursor.end);
 		}
-		Ok(self
-			.0
-			.op
-			.send(CursorPosition {
-				buffer: BufferNode {
-					path: cursor.buffer,
-				},
-				start: RowCol {
-					row: cursor.start.0,
-					col: cursor.start.1,
-				},
-				end: RowCol {
-					row: cursor.end.0,
-					col: cursor.end.1,
-				},
-			})?)
+		Ok(self.0.op.send(CursorPosition {
+			buffer: BufferNode {
+				path: cursor.buffer,
+			},
+			start: RowCol {
+				row: cursor.start.0,
+				col: cursor.start.1,
+			},
+			end: RowCol {
+				row: cursor.end.0,
+				col: cursor.end.1,
+			},
+		})?)
 	}
 }
 

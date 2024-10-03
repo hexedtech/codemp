@@ -8,8 +8,6 @@ use napi::threadsafe_function::{
 };
 use napi_derive::napi;
 
-use super::client::JsUser;
-
 #[napi(object, js_name = "Event")]
 pub struct JsEvent {
 	pub r#type: String,
