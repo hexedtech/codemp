@@ -1,6 +1,9 @@
-use jni::{objects::JObject, JNIEnv};
+use crate::{
+	api::controller::AsyncReceiver,
+	errors::{ConnectionError, ControllerError, RemoteError},
+	Workspace,
+};
 use jni_toolbox::jni;
-use crate::{api::controller::AsyncReceiver, errors::{ConnectionError, ControllerError, RemoteError}, ffi::java::null_check, Workspace};
 
 /// Get the workspace id.
 #[jni(package = "mp.code", class = "Workspace")]
@@ -46,7 +49,10 @@ fn create_buffer(workspace: &mut Workspace, path: String) -> Result<(), RemoteEr
 
 /// Attach to a buffer and return a pointer to its [crate::buffer::Controller].
 #[jni(package = "mp.code", class = "Workspace")]
-fn attach_to_buffer(workspace: &mut Workspace, path: String) -> Result<crate::buffer::Controller, ConnectionError> {
+fn attach_to_buffer(
+	workspace: &mut Workspace,
+	path: String,
+) -> Result<crate::buffer::Controller, ConnectionError> {
 	super::tokio().block_on(workspace.attach(&path))
 }
 
@@ -70,7 +76,10 @@ fn fetch_users(workspace: &mut Workspace) -> Result<(), RemoteError> {
 
 /// List users attached to a buffer.
 #[jni(package = "mp.code", class = "Workspace")]
-fn list_buffer_users(workspace: &mut Workspace, path: String) -> Result<Vec<crate::api::User>, RemoteError> {
+fn list_buffer_users(
+	workspace: &mut Workspace,
+	path: String,
+) -> Result<Vec<crate::api::User>, RemoteError> {
 	super::tokio().block_on(workspace.list_buffer_users(&path))
 }
 

@@ -134,6 +134,11 @@ impl Workspace {
 		Ok(ws)
 	}
 
+	/// drop arc, return true if was last
+	pub(crate) fn consume(self) -> bool {
+		Arc::into_inner(self.0).is_some()
+	}
+
 	/// Create a new buffer in the current workspace.
 	pub async fn create(&self, path: &str) -> RemoteResult<()> {
 		let mut workspace_client = self.0.services.ws();
@@ -189,9 +194,9 @@ impl Workspace {
 		match self.0.buffers.remove(path) {
 			None => true, // noop: we werent attached in the first place
 			Some((_name, controller)) => match Arc::into_inner(controller.0) {
-				None => false, // dangling ref! we can't drop this
+				None => false,   // dangling ref! we can't drop this
 				Some(_) => true, // dropping it now
-			}
+			},
 		}
 	}
 
@@ -261,7 +266,6 @@ impl Workspace {
 			}))
 			.await?;
 
-
 		self.0.filetree.remove(path);
 
 		Ok(())
@@ -308,7 +312,7 @@ impl Workspace {
 	/// A filter may be applied, and it may be strict (equality check) or not (starts_with check).
 	// #[cfg_attr(feature = "js", napi)] // https://github.com/napi-rs/napi-rs/issues/1120
 	pub fn filetree(&self, filter: Option<&str>, strict: bool) -> Vec<String> {
-		self.0
+		let mut tree = self.0
 			.filetree
 			.iter()
 			.filter(|f| {
@@ -321,7 +325,9 @@ impl Workspace {
 				})
 			})
 			.map(|f| f.clone())
-			.collect()
+			.collect::<Vec<String>>();
+		tree.sort();
+		tree
 	}
 
 	pub(crate) fn run_actor(
@@ -333,13 +339,18 @@ impl Workspace {
 		let weak = Arc::downgrade(&self.0);
 		let name = self.id();
 		tokio::spawn(async move {
+			tracing::debug!("workspace worker starting");
 			loop {
 				// TODO can we stop responsively rather than poll for Arc being dropped?
-				if weak.upgrade().is_none() { break };
+				if weak.upgrade().is_none() {
+					break;
+				};
 				let Some(res) = tokio::select!(
 					x = stream.message() => Some(x),
 					_ = tokio::time::sleep(std::time::Duration::from_secs(5)) => None,
-				) else { continue };
+				) else {
+					continue;
+				};
 				match res {
 					Err(e) => break tracing::error!("workspace '{}' stream closed: {}", name, e),
 					Ok(None) => break tracing::info!("leaving workspace {}", name),
@@ -376,6 +387,7 @@ impl Workspace {
 					}
 				}
 			}
+			tracing::debug!("workspace worker stopping");
 		});
 	}
 }

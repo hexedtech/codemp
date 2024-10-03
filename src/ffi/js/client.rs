@@ -1,9 +1,34 @@
-use napi_derive::napi;
 use crate::{Client, Workspace};
+use napi_derive::napi;
+
+#[napi(object, js_name = "User")]
+pub struct JsUser {
+	pub uuid: String,
+	pub name: String,
+}
+
+impl TryFrom<JsUser> for crate::api::User {
+	type Error = <uuid::Uuid as std::str::FromStr>::Err;
+	fn try_from(value: JsUser) -> Result<Self, Self::Error> {
+		Ok(Self {
+			id: value.uuid.parse()?,
+			name: value.name,
+		})
+	}
+}
+
+impl From<crate::api::User> for JsUser {
+	fn from(value: crate::api::User) -> Self {
+		Self {
+			uuid: value.id.to_string(),
+			name: value.name,
+		}
+	}
+}
 
 #[napi]
 /// connect to codemp servers and return a client session
-pub async fn connect(config: crate::api::Config) -> napi::Result<crate::Client>{
+pub async fn connect(config: crate::api::Config) -> napi::Result<crate::Client> {
 	Ok(crate::Client::connect(config).await?)
 }
 
@@ -23,13 +48,21 @@ impl Client {
 
 	#[napi(js_name = "list_workspaces")]
 	/// list available workspaces
-	pub async fn js_list_workspaces(&self, owned: bool, invited: bool) -> napi::Result<Vec<String>> {
+	pub async fn js_list_workspaces(
+		&self,
+		owned: bool,
+		invited: bool,
+	) -> napi::Result<Vec<String>> {
 		Ok(self.list_workspaces(owned, invited).await?)
 	}
 
 	#[napi(js_name = "invite_to_workspace")]
 	/// invite user to given workspace, if able to
-	pub async fn js_invite_to_workspace(&self, workspace: String, user: String) -> napi::Result<()> {
+	pub async fn js_invite_to_workspace(
+		&self,
+		workspace: String,
+		user: String,
+	) -> napi::Result<()> {
 		Ok(self.invite_to_workspace(workspace, user).await?)
 	}
 
@@ -51,10 +84,10 @@ impl Client {
 		self.get_workspace(&workspace)
 	}
 
-	#[napi(js_name = "user_id")]
+	#[napi(js_name = "user")]
 	/// return current sessions's user id
-	pub fn js_user_id(&self) -> String {
-		self.user().id.to_string()
+	pub fn js_user(&self) -> JsUser {
+		self.user().clone().into()
 	}
 
 	#[napi(js_name = "active_workspaces")]

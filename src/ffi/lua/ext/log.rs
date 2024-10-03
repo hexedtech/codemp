@@ -1,7 +1,7 @@
 use std::{io::Write, sync::Mutex};
 
-use mlua_codemp_patch as mlua;
 use mlua::prelude::*;
+use mlua_codemp_patch as mlua;
 use tokio::sync::mpsc;
 
 #[derive(Debug, Clone)]
@@ -12,12 +12,21 @@ impl Write for LuaLoggerProducer {
 		Ok(buf.len())
 	}
 
-	fn flush(&mut self) -> std::io::Result<()> { Ok(()) }
+	fn flush(&mut self) -> std::io::Result<()> {
+		Ok(())
+	}
 }
 
 // TODO can we make this less verbose?
-pub(crate) fn setup_tracing(_: &Lua, (printer, debug): (LuaValue, Option<bool>)) -> LuaResult<bool> {
-	let level = if debug.unwrap_or_default() { tracing::Level::DEBUG } else {tracing::Level::INFO };
+pub(crate) fn setup_tracing(
+	_: &Lua,
+	(printer, debug): (LuaValue, Option<bool>),
+) -> LuaResult<bool> {
+	let level = if debug.unwrap_or_default() {
+		tracing::Level::DEBUG
+	} else {
+		tracing::Level::INFO
+	};
 	let format = tracing_subscriber::fmt::format()
 		.with_level(true)
 		.with_target(true)
@@ -36,16 +45,15 @@ pub(crate) fn setup_tracing(_: &Lua, (printer, debug): (LuaValue, Option<bool>))
 		| LuaValue::Thread(_)
 		| LuaValue::UserData(_)
 		| LuaValue::Error(_) => return Err(LuaError::BindError), // TODO full BadArgument type??
-		LuaValue::Nil => {
-			tracing_subscriber::fmt()
-				.event_format(format)
-				.with_max_level(level)
-				.with_writer(std::sync::Mutex::new(std::io::stderr()))
-				.try_init()
-				.is_ok()
-		},
+		LuaValue::Nil => tracing_subscriber::fmt()
+			.event_format(format)
+			.with_max_level(level)
+			.with_writer(std::sync::Mutex::new(std::io::stderr()))
+			.try_init()
+			.is_ok(),
 		LuaValue::String(path) => {
-			let logfile = std::fs::File::create(path.to_string_lossy()).map_err(|e| LuaError::RuntimeError(e.to_string()))?;
+			let logfile = std::fs::File::create(path.to_string_lossy())
+				.map_err(|e| LuaError::RuntimeError(e.to_string()))?;
 			tracing_subscriber::fmt()
 				.event_format(format)
 				.with_max_level(level)
@@ -53,7 +61,7 @@ pub(crate) fn setup_tracing(_: &Lua, (printer, debug): (LuaValue, Option<bool>))
 				.with_ansi(false)
 				.try_init()
 				.is_ok()
-		},
+		}
 		LuaValue::Function(cb) => {
 			let (tx, mut rx) = mpsc::unbounded_channel();
 			let res = tracing_subscriber::fmt()
@@ -71,7 +79,7 @@ pub(crate) fn setup_tracing(_: &Lua, (printer, debug): (LuaValue, Option<bool>))
 				});
 			}
 			res
-		},
+		}
 	};
 
 	Ok(success)

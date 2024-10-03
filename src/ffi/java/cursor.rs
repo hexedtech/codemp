@@ -1,6 +1,13 @@
+use crate::{
+	api::{Controller, Cursor},
+	errors::ControllerError,
+};
 use jni::{objects::JObject, JNIEnv};
 use jni_toolbox::jni;
-use crate::{api::{controller::{AsyncSender, AsyncReceiver}, Cursor}, errors::ControllerError};
+use crate::{
+	api::{controller::{AsyncSender, AsyncReceiver}, Cursor},
+	errors::ControllerError
+};
 
 use super::null_check;
 
@@ -24,17 +31,25 @@ fn send(controller: &mut crate::cursor::Controller, cursor: Cursor) -> Result<()
 
 /// Register a callback for cursor changes.
 #[jni(package = "mp.code", class = "CursorController")]
-fn callback<'local>(env: &mut JNIEnv<'local>, controller: &mut crate::cursor::Controller, cb: JObject<'local>) {
-	null_check!(env, cb, {});	
+fn callback<'local>(
+	env: &mut JNIEnv<'local>,
+	controller: &mut crate::cursor::Controller,
+	cb: JObject<'local>,
+) {
+	null_check!(env, cb, {});
 	let Ok(cb_ref) = env.new_global_ref(cb) else {
-		env.throw_new("mp/code/exceptions/JNIException", "Failed to pin callback reference!")
-			.expect("Failed to throw exception!");
+		env.throw_new(
+			"mp/code/exceptions/JNIException",
+			"Failed to pin callback reference!",
+		)
+		.expect("Failed to throw exception!");
 		return;
 	};
 
 	controller.callback(move |controller: crate::cursor::Controller| {
 		let jvm = super::jvm();
-		let mut env = jvm.attach_current_thread_permanently()
+		let mut env = jvm
+			.attach_current_thread_permanently()
 			.expect("failed attaching to main JVM thread");
 		if let Err(e) = env.with_local_frame(5, |env| {
 			use jni_toolbox::IntoJavaObject;
@@ -43,7 +58,7 @@ fn callback<'local>(env: &mut JNIEnv<'local>, controller: &mut crate::cursor::Co
 				&cb_ref,
 				"accept",
 				"(Ljava/lang/Object;)V",
-				&[jni::objects::JValueGen::Object(&jcontroller)]
+				&[jni::objects::JValueGen::Object(&jcontroller)],
 			) {
 				tracing::error!("error invoking callback: {e:?}");
 			};
@@ -58,7 +73,7 @@ fn callback<'local>(env: &mut JNIEnv<'local>, controller: &mut crate::cursor::Co
 /// Clear the callback for cursor changes.
 #[jni(package = "mp.code", class = "CursorController")]
 fn clear_callback(controller: &mut crate::cursor::Controller) {
-	controller.clear_callback()	
+	controller.clear_callback()
 }
 
 /// Block until there is a new value available.

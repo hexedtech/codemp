@@ -1,5 +1,5 @@
 //! # Controller
-//! 
+//!
 //! A bidirectional stream handler to easily manage asynchronous operations between local buffers
 //! and the server.
 
@@ -74,7 +74,6 @@ pub trait AsyncReceiver<T : Sized + Send + Sync> : Sized + Send + Sync {
 	/// Attempt to receive a value, return None if nothing is currently available.
 	async fn try_recv(&self) -> ControllerResult<Option<T>>;
 }
-
 
 /// Type wrapper for Boxed dynamic callback.
 pub struct ControllerCallback<T>(pub Box<dyn Sync + Send + Fn(T)>);

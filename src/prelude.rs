@@ -11,10 +11,8 @@ pub use crate::api::{
 	Event as CodempEvent,
 	Config as CodempConfig,
 };
-	
+
 pub use crate::{
-	client::Client as CodempClient,
-	workspace::Workspace as CodempWorkspace,
-	cursor::Controller as CodempCursorController,
-	buffer::Controller as CodempBufferController,
+	buffer::Controller as CodempBufferController, client::Client as CodempClient,
+	cursor::Controller as CodempCursorController, workspace::Workspace as CodempWorkspace,
 };

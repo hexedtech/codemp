@@ -34,7 +34,12 @@ struct BufferWorker {
 }
 
 impl BufferController {
-	pub(crate) fn spawn(user_id: Uuid, path: &str, tx: mpsc::Sender<Operation>, rx: Streaming<BufferEvent>) -> Self {
+	pub(crate) fn spawn(
+		user_id: Uuid,
+		path: &str,
+		tx: mpsc::Sender<Operation>,
+		rx: Streaming<BufferEvent>,
+	) -> Self {
 		let init = diamond_types::LocalVersion::default();
 
 		let (latest_version_tx, latest_version_rx) = watch::channel(init.clone());
@@ -75,17 +80,21 @@ impl BufferController {
 			timer: Timer::new(10), // TODO configurable!
 		};
 
-		tokio::spawn(async move {
-			BufferController::work(worker, tx, rx).await
-		});
+		tokio::spawn(async move { BufferController::work(worker, tx, rx).await });
 
 		BufferController(controller)
 	}
 
-	async fn work(mut worker: BufferWorker, tx: mpsc::Sender<Operation>, mut rx: Streaming<BufferEvent>) {
+	async fn work(
+		mut worker: BufferWorker,
+		tx: mpsc::Sender<Operation>,
+		mut rx: Streaming<BufferEvent>,
+	) {
 		tracing::debug!("controller worker started");
 		loop {
-			if worker.controller.upgrade().is_none() { break };
+			if worker.controller.upgrade().is_none() {
+				break;
+			};
 
 			// block until one of these is ready
 			tokio::select! {
