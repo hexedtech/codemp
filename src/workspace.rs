@@ -4,8 +4,11 @@
 //! Buffers are typically organized in a filetree-like reminiscent of POSIX filesystems.
 
 use crate::{
-	api::{controller::{AsyncReceiver, ControllerCallback}, Event, User},
-	buffer,	cursor,
+	api::{
+		controller::{AsyncReceiver, ControllerCallback},
+		Event, User,
+	},
+	buffer, cursor,
 	errors::{ConnectionResult, ControllerResult, RemoteResult},
 	ext::InternallyMutable,
 	network::Services,
@@ -24,7 +27,7 @@ use codemp_proto::{
 
 use dashmap::{DashMap, DashSet};
 use std::{collections::BTreeSet, sync::Arc};
-use tokio::sync::{mpsc::error::TryRecvError, mpsc};
+use tokio::sync::{mpsc, mpsc::error::TryRecvError};
 use tonic::Streaming;
 use uuid::Uuid;
 
@@ -60,12 +63,7 @@ struct WorkspaceInner {
 
 impl AsyncReceiver<Event> for Workspace {
 	async fn try_recv(&self) -> ControllerResult<Option<Event>> {
-		match self.0
-			.events
-			.lock()
-			.await
-			.try_recv()
-		{
+		match self.0.events.lock().await.try_recv() {
 			Ok(x) => Ok(Some(x)),
 			Err(TryRecvError::Empty) => Ok(None),
 			Err(TryRecvError::Disconnected) => Err(crate::errors::ControllerError::Stopped),
@@ -74,7 +72,9 @@ impl AsyncReceiver<Event> for Workspace {
 
 	async fn poll(&self) -> ControllerResult<()> {
 		loop {
-			if !self.0.events.lock().await.is_empty() { break Ok(()) }
+			if !self.0.events.lock().await.is_empty() {
+				break Ok(());
+			}
 			// TODO disgusting, please send help
 			tokio::time::sleep(std::time::Duration::from_millis(200)).await;
 		}
@@ -312,7 +312,8 @@ impl Workspace {
 	/// A filter may be applied, and it may be strict (equality check) or not (starts_with check).
 	// #[cfg_attr(feature = "js", napi)] // https://github.com/napi-rs/napi-rs/issues/1120
 	pub fn filetree(&self, filter: Option<&str>, strict: bool) -> Vec<String> {
-		let mut tree = self.0
+		let mut tree = self
+			.0
 			.filetree
 			.iter()
 			.filter(|f| {

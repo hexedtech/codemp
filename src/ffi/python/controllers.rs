@@ -1,4 +1,4 @@
-use crate::api::controller::{AsyncSender, AsyncReceiver};
+use crate::api::controller::{AsyncReceiver, AsyncSender};
 use crate::api::Cursor;
 use crate::api::TextChange;
 use crate::buffer::Controller as BufferController;

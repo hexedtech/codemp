@@ -33,9 +33,9 @@ impl LuaUserData for CodempWorkspace {
 			Ok(this.buffer_by_name(&name))
 		});
 
-		methods.add_method("fetch_buffers", |_, this, ()|
-			a_sync! { this => this.fetch_buffers().await? }
-
+		methods.add_method(
+			"fetch_buffers",
+			|_, this, ()| a_sync! { this => this.fetch_buffers().await? },
 		);
 		methods.add_method(
 			"fetch_users",
@@ -49,24 +49,21 @@ impl LuaUserData for CodempWorkspace {
 			},
 		);
 
-		methods.add_method("user_list", |_, this, ()|
-			Ok(this.user_list())
+		methods.add_method("user_list", |_, this, ()| Ok(this.user_list()));
+
+		methods.add_method("recv", |_, this, ()| a_sync! { this => this.recv().await? });
+
+		methods.add_method(
+			"try_recv",
+			|_, this, ()| a_sync! { this => this.try_recv().await? },
 		);
 
-		methods.add_method("recv", |_, this, ()|
-			a_sync! { this => this.recv().await? }
-		);
+		methods.add_method("poll", |_, this, ()| a_sync! { this => this.poll().await? });
 
-		methods.add_method("try_recv", |_, this, ()|
-			a_sync! { this => this.try_recv().await? }
-		);
-
-		methods.add_method("poll", |_, this, ()|
-			a_sync! { this => this.poll().await? }
-		);
-
-		methods.add_method("callback", |_, this, (cb,):(LuaFunction,)| {
-			this.callback(move |controller: CodempWorkspace| super::ext::callback().invoke(cb.clone(), controller));
+		methods.add_method("callback", |_, this, (cb,): (LuaFunction,)| {
+			this.callback(move |controller: CodempWorkspace| {
+				super::ext::callback().invoke(cb.clone(), controller)
+			});
 			Ok(())
 		});
 
@@ -74,7 +71,6 @@ impl LuaUserData for CodempWorkspace {
 			this.clear_callback();
 			Ok(())
 		});
-
 	}
 
 	fn add_fields<F: LuaUserDataFields<Self>>(fields: &mut F) {

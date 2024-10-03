@@ -13,7 +13,7 @@ use crate::errors::ControllerResult;
 ///
 /// This generic trait is implemented by actors managing stream procedures, and will generally
 /// imply a background worker.
-/// 
+///
 /// Events can be enqueued for dispatching without blocking with [`AsyncSender::send`].
 ///
 /// For receiving events from the server, an asynchronous API with [`AsyncReceiver::recv`] is
@@ -26,11 +26,12 @@ use crate::errors::ControllerResult;
 /// [`crate::ext::select_buffer`] may provide a useful helper for managing multiple controllers.
 #[allow(async_fn_in_trait)]
 #[cfg_attr(feature = "async-trait", async_trait::async_trait)]
-pub trait Controller<Tx, Rx = Tx> : AsyncSender<Tx> + AsyncReceiver<Rx>
+pub trait Controller<Tx, Rx = Tx>: AsyncSender<Tx> + AsyncReceiver<Rx>
 where
 	Tx: Sized + Sync + Send,
 	Rx: Sized + Sync + Send,
-{}
+{
+}
 
 /// Asynchronous and thread-safe handle to send data over a stream.
 /// See [`Controller`]'s documentation for details.
@@ -38,7 +39,7 @@ where
 /// Details about the receiving end are left to the implementor.
 #[allow(async_fn_in_trait)]
 #[cfg_attr(feature = "async-trait", async_trait::async_trait)]
-pub trait AsyncSender<T : Sized + Send + Sync> : Sized + Send + Sync {
+pub trait AsyncSender<T: Sized + Send + Sync>: Sized + Send + Sync {
 	/// Enqueue a new value to be sent to all other users.
 	async fn send(&self, x: T) -> ControllerResult<()>;
 }
@@ -49,7 +50,7 @@ pub trait AsyncSender<T : Sized + Send + Sync> : Sized + Send + Sync {
 /// Details about the sender are left to the implementor.
 #[allow(async_fn_in_trait)]
 #[cfg_attr(feature = "async-trait", async_trait::async_trait)]
-pub trait AsyncReceiver<T : Sized + Send + Sync> : Sized + Send + Sync {
+pub trait AsyncReceiver<T: Sized + Send + Sync>: Sized + Send + Sync {
 	/// Block until a value is available and returns it.
 	async fn recv(&self) -> ControllerResult<T> {
 		loop {

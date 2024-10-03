@@ -1,7 +1,7 @@
+use crate::api::controller::AsyncReceiver;
 use crate::buffer::Controller as BufferController;
 use crate::cursor::Controller as CursorController;
 use crate::workspace::Workspace;
-use crate::api::controller::AsyncReceiver;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 

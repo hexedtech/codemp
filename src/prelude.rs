@@ -2,14 +2,9 @@
 //! All-in-one renamed imports with `use codemp::prelude::*`.
 
 pub use crate::api::{
-	Controller as CodempController,
-	controller::AsyncSender as CodempAsyncSender,
-	controller::AsyncReceiver as CodempAsyncReceiver,
-	TextChange as CodempTextChange,
-	Cursor as CodempCursor,
-	User as CodempUser,
-	Event as CodempEvent,
-	Config as CodempConfig,
+	controller::AsyncReceiver as CodempAsyncReceiver, controller::AsyncSender as CodempAsyncSender,
+	Config as CodempConfig, Controller as CodempController, Cursor as CodempCursor,
+	Event as CodempEvent, TextChange as CodempTextChange, User as CodempUser,
 };
 
 pub use crate::{

@@ -54,7 +54,7 @@ impl LuaUserData for Promise {
 			Some(x) => {
 				x.abort();
 				Ok(())
-			},
+			}
 		});
 		methods.add_method_mut("and_then", |_, this, (cb,): (LuaFunction,)| {
 			match this.0.take() {
