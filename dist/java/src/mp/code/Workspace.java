@@ -2,8 +2,8 @@ package mp.code;
 
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Consumer;
 
-import mp.code.data.DetachResult;
 import mp.code.exceptions.ConnectionException;
 import mp.code.exceptions.ConnectionRemoteException;
 import mp.code.exceptions.ControllerException;
@@ -168,16 +168,58 @@ public final class Workspace {
 		delete_buffer(this.ptr, path);
 	}
 
-	private static native Event event(long self) throws ControllerException;
+	private static native Event try_recv(long self) throws ControllerException;
 
 	/**
-	 * Blocks until a workspace event occurs.
-	 * You shouldn't call this, unless it's on a dedicated thread.
-	 * @return the {@link Event} that has occurred
-	 * @throws ControllerException if the event arrived while the underlying controller was already closed
+	 * Tries to get a {@link Event} from the queue if any were present, and returns
+	 * an empty optional otherwise.
+	 * @return the first workspace event in queue, if any are present
+	 * @throws ControllerException if the controller was stopped
 	 */
-	public Event event() throws ControllerException {
-		return event(this.ptr);
+	public Optional<Event> tryRecv() throws ControllerException {
+		return Optional.ofNullable(try_recv(this.ptr));
+	}
+
+	private static native Event recv(long self) throws ControllerException;
+
+	/**
+	 * Blocks until a {@link Event} is available and returns it.
+	 * @return the workspace event that occurred
+	 * @throws ControllerException if the controller was stopped
+	 */
+	public Event recv() throws ControllerException {
+		return recv(this.ptr);
+	}
+
+	private static native void callback(long self, Consumer<Workspace> cb);
+
+	/**
+	 * Registers a callback to be invoked whenever a new {@link Event} is ready to be received.
+	 * This will not work unless a Java thread has been dedicated to the event loop.
+	 * @see Extensions#drive(boolean)
+	 */
+	public void callback(Consumer<Workspace> cb) {
+		callback(this.ptr, cb);
+	}
+
+	private static native void clear_callback(long self);
+
+	/**
+	 * Clears the registered callback.
+	 * @see #callback(Consumer)
+	 */
+	public void clearCallback() {
+		clear_callback(this.ptr);
+	}
+
+	private static native void poll(long self) throws ControllerException;
+
+	/**
+	 * Blocks until a {@link Event} is available.
+	 * @throws ControllerException if the controller was stopped
+	 */
+	public void poll() throws ControllerException {
+		poll(this.ptr);
 	}
 
 	private static native void free(long self);

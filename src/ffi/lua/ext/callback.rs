@@ -67,6 +67,7 @@ pub(crate) enum CallbackArg {
 	BufferController(CodempBufferController),
 	Workspace(CodempWorkspace),
 	Event(CodempEvent),
+	MaybeEvent(Option<CodempEvent>),
 	Cursor(CodempCursor),
 	MaybeCursor(Option<CodempCursor>),
 	TextChange(CodempTextChange),
@@ -87,6 +88,7 @@ impl IntoLua for CallbackArg {
 			CallbackArg::Workspace(x) => x.into_lua(lua),
 			CallbackArg::VecStr(x) => x.into_lua(lua),
 			CallbackArg::Event(x) => x.into_lua(lua),
+			CallbackArg::MaybeEvent(x) => x.into_lua(lua),
 			CallbackArg::Cursor(x) => x.into_lua(lua),
 			CallbackArg::MaybeCursor(x) => x.into_lua(lua),
 			CallbackArg::TextChange(x) => x.into_lua(lua),
@@ -107,3 +109,4 @@ impl From<CodempCursor> for CallbackArg { fn from(value: CodempCursor) -> Self {
 impl From<Option<CodempCursor>> for CallbackArg { fn from(value: Option<CodempCursor>) -> Self { CallbackArg::MaybeCursor(value) } }
 impl From<CodempTextChange> for CallbackArg { fn from(value: CodempTextChange) -> Self { CallbackArg::TextChange(value) } }
 impl From<Option<CodempTextChange>> for CallbackArg { fn from(value: Option<CodempTextChange>) -> Self { CallbackArg::MaybeTextChange(value) } }
+impl From<Option<CodempEvent>> for CallbackArg { fn from(value: Option<CodempEvent>) -> Self { CallbackArg::MaybeEvent(value) } }

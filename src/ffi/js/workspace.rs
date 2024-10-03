@@ -1,7 +1,10 @@
+use napi::threadsafe_function::ErrorStrategy::Fatal;
+use napi::threadsafe_function::{ThreadSafeCallContext, ThreadsafeFunction, ThreadsafeFunctionCallMode};
 use napi_derive::napi;
 use crate::Workspace;
 use crate::buffer::controller::BufferController;
 use crate::cursor::controller::CursorController;
+use crate::api::controller::AsyncReceiver;
 
 #[napi(object, js_name = "Event")]
 pub struct JsEvent {
@@ -61,8 +64,43 @@ impl Workspace {
 		Ok(self.delete(&path).await?)
 	}
 
-	#[napi(js_name = "event")]
-	pub async fn js_event(&self) -> napi::Result<JsEvent> {
-		Ok(JsEvent::from(self.event().await?))
+	#[napi(js_name = "recv")]
+	pub async fn js_recv(&self) -> napi::Result<JsEvent> {
+		Ok(JsEvent::from(self.recv().await?))
+	}
+
+	#[napi(js_name = "try_recv")]
+	pub async fn js_try_recv(&self) -> napi::Result<Option<JsEvent>> {
+		Ok(self.try_recv().await?.map(JsEvent::from))
+	}
+
+	#[napi(js_name = "poll")]
+	pub async fn js_poll(&self) -> napi::Result<()> {
+		self.poll().await?;
+		Ok(())
+	}
+
+	#[napi(js_name = "clear_callback")]
+	pub fn js_clear_callbacl(&self) -> napi::Result<()> {
+		self.clear_callback();
+		Ok(())
+	}
+
+	#[napi(js_name = "callback", ts_args_type = "fun: (event: Workspace) => void")]
+	pub fn js_callback(&self, fun: napi::JsFunction) -> napi::Result<()>{
+		let tsfn : ThreadsafeFunction<crate::Workspace, Fatal> = 
+		fun.create_threadsafe_function(0,
+			|ctx : ThreadSafeCallContext<crate::Workspace>| {
+				Ok(vec![ctx.value])
+			}
+		)?;
+		self.callback(move |controller : Workspace| {
+
+			tsfn.call(controller.clone(), ThreadsafeFunctionCallMode::Blocking); //check this with tracing also we could use Ok(event) to get the error
+			// If it blocks the main thread too many time we have to change this
+
+		});
+
+		Ok(())
 	}
 }

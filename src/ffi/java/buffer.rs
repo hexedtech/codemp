@@ -1,7 +1,7 @@
 use jni::{objects::JObject, JNIEnv};
 use jni_toolbox::jni;
 
-use crate::{api::{Controller, TextChange}, errors::ControllerError};
+use crate::{api::{controller::{AsyncReceiver, AsyncSender}, TextChange}, errors::ControllerError};
 
 use super::null_check;
 

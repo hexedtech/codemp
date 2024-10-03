@@ -3,6 +3,8 @@
 
 pub use crate::api::{
 	Controller as CodempController,
+	controller::AsyncSender as CodempAsyncSender,
+	controller::AsyncReceiver as CodempAsyncReceiver,
 	TextChange as CodempTextChange,
 	Cursor as CodempCursor,
 	User as CodempUser,

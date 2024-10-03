@@ -1,6 +1,6 @@
 use jni::{objects::JObject, JNIEnv};
 use jni_toolbox::jni;
-use crate::{api::{Controller, Cursor}, errors::ControllerError};
+use crate::{api::{controller::{AsyncSender, AsyncReceiver}, Cursor}, errors::ControllerError};
 
 use super::null_check;
 

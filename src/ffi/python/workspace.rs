@@ -1,6 +1,8 @@
 use crate::buffer::Controller as BufferController;
 use crate::cursor::Controller as CursorController;
 use crate::workspace::Workspace;
+use crate::api::controller::AsyncReceiver;
+use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 
 use super::a_sync_allow_threads;
@@ -24,12 +26,6 @@ impl Workspace {
 	#[pyo3(name = "detach")]
 	fn pydetach(&self, path: String) -> bool {
 		self.detach(path.as_str())
-	}
-
-	#[pyo3(name = "event")]
-	fn pyevent(&self, py: Python) -> PyResult<Promise> {
-		let this = self.clone();
-		a_sync_allow_threads!(py, this.event().await)
 	}
 
 	#[pyo3(name = "fetch_buffers")]
@@ -86,5 +82,43 @@ impl Workspace {
 	#[pyo3(name = "user_list")]
 	fn pyuser_list(&self) -> Vec<String> {
 		self.user_list()
+	}
+
+	#[pyo3(name = "recv")]
+	fn pyrecv(&self, py: Python) -> PyResult<Promise> {
+		let this = self.clone();
+		a_sync_allow_threads!(py, this.recv().await)
+	}
+
+	#[pyo3(name = "try_recv")]
+	fn pytry_recv(&self, py: Python) -> PyResult<Promise> {
+		let this = self.clone();
+		a_sync_allow_threads!(py, this.try_recv().await)
+	}
+
+	#[pyo3(name = "poll")]
+	fn pypoll(&self, py: Python) -> PyResult<Promise> {
+		let this = self.clone();
+		a_sync_allow_threads!(py, this.poll().await)
+	}
+
+	#[pyo3(name = "clear_callback")]
+	fn pyclear_callbacl(&self, _py: Python) {
+		self.clear_callback();
+	}
+
+	#[pyo3(name = "callback")]
+	fn pycallback(&self, py: Python, cb: PyObject) -> PyResult<()> {
+		if !cb.bind_borrowed(py).is_callable() {
+			return Err(PyValueError::new_err("The object passed must be callable."));
+		}
+
+		self.callback(move |ws| {
+			Python::with_gil(|py| {
+				// TODO what to do with this error?
+				let _ = cb.call1(py, (ws,));
+			})
+		});
+		Ok(())
 	}
 }
