@@ -146,12 +146,15 @@ impl Workspace {
 
 	/// List users attached to a specific buffer
 	#[napi(js_name = "list_buffer_users")]
-	pub async fn js_list_buffer_users(&self, path: String) -> napi::Result<Vec<JsUser>> {
+	pub async fn js_list_buffer_users(
+		&self,
+		path: String,
+	) -> napi::Result<Vec<crate::ffi::js::client::JsUser>> {
 		Ok(self
 			.list_buffer_users(&path)
 			.await?
 			.into_iter()
-			.map(JsUser::from)
+			.map(super::client::JsUser::from)
 			.collect())
 	}
 }

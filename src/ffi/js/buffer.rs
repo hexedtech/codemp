@@ -5,10 +5,6 @@ use crate::buffer::controller::BufferController;
 use napi::threadsafe_function::{
 	ErrorStrategy::Fatal, ThreadSafeCallContext, ThreadsafeFunction, ThreadsafeFunctionCallMode,
 };
-use napi::threadsafe_function::{
-	ErrorStrategy::Fatal, ThreadSafeCallContext, ThreadsafeFunction, ThreadsafeFunctionCallMode,
-};
-use napi_derive::napi;
 use napi_derive::napi;
 
 #[napi]
@@ -56,13 +52,15 @@ impl BufferController {
 
 	/// Return next buffer event if present
 	#[napi(js_name = "try_recv")]
-	pub async fn js_try_recv(&self) -> napi::Result<Option<Delta<BufferAck>>> {
+	pub async fn js_try_recv(
+		&self,
+	) -> napi::Result<Option<Delta<crate::buffer::controller::BufferAck>>> {
 		Ok(self.try_recv().await?)
 	}
 
 	/// Wait for next buffer event and return it
 	#[napi(js_name = "recv")]
-	pub async fn js_recv(&self) -> napi::Result<Delta<BufferAck>> {
+	pub async fn js_recv(&self) -> napi::Result<Delta<crate::buffer::controller::BufferAck>> {
 		Ok(self.recv().await?)
 	}
 

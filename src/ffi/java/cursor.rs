@@ -5,10 +5,6 @@ use crate::{
 	},
 	errors::ControllerError,
 };
-use crate::{
-	api::{Controller, Cursor},
-	errors::ControllerError,
-};
 use jni::{objects::JObject, JNIEnv};
 use jni_toolbox::jni;
 

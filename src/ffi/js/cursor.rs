@@ -1,14 +1,9 @@
 use crate::api::controller::{AsyncReceiver, AsyncSender};
 use crate::cursor::controller::CursorController;
 use napi::threadsafe_function::ErrorStrategy::Fatal;
-use napi::threadsafe_function::ErrorStrategy::Fatal;
 use napi::threadsafe_function::{
 	ThreadSafeCallContext, ThreadsafeFunction, ThreadsafeFunctionCallMode,
 };
-use napi::threadsafe_function::{
-	ThreadSafeCallContext, ThreadsafeFunction, ThreadsafeFunctionCallMode,
-};
-use napi_derive::napi;
 use napi_derive::napi;
 
 #[napi(object, js_name = "Cursor")]
