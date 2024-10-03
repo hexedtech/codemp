@@ -1,7 +1,7 @@
-use crate::ext::IgnorableError;
-use crate::prelude::*;
 use crate::api::change::Delta;
 use crate::buffer::controller::BufferAck;
+use crate::ext::IgnorableError;
+use crate::prelude::*;
 use mlua::prelude::*;
 use mlua_codemp_patch as mlua;
 
