@@ -13,8 +13,7 @@ impl LuaUserData for CodempCursorController {
 		});
 
 		methods.add_method("send", |_, this, (cursor,): (CodempCursor,)| {
-			this.send(cursor)?;
-			Ok(())
+			Ok(this.send(cursor)?)
 		});
 		methods.add_method(
 			"try_recv",
@@ -23,16 +22,12 @@ impl LuaUserData for CodempCursorController {
 		methods.add_method("recv", |_, this, ()| a_sync! { this => this.recv().await? });
 		methods.add_method("poll", |_, this, ()| a_sync! { this => this.poll().await? });
 
-		methods.add_method("clear_callback", |_, this, ()| {
-			this.clear_callback();
-			Ok(())
-		});
-		methods.add_method("callback", |_, this, (cb,): (LuaFunction,)| {
-			this.callback(move |controller: CodempCursorController| {
+		methods.add_method("clear_callback", |_, this, ()| Ok(this.clear_callback()));
+		methods.add_method("callback", |_, this, (cb,): (LuaFunction,)|
+			Ok(this.callback(move |controller: CodempCursorController|
 				super::ext::callback().invoke(cb.clone(), controller)
-			});
-			Ok(())
-		});
+			))
+		);
 	}
 }
 

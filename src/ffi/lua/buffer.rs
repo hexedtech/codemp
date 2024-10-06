@@ -12,10 +12,9 @@ impl LuaUserData for CodempBufferController {
 			Ok(format!("{:?}", this))
 		});
 
-		methods.add_method("send", |_, this, (change,): (CodempTextChange,)| {
-			this.send(change)?;
-			Ok(())
-		});
+		methods.add_method("send", |_, this, (change,): (CodempTextChange,)|
+			Ok(this.send(change)?)
+		);
 
 		methods.add_method(
 			"try_recv",
@@ -29,16 +28,12 @@ impl LuaUserData for CodempBufferController {
 			|_, this, ()| a_sync! { this => this.content().await? },
 		);
 
-		methods.add_method("clear_callback", |_, this, ()| {
-			this.clear_callback();
-			Ok(())
-		});
-		methods.add_method("callback", |_, this, (cb,): (LuaFunction,)| {
-			this.callback(move |controller: CodempBufferController| {
+		methods.add_method("clear_callback", |_, this, ()| Ok(this.clear_callback()));
+		methods.add_method("callback", |_, this, (cb,): (LuaFunction,)|
+			Ok(this.callback(move |controller: CodempBufferController|
 				super::ext::callback().invoke(cb.clone(), controller)
-			});
-			Ok(())
-		});
+			))
+		);
 	}
 }
 
