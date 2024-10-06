@@ -69,8 +69,12 @@
 //! # use codemp::api::controller::{AsyncSender, AsyncReceiver};
 //! let buffer = workspace.attach("/some/file.txt").await.expect("failed to attach");
 //! buffer.content(); // force-sync
-//! if let Some(change) = buffer.try_recv().await.unwrap() {
-//!   println!("content: {}, span: {}-{}", change.content, change.start, change.end);
+//! if let Some(mut delta) = buffer.try_recv().await.unwrap() {
+//!   println!(
+//!     "content: {}, span: {}-{}",
+//!     delta.change.content, delta.change.start, delta.change.end
+//!   );
+//!   delta.ack();
 //! } // if None, no changes are currently available
 //! # };
 //! ```
