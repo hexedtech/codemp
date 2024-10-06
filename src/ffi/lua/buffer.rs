@@ -1,5 +1,4 @@
-use crate::api::change::{Acknowledgeable, Delta};
-use crate::buffer::controller::BufferAck;
+use crate::buffer::controller::Delta;
 use crate::prelude::*;
 use mlua::prelude::*;
 use mlua_codemp_patch as mlua;
@@ -62,15 +61,12 @@ impl LuaUserData for CodempTextChange {
 	}
 }
 
-impl LuaUserData for Delta<BufferAck> {
+impl LuaUserData for Delta {
 	fn add_fields<F: LuaUserDataFields<Self>>(fields: &mut F) {
 		fields.add_field_method_get("change", |_, this| Ok(this.change.clone()));
-		fields.add_field_method_get("ack", |_, this| Ok(this.ack.clone()));
 	}
-}
 
-impl LuaUserData for BufferAck {
 	fn add_methods<M: LuaUserDataMethods<Self>>(methods: &mut M) {
-		methods.add_method_mut("send", |_, this, ()| Ok(this.send()));
+		methods.add_method_mut("ack", |_, this, ()| Ok(this.ack()));
 	}
 }

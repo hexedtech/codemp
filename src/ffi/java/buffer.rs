@@ -3,11 +3,10 @@ use jni_toolbox::jni;
 
 use crate::{
 	api::{
-		change::Delta,
 		controller::{AsyncReceiver, AsyncSender},
 		TextChange,
 	},
-	buffer::controller::BufferAck,
+	buffer::controller::Delta,
 	errors::ControllerError,
 };
 
@@ -29,13 +28,13 @@ fn get_content(controller: &mut crate::buffer::Controller) -> Result<String, Con
 #[jni(package = "mp.code", class = "BufferController")]
 fn try_recv(
 	controller: &mut crate::buffer::Controller,
-) -> Result<Option<Delta<BufferAck>>, ControllerError> {
+) -> Result<Option<Delta>, ControllerError> {
 	super::tokio().block_on(controller.try_recv())
 }
 
 /// Block until it receives a [TextChange].
 #[jni(package = "mp.code", class = "BufferController")]
-fn recv(controller: &mut crate::buffer::Controller) -> Result<Delta<BufferAck>, ControllerError> {
+fn recv(controller: &mut crate::buffer::Controller) -> Result<Delta, ControllerError> {
 	super::tokio().block_on(controller.recv())
 }
 

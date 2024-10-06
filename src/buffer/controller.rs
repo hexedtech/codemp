@@ -6,7 +6,6 @@ use std::sync::Arc;
 use diamond_types::LocalVersion;
 use tokio::sync::{mpsc, oneshot, watch};
 
-use crate::api::change::{Acknowledgeable, Delta};
 use crate::api::controller::{AsyncReceiver, AsyncSender, Controller, ControllerCallback};
 use crate::api::TextChange;
 use crate::errors::ControllerResult;
@@ -14,16 +13,30 @@ use crate::ext::IgnorableError;
 
 use super::worker::DeltaRequest;
 
+/// This wrapper around a [`TextChange`] contains a handle to Acknowledge correct change
+/// application
+#[derive(Debug)]
+#[cfg_attr(any(feature = "py", feature = "py-noabi"), pyo3::pyclass)]
+#[cfg_attr(feature = "js", napi_derive::napi)]
+pub struct Delta {
+	/// The change received
+	pub change: TextChange,
+	/// The ack handle, must be called after correctly applying this change
+	pub(crate) ack: BufferAck,
+}
+
 #[derive(Clone, Debug)]
 pub(crate) struct BufferAck {
 	pub(crate) tx: mpsc::UnboundedSender<LocalVersion>,
 	pub(crate) version: LocalVersion,
 }
 
-impl Acknowledgeable for BufferAck {
-	fn send(&mut self) {
-		self.tx
-			.send(self.version.clone())
+#[cfg_attr(any(feature = "py", feature = "py-noabi"), pyo3::pymethods)]
+#[cfg_attr(feature = "js", napi_derive::napi)]
+impl Delta {
+	pub fn ack(&mut self) {
+		self.ack.tx
+			.send(self.ack.version.clone())
 			.unwrap_or_warn("no worker to receive sent ack");
 	}
 }
@@ -65,7 +78,7 @@ pub(crate) struct BufferControllerInner {
 }
 
 #[cfg_attr(feature = "async-trait", async_trait::async_trait)]
-impl Controller<TextChange, Delta<BufferAck>> for BufferController {}
+impl Controller<TextChange, Delta> for BufferController {}
 
 impl AsyncSender<TextChange> for BufferController {
 	fn send(&self, op: TextChange) -> ControllerResult<()> {
@@ -75,7 +88,7 @@ impl AsyncSender<TextChange> for BufferController {
 }
 
 #[cfg_attr(feature = "async-trait", async_trait::async_trait)]
-impl AsyncReceiver<Delta<BufferAck>> for BufferController {
+impl AsyncReceiver<Delta> for BufferController {
 	async fn poll(&self) -> ControllerResult<()> {
 		if *self.0.local_version.borrow() != *self.0.latest_version.borrow() {
 			return Ok(());
@@ -87,7 +100,7 @@ impl AsyncReceiver<Delta<BufferAck>> for BufferController {
 		Ok(())
 	}
 
-	async fn try_recv(&self) -> ControllerResult<Option<Delta<BufferAck>>> {
+	async fn try_recv(&self) -> ControllerResult<Option<Delta>> {
 		let last_update = self.0.local_version.borrow().clone();
 		let latest_version = self.0.latest_version.borrow().clone();
 

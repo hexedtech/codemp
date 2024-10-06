@@ -92,6 +92,14 @@ class TextChange:
 	def is_empty(self) 			-> bool: ...
 	def apply(self, txt: str) 	-> str: ...
 
+class Delta:
+	"""
+	A single editor delta event, wrapping a TextChange and the corresponding ACK channel
+	"""
+	change: TextChange
+
+	def ack(self,)				-> str: ...
+
 
 class BufferController:
 	"""

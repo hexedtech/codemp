@@ -6,16 +6,15 @@ use tokio::sync::{mpsc, oneshot, watch};
 use tonic::Streaming;
 use uuid::Uuid;
 
-use crate::api::change::Delta;
 use crate::api::controller::ControllerCallback;
 use crate::api::TextChange;
 use crate::ext::IgnorableError;
 
 use codemp_proto::buffer::{BufferEvent, Operation};
 
-use super::controller::{BufferAck, BufferController, BufferControllerInner};
+use super::controller::{BufferAck, BufferController, BufferControllerInner, Delta};
 
-pub(crate) type DeltaOp = Option<Delta<BufferAck>>;
+pub(crate) type DeltaOp = Option<Delta>;
 pub(crate) type DeltaRequest = (LocalVersion, oneshot::Sender<DeltaOp>);
 
 struct BufferWorker {

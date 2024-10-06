@@ -135,28 +135,28 @@ function MaybeCursorPromise:cancel() end
 function MaybeCursorPromise:and_then(cb) end
 
 
----@class (exact) TextChangePromise : Promise
-local TextChangePromise = {}
+---@class (exact) DeltaPromise : Promise
+local DeltaPromise = {}
 --- block until promise is ready and return value
---- @return TextChange
-function TextChangePromise:await() end
+--- @return Delta
+function DeltaPromise:await() end
 --- cancel promise execution
-function TextChangePromise:cancel() end
----@param cb fun(x: TextChange) callback to invoke
+function DeltaPromise:cancel() end
+---@param cb fun(x: Delta) callback to invoke
 ---invoke callback asynchronously as soon as promise is ready
-function TextChangePromise:and_then(cb) end
+function DeltaPromise:and_then(cb) end
 
 
----@class (exact) MaybeTextChangePromise : Promise
-local MaybeTextChangePromise = {}
+---@class (exact) MaybeDeltaPromise : Promise
+local MaybeDeltaPromise = {}
 --- block until promise is ready and return value
---- @return TextChange | nil
-function MaybeTextChangePromise:await() end
+--- @return Delta | nil
+function MaybeDeltaPromise:await() end
 --- cancel promise execution
-function MaybeTextChangePromise:cancel() end
----@param cb fun(x: TextChange | nil) callback to invoke
+function MaybeDeltaPromise:cancel() end
+---@param cb fun(x: Delta | nil) callback to invoke
 ---invoke callback asynchronously as soon as promise is ready
-function MaybeTextChangePromise:and_then(cb) end
+function MaybeDeltaPromise:and_then(cb) end
 
 -- [[ END ASYNC STUFF ]]
 
@@ -325,6 +325,13 @@ local BufferController = {}
 ---@field hash integer? optional hash of text buffer after this change, for sync checks
 local TextChange = {}
 
+---@class (exact) Delta
+---@field change TextChange text change for this delta
+local Delta = {}
+
+---notify controller that this change has been correctly applied
+function Delta:ack() end
+
 ---@param other string text to apply change to
 ---apply this text change to a string, returning the result
 function TextChange:apply(other) end
@@ -336,13 +343,13 @@ function TextChange:apply(other) end
 ---update buffer with a text change; note that to delete content should be empty but not span, while to insert span should be empty but not content (can insert and delete at the same time)
 function BufferController:send(change) end
 
----@return MaybeTextChangePromise
+---@return MaybeDeltaPromise
 ---@async
 ---@nodiscard
 ---try to receive text changes, returning nil if none is available
 function BufferController:try_recv() end
 
----@return TextChangePromise
+---@return DeltaPromise
 ---@async
 ---@nodiscard
 ---block until next text change and return it

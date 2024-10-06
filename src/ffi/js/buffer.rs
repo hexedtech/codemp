@@ -1,7 +1,6 @@
-use crate::api::change::Delta;
 use crate::api::controller::{AsyncReceiver, AsyncSender};
 use crate::api::TextChange;
-use crate::buffer::controller::BufferController;
+use crate::buffer::controller::{Delta, BufferController};
 use napi::threadsafe_function::{
 	ErrorStrategy::Fatal, ThreadSafeCallContext, ThreadsafeFunction, ThreadsafeFunctionCallMode,
 };
@@ -54,13 +53,13 @@ impl BufferController {
 	#[napi(js_name = "try_recv")]
 	pub async fn js_try_recv(
 		&self,
-	) -> napi::Result<Option<Delta<crate::buffer::controller::BufferAck>>> {
+	) -> napi::Result<Option<Delta>> {
 		Ok(self.try_recv().await?)
 	}
 
 	/// Wait for next buffer event and return it
 	#[napi(js_name = "recv")]
-	pub async fn js_recv(&self) -> napi::Result<Delta<crate::buffer::controller::BufferAck>> {
+	pub async fn js_recv(&self) -> napi::Result<Delta> {
 		Ok(self.recv().await?)
 	}
 

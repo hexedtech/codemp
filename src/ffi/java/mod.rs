@@ -141,6 +141,7 @@ into_java_ptr_class!(crate::Client, "mp/code/Client");
 into_java_ptr_class!(crate::Workspace, "mp/code/Workspace");
 into_java_ptr_class!(crate::cursor::Controller, "mp/code/CursorController");
 into_java_ptr_class!(crate::buffer::Controller, "mp/code/BufferController");
+into_java_ptr_class!(crate::buffer::controller::Delta, "mp/code/data/Delta");
 
 impl<'j> jni_toolbox::IntoJavaObject<'j> for crate::api::User {
 	const CLASS: &'static str = "mp/code/data/User";
@@ -275,6 +276,7 @@ from_java_ptr!(crate::Client);
 from_java_ptr!(crate::Workspace);
 from_java_ptr!(crate::cursor::Controller);
 from_java_ptr!(crate::buffer::Controller);
+from_java_ptr!(crate::buffer::controller::Delta);
 
 impl<'j> jni_toolbox::FromJava<'j> for crate::api::Config {
 	type From = jni::objects::JObject<'j>;

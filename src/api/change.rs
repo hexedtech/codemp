@@ -45,22 +45,6 @@ pub struct TextChange {
 	pub hash: Option<i64>,
 }
 
-/// This wrapper around a [`TextChange`] contains a handle to Acknowledge correct change
-/// application
-#[derive(Debug)]
-pub struct Delta<T: Acknowledgeable> {
-	/// The change received
-	pub change: TextChange,
-	/// The ack handle, must be called after correctly applying this change
-	pub ack: T,
-}
-
-/// A token which can be used to acknowledge changes
-pub trait Acknowledgeable {
-	/// Send Acknowledgement. This action is idempotent
-	fn send(&mut self);
-}
-
 impl TextChange {
 	/// Returns the [`std::ops::Range`] representing this change's span.
 	pub fn span(&self) -> std::ops::Range<usize> {

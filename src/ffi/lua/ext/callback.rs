@@ -1,5 +1,4 @@
-use crate::api::change::Delta;
-use crate::buffer::controller::BufferAck;
+use crate::buffer::controller::Delta;
 use crate::ext::IgnorableError;
 use crate::prelude::*;
 use mlua::prelude::*;
@@ -113,6 +112,6 @@ callback_args! {
 	MaybeCursor: Option<CodempCursor>,
 	TextChange: CodempTextChange,
 	MaybeTextChange: Option<CodempTextChange>,
-	Delta: Delta<BufferAck>,
-	MaybeDelta: Option<Delta<BufferAck>>,
+	Delta: Delta,
+	MaybeDelta: Option<Delta>,
 }
