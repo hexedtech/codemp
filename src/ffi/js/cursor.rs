@@ -1,4 +1,4 @@
-use crate::api::Controller;
+use crate::api::controller::{AsyncReceiver, AsyncSender};
 use crate::cursor::controller::CursorController;
 use napi::threadsafe_function::ErrorStrategy::Fatal;
 use napi::threadsafe_function::{

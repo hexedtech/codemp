@@ -89,6 +89,16 @@ function WorkspaceEventPromise:cancel() end
 function WorkspaceEventPromise:and_then(cb) end
 
 
+---@class (exact) MaybeWorkspaceEventPromise : Promise
+local MaybeWorkspaceEventPromise = {}
+--- block until promise is ready and return value
+--- @return WorkspaceEvent | nil
+function MaybeWorkspaceEventPromise:await() end
+---@param cb fun(x: WorkspaceEvent | nil) callback to invoke
+---invoke callback asynchronously as soon as promise is ready
+function MaybeWorkspaceEventPromise:and_then(cb) end
+
+
 ---@class (exact) BufferControllerPromise : Promise
 local BufferControllerPromise = {}
 --- block until promise is ready and return value
@@ -276,11 +286,30 @@ function Workspace:fetch_users(path) end
 ---@field type string
 ---@field value string
 
+---@return MaybeWorkspaceEventPromise
+---@async
+---@nodiscard
+---try to receive workspace events, returning nil if none is available
+function Workspace:try_recv() end
+
 ---@return WorkspaceEventPromise
 ---@async
 ---@nodiscard
----get next workspace event
-function Workspace:event() end
+---block until next workspace event and return it
+function Workspace:recv() end
+
+---@return NilPromise
+---@async
+---@nodiscard
+---block until next workspace event without returning it
+function Workspace:poll() end
+
+---clears any previously registered workspace callback
+function Workspace:clear_callback() end
+
+---@param cb fun(w: Workspace) callback to invoke on each workspace event received
+---register a new callback to be called on workspace events (replaces any previously registered one)
+function Workspace:callback(cb) end
 
 
 

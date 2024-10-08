@@ -1,5 +1,8 @@
 use crate::{
-	api::{Controller, Cursor},
+	api::{
+		controller::{AsyncReceiver, AsyncSender},
+		Cursor,
+	},
 	errors::ControllerError,
 };
 use jni::{objects::JObject, JNIEnv};

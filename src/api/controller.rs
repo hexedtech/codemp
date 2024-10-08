@@ -8,16 +8,17 @@ use crate::errors::ControllerResult;
 // note that we don't use thiserror's #[from] because we don't want the error structs to contain
 // these foreign types, and also we want these to be easily constructable
 
-/// Asynchronous and thread-safe handle to a generic bidirectional stream.
+/// Asynchronous and thread-safe handle to a generic bidirectional stream. Exists as a combination
+/// of [`AsyncSender`] and [`AsyncReceiver`].
 ///
 /// This generic trait is implemented by actors managing stream procedures, and will generally
 /// imply a background worker.
 ///
-/// Events can be enqueued for dispatching without blocking with [`Controller::send`].
+/// Events can be enqueued for dispatching without blocking with [`AsyncSender::send`].
 ///
-/// For receiving events from the server, an asynchronous API with [`Controller::recv`] is
-/// provided; if that is not feasible, consider using [`Controller::callback`] or, alternatively,
-/// [`Controller::poll`] combined with [`Controller::try_recv`].
+/// For receiving events from the server, an asynchronous API with [`AsyncReceiver::recv`] is
+/// provided; if that is not feasible, consider using [`AsyncReceiver::callback`] or, alternatively,
+/// [`AsyncReceiver::poll`] combined with [`AsyncReceiver::try_recv`].
 ///
 /// Every [`Controller`]'s worker will stop cleanly when all references to its [`Controller`] have
 /// been dropped.
@@ -25,10 +26,31 @@ use crate::errors::ControllerResult;
 /// [`crate::ext::select_buffer`] may provide a useful helper for managing multiple controllers.
 #[allow(async_fn_in_trait)]
 #[cfg_attr(feature = "async-trait", async_trait::async_trait)]
-pub trait Controller<T: Sized + Send + Sync>: Sized + Send + Sync {
+pub trait Controller<Tx, Rx = Tx>: AsyncSender<Tx> + AsyncReceiver<Rx>
+where
+	Tx: Sized + Sync + Send,
+	Rx: Sized + Sync + Send,
+{
+}
+
+/// Asynchronous and thread-safe handle to send data over a stream.
+/// See [`Controller`]'s documentation for details.
+///
+/// Details about the receiving end are left to the implementor.
+#[allow(async_fn_in_trait)]
+#[cfg_attr(feature = "async-trait", async_trait::async_trait)]
+pub trait AsyncSender<T: Sized + Send + Sync>: Sized + Send + Sync {
 	/// Enqueue a new value to be sent to all other users.
 	async fn send(&self, x: T) -> ControllerResult<()>;
+}
 
+/// Asynchronous and thread-safe handle to receive data from a stream.
+/// See [`Controller`]'s documentation for details.
+///
+/// Details about the sender are left to the implementor.
+#[allow(async_fn_in_trait)]
+#[cfg_attr(feature = "async-trait", async_trait::async_trait)]
+pub trait AsyncReceiver<T: Sized + Send + Sync>: Sized + Send + Sync {
 	/// Block until a value is available and returns it.
 	async fn recv(&self) -> ControllerResult<T> {
 		loop {

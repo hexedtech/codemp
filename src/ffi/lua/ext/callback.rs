@@ -71,6 +71,7 @@ pub(crate) enum CallbackArg {
 	BufferController(CodempBufferController),
 	Workspace(CodempWorkspace),
 	Event(CodempEvent),
+	MaybeEvent(Option<CodempEvent>),
 	Cursor(CodempCursor),
 	MaybeCursor(Option<CodempCursor>),
 	TextChange(CodempTextChange),
@@ -91,6 +92,7 @@ impl IntoLua for CallbackArg {
 			CallbackArg::Workspace(x) => x.into_lua(lua),
 			CallbackArg::VecStr(x) => x.into_lua(lua),
 			CallbackArg::Event(x) => x.into_lua(lua),
+			CallbackArg::MaybeEvent(x) => x.into_lua(lua),
 			CallbackArg::Cursor(x) => x.into_lua(lua),
 			CallbackArg::MaybeCursor(x) => x.into_lua(lua),
 			CallbackArg::TextChange(x) => x.into_lua(lua),
@@ -99,63 +101,16 @@ impl IntoLua for CallbackArg {
 	}
 }
 
-impl From<()> for CallbackArg {
-	fn from(_: ()) -> Self {
-		CallbackArg::Nil
-	}
-}
-impl From<String> for CallbackArg {
-	fn from(value: String) -> Self {
-		CallbackArg::Str(value)
-	}
-}
-impl From<CodempClient> for CallbackArg {
-	fn from(value: CodempClient) -> Self {
-		CallbackArg::Client(value)
-	}
-}
-impl From<CodempCursorController> for CallbackArg {
-	fn from(value: CodempCursorController) -> Self {
-		CallbackArg::CursorController(value)
-	}
-}
-impl From<CodempBufferController> for CallbackArg {
-	fn from(value: CodempBufferController) -> Self {
-		CallbackArg::BufferController(value)
-	}
-}
-impl From<CodempWorkspace> for CallbackArg {
-	fn from(value: CodempWorkspace) -> Self {
-		CallbackArg::Workspace(value)
-	}
-}
-impl From<Vec<String>> for CallbackArg {
-	fn from(value: Vec<String>) -> Self {
-		CallbackArg::VecStr(value)
-	}
-}
-impl From<CodempEvent> for CallbackArg {
-	fn from(value: CodempEvent) -> Self {
-		CallbackArg::Event(value)
-	}
-}
-impl From<CodempCursor> for CallbackArg {
-	fn from(value: CodempCursor) -> Self {
-		CallbackArg::Cursor(value)
-	}
-}
-impl From<Option<CodempCursor>> for CallbackArg {
-	fn from(value: Option<CodempCursor>) -> Self {
-		CallbackArg::MaybeCursor(value)
-	}
-}
-impl From<CodempTextChange> for CallbackArg {
-	fn from(value: CodempTextChange) -> Self {
-		CallbackArg::TextChange(value)
-	}
-}
-impl From<Option<CodempTextChange>> for CallbackArg {
-	fn from(value: Option<CodempTextChange>) -> Self {
-		CallbackArg::MaybeTextChange(value)
-	}
-}
+impl From<()> for CallbackArg { fn from(_: ()) -> Self { CallbackArg::Nil } }
+impl From<String> for CallbackArg { fn from(value: String) -> Self { CallbackArg::Str(value) } }
+impl From<CodempClient> for CallbackArg { fn from(value: CodempClient) -> Self { CallbackArg::Client(value) } }
+impl From<CodempCursorController> for CallbackArg { fn from(value: CodempCursorController) -> Self { CallbackArg::CursorController(value) } }
+impl From<CodempBufferController> for CallbackArg { fn from(value: CodempBufferController) -> Self { CallbackArg::BufferController(value) } }
+impl From<CodempWorkspace> for CallbackArg { fn from(value: CodempWorkspace) -> Self { CallbackArg::Workspace(value) } }
+impl From<Vec<String>> for CallbackArg { fn from(value: Vec<String>) -> Self { CallbackArg::VecStr(value) } }
+impl From<CodempEvent> for CallbackArg { fn from(value: CodempEvent) -> Self { CallbackArg::Event(value) } }
+impl From<CodempCursor> for CallbackArg { fn from(value: CodempCursor) -> Self { CallbackArg::Cursor(value) } }
+impl From<Option<CodempCursor>> for CallbackArg { fn from(value: Option<CodempCursor>) -> Self { CallbackArg::MaybeCursor(value) } }
+impl From<CodempTextChange> for CallbackArg { fn from(value: CodempTextChange) -> Self { CallbackArg::TextChange(value) } }
+impl From<Option<CodempTextChange>> for CallbackArg { fn from(value: Option<CodempTextChange>) -> Self { CallbackArg::MaybeTextChange(value) } }
+impl From<Option<CodempEvent>> for CallbackArg { fn from(value: Option<CodempEvent>) -> Self { CallbackArg::MaybeEvent(value) } }

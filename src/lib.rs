@@ -50,7 +50,7 @@
 //! #  let client = codemp::Client::connect(codemp::api::Config::new("", "")).await.unwrap();
 //! # client.create_workspace("").await.unwrap();
 //! # let workspace = client.join_workspace("").await.unwrap();
-//! use codemp::api::Controller; // needed to access trait methods
+//! use codemp::api::controller::{AsyncSender, AsyncReceiver}; // needed to access trait methods
 //! let cursor = workspace.cursor();
 //! let event = cursor.recv().await.expect("disconnected while waiting for event!");
 //! println!("user {} moved on buffer {}", event.user.unwrap_or_default(), event.buffer);
@@ -66,7 +66,7 @@
 //! #  let client = codemp::Client::connect(codemp::api::Config::new("", "")).await.unwrap();
 //! # client.create_workspace("").await.unwrap();
 //! # let workspace = client.join_workspace("").await.unwrap();
-//! # use codemp::api::Controller;
+//! # use codemp::api::controller::{AsyncSender, AsyncReceiver};
 //! let buffer = workspace.attach("/some/file.txt").await.expect("failed to attach");
 //! buffer.content(); // force-sync
 //! if let Some(change) = buffer.try_recv().await.unwrap() {

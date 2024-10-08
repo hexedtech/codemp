@@ -1,8 +1,14 @@
+use crate::api::controller::AsyncReceiver;
 use crate::buffer::controller::BufferController;
 use crate::cursor::controller::CursorController;
-use crate::ffi::js::client::JsUser;
 use crate::Workspace;
+use napi::threadsafe_function::ErrorStrategy::Fatal;
+use napi::threadsafe_function::{
+	ThreadSafeCallContext, ThreadsafeFunction, ThreadsafeFunctionCallMode,
+};
 use napi_derive::napi;
+
+use super::client::JsUser;
 
 #[napi(object, js_name = "Event")]
 pub struct JsEvent {
@@ -85,18 +91,48 @@ impl Workspace {
 		Ok(self.delete(&path).await?)
 	}
 
+	#[napi(js_name = "recv")]
+	pub async fn js_recv(&self) -> napi::Result<JsEvent> {
+		Ok(JsEvent::from(self.recv().await?))
+	}
+
+	#[napi(js_name = "try_recv")]
+	pub async fn js_try_recv(&self) -> napi::Result<Option<JsEvent>> {
+		Ok(self.try_recv().await?.map(JsEvent::from))
+	}
+
+	#[napi(js_name = "poll")]
+	pub async fn js_poll(&self) -> napi::Result<()> {
+		self.poll().await?;
+		Ok(())
+	}
+
+	#[napi(js_name = "clear_callback")]
+	pub fn js_clear_callback(&self) -> napi::Result<()> {
+		self.clear_callback();
+		Ok(())
+	}
+
+	#[napi(js_name = "callback", ts_args_type = "fun: (event: Workspace) => void")]
+	pub fn js_callback(&self, fun: napi::JsFunction) -> napi::Result<()> {
+		let tsfn: ThreadsafeFunction<crate::Workspace, Fatal> = fun
+			.create_threadsafe_function(0, |ctx: ThreadSafeCallContext<crate::Workspace>| {
+				Ok(vec![ctx.value])
+			})?;
+		self.callback(move |controller: Workspace| {
+			tsfn.call(controller.clone(), ThreadsafeFunctionCallMode::Blocking); //check this with tracing also we could use Ok(event) to get the error
+			                                                            // If it blocks the main thread too many time we have to change this
+		});
+
+		Ok(())
+	}
+
 	/// Detach from an active buffer, stopping its underlying worker
 	/// this method returns true if no reference or last reference was held, false if there are still
 	/// dangling references to clear
 	#[napi(js_name = "detach")]
 	pub async fn js_detach(&self, path: String) -> bool {
 		self.detach(&path)
-	}
-
-	/// Wait for next workspace event and return it
-	#[napi(js_name = "event")]
-	pub async fn js_event(&self) -> napi::Result<JsEvent> {
-		Ok(JsEvent::from(self.event().await?))
 	}
 
 	/// Re-fetch remote buffer list

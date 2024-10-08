@@ -34,11 +34,6 @@ impl LuaUserData for CodempWorkspace {
 		});
 
 		methods.add_method(
-			"event",
-			|_, this, ()| a_sync! { this => this.event().await? },
-		);
-
-		methods.add_method(
 			"fetch_buffers",
 			|_, this, ()| a_sync! { this => this.fetch_buffers().await? },
 		);
@@ -55,6 +50,27 @@ impl LuaUserData for CodempWorkspace {
 		);
 
 		methods.add_method("user_list", |_, this, ()| Ok(this.user_list()));
+
+		methods.add_method("recv", |_, this, ()| a_sync! { this => this.recv().await? });
+
+		methods.add_method(
+			"try_recv",
+			|_, this, ()| a_sync! { this => this.try_recv().await? },
+		);
+
+		methods.add_method("poll", |_, this, ()| a_sync! { this => this.poll().await? });
+
+		methods.add_method("callback", |_, this, (cb,): (LuaFunction,)| {
+			this.callback(move |controller: CodempWorkspace| {
+				super::ext::callback().invoke(cb.clone(), controller)
+			});
+			Ok(())
+		});
+
+		methods.add_method("clear_callbacl", |_, this, ()| {
+			this.clear_callback();
+			Ok(())
+		});
 	}
 
 	fn add_fields<F: LuaUserDataFields<Self>>(fields: &mut F) {

@@ -1,7 +1,7 @@
 //! ### Extensions
 //! Contains a number of utils used internally or that may be of general interest.
 
-use crate::{api::Controller, errors::ControllerResult};
+use crate::{api::controller::AsyncReceiver, errors::ControllerResult};
 use tokio::sync::mpsc;
 
 /// Poll all given buffer controllers and wait, returning the first one ready.
