@@ -25,11 +25,11 @@ thiserror = "1.0"
 # crdt
 diamond-types = "1.0"
 # proto
-codemp-proto = "0.7"
+codemp-proto = { git = "https://github.com/hexedtech/codemp-proto", rev = "4879ec7e07da6a720929466375d1181f65afb715", default-features = false }
 uuid = { version = "1.10", features = ["v4"] }
-tonic = { version = "0.12", features = ["tls", "tls-roots"] }
+tonic = { version = "0.12", features = [], default-features = false }
 # api
-tokio = { version = "1.40", features = ["macros", "rt-multi-thread", "sync"] }
+tokio = { version = "1.40", features = ["macros", "sync", "rt", "time"] }
 xxhash-rust = { version = "0.8", features = ["xxh3"] }
 # client
 tokio-stream = "0.1"
@@ -56,6 +56,7 @@ pyo3 = { version = "0.22", features = ["extension-module"], optional = true}
 # extra
 async-trait = { version = "0.1", optional = true }
 serde = { version = "1.0", features = ["derive"], optional = true }
+getrandom = { version = "0.2", features = ["js"], optional = true } # just to enable the feature on wasm
 
 [build-dependencies]
 # glue (js)
@@ -64,19 +65,27 @@ napi-build = { version = "2.1", optional = true }
 pyo3-build-config = { version = "0.22", optional = true }
 
 [features]
-default = []
+default = ["pc"]
+
 # extra
 async-trait = ["dep:async-trait"]
 serialize = ["dep:serde", "uuid/serde"]
+pc = ["tonic/tls-roots", "codemp-proto/client"] # runs on pc
+web = ["getrandom"] # runs on web, wasm
+
 # ffi
-java = ["lazy_static", "jni", "tracing-subscriber", "jni-toolbox"]
-js = ["napi-build", "tracing-subscriber", "napi", "napi-derive"]
-py-noabi = ["pyo3", "tracing-subscriber", "pyo3-build-config"]
-py = ["py-noabi", "pyo3/abi3-py38"]
-lua = ["mlua-codemp-patch", "tracing-subscriber", "lazy_static", "serialize"]
-lua54 =["lua", "mlua-codemp-patch/lua54"] 
-luajit = ["lua", "mlua-codemp-patch/luajit"]
+java = ["lazy_static", "jni", "tracing-subscriber", "jni-toolbox", "pc"]
+
+js = ["napi-build", "tracing-subscriber", "napi", "napi-derive", "pc"]
+js-web = ["napi-build", "tracing-subscriber", "napi", "napi-derive", "web"]
+
+py-noabi = ["pyo3", "tracing-subscriber", "pyo3-build-config", "pc"]
+py = ["py-noabi", "pyo3/abi3-py38", "pc"]
+
+lua = ["mlua-codemp-patch", "tracing-subscriber", "lazy_static", "serialize", "pc"]
+lua54 =["lua", "mlua-codemp-patch/lua54", "pc"] 
+luajit = ["lua", "mlua-codemp-patch/luajit", "pc"]
 
 
 [package.metadata.docs.rs] # enabled features when building on docs.rs
-features = ["serialize"]
+features = ["serialize", "pc"]
