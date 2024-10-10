@@ -5,7 +5,7 @@ use tonic::Streaming;
 use uuid::Uuid;
 
 use crate::{
-	api::{controller::ControllerCallback, cursor::Selection, Cursor, User},
+	api::{controller::ControllerCallback, Cursor, Selection, User},
 	ext::IgnorableError,
 };
 use codemp_proto::cursor::{CursorEvent, CursorPosition};

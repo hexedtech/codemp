@@ -7,7 +7,10 @@ use tokio::sync::{mpsc, oneshot, watch};
 
 use crate::{
 	api::{
-		controller::{AsyncReceiver, AsyncSender, ControllerCallback}, cursor::Selection, Controller, Cursor
+		controller::{AsyncReceiver, AsyncSender, ControllerCallback},
+		Controller,
+		Cursor,
+		Selection
 	},
 	errors::ControllerResult,
 };

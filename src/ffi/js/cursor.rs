@@ -39,7 +39,7 @@ impl CursorController {
 
 	/// Send a new cursor event to remote
 	#[napi(js_name = "send")]
-	pub fn js_send(&self, sel: crate::api::cursor::Selection) -> napi::Result<()> {
+	pub fn js_send(&self, sel: crate::api::Selection) -> napi::Result<()> {
 		Ok(self.send(sel)?)
 	}
 

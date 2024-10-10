@@ -4,7 +4,7 @@
 #[cfg(any(feature = "py", feature = "py-noabi"))]
 use pyo3::prelude::*;
 
-/// User cursor position in a buffer
+/// An event that occurred about a user's cursor.
 #[derive(Clone, Debug, Default)]
 #[cfg_attr(feature = "js", napi_derive::napi(object))]
 #[cfg_attr(any(feature = "py", feature = "py-noabi"), pyclass)]
@@ -13,11 +13,11 @@ use pyo3::prelude::*;
 pub struct Cursor {
 	/// User who sent the cursor.
 	pub user: String,
-	/// Cursor selection
+	/// The updated cursor selection.
 	pub sel: Selection,
 }
 
-/// A cursor selection span, with row-column tuples
+/// A cursor selection span.
 #[derive(Clone, Debug, Default)]
 #[cfg_attr(feature = "js", napi_derive::napi(object))]
 #[cfg_attr(any(feature = "py", feature = "py-noabi"), pyclass)]

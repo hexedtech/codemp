@@ -1,11 +1,11 @@
 //! # Config
 //! Data structure defining clients configuration
 
-/// Configuration struct for `codemp` client
+/// Configuration struct for the `codemp` client.
 ///
-/// username and password are required fields, while everything else is optional
+/// `username` and `password` are required fields, everything else is optional.
 ///
-/// host, port and tls affect all connections to all grpc services
+/// `host`, `port` and `tls` affect all connections to all gRPC services; the
 /// resulting endpoint is composed like this:
 ///     http{tls?'s':''}://{host}:{port}
 #[derive(Clone, Debug)]
@@ -16,20 +16,20 @@
 )]
 #[cfg_attr(feature = "serialize", derive(serde::Serialize, serde::Deserialize))]
 pub struct Config {
-	/// user identifier used to register, possibly your email
+	/// User identifier used to register, possibly your email.
 	pub username: String,
-	/// user password chosen upon registration
+	/// User password chosen upon registration.
 	pub password: String,
-	/// address of server to connect to, default api.code.mp
+	/// Address of server to connect to, default api.code.mp.
 	pub host: Option<String>,
-	/// port to connect to, default 50053
+	/// Port to connect to, default 50053.
 	pub port: Option<u16>,
-	/// enable or disable tls, default true
+	/// Enable or disable tls, default true.
 	pub tls: Option<bool>,
 }
 
 impl Config {
-	/// construct a new Config object, with given username and password
+	/// Construct a new Config object, with given username and password.
 	pub fn new(username: impl ToString, password: impl ToString) -> Self {
 		Self {
 			username: username.to_string(),

@@ -1,5 +1,5 @@
 use crate::api::controller::{AsyncReceiver, AsyncSender};
-use crate::api::cursor::{Cursor, Selection};
+use crate::api::{Cursor, Selection};
 use crate::api::TextChange;
 use crate::buffer::Controller as BufferController;
 use crate::cursor::Controller as CursorController;

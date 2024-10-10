@@ -1,5 +1,5 @@
 use crate::api::controller::{AsyncReceiver, AsyncSender};
-use crate::api::change::{TextChange, BufferUpdate};
+use crate::api::{TextChange, BufferUpdate};
 use crate::buffer::controller::BufferController;
 use napi::threadsafe_function::{
 	ErrorStrategy::Fatal, ThreadSafeCallContext, ThreadsafeFunction, ThreadsafeFunctionCallMode,

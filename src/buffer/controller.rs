@@ -6,13 +6,11 @@ use std::sync::Arc;
 use diamond_types::LocalVersion;
 use tokio::sync::{mpsc, oneshot, watch};
 
-use crate::api::change::BufferUpdate;
+use crate::api::BufferUpdate;
 use crate::api::controller::{AsyncReceiver, AsyncSender, Controller, ControllerCallback};
 use crate::api::TextChange;
 use crate::errors::ControllerResult;
 use crate::ext::IgnorableError;
-
-use super::worker::DeltaRequest;
 
 /// A [Controller] to asynchronously interact with remote buffers.
 ///
@@ -54,7 +52,7 @@ pub(crate) struct BufferControllerInner {
 	pub(crate) ops_in: mpsc::UnboundedSender<TextChange>,
 	pub(crate) poller: mpsc::UnboundedSender<oneshot::Sender<()>>,
 	pub(crate) content_request: mpsc::Sender<oneshot::Sender<String>>,
-	pub(crate) delta_request: mpsc::Sender<DeltaRequest>,
+	pub(crate) delta_request: mpsc::Sender<(LocalVersion, oneshot::Sender<Option<BufferUpdate>>)>,
 	pub(crate) callback: watch::Sender<Option<ControllerCallback<BufferController>>>,
 	pub(crate) ack_tx: mpsc::UnboundedSender<LocalVersion>,
 }

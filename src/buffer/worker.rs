@@ -6,7 +6,7 @@ use tokio::sync::{mpsc, oneshot, watch};
 use tonic::Streaming;
 use uuid::Uuid;
 
-use crate::api::change::BufferUpdate;
+use crate::api::BufferUpdate;
 use crate::api::controller::ControllerCallback;
 use crate::api::TextChange;
 use crate::ext::IgnorableError;
@@ -14,9 +14,6 @@ use crate::ext::IgnorableError;
 use codemp_proto::buffer::{BufferEvent, Operation};
 
 use super::controller::{BufferController, BufferControllerInner};
-
-pub(crate) type DeltaOp = Option<BufferUpdate>;
-pub(crate) type DeltaRequest = (LocalVersion, oneshot::Sender<DeltaOp>);
 
 struct BufferWorker {
 	user_id: Uuid,
@@ -28,7 +25,7 @@ struct BufferWorker {
 	poller: mpsc::UnboundedReceiver<oneshot::Sender<()>>,
 	pollers: Vec<oneshot::Sender<()>>,
 	content_checkout: mpsc::Receiver<oneshot::Sender<String>>,
-	delta_req: mpsc::Receiver<DeltaRequest>,
+	delta_req: mpsc::Receiver<(LocalVersion, oneshot::Sender<Option<BufferUpdate>>)>,
 	controller: std::sync::Weak<BufferControllerInner>,
 	callback: watch::Receiver<Option<ControllerCallback<BufferController>>>,
 	oplog: OpLog,
@@ -215,7 +212,7 @@ impl BufferWorker {
 		}
 	}
 
-	async fn handle_delta_request(&mut self, last_ver: LocalVersion, tx: oneshot::Sender<DeltaOp>) {
+	async fn handle_delta_request(&mut self, last_ver: LocalVersion, tx: oneshot::Sender<Option<BufferUpdate>>) {
 		if let Some((lv, Some(dtop))) = self
 			.oplog
 			.iter_xf_operations_from(&last_ver, self.oplog.local_version_ref())
@@ -240,10 +237,10 @@ impl BufferWorker {
 					{
 						tracing::error!("[?!?!] Insert span differs from effective content len (TODO remove this error after a bit)");
 					}
-					crate::api::change::BufferUpdate {
+					crate::api::BufferUpdate {
 						hash,
 						version: step_ver.into_iter().map(|x| i64::from_ne_bytes(x.to_ne_bytes())).collect(), // TODO this is wasteful
-						change: crate::api::change::TextChange {
+						change: crate::api::TextChange {
 							start: dtop.start() as u32,
 							end: dtop.start() as u32,
 							content: dtop.content_as_str().unwrap_or_default().to_string(),
@@ -251,10 +248,10 @@ impl BufferWorker {
 					}
 				}
 
-				diamond_types::list::operation::OpKind::Del => crate::api::change::BufferUpdate {
+				diamond_types::list::operation::OpKind::Del => crate::api::BufferUpdate {
 					hash,
 					version: step_ver.into_iter().map(|x| i64::from_ne_bytes(x.to_ne_bytes())).collect(), // TODO this is wasteful
-					change: crate::api::change::TextChange {
+					change: crate::api::TextChange {
 						start: dtop.start() as u32,
 						end: dtop.end() as u32,
 						content: dtop.content_as_str().unwrap_or_default().to_string(),
