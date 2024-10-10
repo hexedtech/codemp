@@ -1,4 +1,3 @@
-use crate::buffer::controller::Delta;
 use crate::ext::IgnorableError;
 use crate::prelude::*;
 use mlua::prelude::*;
@@ -110,8 +109,10 @@ callback_args! {
 	MaybeEvent: Option<CodempEvent>,
 	Cursor: CodempCursor,
 	MaybeCursor: Option<CodempCursor>,
+	Selection: CodempSelection,
+	MaybeSelection: Option<CodempSelection>,
 	TextChange: CodempTextChange,
 	MaybeTextChange: Option<CodempTextChange>,
-	Delta: Delta,
-	MaybeDelta: Option<Delta>,
+	BufferUpdate: CodempBufferUpdate,
+	MaybeBufferUpdate: Option<CodempBufferUpdate>,
 }

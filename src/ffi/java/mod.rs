@@ -141,7 +141,6 @@ into_java_ptr_class!(crate::Client, "mp/code/Client");
 into_java_ptr_class!(crate::Workspace, "mp/code/Workspace");
 into_java_ptr_class!(crate::cursor::Controller, "mp/code/CursorController");
 into_java_ptr_class!(crate::buffer::Controller, "mp/code/BufferController");
-into_java_ptr_class!(crate::buffer::controller::Delta, "mp/code/data/Delta");
 
 impl<'j> jni_toolbox::IntoJavaObject<'j> for crate::api::User {
 	const CLASS: &'static str = "mp/code/data/User";
@@ -202,19 +201,6 @@ impl<'j> jni_toolbox::IntoJavaObject<'j> for crate::api::TextChange {
 	) -> Result<jni::objects::JObject<'j>, jni::errors::Error> {
 		let content = env.new_string(self.content)?;
 
-		let hash_class = env.find_class("java/util/OptionalLong")?;
-		let hash = if let Some(h) = self.hash {
-			env.call_static_method(
-				hash_class,
-				"of",
-				"(J)Ljava/util/OptionalLong;",
-				&[jni::objects::JValueGen::Long(h)],
-			)
-		} else {
-			env.call_static_method(hash_class, "empty", "()Ljava/util/OptionalLong;", &[])
-		}?
-		.l()?;
-
 		let class = env.find_class(Self::CLASS)?;
 		env.new_object(
 			class,
@@ -223,7 +209,6 @@ impl<'j> jni_toolbox::IntoJavaObject<'j> for crate::api::TextChange {
 				jni::objects::JValueGen::Long(self.start.into()),
 				jni::objects::JValueGen::Long(self.end.into()),
 				jni::objects::JValueGen::Object(&content),
-				jni::objects::JValueGen::Object(&hash),
 			],
 		)
 	}

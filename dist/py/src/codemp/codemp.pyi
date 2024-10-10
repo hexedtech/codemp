@@ -92,13 +92,13 @@ class TextChange:
 	def is_empty(self) 			-> bool: ...
 	def apply(self, txt: str) 	-> str: ...
 
-class Delta:
+class BufferUpdate:
 	"""
-	A single editor delta event, wrapping a TextChange and the corresponding ACK channel
+	A single editor delta event, wrapping a TextChange and the new version
 	"""
 	change: TextChange
-
-	def ack(self,)				-> str: ...
+	hash: Optional[int]
+	version: list[int]
 
 
 class BufferController:
@@ -108,6 +108,7 @@ class BufferController:
 	"""
 	def path(self)								-> str: ...
 	def content(self) 							-> Promise[str]: ...
+	def ack(self, v: list[int])					-> None: ...
 	def send(self,
 		start: int,
 		end: int,
@@ -121,14 +122,20 @@ class BufferController:
 
 
 
-class Cursor:
+class Selection:
 	"""
 	An Editor agnostic cursor position representation
 	"""
 	start: Tuple[int, int]
 	end: Tuple[int, int]
 	buffer: str
-	user: Optional[str] # can be an empty string
+
+class Cursor:
+	"""
+	A remote cursor event
+	"""
+	user: str
+	sel: Selection
 
 
 class CursorController:

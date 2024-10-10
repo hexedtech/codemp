@@ -1,5 +1,5 @@
 use crate::api::controller::{AsyncReceiver, AsyncSender};
-use crate::api::Cursor;
+use crate::api::cursor::{Cursor, Selection};
 use crate::api::TextChange;
 use crate::buffer::Controller as BufferController;
 use crate::cursor::Controller as CursorController;
@@ -20,11 +20,12 @@ impl CursorController {
 		start: (i32, i32),
 		end: (i32, i32),
 	) -> PyResult<()> {
-		let pos = Cursor {
-			start,
-			end,
+		let pos = Selection {
+			start_row: start.0,
+			start_col: start.1,
+			end_row: end.0,
+			end_col: end.1,
 			buffer: path,
-			user: None,
 		};
 		let this = self.clone();
 		this.send(pos)?;
@@ -90,7 +91,6 @@ impl BufferController {
 			start,
 			end,
 			content: txt,
-			hash: None,
 		};
 		let this = self.clone();
 		this.send(op)?;
@@ -143,21 +143,21 @@ impl BufferController {
 impl Cursor {
 	#[getter(start)]
 	fn pystart(&self) -> (i32, i32) {
-		self.start
+		(self.sel.start_row, self.sel.start_col)
 	}
 
 	#[getter(end)]
 	fn pyend(&self) -> (i32, i32) {
-		self.end
+		(self.sel.end_row, self.sel.end_col)
 	}
 
 	#[getter(buffer)]
 	fn pybuffer(&self) -> String {
-		self.buffer.clone()
+		self.sel.buffer.clone()
 	}
 
 	#[getter(user)]
 	fn pyuser(&self) -> Option<String> {
-		self.user.clone()
+		Some(self.user.clone())
 	}
 }

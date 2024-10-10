@@ -1,4 +1,3 @@
-use crate::buffer::controller::Delta;
 use crate::prelude::*;
 use mlua::prelude::*;
 use mlua_codemp_patch as mlua;
@@ -22,6 +21,7 @@ impl LuaUserData for CodempBufferController {
 		);
 		methods.add_method("recv", |_, this, ()| a_sync! { this => this.recv().await? });
 		methods.add_method("poll", |_, this, ()| a_sync! { this => this.poll().await? });
+		methods.add_method_mut("ack", |_, this, (version,):(Vec<i64>,)| Ok(this.ack(version)));
 
 		methods.add_method(
 			"content",
@@ -43,7 +43,6 @@ impl LuaUserData for CodempTextChange {
 		fields.add_field_method_get("content", |_, this| Ok(this.content.clone()));
 		fields.add_field_method_get("start", |_, this| Ok(this.start));
 		fields.add_field_method_get("end", |_, this| Ok(this.end));
-		fields.add_field_method_get("hash", |_, this| Ok(this.hash));
 		// add a 'finish' accessor too because in Lua 'end' is reserved
 		fields.add_field_method_get("finish", |_, this| Ok(this.end));
 	}
@@ -56,12 +55,17 @@ impl LuaUserData for CodempTextChange {
 	}
 }
 
-impl LuaUserData for Delta {
+from_lua_serde! { CodempBufferUpdate }
+impl LuaUserData for CodempBufferUpdate {
 	fn add_fields<F: LuaUserDataFields<Self>>(fields: &mut F) {
+		fields.add_field_method_get("hash", |_, this| Ok(this.hash));
+		fields.add_field_method_get("version", |_, this| Ok(this.version.clone()));
 		fields.add_field_method_get("change", |_, this| Ok(this.change.clone()));
 	}
 
 	fn add_methods<M: LuaUserDataMethods<Self>>(methods: &mut M) {
-		methods.add_method_mut("ack", |_, this, ()| Ok(this.ack()));
+		methods.add_meta_method(LuaMetaMethod::ToString, |_, this, ()| {
+			Ok(format!("{:?}", this))
+		});
 	}
 }

@@ -135,28 +135,28 @@ function MaybeCursorPromise:cancel() end
 function MaybeCursorPromise:and_then(cb) end
 
 
----@class (exact) DeltaPromise : Promise
-local DeltaPromise = {}
+---@class (exact) BufferUpdatePromise : Promise
+local BufferUpdatePromise = {}
 --- block until promise is ready and return value
---- @return Delta
-function DeltaPromise:await() end
+--- @return BufferUpdate
+function BufferUpdatePromise:await() end
 --- cancel promise execution
-function DeltaPromise:cancel() end
----@param cb fun(x: Delta) callback to invoke
+function BufferUpdatePromise:cancel() end
+---@param cb fun(x: BufferUpdate) callback to invoke
 ---invoke callback asynchronously as soon as promise is ready
-function DeltaPromise:and_then(cb) end
+function BufferUpdatePromise:and_then(cb) end
 
 
----@class (exact) MaybeDeltaPromise : Promise
-local MaybeDeltaPromise = {}
+---@class (exact) MaybeBufferUpdatePromise : Promise
+local MaybeBufferUpdatePromise = {}
 --- block until promise is ready and return value
---- @return Delta | nil
-function MaybeDeltaPromise:await() end
+--- @return BufferUpdate | nil
+function MaybeBufferUpdatePromise:await() end
 --- cancel promise execution
-function MaybeDeltaPromise:cancel() end
----@param cb fun(x: Delta | nil) callback to invoke
+function MaybeBufferUpdatePromise:cancel() end
+---@param cb fun(x: BufferUpdate | nil) callback to invoke
 ---invoke callback asynchronously as soon as promise is ready
-function MaybeDeltaPromise:and_then(cb) end
+function MaybeBufferUpdatePromise:and_then(cb) end
 
 -- [[ END ASYNC STUFF ]]
 
@@ -322,15 +322,13 @@ local BufferController = {}
 ---@field content string text content of change
 ---@field start integer start index of change
 ---@field finish integer end index of change
----@field hash integer? optional hash of text buffer after this change, for sync checks
 local TextChange = {}
 
----@class (exact) Delta
+---@class (exact) BufferUpdate
 ---@field change TextChange text change for this delta
-local Delta = {}
-
----notify controller that this change has been correctly applied
-function Delta:ack() end
+---@field version [integer] CRDT version after this change
+---@field hash integer? optional hash of text buffer after this change, for sync checks
+local BufferUpdate = {}
 
 ---@param other string text to apply change to
 ---apply this text change to a string, returning the result
@@ -343,13 +341,13 @@ function TextChange:apply(other) end
 ---update buffer with a text change; note that to delete content should be empty but not span, while to insert span should be empty but not content (can insert and delete at the same time)
 function BufferController:send(change) end
 
----@return MaybeDeltaPromise
+---@return MaybeBufferUpdatePromise
 ---@async
 ---@nodiscard
 ---try to receive text changes, returning nil if none is available
 function BufferController:try_recv() end
 
----@return DeltaPromise
+---@return BufferUpdatePromise
 ---@async
 ---@nodiscard
 ---block until next text change and return it
@@ -373,6 +371,10 @@ function BufferController:callback(cb) end
 ---@nodiscard
 ---get current content of buffer controller, marking all pending changes as seen
 function BufferController:content() end
+
+---@param version [integer] version to ack
+---notify controller that this version's change has been correctly applied
+function BufferController:ack(version) end
 
 
 
