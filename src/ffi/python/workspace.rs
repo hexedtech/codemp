@@ -103,7 +103,7 @@ impl Workspace {
 	}
 
 	#[pyo3(name = "clear_callback")]
-	fn pyclear_callbacl(&self, _py: Python) {
+	fn pyclear_callback(&self, _py: Python) {
 		self.clear_callback();
 	}
 
