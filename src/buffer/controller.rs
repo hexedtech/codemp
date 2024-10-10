@@ -6,8 +6,8 @@ use std::sync::Arc;
 use diamond_types::LocalVersion;
 use tokio::sync::{mpsc, oneshot, watch};
 
-use crate::api::BufferUpdate;
 use crate::api::controller::{AsyncReceiver, AsyncSender, Controller, ControllerCallback};
+use crate::api::BufferUpdate;
 use crate::api::TextChange;
 use crate::errors::ControllerResult;
 use crate::ext::IgnorableError;
@@ -35,10 +35,14 @@ impl BufferController {
 		Ok(content)
 	}
 
-  /// Notify CRDT that changes up to the given version have been merged succesfully.
+	/// Notify CRDT that changes up to the given version have been merged succesfully.
 	pub fn ack(&self, version: Vec<i64>) {
-		let version = version.into_iter().map(|x| usize::from_ne_bytes(x.to_ne_bytes())).collect();
-		self.0.ack_tx
+		let version = version
+			.into_iter()
+			.map(|x| usize::from_ne_bytes(x.to_ne_bytes()))
+			.collect();
+		self.0
+			.ack_tx
 			.send(version)
 			.unwrap_or_warn("no worker to receive sent ack");
 	}

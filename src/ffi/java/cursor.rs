@@ -1,8 +1,7 @@
 use crate::{
 	api::{
 		controller::{AsyncReceiver, AsyncSender},
-		Cursor,
-		Selection
+		Cursor, Selection,
 	},
 	errors::ControllerError,
 };

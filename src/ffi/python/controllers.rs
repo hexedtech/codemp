@@ -1,6 +1,6 @@
 use crate::api::controller::{AsyncReceiver, AsyncSender};
-use crate::api::{Cursor, Selection};
 use crate::api::TextChange;
+use crate::api::{Cursor, Selection};
 use crate::buffer::Controller as BufferController;
 use crate::cursor::Controller as CursorController;
 use pyo3::exceptions::PyValueError;

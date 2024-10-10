@@ -8,9 +8,7 @@ use tokio::sync::{mpsc, oneshot, watch};
 use crate::{
 	api::{
 		controller::{AsyncReceiver, AsyncSender, ControllerCallback},
-		Controller,
-		Cursor,
-		Selection
+		Controller, Cursor, Selection,
 	},
 	errors::ControllerResult,
 };
@@ -41,9 +39,9 @@ impl Controller<Selection, Cursor> for CursorController {}
 #[cfg_attr(feature = "async-trait", async_trait::async_trait)]
 impl AsyncSender<Selection> for CursorController {
 	fn send(&self, mut cursor: Selection) -> ControllerResult<()> {
-		if cursor.start_row > cursor.end_row || (
-			cursor.start_row == cursor.end_row && cursor.start_col > cursor.end_col
-		) {
+		if cursor.start_row > cursor.end_row
+			|| (cursor.start_row == cursor.end_row && cursor.start_col > cursor.end_col)
+		{
 			std::mem::swap(&mut cursor.start_row, &mut cursor.end_row);
 			std::mem::swap(&mut cursor.start_col, &mut cursor.end_col);
 		}

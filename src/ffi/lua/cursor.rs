@@ -22,11 +22,11 @@ impl LuaUserData for CodempCursorController {
 		methods.add_method("poll", |_, this, ()| a_sync! { this => this.poll().await? });
 
 		methods.add_method("clear_callback", |_, this, ()| Ok(this.clear_callback()));
-		methods.add_method("callback", |_, this, (cb,): (LuaFunction,)|
-			Ok(this.callback(move |controller: CodempCursorController|
+		methods.add_method("callback", |_, this, (cb,): (LuaFunction,)| {
+			Ok(this.callback(move |controller: CodempCursorController| {
 				super::ext::callback().invoke(cb.clone(), controller)
-			))
-		);
+			}))
+		});
 	}
 }
 

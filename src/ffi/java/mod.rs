@@ -421,7 +421,13 @@ impl<'j> jni_toolbox::FromJava<'j> for crate::api::Selection {
 			unsafe { env.get_string_unchecked(&jfield.into()) }?.into()
 		};
 
-		Ok(Self { start_row, start_col, end_row, end_col, buffer })
+		Ok(Self {
+			start_row,
+			start_col,
+			end_row,
+			end_col,
+			buffer,
+		})
 	}
 }
 
@@ -453,7 +459,7 @@ impl<'j> jni_toolbox::FromJava<'j> for crate::api::TextChange {
 		Ok(Self {
 			start,
 			end,
-			content
+			content,
 		})
 	}
 }

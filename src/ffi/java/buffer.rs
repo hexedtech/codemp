@@ -4,8 +4,7 @@ use jni_toolbox::jni;
 use crate::{
 	api::{
 		controller::{AsyncReceiver, AsyncSender},
-		BufferUpdate,
-		TextChange
+		BufferUpdate, TextChange,
 	},
 	errors::ControllerError,
 };
@@ -26,7 +25,9 @@ fn get_content(controller: &mut crate::buffer::Controller) -> Result<String, Con
 
 /// Try to fetch a [TextChange], or return null if there's nothing.
 #[jni(package = "mp.code", class = "BufferController")]
-fn try_recv(controller: &mut crate::buffer::Controller) -> Result<Option<BufferUpdate>, ControllerError> {
+fn try_recv(
+	controller: &mut crate::buffer::Controller,
+) -> Result<Option<BufferUpdate>, ControllerError> {
 	super::tokio().block_on(controller.try_recv())
 }
 

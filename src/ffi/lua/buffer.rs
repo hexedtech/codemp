@@ -11,9 +11,9 @@ impl LuaUserData for CodempBufferController {
 			Ok(format!("{:?}", this))
 		});
 
-		methods.add_method("send", |_, this, (change,): (CodempTextChange,)|
+		methods.add_method("send", |_, this, (change,): (CodempTextChange,)| {
 			Ok(this.send(change)?)
-		);
+		});
 
 		methods.add_method(
 			"try_recv",
@@ -21,7 +21,9 @@ impl LuaUserData for CodempBufferController {
 		);
 		methods.add_method("recv", |_, this, ()| a_sync! { this => this.recv().await? });
 		methods.add_method("poll", |_, this, ()| a_sync! { this => this.poll().await? });
-		methods.add_method_mut("ack", |_, this, (version,):(Vec<i64>,)| Ok(this.ack(version)));
+		methods.add_method_mut("ack", |_, this, (version,): (Vec<i64>,)| {
+			Ok(this.ack(version))
+		});
 
 		methods.add_method(
 			"content",
@@ -29,11 +31,11 @@ impl LuaUserData for CodempBufferController {
 		);
 
 		methods.add_method("clear_callback", |_, this, ()| Ok(this.clear_callback()));
-		methods.add_method("callback", |_, this, (cb,): (LuaFunction,)|
-			Ok(this.callback(move |controller: CodempBufferController|
+		methods.add_method("callback", |_, this, (cb,): (LuaFunction,)| {
+			Ok(this.callback(move |controller: CodempBufferController| {
 				super::ext::callback().invoke(cb.clone(), controller)
-			))
-		);
+			}))
+		});
 	}
 }
 

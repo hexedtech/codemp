@@ -6,8 +6,8 @@ use tokio::sync::{mpsc, oneshot, watch};
 use tonic::Streaming;
 use uuid::Uuid;
 
-use crate::api::BufferUpdate;
 use crate::api::controller::ControllerCallback;
+use crate::api::BufferUpdate;
 use crate::api::TextChange;
 use crate::ext::IgnorableError;
 
@@ -212,7 +212,11 @@ impl BufferWorker {
 		}
 	}
 
-	async fn handle_delta_request(&mut self, last_ver: LocalVersion, tx: oneshot::Sender<Option<BufferUpdate>>) {
+	async fn handle_delta_request(
+		&mut self,
+		last_ver: LocalVersion,
+		tx: oneshot::Sender<Option<BufferUpdate>>,
+	) {
 		if let Some((lv, Some(dtop))) = self
 			.oplog
 			.iter_xf_operations_from(&last_ver, self.oplog.local_version_ref())
@@ -239,18 +243,24 @@ impl BufferWorker {
 					}
 					crate::api::BufferUpdate {
 						hash,
-						version: step_ver.into_iter().map(|x| i64::from_ne_bytes(x.to_ne_bytes())).collect(), // TODO this is wasteful
+						version: step_ver
+							.into_iter()
+							.map(|x| i64::from_ne_bytes(x.to_ne_bytes()))
+							.collect(), // TODO this is wasteful
 						change: crate::api::TextChange {
 							start: dtop.start() as u32,
 							end: dtop.start() as u32,
 							content: dtop.content_as_str().unwrap_or_default().to_string(),
-						}
+						},
 					}
 				}
 
 				diamond_types::list::operation::OpKind::Del => crate::api::BufferUpdate {
 					hash,
-					version: step_ver.into_iter().map(|x| i64::from_ne_bytes(x.to_ne_bytes())).collect(), // TODO this is wasteful
+					version: step_ver
+						.into_iter()
+						.map(|x| i64::from_ne_bytes(x.to_ne_bytes()))
+						.collect(), // TODO this is wasteful
 					change: crate::api::TextChange {
 						start: dtop.start() as u32,
 						end: dtop.end() as u32,
