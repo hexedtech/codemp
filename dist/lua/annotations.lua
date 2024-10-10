@@ -326,7 +326,7 @@ local TextChange = {}
 
 ---@class (exact) BufferUpdate
 ---@field change TextChange text change for this delta
----@field version [integer] CRDT version after this change
+---@field version table<integer> CRDT version after this change
 ---@field hash integer? optional hash of text buffer after this change, for sync checks
 local BufferUpdate = {}
 
@@ -383,14 +383,19 @@ function BufferController:ack(version) end
 ---handle to a workspace's cursor channel, allowing send/recv operations
 local CursorController = {}
 
----@class Cursor
----@field user string? id of user owning this cursor
+---@class Selection
 ---@field buffer string relative path ("name") of buffer on which this cursor is
----@field start [integer, integer] cursor start position
----@field finish [integer, integer] cursor end position
----a cursor position
+---@field start_row integer
+---@field start_col integer
+---@field end_row integer
+---@field end_col integer
+---a cursor selected region, as row-col indices
 
----@param cursor Cursor cursor event to broadcast
+---@class Cursor
+---@field user string id of user owning this cursor
+---@field sel Selection selected region for this user
+
+---@param cursor Selection cursor position to broadcast
 ---@return NilPromise
 ---@async
 ---@nodiscard
