@@ -36,7 +36,7 @@ impl BufferController {
 	}
 
   /// Notify CRDT that changes up to the given version have been merged succesfully.
-	pub fn ack(&mut self, version: Vec<i64>) {
+	pub fn ack(&self, version: Vec<i64>) {
 		let version = version.into_iter().map(|x| usize::from_ne_bytes(x.to_ne_bytes())).collect();
 		self.0.ack_tx
 			.send(version)

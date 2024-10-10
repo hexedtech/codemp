@@ -29,20 +29,21 @@ pub struct BufferUpdate {
 /// new buffer, but smaller changes are efficient and easy to create or apply.
 ///
 /// ### Examples
-/// To insert 'a' after 4th character we should send a.
+/// To insert 'a' after 4th character we should send:
 /// ```
-/// TextChange { start: 4, end: 4, content: "a".into(), hash: None }
+/// codemp::api::TextChange { start: 4, end: 4, content: "a".into() };
 /// ```
 ///
-/// To delete a the fourth character we should send a.
+/// To delete the fourth character we should send:
 /// ```
-/// TextChange { start: 3, end: 4, content: "".into(), hash: None }
+/// codemp::api::TextChange { start: 3, end: 4, content: "".into() };
 /// ```
 ///
 /// ```
 /// let change = codemp::api::TextChange {
-///   start: 6, end: 11,
-///   content: "mom".to_string(), hash: None
+///   start: 6,
+///   end: 11,
+///   content: "mom".to_string()
 /// };
 /// let before = "hello world!";
 /// let after = change.apply(before);
