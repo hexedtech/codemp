@@ -53,7 +53,7 @@
 //! use codemp::api::controller::{AsyncSender, AsyncReceiver}; // needed to access trait methods
 //! let cursor = workspace.cursor();
 //! let event = cursor.recv().await.expect("disconnected while waiting for event!");
-//! println!("user {} moved on buffer {}", event.user.unwrap_or_default(), event.buffer);
+//! println!("user {} moved on buffer {}", event.user, event.sel.buffer);
 //! # };
 //! ```
 //!
@@ -69,8 +69,12 @@
 //! # use codemp::api::controller::{AsyncSender, AsyncReceiver};
 //! let buffer = workspace.attach("/some/file.txt").await.expect("failed to attach");
 //! buffer.content(); // force-sync
-//! if let Some(change) = buffer.try_recv().await.unwrap() {
-//!   println!("content: {}, span: {}-{}", change.content, change.start, change.end);
+//! if let Some(mut update) = buffer.try_recv().await.unwrap() {
+//!   println!(
+//!     "content: {}, span: {}-{}",
+//!     update.change.content, update.change.start, update.change.end
+//!   );
+//!   buffer.ack(update.version);
 //! } // if None, no changes are currently available
 //! # };
 //! ```

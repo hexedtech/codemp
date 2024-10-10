@@ -1,6 +1,7 @@
 package mp.code;
 
 import mp.code.data.Cursor;
+import mp.code.data.Selection;
 import mp.code.exceptions.ControllerException;
 
 import java.util.Optional;
@@ -42,13 +43,13 @@ public final class CursorController {
 		return recv(this.ptr);
 	}
 
-	private static native void send(long self, Cursor cursor) throws ControllerException;
+	private static native void send(long self, Selection cursor) throws ControllerException;
 
 	/**
-	 * Tries to send a {@link Cursor} update.
+	 * Tries to send a {@link Selection} update.
 	 * @throws ControllerException if the controller was stopped
 	 */
-	public void send(Cursor cursor) throws ControllerException {
+	public void send(Selection cursor) throws ControllerException {
 		send(this.ptr, cursor);
 	}
 

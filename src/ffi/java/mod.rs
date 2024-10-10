@@ -79,6 +79,7 @@ macro_rules! null_check {
 		}
 	};
 }
+
 pub(crate) use null_check;
 
 impl jni_toolbox::JniToolboxError for crate::errors::ConnectionError {
@@ -193,13 +194,13 @@ impl<'j> jni_toolbox::IntoJavaObject<'j> for crate::api::Event {
 	}
 }
 
-impl<'j> jni_toolbox::IntoJavaObject<'j> for crate::api::TextChange {
-	const CLASS: &'static str = "mp/code/data/TextChange";
+impl<'j> jni_toolbox::IntoJavaObject<'j> for crate::api::BufferUpdate {
+	const CLASS: &'static str = "mp/code/data/BufferUpdate";
 	fn into_java_object(
 		self,
 		env: &mut jni::JNIEnv<'j>,
 	) -> Result<jni::objects::JObject<'j>, jni::errors::Error> {
-		let content = env.new_string(self.content)?;
+		let class = env.find_class(Self::CLASS)?;
 
 		let hash_class = env.find_class("java/util/OptionalLong")?;
 		let hash = if let Some(h) = self.hash {
@@ -214,15 +215,36 @@ impl<'j> jni_toolbox::IntoJavaObject<'j> for crate::api::TextChange {
 		}?
 		.l()?;
 
+		let version = self.version.into_java_object(env)?;
+		let change = self.change.into_java_object(env)?;
+
+		env.new_object(
+			class,
+			"(Ljava/util/OptionalLong;[JLmp/code/data/TextChange;)V",
+			&[
+				jni::objects::JValueGen::Object(&hash),
+				jni::objects::JValueGen::Object(&version),
+				jni::objects::JValueGen::Object(&change),
+			],
+		)
+	}
+}
+
+impl<'j> jni_toolbox::IntoJavaObject<'j> for crate::api::TextChange {
+	const CLASS: &'static str = "mp/code/data/TextChange";
+	fn into_java_object(
+		self,
+		env: &mut jni::JNIEnv<'j>,
+	) -> Result<jni::objects::JObject<'j>, jni::errors::Error> {
+		let content = env.new_string(self.content)?;
 		let class = env.find_class(Self::CLASS)?;
 		env.new_object(
 			class,
-			"(JJLjava/lang/String;Ljava/util/OptionalLong;)V",
+			"(JJLjava/lang/String;)V",
 			&[
 				jni::objects::JValueGen::Long(self.start.into()),
 				jni::objects::JValueGen::Long(self.end.into()),
 				jni::objects::JValueGen::Object(&content),
-				jni::objects::JValueGen::Object(&hash),
 			],
 		)
 	}
@@ -234,24 +256,39 @@ impl<'j> jni_toolbox::IntoJavaObject<'j> for crate::api::Cursor {
 		self,
 		env: &mut jni::JNIEnv<'j>,
 	) -> Result<jni::objects::JObject<'j>, jni::errors::Error> {
-		let class = env.find_class("mp/code/data/Cursor")?;
-		let buffer = env.new_string(&self.buffer)?;
-		let user = if let Some(user) = self.user {
-			env.new_string(user)?.into()
-		} else {
-			jni::objects::JObject::null()
-		};
+		let class = env.find_class(Self::CLASS)?;
+		let user = env.new_string(&self.user)?;
+		let sel = self.sel.into_java_object(env)?;
 
 		env.new_object(
 			class,
-			"(IIIILjava/lang/String;Ljava/lang/String;)V",
+			"(Ljava/lang/String;Lmp/code/data/Selection;)V",
 			&[
-				jni::objects::JValueGen::Int(self.start.0),
-				jni::objects::JValueGen::Int(self.start.1),
-				jni::objects::JValueGen::Int(self.end.0),
-				jni::objects::JValueGen::Int(self.end.1),
-				jni::objects::JValueGen::Object(&buffer),
 				jni::objects::JValueGen::Object(&user),
+				jni::objects::JValueGen::Object(&sel),
+			],
+		)
+	}
+}
+
+impl<'j> jni_toolbox::IntoJavaObject<'j> for crate::api::Selection {
+	const CLASS: &'static str = "mp/code/data/Selection";
+	fn into_java_object(
+		self,
+		env: &mut jni::JNIEnv<'j>,
+	) -> Result<jni::objects::JObject<'j>, jni::errors::Error> {
+		let class = env.find_class(Self::CLASS)?;
+		let buffer = env.new_string(&self.buffer)?;
+
+		env.new_object(
+			class,
+			"(IIIILjava/lang/String;)V",
+			&[
+				jni::objects::JValueGen::Int(self.start_row),
+				jni::objects::JValueGen::Int(self.start_col),
+				jni::objects::JValueGen::Int(self.end_row),
+				jni::objects::JValueGen::Int(self.end_col),
+				jni::objects::JValueGen::Object(&buffer),
 			],
 		)
 	}
@@ -363,7 +400,7 @@ impl<'j> jni_toolbox::FromJava<'j> for crate::api::Config {
 	}
 }
 
-impl<'j> jni_toolbox::FromJava<'j> for crate::api::Cursor {
+impl<'j> jni_toolbox::FromJava<'j> for crate::api::Selection {
 	type From = jni::objects::JObject<'j>;
 	fn from_java(
 		env: &mut jni::JNIEnv<'j>,
@@ -384,20 +421,12 @@ impl<'j> jni_toolbox::FromJava<'j> for crate::api::Cursor {
 			unsafe { env.get_string_unchecked(&jfield.into()) }?.into()
 		};
 
-		let user = {
-			let jfield = env.get_field(&cursor, "user", "Ljava/lang/String;")?.l()?;
-			if jfield.is_null() {
-				None
-			} else {
-				Some(unsafe { env.get_string_unchecked(&jfield.into()) }?.into())
-			}
-		};
-
 		Ok(Self {
-			start: (start_row, start_col),
-			end: (end_row, end_col),
+			start_row,
+			start_col,
+			end_row,
+			end_col,
 			buffer,
-			user,
 		})
 	}
 }
@@ -427,21 +456,10 @@ impl<'j> jni_toolbox::FromJava<'j> for crate::api::TextChange {
 			unsafe { env.get_string_unchecked(&jfield.into()) }?.into()
 		};
 
-		let hash = {
-			let jfield = env
-				.get_field(&change, "hash", "Ljava/util/OptionalLong;")?
-				.l()?;
-			if env.call_method(&jfield, "isPresent", "()Z", &[])?.z()? {
-				Some(env.call_method(&jfield, "getAsLong", "()J", &[])?.j()?)
-			} else {
-				None
-			}
-		};
 		Ok(Self {
 			start,
 			end,
 			content,
-			hash,
 		})
 	}
 }

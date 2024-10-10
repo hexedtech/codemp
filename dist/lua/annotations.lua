@@ -135,28 +135,28 @@ function MaybeCursorPromise:cancel() end
 function MaybeCursorPromise:and_then(cb) end
 
 
----@class (exact) TextChangePromise : Promise
-local TextChangePromise = {}
+---@class (exact) BufferUpdatePromise : Promise
+local BufferUpdatePromise = {}
 --- block until promise is ready and return value
---- @return TextChange
-function TextChangePromise:await() end
+--- @return BufferUpdate
+function BufferUpdatePromise:await() end
 --- cancel promise execution
-function TextChangePromise:cancel() end
----@param cb fun(x: TextChange) callback to invoke
+function BufferUpdatePromise:cancel() end
+---@param cb fun(x: BufferUpdate) callback to invoke
 ---invoke callback asynchronously as soon as promise is ready
-function TextChangePromise:and_then(cb) end
+function BufferUpdatePromise:and_then(cb) end
 
 
----@class (exact) MaybeTextChangePromise : Promise
-local MaybeTextChangePromise = {}
+---@class (exact) MaybeBufferUpdatePromise : Promise
+local MaybeBufferUpdatePromise = {}
 --- block until promise is ready and return value
---- @return TextChange | nil
-function MaybeTextChangePromise:await() end
+--- @return BufferUpdate | nil
+function MaybeBufferUpdatePromise:await() end
 --- cancel promise execution
-function MaybeTextChangePromise:cancel() end
----@param cb fun(x: TextChange | nil) callback to invoke
+function MaybeBufferUpdatePromise:cancel() end
+---@param cb fun(x: BufferUpdate | nil) callback to invoke
 ---invoke callback asynchronously as soon as promise is ready
-function MaybeTextChangePromise:and_then(cb) end
+function MaybeBufferUpdatePromise:and_then(cb) end
 
 -- [[ END ASYNC STUFF ]]
 
@@ -322,8 +322,13 @@ local BufferController = {}
 ---@field content string text content of change
 ---@field start integer start index of change
 ---@field finish integer end index of change
----@field hash integer? optional hash of text buffer after this change, for sync checks
 local TextChange = {}
+
+---@class (exact) BufferUpdate
+---@field change TextChange text change for this delta
+---@field version table<integer> CRDT version after this change
+---@field hash integer? optional hash of text buffer after this change, for sync checks
+local BufferUpdate = {}
 
 ---@param other string text to apply change to
 ---apply this text change to a string, returning the result
@@ -336,13 +341,13 @@ function TextChange:apply(other) end
 ---update buffer with a text change; note that to delete content should be empty but not span, while to insert span should be empty but not content (can insert and delete at the same time)
 function BufferController:send(change) end
 
----@return MaybeTextChangePromise
+---@return MaybeBufferUpdatePromise
 ---@async
 ---@nodiscard
 ---try to receive text changes, returning nil if none is available
 function BufferController:try_recv() end
 
----@return TextChangePromise
+---@return BufferUpdatePromise
 ---@async
 ---@nodiscard
 ---block until next text change and return it
@@ -367,6 +372,10 @@ function BufferController:callback(cb) end
 ---get current content of buffer controller, marking all pending changes as seen
 function BufferController:content() end
 
+---@param version [integer] version to ack
+---notify controller that this version's change has been correctly applied
+function BufferController:ack(version) end
+
 
 
 
@@ -374,14 +383,19 @@ function BufferController:content() end
 ---handle to a workspace's cursor channel, allowing send/recv operations
 local CursorController = {}
 
----@class Cursor
----@field user string? id of user owning this cursor
+---@class Selection
 ---@field buffer string relative path ("name") of buffer on which this cursor is
----@field start [integer, integer] cursor start position
----@field finish [integer, integer] cursor end position
----a cursor position
+---@field start_row integer
+---@field start_col integer
+---@field end_row integer
+---@field end_col integer
+---a cursor selected region, as row-col indices
 
----@param cursor Cursor cursor event to broadcast
+---@class Cursor
+---@field user string id of user owning this cursor
+---@field sel Selection selected region for this user
+
+---@param cursor Selection cursor position to broadcast
 ---@return NilPromise
 ---@async
 ---@nodiscard

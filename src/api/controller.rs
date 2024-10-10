@@ -37,11 +37,9 @@ where
 /// See [`Controller`]'s documentation for details.
 ///
 /// Details about the receiving end are left to the implementor.
-#[allow(async_fn_in_trait)]
-#[cfg_attr(feature = "async-trait", async_trait::async_trait)]
 pub trait AsyncSender<T: Sized + Send + Sync>: Sized + Send + Sync {
-	/// Enqueue a new value to be sent to all other users.
-	async fn send(&self, x: T) -> ControllerResult<()>;
+	/// Enqueue a new value to be sent to all other users without blocking
+	fn send(&self, x: T) -> ControllerResult<()>;
 }
 
 /// Asynchronous and thread-safe handle to receive data from a stream.

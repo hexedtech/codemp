@@ -43,6 +43,8 @@
 //! `JNIException`s are however unchecked: there is nothing you can do to recover from them, as they usually represent a severe error in the glue code. If they arise, it's probably a bug.
 //!
 
+#![allow(clippy::unit_arg)]
+
 /// java bindings, built with [jni]
 #[cfg(feature = "java")]
 pub mod java;

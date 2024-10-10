@@ -1,7 +1,7 @@
 use crate::{
 	api::{
 		controller::{AsyncReceiver, AsyncSender},
-		Cursor,
+		Cursor, Selection,
 	},
 	errors::ControllerError,
 };
@@ -24,8 +24,8 @@ fn recv(controller: &mut crate::cursor::Controller) -> Result<Cursor, Controller
 
 /// Receive from Java, converts and sends a [Cursor].
 #[jni(package = "mp.code", class = "CursorController")]
-fn send(controller: &mut crate::cursor::Controller, cursor: Cursor) -> Result<(), ControllerError> {
-	super::tokio().block_on(controller.send(cursor))
+fn send(controller: &mut crate::cursor::Controller, sel: Selection) -> Result<(), ControllerError> {
+	controller.send(sel)
 }
 
 /// Register a callback for cursor changes.

@@ -4,7 +4,7 @@ use jni_toolbox::jni;
 use crate::{
 	api::{
 		controller::{AsyncReceiver, AsyncSender},
-		TextChange,
+		BufferUpdate, TextChange,
 	},
 	errors::ControllerError,
 };
@@ -27,13 +27,13 @@ fn get_content(controller: &mut crate::buffer::Controller) -> Result<String, Con
 #[jni(package = "mp.code", class = "BufferController")]
 fn try_recv(
 	controller: &mut crate::buffer::Controller,
-) -> Result<Option<TextChange>, ControllerError> {
+) -> Result<Option<BufferUpdate>, ControllerError> {
 	super::tokio().block_on(controller.try_recv())
 }
 
 /// Block until it receives a [TextChange].
 #[jni(package = "mp.code", class = "BufferController")]
-fn recv(controller: &mut crate::buffer::Controller) -> Result<TextChange, ControllerError> {
+fn recv(controller: &mut crate::buffer::Controller) -> Result<BufferUpdate, ControllerError> {
 	super::tokio().block_on(controller.recv())
 }
 
@@ -43,7 +43,7 @@ fn send(
 	controller: &mut crate::buffer::Controller,
 	change: TextChange,
 ) -> Result<(), ControllerError> {
-	super::tokio().block_on(controller.send(change))
+	controller.send(change)
 }
 
 /// Register a callback for buffer changes.
@@ -97,6 +97,12 @@ fn clear_callback(controller: &mut crate::buffer::Controller) {
 #[jni(package = "mp.code", class = "BufferController")]
 fn poll(controller: &mut crate::buffer::Controller) -> Result<(), ControllerError> {
 	super::tokio().block_on(controller.poll())
+}
+
+/// Acknowledge that a change has been correctly applied.
+#[jni(package = "mp.code", class = "BufferController")]
+fn ack(controller: &mut crate::buffer::Controller, version: Vec<i64>) {
+	controller.ack(version)
 }
 
 /// Called by the Java GC to drop a [crate::buffer::Controller].

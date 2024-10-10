@@ -1,6 +1,6 @@
 use crate::api::controller::{AsyncReceiver, AsyncSender};
-use crate::api::Cursor;
 use crate::api::TextChange;
+use crate::api::{Cursor, Selection};
 use crate::buffer::Controller as BufferController;
 use crate::cursor::Controller as CursorController;
 use pyo3::exceptions::PyValueError;
@@ -15,19 +15,21 @@ impl CursorController {
 	#[pyo3(name = "send")]
 	fn pysend(
 		&self,
-		py: Python,
+		_py: Python,
 		path: String,
 		start: (i32, i32),
 		end: (i32, i32),
-	) -> PyResult<Promise> {
-		let pos = Cursor {
-			start,
-			end,
+	) -> PyResult<()> {
+		let pos = Selection {
+			start_row: start.0,
+			start_col: start.1,
+			end_row: end.0,
+			end_col: end.1,
 			buffer: path,
-			user: None,
 		};
 		let this = self.clone();
-		a_sync_allow_threads!(py, this.send(pos).await)
+		this.send(pos)?;
+		Ok(())
 	}
 
 	#[pyo3(name = "try_recv")]
@@ -84,15 +86,15 @@ impl BufferController {
 	}
 
 	#[pyo3(name = "send")]
-	fn pysend(&self, py: Python, start: u32, end: u32, txt: String) -> PyResult<Promise> {
+	fn pysend(&self, _py: Python, start: u32, end: u32, txt: String) -> PyResult<()> {
 		let op = TextChange {
 			start,
 			end,
 			content: txt,
-			hash: None,
 		};
 		let this = self.clone();
-		a_sync_allow_threads!(py, this.send(op).await)
+		this.send(op)?;
+		Ok(())
 	}
 
 	#[pyo3(name = "try_recv")]
@@ -141,21 +143,21 @@ impl BufferController {
 impl Cursor {
 	#[getter(start)]
 	fn pystart(&self) -> (i32, i32) {
-		self.start
+		(self.sel.start_row, self.sel.start_col)
 	}
 
 	#[getter(end)]
 	fn pyend(&self) -> (i32, i32) {
-		self.end
+		(self.sel.end_row, self.sel.end_col)
 	}
 
 	#[getter(buffer)]
 	fn pybuffer(&self) -> String {
-		self.buffer.clone()
+		self.sel.buffer.clone()
 	}
 
 	#[getter(user)]
 	fn pyuser(&self) -> Option<String> {
-		self.user.clone()
+		Some(self.user.clone())
 	}
 }

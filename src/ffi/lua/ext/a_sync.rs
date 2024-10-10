@@ -51,10 +51,7 @@ impl LuaUserData for Promise {
 		});
 		methods.add_method_mut("cancel", |_, this, ()| match this.0.take() {
 			None => Err(LuaError::runtime("Promise already awaited")),
-			Some(x) => {
-				x.abort();
-				Ok(())
-			}
+			Some(x) => Ok(x.abort()),
 		});
 		methods.add_method_mut("and_then", |_, this, (cb,): (LuaFunction,)| {
 			match this.0.take() {

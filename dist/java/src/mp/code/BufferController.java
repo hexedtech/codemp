@@ -1,5 +1,6 @@
 package mp.code;
 
+import mp.code.data.BufferUpdate;
 import mp.code.data.TextChange;
 import mp.code.exceptions.ControllerException;
 
@@ -42,26 +43,26 @@ public final class BufferController {
 		return get_content(this.ptr);
 	}
 
-	private static native TextChange try_recv(long self) throws ControllerException;
+	private static native BufferUpdate try_recv(long self) throws ControllerException;
 
 	/**
-	 * Tries to get a {@link TextChange} from the queue if any were present, and returns
+	 * Tries to get a {@link BufferUpdate} from the queue if any were present, and returns
 	 * an empty optional otherwise.
 	 * @return the first text change in queue, if any are present
 	 * @throws ControllerException if the controller was stopped
 	 */
-	public Optional<TextChange> tryRecv() throws ControllerException {
+	public Optional<BufferUpdate> tryRecv() throws ControllerException {
 		return Optional.ofNullable(try_recv(this.ptr));
 	}
 
-	private static native TextChange recv(long self) throws ControllerException;
+	private static native BufferUpdate recv(long self) throws ControllerException;
 
 	/**
-	 * Blocks until a {@link TextChange} is available and returns it.
+	 * Blocks until a {@link BufferUpdate} is available and returns it.
 	 * @return the text change update that occurred
 	 * @throws ControllerException if the controller was stopped
 	 */
-	public TextChange recv() throws ControllerException {
+	public BufferUpdate recv() throws ControllerException {
 		return recv(this.ptr);
 	}
 
@@ -78,7 +79,7 @@ public final class BufferController {
 	private static native void callback(long self, Consumer<BufferController> cb);
 
 	/**
-	 * Registers a callback to be invoked whenever a {@link TextChange} occurs.
+	 * Registers a callback to be invoked whenever a {@link BufferUpdate} occurs.
 	 * This will not work unless a Java thread has been dedicated to the event loop.
 	 * @see Extensions#drive(boolean)
 	 */
@@ -104,6 +105,17 @@ public final class BufferController {
 	 */
 	public void poll() throws ControllerException {
 		poll(this.ptr);
+	}
+
+	private static native void ack(long self, long[] version);
+
+	/**
+	 * Acknowledges that a certain CRDT version has been correctly applied.
+	 * @param version the version to acknowledge
+	 * @see BufferUpdate#version
+	 */
+	public void ack(long[] version) {
+		ack(this.ptr, version);
 	}
 
 	private static native void free(long self);
