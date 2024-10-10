@@ -7,8 +7,7 @@ use tokio::sync::{mpsc, oneshot, watch};
 
 use crate::{
 	api::{
-		controller::{AsyncReceiver, AsyncSender, ControllerCallback},
-		Controller, Cursor,
+		controller::{AsyncReceiver, AsyncSender, ControllerCallback}, cursor::Selection, Controller, Cursor
 	},
 	errors::ControllerResult,
 };
@@ -34,25 +33,29 @@ pub(crate) struct CursorControllerInner {
 }
 
 #[cfg_attr(feature = "async-trait", async_trait::async_trait)]
-impl Controller<Cursor> for CursorController {}
+impl Controller<Selection, Cursor> for CursorController {}
 
 #[cfg_attr(feature = "async-trait", async_trait::async_trait)]
-impl AsyncSender<Cursor> for CursorController {
-	fn send(&self, mut cursor: Cursor) -> ControllerResult<()> {
-		if cursor.start > cursor.end {
-			std::mem::swap(&mut cursor.start, &mut cursor.end);
+impl AsyncSender<Selection> for CursorController {
+	fn send(&self, mut cursor: Selection) -> ControllerResult<()> {
+		if cursor.start_row > cursor.end_row || (
+			cursor.start_row == cursor.end_row && cursor.start_col > cursor.end_col
+		) {
+			std::mem::swap(&mut cursor.start_row, &mut cursor.end_row);
+			std::mem::swap(&mut cursor.start_col, &mut cursor.end_col);
 		}
+
 		Ok(self.0.op.send(CursorPosition {
 			buffer: BufferNode {
 				path: cursor.buffer,
 			},
 			start: RowCol {
-				row: cursor.start.0,
-				col: cursor.start.1,
+				row: cursor.start_row,
+				col: cursor.start_col,
 			},
 			end: RowCol {
-				row: cursor.end.0,
-				col: cursor.end.1,
+				row: cursor.end_row,
+				col: cursor.end_col,
 			},
 		})?)
 	}

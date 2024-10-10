@@ -6,40 +6,13 @@ use std::sync::Arc;
 use diamond_types::LocalVersion;
 use tokio::sync::{mpsc, oneshot, watch};
 
+use crate::api::change::BufferUpdate;
 use crate::api::controller::{AsyncReceiver, AsyncSender, Controller, ControllerCallback};
 use crate::api::TextChange;
 use crate::errors::ControllerResult;
 use crate::ext::IgnorableError;
 
 use super::worker::DeltaRequest;
-
-/// This wrapper around a [`TextChange`] contains a handle to Acknowledge correct change
-/// application
-#[derive(Debug)]
-#[cfg_attr(any(feature = "py", feature = "py-noabi"), pyo3::pyclass)]
-#[cfg_attr(feature = "js", napi_derive::napi)]
-pub struct Delta {
-	/// The change received
-	pub change: TextChange,
-	/// The ack handle, must be called after correctly applying this change
-	pub(crate) ack: BufferAck,
-}
-
-#[derive(Clone, Debug)]
-pub(crate) struct BufferAck {
-	pub(crate) tx: mpsc::UnboundedSender<LocalVersion>,
-	pub(crate) version: LocalVersion,
-}
-
-#[cfg_attr(any(feature = "py", feature = "py-noabi"), pyo3::pymethods)]
-#[cfg_attr(feature = "js", napi_derive::napi)]
-impl Delta {
-	pub fn ack(&mut self) {
-		self.ack.tx
-			.send(self.ack.version.clone())
-			.unwrap_or_warn("no worker to receive sent ack");
-	}
-}
 
 /// A [Controller] to asynchronously interact with remote buffers.
 ///
@@ -51,17 +24,25 @@ impl Delta {
 pub struct BufferController(pub(crate) Arc<BufferControllerInner>);
 
 impl BufferController {
-	/// Get the buffer path
+	/// Get the buffer path.
 	pub fn path(&self) -> &str {
 		&self.0.name
 	}
 
-	/// Return buffer whole content, updating internal acknowledgement tracker
+	/// Return buffer whole content, updating internal acknowledgement tracker.
 	pub async fn content(&self) -> ControllerResult<String> {
 		let (tx, rx) = oneshot::channel();
 		self.0.content_request.send(tx).await?;
 		let content = rx.await?;
 		Ok(content)
+	}
+
+  /// Notify CRDT that changes up to the given version have been merged succesfully.
+	pub fn ack(&mut self, version: Vec<i64>) {
+		let version = version.into_iter().map(|x| usize::from_ne_bytes(x.to_ne_bytes())).collect();
+		self.0.ack_tx
+			.send(version)
+			.unwrap_or_warn("no worker to receive sent ack");
 	}
 }
 
@@ -75,10 +56,11 @@ pub(crate) struct BufferControllerInner {
 	pub(crate) content_request: mpsc::Sender<oneshot::Sender<String>>,
 	pub(crate) delta_request: mpsc::Sender<DeltaRequest>,
 	pub(crate) callback: watch::Sender<Option<ControllerCallback<BufferController>>>,
+	pub(crate) ack_tx: mpsc::UnboundedSender<LocalVersion>,
 }
 
 #[cfg_attr(feature = "async-trait", async_trait::async_trait)]
-impl Controller<TextChange, Delta> for BufferController {}
+impl Controller<TextChange, BufferUpdate> for BufferController {}
 
 impl AsyncSender<TextChange> for BufferController {
 	fn send(&self, op: TextChange) -> ControllerResult<()> {
@@ -88,7 +70,7 @@ impl AsyncSender<TextChange> for BufferController {
 }
 
 #[cfg_attr(feature = "async-trait", async_trait::async_trait)]
-impl AsyncReceiver<Delta> for BufferController {
+impl AsyncReceiver<BufferUpdate> for BufferController {
 	async fn poll(&self) -> ControllerResult<()> {
 		if *self.0.local_version.borrow() != *self.0.latest_version.borrow() {
 			return Ok(());
@@ -100,7 +82,7 @@ impl AsyncReceiver<Delta> for BufferController {
 		Ok(())
 	}
 
-	async fn try_recv(&self) -> ControllerResult<Option<Delta>> {
+	async fn try_recv(&self) -> ControllerResult<Option<BufferUpdate>> {
 		let last_update = self.0.local_version.borrow().clone();
 		let latest_version = self.0.latest_version.borrow().clone();
 

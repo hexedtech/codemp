@@ -5,6 +5,8 @@ pub use crate::api::{
 	controller::AsyncReceiver as CodempAsyncReceiver, controller::AsyncSender as CodempAsyncSender,
 	Config as CodempConfig, Controller as CodempController, Cursor as CodempCursor,
 	Event as CodempEvent, TextChange as CodempTextChange, User as CodempUser,
+	change::BufferUpdate as CodempBufferUpdate,
+	cursor::Selection as CodempSelection,
 };
 
 pub use crate::{

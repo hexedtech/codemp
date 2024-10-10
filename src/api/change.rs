@@ -1,6 +1,25 @@
 //! # TextChange
 //! A high-level representation of a change within a given buffer.
 
+/// A [`TextChange`] event happening on a buffer.
+///
+/// Contains the change itself, the new version after this change and an optional `hash` field.
+/// This is used for error correction: if provided, it should match the hash of the buffer
+/// content **after** applying this change. Note that the `hash` field will not necessarily
+/// be provided every time.
+#[derive(Clone, Debug, Default)]
+#[cfg_attr(feature = "js", napi_derive::napi(object))]
+#[cfg_attr(any(feature = "py", feature = "py-noabi"), pyo3::pyclass(get_all))]
+#[cfg_attr(feature = "serialize", derive(serde::Serialize, serde::Deserialize))]
+pub struct BufferUpdate {
+	/// Optional content hash after applying this change.
+	pub hash: Option<i64>,
+	/// CRDT version after this change has been applied.
+	pub version: Vec<i64>,
+	/// The change that has occurred.
+	pub change: TextChange,
+}
+
 /// An editor-friendly representation of a text change in a given buffer.
 ///
 /// It's expressed with a range of characters and a string of content that should replace them,
@@ -9,18 +28,18 @@
 /// Bulky and large operations will result in a single [`TextChange`] effectively sending the whole
 /// new buffer, but smaller changes are efficient and easy to create or apply.
 ///
-/// [`TextChange`] contains an optional `hash` field. This is used for error correction: if
-/// provided, it should match the hash of the buffer content **after** applying this change.
-/// Note that the `hash` field will not necessarily be provided every time.
-///
 /// ### Examples
 /// To insert 'a' after 4th character we should send a.
-///     `TextChange { start: 4, end: 4, content: "a".into(), hash: None }`
+/// ```
+/// TextChange { start: 4, end: 4, content: "a".into(), hash: None }
+/// ```
 ///
 /// To delete a the fourth character we should send a.
-///     `TextChange { start: 3, end: 4, content: "".into(), hash: None }`
+/// ```
+/// TextChange { start: 3, end: 4, content: "".into(), hash: None }
+/// ```
 ///
-/// ```no_run
+/// ```
 /// let change = codemp::api::TextChange {
 ///   start: 6, end: 11,
 ///   content: "mom".to_string(), hash: None
@@ -41,8 +60,6 @@ pub struct TextChange {
 	pub end: u32,
 	/// New content of text inside span.
 	pub content: String,
-	/// Optional content hash after applying this change.
-	pub hash: Option<i64>,
 }
 
 impl TextChange {
@@ -90,7 +107,6 @@ mod tests {
 			start: 5,
 			end: 5,
 			content: " cruel".to_string(),
-			hash: None,
 		};
 		let result = change.apply("hello world!");
 		assert_eq!(result, "hello cruel world!");
@@ -102,7 +118,6 @@ mod tests {
 			start: 5,
 			end: 11,
 			content: "".to_string(),
-			hash: None,
 		};
 		let result = change.apply("hello cruel world!");
 		assert_eq!(result, "hello world!");
@@ -114,7 +129,6 @@ mod tests {
 			start: 5,
 			end: 11,
 			content: " not very pleasant".to_string(),
-			hash: None,
 		};
 		let result = change.apply("hello cruel world!");
 		assert_eq!(result, "hello not very pleasant world!");
@@ -126,7 +140,6 @@ mod tests {
 			start: 100,
 			end: 110,
 			content: "a very long string \n which totally matters".to_string(),
-			hash: None,
 		};
 		let result = change.apply("a short text");
 		assert_eq!(
@@ -141,7 +154,6 @@ mod tests {
 			start: 42,
 			end: 42,
 			content: "".to_string(),
-			hash: None,
 		};
 		let result = change.apply("some important text");
 		assert_eq!(result, "some important text");

@@ -5,7 +5,7 @@ use tonic::Streaming;
 use uuid::Uuid;
 
 use crate::{
-	api::{controller::ControllerCallback, Cursor, User},
+	api::{controller::ControllerCallback, cursor::Selection, Cursor, User},
 	ext::IgnorableError,
 };
 use codemp_proto::cursor::{CursorEvent, CursorPosition};
@@ -86,16 +86,18 @@ impl CursorController {
 					None => break, // clean exit, just weird that we got it here
 					Some(controller) => {
 						tracing::debug!("received cursor from server");
-						let mut cursor = Cursor {
-							buffer: cur.position.buffer.path,
-							start: (cur.position.start.row, cur.position.start.col),
-							end: (cur.position.end.row, cur.position.end.col),
-							user: None,
-						};
 						let user_id = Uuid::from(cur.user);
-						if let Some(user) = worker.map.get(&user_id) {
-							cursor.user = Some(user.name.clone());
-						}
+						let cursor = Cursor {
+							user: worker.map.get(&user_id).map(|u| u.name.clone()).unwrap_or_default(),
+							sel: Selection {
+								buffer: cur.position.buffer.path,
+								start_row: cur.position.start.row,
+								start_col: cur.position.start.col,
+								end_row: cur.position.end.row,
+								end_col: cur.position.end.col
+							}
+						};
+
 						worker.store.push_back(cursor);
 						for tx in worker.pollers.drain(..) {
 							tx.send(()).unwrap_or_warn("poller dropped before unblocking");

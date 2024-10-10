@@ -6,15 +6,16 @@ use tokio::sync::{mpsc, oneshot, watch};
 use tonic::Streaming;
 use uuid::Uuid;
 
+use crate::api::change::BufferUpdate;
 use crate::api::controller::ControllerCallback;
 use crate::api::TextChange;
 use crate::ext::IgnorableError;
 
 use codemp_proto::buffer::{BufferEvent, Operation};
 
-use super::controller::{BufferAck, BufferController, BufferControllerInner, Delta};
+use super::controller::{BufferController, BufferControllerInner};
 
-pub(crate) type DeltaOp = Option<Delta>;
+pub(crate) type DeltaOp = Option<BufferUpdate>;
 pub(crate) type DeltaRequest = (LocalVersion, oneshot::Sender<DeltaOp>);
 
 struct BufferWorker {
@@ -23,7 +24,6 @@ struct BufferWorker {
 	latest_version: watch::Sender<diamond_types::LocalVersion>,
 	local_version: watch::Sender<diamond_types::LocalVersion>,
 	ack_rx: mpsc::UnboundedReceiver<LocalVersion>,
-	ack_tx: mpsc::UnboundedSender<LocalVersion>,
 	ops_in: mpsc::UnboundedReceiver<TextChange>,
 	poller: mpsc::UnboundedReceiver<oneshot::Sender<()>>,
 	pollers: Vec<oneshot::Sender<()>>,
@@ -65,6 +65,7 @@ impl BufferController {
 			content_request: req_tx,
 			delta_request: recv_tx,
 			callback: cb_tx,
+			ack_tx,
 		});
 
 		let weak = Arc::downgrade(&controller);
@@ -74,7 +75,6 @@ impl BufferController {
 			path: path.to_string(),
 			latest_version: latest_version_tx,
 			local_version: my_version_tx,
-			ack_tx,
 			ack_rx,
 			ops_in: opin_rx,
 			poller: poller_rx,
@@ -240,32 +240,31 @@ impl BufferWorker {
 					{
 						tracing::error!("[?!?!] Insert span differs from effective content len (TODO remove this error after a bit)");
 					}
-					crate::api::change::TextChange {
-						start: dtop.start() as u32,
-						end: dtop.start() as u32,
-						content: dtop.content_as_str().unwrap_or_default().to_string(),
+					crate::api::change::BufferUpdate {
 						hash,
+						version: step_ver.into_iter().map(|x| i64::from_ne_bytes(x.to_ne_bytes())).collect(), // TODO this is wasteful
+						change: crate::api::change::TextChange {
+							start: dtop.start() as u32,
+							end: dtop.start() as u32,
+							content: dtop.content_as_str().unwrap_or_default().to_string(),
+						}
 					}
 				}
 
-				diamond_types::list::operation::OpKind::Del => crate::api::change::TextChange {
-					start: dtop.start() as u32,
-					end: dtop.end() as u32,
-					content: dtop.content_as_str().unwrap_or_default().to_string(),
+				diamond_types::list::operation::OpKind::Del => crate::api::change::BufferUpdate {
 					hash,
-				},
-			};
-			let delta = Delta {
-				change: tc,
-				ack: BufferAck {
-					tx: self.ack_tx.clone(),
-					version: step_ver,
+					version: step_ver.into_iter().map(|x| i64::from_ne_bytes(x.to_ne_bytes())).collect(), // TODO this is wasteful
+					change: crate::api::change::TextChange {
+						start: dtop.start() as u32,
+						end: dtop.end() as u32,
+						content: dtop.content_as_str().unwrap_or_default().to_string(),
+					},
 				},
 			};
 			self.local_version
 				.send(new_local_v)
 				.unwrap_or_warn("could not update local version");
-			tx.send(Some(delta))
+			tx.send(Some(tc))
 				.unwrap_or_warn("could not update ops channel -- is controller dead?");
 		} else {
 			tx.send(None)
