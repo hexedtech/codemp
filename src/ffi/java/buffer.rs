@@ -3,7 +3,9 @@ use jni_toolbox::jni;
 
 use crate::{
 	api::{
-		change::BufferUpdate, controller::{AsyncReceiver, AsyncSender}, TextChange
+		controller::{AsyncReceiver, AsyncSender},
+		BufferUpdate,
+		TextChange
 	},
 	errors::ControllerError,
 };
@@ -24,9 +26,7 @@ fn get_content(controller: &mut crate::buffer::Controller) -> Result<String, Con
 
 /// Try to fetch a [TextChange], or return null if there's nothing.
 #[jni(package = "mp.code", class = "BufferController")]
-fn try_recv(
-	controller: &mut crate::buffer::Controller,
-) -> Result<Option<BufferUpdate>, ControllerError> {
+fn try_recv(controller: &mut crate::buffer::Controller) -> Result<Option<BufferUpdate>, ControllerError> {
 	super::tokio().block_on(controller.try_recv())
 }
 
@@ -96,6 +96,12 @@ fn clear_callback(controller: &mut crate::buffer::Controller) {
 #[jni(package = "mp.code", class = "BufferController")]
 fn poll(controller: &mut crate::buffer::Controller) -> Result<(), ControllerError> {
 	super::tokio().block_on(controller.poll())
+}
+
+/// Acknowledge that a change has been correctly applied.
+#[jni(package = "mp.code", class = "BufferController")]
+fn ack(controller: &mut crate::buffer::Controller, version: Vec<i64>) {
+	controller.ack(version)
 }
 
 /// Called by the Java GC to drop a [crate::buffer::Controller].

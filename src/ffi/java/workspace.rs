@@ -91,7 +91,7 @@ fn delete_buffer(workspace: &mut Workspace, path: String) -> Result<(), RemoteEr
 	super::tokio().block_on(workspace.delete(&path))
 }
 
-/// Block and receive a workspace event
+/// Block and receive a workspace event.
 #[jni(package = "mp.code", class = "Workspace")]
 fn recv(workspace: &mut Workspace) -> Result<crate::api::Event, ControllerError> {
 	super::tokio().block_on(workspace.recv())
@@ -103,13 +103,13 @@ fn try_recv(workspace: &mut Workspace) -> Result<Option<crate::api::Event>, Cont
 	super::tokio().block_on(workspace.try_recv())
 }
 
-/// Block until a workspace event is available
+/// Block until a workspace event is available.
 #[jni(package = "mp.code", class = "Workspace")]
 fn poll(workspace: &mut Workspace) -> Result<(), ControllerError> {
 	super::tokio().block_on(workspace.poll())
 }
 
-/// Clear previously registered callback
+/// Clear previously registered callback.
 #[jni(package = "mp.code", class = "Workspace")]
 fn clear_callback(workspace: &mut Workspace) {
 	workspace.clear_callback();

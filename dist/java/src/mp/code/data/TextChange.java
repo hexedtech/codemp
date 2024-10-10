@@ -22,7 +22,7 @@ public class TextChange {
 	public final long start;
 
 	/**
-	 * The endomg position of the change.
+	 * The ending position of the change.
 	 * If negative, it is clamped to 0.
 	 */
 	public final long end;
@@ -32,13 +32,6 @@ public class TextChange {
 	 * It should never be null; if you need to represent absence of content, use an empty string.
 	 */
 	public final String content;
-
-	/**
-	 * The hash of the content after applying it (calculated with {@link Extensions#hash(String)}).
-	 * It is generally meaningless to send, but when received it is an invitation to check the hash
-	 * and forcefully re-sync if necessary.
-	 */
-	public final OptionalLong hash; // xxh3 hash
 
 	/**
 	 * Checks if the change represents a deletion.
