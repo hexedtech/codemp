@@ -16,7 +16,7 @@ use codemp_proto::buffer::{BufferEvent, Operation};
 use super::controller::{BufferController, BufferControllerInner};
 
 struct BufferWorker {
-	user_id: Uuid,
+	agent_id: u32,
 	path: String,
 	latest_version: watch::Sender<diamond_types::LocalVersion>,
 	local_version: watch::Sender<diamond_types::LocalVersion>,
@@ -52,6 +52,8 @@ impl BufferController {
 		let (cb_tx, cb_rx) = watch::channel(None);
 
 		let (poller_tx, poller_rx) = mpsc::unbounded_channel();
+		let mut oplog = OpLog::new();
+		let agent_id = oplog.get_or_create_agent_id(&user_id.to_string());
 
 		let controller = Arc::new(BufferControllerInner {
 			name: path.to_string(),
@@ -68,7 +70,7 @@ impl BufferController {
 		let weak = Arc::downgrade(&controller);
 
 		let worker = BufferWorker {
-			user_id,
+			agent_id,
 			path: path.to_string(),
 			latest_version: latest_version_tx,
 			local_version: my_version_tx,
@@ -156,21 +158,25 @@ impl BufferController {
 
 impl BufferWorker {
 	async fn handle_editor_change(&mut self, change: TextChange, tx: &mpsc::Sender<Operation>) {
-		let agent_id = self.oplog.get_or_create_agent_id(&self.user_id.to_string());
 		let last_ver = self.oplog.local_version();
 		// clip to buffer extents
-		let clip_end = std::cmp::min(self.branch.len(), change.end as usize);
-		let clip_start = std::cmp::max(0, change.start as usize);
+		let clip_start = change.start as usize;
+		let mut clip_end = change.end as usize;
+		let b_len = self.branch.len();
+		if clip_end > b_len {
+			tracing::warn!("clipping TextChange end span from {clip_end} to {b_len}");
+			clip_end = b_len;
+		};
 
 		// in case we have a "replace" span
 		if change.is_delete() {
 			self.branch
-				.delete_without_content(&mut self.oplog, agent_id, clip_start..clip_end);
+				.delete_without_content(&mut self.oplog, self.agent_id, clip_start..clip_end);
 		}
 
 		if change.is_insert() {
 			self.branch
-				.insert(&mut self.oplog, agent_id, clip_start, &change.content);
+				.insert(&mut self.oplog, self.agent_id, clip_start, &change.content);
 		}
 
 		if change.is_delete() || change.is_insert() {
@@ -239,7 +245,10 @@ impl BufferWorker {
 				diamond_types::list::operation::OpKind::Ins => {
 					if dtop.end() - dtop.start() != dtop.content_as_str().unwrap_or_default().len()
 					{
-						tracing::error!("[?!?!] Insert span differs from effective content len (TODO remove this error after a bit)");
+						tracing::warn!(
+							"Insert span ({}, {}) differs from effective content len ({})",
+							dtop.start(), dtop.end(), dtop.content_as_str().unwrap_or_default().len()
+						);
 					}
 					crate::api::BufferUpdate {
 						hash,
