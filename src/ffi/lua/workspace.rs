@@ -66,7 +66,7 @@ impl LuaUserData for CodempWorkspace {
 			}))
 		});
 
-		methods.add_method("clear_callbacl", |_, this, ()| Ok(this.clear_callback()));
+		methods.add_method("clear_callback", |_, this, ()| Ok(this.clear_callback()));
 	}
 
 	fn add_fields<F: LuaUserDataFields<Self>>(fields: &mut F) {
