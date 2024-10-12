@@ -127,6 +127,6 @@ pub mod ffi;
 pub(crate) mod network;
 
 /// Get the current version of the client
-pub fn version() -> String {
-	env!("CARGO_PKG_VERSION").to_owned()
+pub fn version() -> &'static str {
+	env!("CARGO_PKG_VERSION")
 }
