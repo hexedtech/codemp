@@ -80,3 +80,10 @@ luajit = ["lua", "mlua-codemp-patch/luajit"]
 
 [package.metadata.docs.rs] # enabled features when building on docs.rs
 features = ["serialize"]
+
+[profile.release]
+opt-level = 'z'
+lto = true
+codegen-units = 1
+panic = 'abort'
+strip = 'symbols'
