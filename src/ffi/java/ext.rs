@@ -4,7 +4,7 @@ use jni_toolbox::jni;
 #[allow(non_snake_case)]
 #[jni(package = "mp.code", class = "Extensions")]
 fn version() -> String {
-	crate::version()
+	crate::version().to_string()
 }
 
 /// Calculate the XXH3 hash for a given String.
