@@ -1,7 +1,6 @@
 use jni_toolbox::jni;
 
 /// Gets the current version of the Rust crate.
-#[allow(non_snake_case)]
 #[jni(package = "mp.code", class = "Extensions")]
 fn version() -> String {
 	crate::version().to_string()
