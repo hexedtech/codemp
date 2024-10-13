@@ -45,7 +45,7 @@ fn entrypoint(lua: &Lua) -> LuaResult<LuaTable> {
 
 	exports.set(
 		"version",
-		lua.create_function(|_, ()| Ok(crate::version().to_string()))?,
+		lua.create_function(|_, ()| Ok(crate::version()))?,
 	)?;
 
 	// runtime
