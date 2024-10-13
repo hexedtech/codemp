@@ -42,21 +42,165 @@
 //! Exceptions coming from the native side have generally been made checked to imitate Rust's philosophy with `Result`.
 //! `JNIException`s are however unchecked: there is nothing you can do to recover from them, as they usually represent a severe error in the glue code. If they arise, it's probably a bug.
 //!
+//! ```no_run
+//! # async {
+//! use codemp::api::controller::{AsyncReceiver, AsyncSender}; // needed for send/recv trait methods
+//! 
+//! // connect first, api.code.mp is managed by hexed.technology
+//! let client = codemp::Client::connect(codemp::api::Config::new(
+//!   "mail@example.net", "dont-use-this-password"
+//! )).await?;
+//! 
+//! // create and join a workspace
+//! client.create_workspace("some-workspace").await?;
+//! let workspace = client.join_workspace("some-workspace").await?;
+//! 
+//! // create a new buffer in this workspace and attach to it
+//! workspace.create("/my/file.txt").await?;
+//! let buffer = workspace.attach("/my/file.txt").await?;
+//! 
+//! // write `hello!` at the beginning of this buffer
+//! buffer.send(codemp::api::TextChange {
+//!   start: 0, end: 0,
+//!   content: "hello!".to_string(),
+//! })?;
+//! 
+//! // wait for cursor movements
+//! loop {
+//!   let event = workspace.cursor().recv().await?;
+//!   println!("user {} moved on buffer {}", event.user, event.sel.buffer);
+//! }
+//! # Ok::<(),Box<dyn std::error::Error>>(())
+//! # };
+//! ```
 
 #![allow(clippy::unit_arg)]
 
 /// java bindings, built with [jni]
+/// 
+/// ```java
+/// import mp.code.*;
+/// 
+/// // connect first, api.code.mp is managed by hexed.technology
+/// Client client = Client.connect(
+///   new data.Config("mail@example.net", "dont-use-this-password")
+/// );
+/// 
+/// // create and join a workspace
+/// client.createWorkspace("some-workspace");
+/// Workspace workspace = client.joinWorkspace("some-workspace");
+/// 
+/// // create a new buffer in this workspace and attach to it
+/// workspace.createBuffer("/my/file.txt");
+/// BufferController buffer = workspace.attachToBuffer("/my/file.txt");
+/// 
+/// // write `hello!` at the beginning of this buffer
+/// buffer.send(new data.TextChange(
+///   0, 0, "hello!",
+///   java.util.OptionalLong.empty() // optional, used for error detection
+/// ));
+/// 
+/// // wait for cursor movements
+/// while (true) {
+///   data.Cursor event = workspace.getCursor().recv();
+///   System.out.printf("user %s moved on buffer %s\n", event.user, event.buffer);
+/// }
+/// ```
 #[cfg(feature = "java")]
 pub mod java;
 
 /// lua bindings, built with [mlua]
+/// ```lua
+/// CODEMP = require('codemp')
+/// 
+/// -- connect first, api.code.mp is managed by hexed.technology
+/// local client = CODEMP.connect({
+///   username = "mail@example.net", password = "dont-use-this-password"
+/// }):await()
+/// 
+/// -- create and join a workspace
+/// client:create_workspace("my-workspace"):await()
+/// local workspace = client:join_workspace("my-workspace"):await()
+/// 
+/// -- create a new buffer in this workspace and attach to it
+/// workspace:create_buffer("/my/file.txt"):await()
+/// local buffer = workspace:attach_buffer("/my/file.txt"):await()
+/// 
+/// -- write `hello!` at the beginning of this buffer
+/// buffer:send({
+///   start = 0, finish = 0, 
+///   content = "hello!"
+/// }):await()
+/// 
+/// -- wait for cursor movements
+/// while true do
+///   local event = workspace.cursor:recv():await()
+///   print("user " .. event.user .. " moved on buffer " .. event.buffer)
+/// end
+/// ```
 #[cfg(feature = "lua")]
 pub mod lua;
 
 /// javascript bindings, built with [napi]
+/// 
+/// ```js
+/// import * as codemp from 'codemp';
+/// 
+/// // connect first, api.code.mp is managed by hexed.technology
+/// let client = await codemp.connect({
+///   username: "mail@example.net", password: "dont-use-this-password"
+/// });
+/// 
+/// // create and join a workspace
+/// await client.create_workspace("some-workspace");
+/// let workspace = await client.join_workspace("some-workspace");
+/// 
+/// // create a new buffer in this workspace and attach to it
+/// await workspace.create("/my/file.txt");
+/// let buffer = await workspace.attach("/my/file.txt");
+/// 
+/// // write `hello!` at the beginning of this buffer
+/// await buffer.send({
+///   start: 0, end: 0,
+///   content: "hello!",
+/// });
+/// 
+/// // wait for cursor movements
+/// while (true) {
+///   let event = await workspace.cursor().recv();
+///   console.log(`user ${event.user} moved on buffer ${event.buffer}`);
+/// }
+/// ```
 #[cfg(feature = "js")]
 pub mod js;
 
 /// python bindings, built with [pyo3]
+/// ```py
+/// import codemp
+/// 
+/// # connect first, api.code.mp is managed by hexed.technology
+/// config = codemp.get_default_config()
+/// config.username = "mail@example.net"
+/// config.password = "dont-use-this-password"
+/// client = codemp.connect(config).wait()
+/// 
+/// # create and join a workspace
+/// client.create_workspace("some-workspace").wait()
+/// workspace = client.join_workspace("some-workspace").wait()
+/// 
+/// # create a new buffer in this workspace and attach to it
+/// workspace.create("/my/file.txt").wait()
+/// buffer = workspace.attach("/my/file.txt").wait()
+/// 
+/// # write `hello!` at the beginning of this buffer
+/// buffer.send(
+///   0, 0, "hello!"
+/// ).wait()
+/// 
+/// # wait for cursor movements
+/// while true:
+///   event = workspace.cursor().recv().wait()
+///   print(f"user {event.user} moved on buffer {event.buffer}")
+/// ```
 #[cfg(any(feature = "py", feature = "py-noabi"))]
 pub mod python;
