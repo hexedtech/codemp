@@ -9,5 +9,5 @@ pub fn js_hash(data: String) -> i64 {
 /// Get the current version of the client
 #[napi(js_name = "version")]
 pub fn js_version() -> String {
-	crate::version()
+	crate::version().to_string()
 }

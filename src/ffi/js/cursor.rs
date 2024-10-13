@@ -52,6 +52,6 @@ impl CursorController {
 	/// Block until next
 	#[napi(js_name = "recv")]
 	pub async fn js_recv(&self) -> napi::Result<crate::api::Cursor> {
-		Ok(self.recv().await?.into())
+		Ok(self.recv().await?)
 	}
 }

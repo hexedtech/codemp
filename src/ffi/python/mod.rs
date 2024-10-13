@@ -134,7 +134,7 @@ impl Driver {
 
 #[pyfunction]
 fn version() -> String {
-	crate::version()
+	crate::version().to_string()
 }
 
 #[pyfunction]
