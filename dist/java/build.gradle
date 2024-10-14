@@ -7,6 +7,75 @@ plugins {
 group = 'mp.code'
 version = '0.7.3'
 
+tasks.register('windowsJar', Jar) {
+	outputs.upToDateWhen { false }
+	archiveClassifier = 'windows-x86_64'
+	from sourceSets.main.runtimeClasspath
+	from('artifacts') {
+		include('*.dll')
+		into('natives/')
+	}
+	doFirst {
+		if(!(new File('artifacts/codemp.dll').exists())) {
+			throw new GradleException("The required file does not exist!")
+		}
+	}
+}
+
+tasks.register('macosJar', Jar) {
+	outputs.upToDateWhen { false }
+	archiveClassifier = 'osx-aarch_64'
+	from sourceSets.main.runtimeClasspath
+	from('artifacts') {
+		include('*.dylib')
+		into('natives/')
+	}
+	doFirst {
+		if(!(new File('artifacts/libcodemp.dylib').exists())) {
+			throw new GradleException("The required file does not exist!")
+		}
+	}
+}
+
+tasks.register('linuxJar', Jar) {
+	outputs.upToDateWhen { false }
+	archiveClassifier = 'linux-x86_64'
+	from sourceSets.main.runtimeClasspath
+	from('artifacts') {
+		include('*.so')
+		into('natives/')
+	}
+	doFirst {
+		if(!(new File('artifacts/libcodemp.so').exists())) {
+			throw new GradleException("The required file does not exist! Maybe you need to `cargo build` the main library first?")
+		}
+	}
+}
+
+configurations {
+	windowsJar {
+		canBeConsumed = true
+		canBeResolved = false
+		extendsFrom implementation, runtimeOnly
+	}
+	linuxJar {
+		canBeConsumed = true
+		canBeResolved = false
+		extendsFrom implementation, runtimeOnly
+	}
+	macosJar {
+		canBeConsumed = true
+		canBeResolved = false
+		extendsFrom implementation, runtimeOnly
+	}
+}
+
+artifacts {
+	windowsJar(windowsJar)
+	macosJar(macosJar)
+	linuxJar(linuxJar)
+}
+
 java {
 	sourceCompatibility = targetCompatibility = JavaVersion.VERSION_11
 }
@@ -29,17 +98,17 @@ tasks.register('cargoBuild', Exec) {
 	commandLine 'cargo', 'build', '--release', '--features=java'
 }
 
-jar.archiveClassifier = osdetector.classifier
-
 def rustDir = projectDir.toPath()
 	.parent
 	.parent
 	.resolve('target')
 	.resolve('release')
 	.toFile()
-processResources {
+
+tasks.register('nativeBuild', Jar) {
+	archiveClassifier = osdetector.classifier
 	dependsOn cargoBuild
-	outputs.upToDateWhen { false } // no caching
+	from sourceSets.main.runtimeClasspath
 	from(rustDir) {
 		include('*.dll')
 		include('*.so')
@@ -50,7 +119,7 @@ processResources {
 
 import com.vanniktech.maven.publish.SonatypeHost
 mavenPublishing {
-	publishToMavenCentral(SonatypeHost.CENTRAL_PORTAL, true)
+	publishToMavenCentral(SonatypeHost.CENTRAL_PORTAL) //, true) // TODO re-enable autopublish!
 	signAllPublications()
 	coordinates(project.group, rootProject.name, project.version)
 
