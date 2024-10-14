@@ -88,8 +88,10 @@
 //! * `python`
 //!
 //! For some of these, ready-to-use packages are available in various registries:
-//! * [PyPI (python)](https://pypi.org/project/codemp)
 //! * [npm (javascript)](https://www.npmjs.com/package/codemp)
+//! * [PyPI (python)](https://pypi.org/project/codemp)
+//! * [Maven Central (java)](https://central.sonatype.com/artifact/mp.code/codemp)
+//! * [LuaRocks (lua)](https://luarocks.org/modules/alemi/codemp)
 //!
 #![doc(html_logo_url = "https://code.mp/static/logo-round.png")]
 #![doc(html_favicon_url = "https://code.mp/static/favicon.ico")]

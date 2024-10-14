@@ -6,7 +6,7 @@ use tokio::sync::mpsc;
 
 /// Poll all given buffer controllers and wait, returning the first one ready.
 ///
-/// It will spawn tasks blocked on [`Controller::poll`] for each buffer controller.
+/// It will spawn tasks blocked on [`AsyncReceiver::poll`] for each buffer controller.
 /// As soon as one finishes, its controller is returned and all other tasks are canceled.
 ///
 /// If a timeout is provided, the result may be `None` if it expires before any task is
