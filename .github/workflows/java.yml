@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - stable
+      - fix/java-ci
 
 permissions:
   contents: read
