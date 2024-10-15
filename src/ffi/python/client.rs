@@ -55,16 +55,18 @@ impl Client {
 		a_sync_allow_threads!(py, this.invite_to_workspace(workspace, user).await)
 	}
 
-	#[pyo3(name = "list_workspaces")]
-	fn pylist_workspaces(
-		&self,
-		py: Python<'_>,
-		owned: bool,
-		invited: bool,
-	) -> PyResult<super::Promise> {
-		tracing::info!("attempting to list workspaces");
+	#[pyo3(name = "fetch_owned_workspaces")]
+	fn pyfetch_owned_workspaces(&self, py: Python<'_>) -> PyResult<super::Promise> {
+		tracing::info!("attempting to fetch owned workspaces");
 		let this = self.clone();
-		a_sync_allow_threads!(py, this.list_workspaces(owned, invited).await)
+		a_sync_allow_threads!(py, this.fetch_owned_workspaces().await)
+	}
+
+	#[pyo3(name = "fetch_joined_workspaces")]
+	fn pyfetch_joined_workspaces(&self, py: Python<'_>) -> PyResult<super::Promise> {
+		tracing::info!("attempting to fetch joined workspaces");
+		let this = self.clone();
+		a_sync_allow_threads!(py, this.fetch_joined_workspaces().await)
 	}
 
 	#[pyo3(name = "leave_workspace")]

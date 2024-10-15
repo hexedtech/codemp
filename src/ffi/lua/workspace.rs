@@ -43,12 +43,15 @@ impl LuaUserData for CodempWorkspace {
 			|_, this, ()| a_sync! { this => this.fetch_users().await? },
 		);
 
-		methods.add_method(
-			"filetree",
-			|_, this, (filter, strict): (Option<String>, Option<bool>)| {
-				Ok(this.filetree(filter.as_deref(), strict.unwrap_or(false)))
-			},
-		);
+		methods.add_method("search_buffers", |_, this, (filter,): (Option<String>,)| {
+			Ok(this.search_buffers(filter.as_deref()))
+		});
+
+		methods.add_method("fetch_buffer_users", |_, this, (path,): (String,)| {
+			a_sync! {
+				this => this.fetch_buffer_users(&path).await?
+			}
+		});
 
 		methods.add_method("id", |_, this, ()| Ok(this.id()));
 		methods.add_method("cursor", |_, this, ()| Ok(this.cursor()));

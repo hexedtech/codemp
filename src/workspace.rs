@@ -26,7 +26,7 @@ use codemp_proto::{
 };
 
 use dashmap::{DashMap, DashSet};
-use std::{collections::BTreeSet, sync::Arc};
+use std::sync::Arc;
 use tokio::sync::{mpsc, mpsc::error::TryRecvError};
 use tonic::Streaming;
 use uuid::Uuid;
@@ -201,45 +201,48 @@ impl Workspace {
 	}
 
 	/// Re-fetch the list of available buffers in the workspace.
-	pub async fn fetch_buffers(&self) -> RemoteResult<()> {
+	pub async fn fetch_buffers(&self) -> RemoteResult<Vec<String>> {
 		let mut workspace_client = self.0.services.ws();
-		let buffers = workspace_client
+		let resp = workspace_client
 			.list_buffers(tonic::Request::new(Empty {}))
 			.await?
-			.into_inner()
-			.buffers;
+			.into_inner();
+
+		let mut out = Vec::new();
 
 		self.0.filetree.clear();
-		for b in buffers {
-			self.0.filetree.insert(b.path);
+		for b in resp.buffers {
+			self.0.filetree.insert(b.path.clone());
+			out.push(b.path);
 		}
 
-		Ok(())
+		Ok(out)
 	}
 
 	/// Re-fetch the list of all users in the workspace.
-	pub async fn fetch_users(&self) -> RemoteResult<()> {
+	pub async fn fetch_users(&self) -> RemoteResult<Vec<User>> {
 		let mut workspace_client = self.0.services.ws();
-		let users = BTreeSet::from_iter(
-			workspace_client
-				.list_users(tonic::Request::new(Empty {}))
-				.await?
-				.into_inner()
-				.users
-				.into_iter()
-				.map(User::from),
-		);
+		let users = workspace_client
+			.list_users(tonic::Request::new(Empty {}))
+			.await?
+			.into_inner()
+			.users
+			.into_iter()
+			.map(User::from);
+
+		let mut result = Vec::new();
 
 		self.0.users.clear();
 		for u in users {
-			self.0.users.insert(u.id, u);
+			self.0.users.insert(u.id, u.clone());
+			result.push(u);
 		}
 
-		Ok(())
+		Ok(result)
 	}
 
-	/// Get a list of the [User]s attached to a specific buffer.
-	pub async fn list_buffer_users(&self, path: &str) -> RemoteResult<Vec<User>> {
+	/// Fetch a list of the [User]s attached to a specific buffer.
+	pub async fn fetch_buffer_users(&self, path: &str) -> RemoteResult<Vec<User>> {
 		let mut workspace_client = self.0.services.ws();
 		let buffer_users = workspace_client
 			.list_buffer_users(tonic::Request::new(BufferNode {
@@ -311,20 +314,12 @@ impl Workspace {
 	/// Get the filetree as it is currently cached.
 	/// A filter may be applied, and it may be strict (equality check) or not (starts_with check).
 	// #[cfg_attr(feature = "js", napi)] // https://github.com/napi-rs/napi-rs/issues/1120
-	pub fn filetree(&self, filter: Option<&str>, strict: bool) -> Vec<String> {
+	pub fn search_buffers(&self, filter: Option<&str>) -> Vec<String> {
 		let mut tree = self
 			.0
 			.filetree
 			.iter()
-			.filter(|f| {
-				filter.map_or(true, |flt| {
-					if strict {
-						f.as_str() == flt
-					} else {
-						f.starts_with(flt)
-					}
-				})
-			})
+			.filter(|f| filter.map_or(true, |flt| f.starts_with(flt)))
 			.map(|f| f.clone())
 			.collect::<Vec<String>>();
 		tree.sort();

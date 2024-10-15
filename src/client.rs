@@ -130,9 +130,18 @@ impl Client {
 		Ok(())
 	}
 
-	/// List all available workspaces, also filtering between those owned and those invited to.
-	pub async fn list_workspaces(&self, owned: bool, invited: bool) -> RemoteResult<Vec<String>> {
-		let mut workspaces = self
+	/// Fetch the names of all workspaces owned by the current user.
+	pub async fn fetch_owned_workspaces(&self) -> RemoteResult<Vec<String>> {
+		self.fetch_workspaces(true).await
+	}
+
+	/// Fetch the names of all workspaces the current user has joined.
+	pub async fn fetch_joined_workspaces(&self) -> RemoteResult<Vec<String>> {
+		self.fetch_workspaces(false).await
+	}
+
+	async fn fetch_workspaces(&self, owned: bool) -> RemoteResult<Vec<String>> {
+		let workspaces = self
 			.0
 			.session
 			.clone()
@@ -140,20 +149,18 @@ impl Client {
 			.await?
 			.into_inner();
 
-		let mut out = Vec::new();
-
 		if owned {
-			out.append(&mut workspaces.owned)
+			Ok(workspaces.owned)
+		} else {
+			Ok(workspaces.invited)
 		}
-		if invited {
-			out.append(&mut workspaces.invited)
-		}
-
-		Ok(out)
 	}
 
 	/// Join and return a [`Workspace`].
-	pub async fn attach_workspace(&self, workspace: impl AsRef<str>) -> ConnectionResult<Workspace> {
+	pub async fn attach_workspace(
+		&self,
+		workspace: impl AsRef<str>,
+	) -> ConnectionResult<Workspace> {
 		let token = self
 			.0
 			.session

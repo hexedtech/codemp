@@ -12,8 +12,12 @@ impl LuaUserData for CodempClient {
 			Ok(format!("{:?}", this))
 		});
 
-		methods.add_method("current_user", |_, this, ()| Ok(this.current_user().clone()));
-		methods.add_method("active_workspaces", |_, this, ()| Ok(this.active_workspaces()));
+		methods.add_method("current_user", |_, this, ()| {
+			Ok(this.current_user().clone())
+		});
+		methods.add_method("active_workspaces", |_, this, ()| {
+			Ok(this.active_workspaces())
+		});
 
 		methods.add_method(
 			"refresh",
@@ -39,8 +43,14 @@ impl LuaUserData for CodempClient {
 			a_sync! { this => this.invite_to_workspace(ws, user).await? }
 		);
 
-		methods.add_method("list_workspaces", |_, this, (owned,invited):(Option<bool>,Option<bool>)|
-			a_sync! { this => this.list_workspaces(owned.unwrap_or(true), invited.unwrap_or(true)).await? }
+		methods.add_method(
+			"fetch_owned_workspaces",
+			|_, this, ()| a_sync! { this => this.fetch_owned_workspaces().await? },
+		);
+
+		methods.add_method(
+			"fetch_joined_workspaces",
+			|_, this, ()| a_sync! { this => this.fetch_joined_workspaces().await? },
 		);
 
 		methods.add_method("leave_workspace", |_, this, (ws,): (String,)| {

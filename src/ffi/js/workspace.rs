@@ -44,9 +44,9 @@ impl Workspace {
 	}
 
 	/// List all available buffers in this workspace
-	#[napi(js_name = "filetree")]
-	pub fn js_filetree(&self, filter: Option<&str>, strict: bool) -> Vec<String> {
-		self.filetree(filter, strict)
+	#[napi(js_name = "search_buffers")]
+	pub fn js_search_buffers(&self, filter: Option<&str>) -> Vec<String> {
+		self.search_buffers(filter)
 	}
 
 	/// List all user names currently in this workspace
@@ -121,7 +121,7 @@ impl Workspace {
 			})?;
 		self.callback(move |controller: Workspace| {
 			tsfn.call(controller.clone(), ThreadsafeFunctionCallMode::Blocking); //check this with tracing also we could use Ok(event) to get the error
-			                                                            // If it blocks the main thread too many time we have to change this
+			                                                         // If it blocks the main thread too many time we have to change this
 		});
 
 		Ok(())
@@ -137,23 +137,28 @@ impl Workspace {
 
 	/// Re-fetch remote buffer list
 	#[napi(js_name = "fetchBuffers")]
-	pub async fn js_fetch_buffers(&self) -> napi::Result<()> {
+	pub async fn js_fetch_buffers(&self) -> napi::Result<Vec<String>> {
 		Ok(self.fetch_buffers().await?)
 	}
 	/// Re-fetch the list of all users in the workspace.
 	#[napi(js_name = "fetchUsers")]
-	pub async fn js_fetch_users(&self) -> napi::Result<()> {
-		Ok(self.fetch_users().await?)
+	pub async fn js_fetch_users(&self) -> napi::Result<Vec<JsUser>> {
+		Ok(self
+			.fetch_users()
+			.await?
+			.into_iter()
+			.map(JsUser::from)
+			.collect())
 	}
 
 	/// List users attached to a specific buffer
-	#[napi(js_name = "listBufferUsers")]
-	pub async fn js_list_buffer_users(
+	#[napi(js_name = "fetchBufferUsers")]
+	pub async fn js_fetch_buffer_users(
 		&self,
 		path: String,
 	) -> napi::Result<Vec<crate::ffi::js::client::JsUser>> {
 		Ok(self
-			.list_buffer_users(&path)
+			.fetch_buffer_users(&path)
 			.await?
 			.into_iter()
 			.map(super::client::JsUser::from)

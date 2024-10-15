@@ -41,11 +41,11 @@ impl Workspace {
 		a_sync_allow_threads!(py, this.fetch_users().await)
 	}
 
-	#[pyo3(name = "list_buffer_users")]
-	fn pylist_buffer_users(&self, py: Python, path: String) -> PyResult<Promise> {
+	#[pyo3(name = "fetch_buffer_users")]
+	fn pyfetch_buffer_users(&self, py: Python, path: String) -> PyResult<Promise> {
 		// crate::Result<Vec<crate::api::User>>
 		let this = self.clone();
-		a_sync_allow_threads!(py, this.list_buffer_users(path.as_str()).await)
+		a_sync_allow_threads!(py, this.fetch_buffer_users(path.as_str()).await)
 	}
 
 	#[pyo3(name = "delete_buffer")]
@@ -74,10 +74,10 @@ impl Workspace {
 		self.active_buffers()
 	}
 
-	#[pyo3(name = "filetree")]
-	#[pyo3(signature = (filter=None, strict=false))]
-	fn pyfiletree(&self, filter: Option<&str>, strict: bool) -> Vec<String> {
-		self.filetree(filter, strict)
+	#[pyo3(name = "search_buffers")]
+	#[pyo3(signature = (filter=None))]
+	fn pysearch_buffers(&self, filter: Option<&str>) -> Vec<String> {
+		self.search_buffers(filter)
 	}
 
 	#[pyo3(name = "user_list")]

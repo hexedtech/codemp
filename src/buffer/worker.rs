@@ -170,8 +170,11 @@ impl BufferWorker {
 
 		// in case we have a "replace" span
 		if change.is_delete() {
-			self.branch
-				.delete_without_content(&mut self.oplog, self.agent_id, clip_start..clip_end);
+			self.branch.delete_without_content(
+				&mut self.oplog,
+				self.agent_id,
+				clip_start..clip_end,
+			);
 		}
 
 		if change.is_insert() {
@@ -247,7 +250,9 @@ impl BufferWorker {
 					{
 						tracing::warn!(
 							"Insert span ({}, {}) differs from effective content len ({})",
-							dtop.start(), dtop.end(), dtop.content_as_str().unwrap_or_default().len()
+							dtop.start(),
+							dtop.end(),
+							dtop.content_as_str().unwrap_or_default().len()
 						);
 					}
 					crate::api::BufferUpdate {

@@ -46,14 +46,16 @@ impl Client {
 		Ok(self.delete_workspace(workspace).await?)
 	}
 
-	#[napi(js_name = "listWorkspaces")]
-	/// list available workspaces
-	pub async fn js_list_workspaces(
-		&self,
-		owned: bool,
-		invited: bool,
-	) -> napi::Result<Vec<String>> {
-		Ok(self.list_workspaces(owned, invited).await?)
+	#[napi(js_name = "fetchOwnedWorkspaces")]
+	/// fetch owned workspaces
+	pub async fn js_fetch_owned_workspaces(&self) -> napi::Result<Vec<String>> {
+		Ok(self.fetch_owned_workspaces().await?)
+	}
+
+	#[napi(js_name = "fetchJoinedWorkspaces")]
+	/// fetch joined workspaces
+	pub async fn js_fetch_joined_workspaces(&self) -> napi::Result<Vec<String>> {
+		Ok(self.fetch_joined_workspaces().await?)
 	}
 
 	#[napi(js_name = "inviteToWorkspace")]

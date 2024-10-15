@@ -1,10 +1,10 @@
 package mp.code;
 
 import java.util.Optional;
-import java.util.UUID;
 import java.util.function.Consumer;
 
 import lombok.Getter;
+import mp.code.data.User;
 import mp.code.exceptions.ConnectionException;
 import mp.code.exceptions.ConnectionRemoteException;
 import mp.code.exceptions.ControllerException;
@@ -57,17 +57,16 @@ public final class Workspace {
 		return Optional.ofNullable(get_buffer(this.ptr, path));
 	}
 
-	private static native String[] filetree(long self, String filter, boolean strict);
+	private static native String[] search_buffers(long self, String filter);
 
 	/**
-	 * Gets the file tree for this workspace, optionally filtering it.
-	 * @param filter applies an optional filter to the outputs
-	 * @param strict whether it should be a strict match (equals) or not (startsWith)
+	 * Searches for buffers matching the filter in this workspace.
+	 * @param filter the filter to apply
 	 * @return an array containing file tree as flat paths
 	 */
 	@SuppressWarnings("OptionalUsedAsFieldOrParameterType")
-	public String[] filetree(Optional<String> filter, boolean strict) {
-		return filetree(this.ptr, filter.orElse(null), strict);
+	public String[] searchBuffers(Optional<String> filter) {
+		return search_buffers(this.ptr, filter.orElse(null));
 	}
 
 	private static native String[] active_buffers(long self);
@@ -125,37 +124,39 @@ public final class Workspace {
 		return detach_buffer(this.ptr, path);
 	}
 
-	private static native void fetch_buffers(long self) throws ConnectionRemoteException;
+	private static native String[] fetch_buffers(long self) throws ConnectionRemoteException;
 
 	/**
-	 * Updates the local list of buffers.
+	 * Updates and fetches the local list of buffers.
+	 * @return the updated list
 	 * @throws ConnectionRemoteException if an error occurs in communicating with the server
 	 */
-	public void fetchBuffers() throws ConnectionRemoteException {
-		fetch_buffers(this.ptr);
+	public String[] fetchBuffers() throws ConnectionRemoteException {
+		return fetch_buffers(this.ptr);
 	}
 
-	private static native void fetch_users(long self) throws ConnectionRemoteException;
+	private static native User[] fetch_users(long self) throws ConnectionRemoteException;
 
 	/**
-	 * Updates the local list of users.
+	 * Updates and fetches the local list of users.
+	 * @return the updated list
 	 * @throws ConnectionRemoteException if an error occurs in communicating with the server
 	 */
-	public void fetchUsers() throws ConnectionRemoteException {
-		fetch_buffers(this.ptr);
+	public User[] fetchUsers() throws ConnectionRemoteException {
+		return fetch_users(this.ptr);
 	}
 
-	private static native UUID[] list_buffer_users(long self, String path) throws ConnectionRemoteException;
+	private static native User[] fetch_buffer_users(long self, String path) throws ConnectionRemoteException;
 
 	/**
-	 * Lists the user attached to a certain buffer.
+	 * Fetches the users attached to a certain buffer.
 	 * The user must be attached to the buffer to perform this operation.
 	 * @param path the path of the buffer to search
-	 * @return an array of user {@link UUID UUIDs}
+	 * @return an array of {@link User}s 
 	 * @throws ConnectionRemoteException if an error occurs in communicating with the server, or the user wasn't attached
 	 */
-	public UUID[] listBufferUsers(String path) throws ConnectionRemoteException {
-		return list_buffer_users(this.ptr, path);
+	public User[] fetchBufferUsers(String path) throws ConnectionRemoteException {
+		return fetch_buffer_users(this.ptr, path);
 	}
 
 	private static native void delete_buffer(long self, String path) throws ConnectionRemoteException;

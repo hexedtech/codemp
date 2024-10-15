@@ -46,14 +46,16 @@ fn invite_to_workspace(
 	super::tokio().block_on(client.invite_to_workspace(workspace, user))
 }
 
-/// List available workspaces.
+/// List owned workspaces.
 #[jni(package = "mp.code", class = "Client")]
-fn list_workspaces(
-	client: &mut Client,
-	owned: bool,
-	invited: bool,
-) -> Result<Vec<String>, RemoteError> {
-	super::tokio().block_on(client.list_workspaces(owned, invited))
+fn fetch_owned_workspaces(client: &mut Client) -> Result<Vec<String>, RemoteError> {
+	super::tokio().block_on(client.fetch_owned_workspaces())
+}
+
+/// List joined workspaces.
+#[jni(package = "mp.code", class = "Client")]
+fn fetch_joined_workspaces(client: &mut Client) -> Result<Vec<String>, RemoteError> {
+	super::tokio().block_on(client.fetch_joined_workspaces())
 }
 
 /// List available workspaces.

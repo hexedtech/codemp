@@ -2,10 +2,7 @@ use jni::{objects::JObject, JNIEnv};
 use jni_toolbox::jni;
 
 use crate::{
-	api::{
-		controller::{AsyncReceiver, AsyncSender},
-		BufferUpdate, TextChange,
-	},
+	api::{AsyncReceiver, AsyncSender, BufferUpdate, TextChange},
 	errors::ControllerError,
 };
 

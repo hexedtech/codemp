@@ -158,6 +158,17 @@ function MaybeBufferUpdatePromise:cancel() end
 ---invoke callback asynchronously as soon as promise is ready
 function MaybeBufferUpdatePromise:and_then(cb) end
 
+---@class (exact) UserListPromise : Promise
+local UserListPromise = {}
+--- block until promise is ready and return value
+--- @return User[]
+function UserListPromise:await() end
+--- cancel promise execution
+function UserListPromise:cancel() end
+---@param cb fun(x: User[]) callback to invoke
+---invoke callback asynchronously as soon as promise is ready
+function UserListPromise:and_then(cb) end
+
 -- [[ END ASYNC STUFF ]]
 
 
@@ -212,13 +223,17 @@ function Client:delete_workspace(ws) end
 ---grant user acccess to workspace
 function Client:invite_to_workspace(ws, user) end
 
----@param owned boolean? list owned workspaces, default true
----@param invited boolean? list invited workspaces, default true
 ---@return StringArrayPromise
 ---@async
 ---@nodiscard
----grant user acccess to workspace
-function Client:list_workspaces(owned, invited) end
+---fetch and list owned workspaces
+function Client:fetch_owned_workspaces() end
+
+---@return StringArrayPromise
+---@async
+---@nodiscard
+---fetch and list joined workspaces
+function Client:fetch_joined_workspaces() end
 
 ---@param ws string workspace id to get
 ---@return Workspace?
@@ -281,10 +296,9 @@ function Workspace:attach_buffer(path) end
 function Workspace:detach_buffer(path) end
 
 ---@param filter? string apply a filter to the return elements
----@param strict? boolean whether to strictly match or just check whether it starts with it
 ---@return string[]
 ---return the list of available buffers in this workspace, as relative paths from workspace root
-function Workspace:filetree(filter, strict) end
+function Workspace:search_buffers(filter) end
 
 ---@return User[]
 ---return all names of users currently in this workspace
@@ -301,6 +315,13 @@ function Workspace:fetch_buffers(path) end
 ---@nodiscard
 ---force refresh users list from workspace
 function Workspace:fetch_users(path) end
+
+---@param path string the buffer to look in
+---@return UserListPromise
+---@async
+---@nodiscard
+---fetch the list of users in the given buffer
+function Workspace:fetch_buffer_users(path) end
 
 ---@class (exact) WorkspaceEvent
 ---@field type string

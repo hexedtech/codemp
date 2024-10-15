@@ -91,17 +91,26 @@ public final class Client {
 		invite_to_workspace(this.ptr, workspaceId, user);
 	}
 
-	private static native String[] list_workspaces(long self, boolean owned, boolean invited) throws ConnectionRemoteException;
+	private static native String[] fetch_owned_workspaces(long self) throws ConnectionRemoteException;
 
 	/**
-	 * Lists available workspaces according to certain filters.
-	 * @param owned if owned workspaces should be included
-	 * @param invited if workspaces the user is invited to should be included
+	 * Lists workspaces owned by the current user.
 	 * @return an array of workspace IDs
 	 * @throws ConnectionRemoteException if an error occurs in communicating with the server
 	 */
-	public String[] listWorkspaces(boolean owned, boolean invited) throws ConnectionRemoteException {
-		return list_workspaces(this.ptr, owned, invited);
+	public String[] fetchOwnedWorkspaces() throws ConnectionRemoteException {
+		return fetch_owned_workspaces(this.ptr);
+	}
+
+	private static native String[] fetch_joined_workspaces(long self) throws ConnectionRemoteException;
+
+	/**
+	 * Lists workspaces the current user has joined.
+	 * @return an array of workspace IDs
+	 * @throws ConnectionRemoteException if an error occurs in communicating with the server
+	 */
+	public String[] fetchJoinedWorkspaces() throws ConnectionRemoteException {
+		return fetch_joined_workspaces(this.ptr);
 	}
 
 	private static native String[] active_workspaces(long self);

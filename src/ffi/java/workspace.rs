@@ -25,10 +25,10 @@ fn get_buffer(workspace: &mut Workspace, path: String) -> Option<crate::buffer::
 	workspace.get_buffer(&path)
 }
 
-/// Get the filetree.
+/// Searches for buffers matching the filter.
 #[jni(package = "mp.code", class = "Workspace")]
-fn filetree(workspace: &mut Workspace, filter: Option<String>, strict: bool) -> Vec<String> {
-	workspace.filetree(filter.as_deref(), strict)
+fn search_buffers(workspace: &mut Workspace, filter: Option<String>) -> Vec<String> {
+	workspace.search_buffers(filter.as_deref())
 }
 
 /// Gets a list of the active buffers.
@@ -66,23 +66,23 @@ fn detach_buffer(workspace: &mut Workspace, path: String) -> bool {
 
 /// Update the local buffer list.
 #[jni(package = "mp.code", class = "Workspace")]
-fn fetch_buffers(workspace: &mut Workspace) -> Result<(), RemoteError> {
+fn fetch_buffers(workspace: &mut Workspace) -> Result<Vec<String>, RemoteError> {
 	super::tokio().block_on(workspace.fetch_buffers())
 }
 
 /// Update the local user list.
 #[jni(package = "mp.code", class = "Workspace")]
-fn fetch_users(workspace: &mut Workspace) -> Result<(), RemoteError> {
+fn fetch_users(workspace: &mut Workspace) -> Result<Vec<User>, RemoteError> {
 	super::tokio().block_on(workspace.fetch_users())
 }
 
-/// List users attached to a buffer.
+/// Fetch users attached to a buffer.
 #[jni(package = "mp.code", class = "Workspace")]
-fn list_buffer_users(
+fn fetch_buffer_users(
 	workspace: &mut Workspace,
 	path: String,
 ) -> Result<Vec<crate::api::User>, RemoteError> {
-	super::tokio().block_on(workspace.list_buffer_users(&path))
+	super::tokio().block_on(workspace.fetch_buffer_users(&path))
 }
 
 /// Delete a buffer.
