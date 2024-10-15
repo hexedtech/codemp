@@ -70,14 +70,13 @@ configurations {
 	}
 }
 
-artifacts {
-	windowsJar(windowsJar)
-	macosJar(macosJar)
-	linuxJar(linuxJar)
-}
-
 java {
 	sourceCompatibility = targetCompatibility = JavaVersion.VERSION_11
+	artifacts {
+		windowsJar(windowsJar)
+		macosJar(macosJar)
+		linuxJar(linuxJar)
+	}
 }
 
 repositories {
@@ -117,24 +116,14 @@ tasks.register('nativeBuild', Jar) {
 	}
 }
 
-publishing {
-	publications {
-		mavenJava(MavenPublication) {
-			artifact jar
-			//artifact sourcesJar
-			//artifact javadocJar
-			artifact windowsJar
-			artifact linuxJar
-			artifact macosJar
-		}
-	}
-}
-
 import com.vanniktech.maven.publish.SonatypeHost
+import com.vanniktech.maven.publish.JavaLibrary
+import com.vanniktech.maven.publish.JavadocJar
 mavenPublishing {
 	publishToMavenCentral(SonatypeHost.CENTRAL_PORTAL) //, true) // TODO re-enable autopublish!
 	signAllPublications()
 	coordinates(project.group, rootProject.name, project.version)
+	configure(new JavaLibrary(new JavadocJar.Javadoc(), true))
 
 	pom {
 		name = rootProject.name
