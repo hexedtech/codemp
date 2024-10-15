@@ -50,13 +50,13 @@ impl Workspace {
 	}
 
 	/// List all user names currently in this workspace
-	#[napi(js_name = "user_list")]
+	#[napi(js_name = "userList")]
 	pub fn js_user_list(&self) -> Vec<JsUser> {
 		self.user_list().into_iter().map(JsUser::from).collect()
 	}
 
 	/// List all currently active buffers
-	#[napi(js_name = "active_buffers")]
+	#[napi(js_name = "activeBuffers")]
 	pub fn js_active_buffers(&self) -> Vec<String> {
 		self.active_buffers()
 	}
@@ -68,25 +68,25 @@ impl Workspace {
 	}
 
 	/// Get a buffer controller by its name (path)
-	#[napi(js_name = "get_buffer")]
+	#[napi(js_name = "getBuffer")]
 	pub fn js_get_buffer(&self, path: String) -> Option<BufferController> {
 		self.get_buffer(&path)
 	}
 
 	/// Create a new buffer in the current workspace
-	#[napi(js_name = "create_buffer")]
+	#[napi(js_name = "createBuffer")]
 	pub async fn js_create_buffer(&self, path: String) -> napi::Result<()> {
 		Ok(self.create_buffer(&path).await?)
 	}
 
 	/// Attach to a workspace buffer, starting a BufferController
-	#[napi(js_name = "attach_buffer")]
+	#[napi(js_name = "attachBuffer")]
 	pub async fn js_attach_buffer(&self, path: String) -> napi::Result<BufferController> {
 		Ok(self.attach_buffer(&path).await?)
 	}
 
 	/// Delete a buffer from workspace
-	#[napi(js_name = "delete_buffer")]
+	#[napi(js_name = "deleteBuffer")]
 	pub async fn js_delete_buffer(&self, path: String) -> napi::Result<()> {
 		Ok(self.delete_buffer(&path).await?)
 	}
@@ -96,7 +96,7 @@ impl Workspace {
 		Ok(JsEvent::from(self.recv().await?))
 	}
 
-	#[napi(js_name = "try_recv")]
+	#[napi(js_name = "tryRecv")]
 	pub async fn js_try_recv(&self) -> napi::Result<Option<JsEvent>> {
 		Ok(self.try_recv().await?.map(JsEvent::from))
 	}
@@ -107,7 +107,7 @@ impl Workspace {
 		Ok(())
 	}
 
-	#[napi(js_name = "clear_callback")]
+	#[napi(js_name = "clearCallback")]
 	pub fn js_clear_callback(&self) -> napi::Result<()> {
 		self.clear_callback();
 		Ok(())
@@ -130,24 +130,24 @@ impl Workspace {
 	/// Detach from an active buffer, stopping its underlying worker
 	/// this method returns true if no reference or last reference was held, false if there are still
 	/// dangling references to clear
-	#[napi(js_name = "detach_buffer")]
+	#[napi(js_name = "detachBuffer")]
 	pub async fn js_detach_buffer(&self, path: String) -> bool {
 		self.detach_buffer(&path)
 	}
 
 	/// Re-fetch remote buffer list
-	#[napi(js_name = "fetch_buffers")]
+	#[napi(js_name = "fetchBuffers")]
 	pub async fn js_fetch_buffers(&self) -> napi::Result<()> {
 		Ok(self.fetch_buffers().await?)
 	}
 	/// Re-fetch the list of all users in the workspace.
-	#[napi(js_name = "fetch_users")]
+	#[napi(js_name = "fetchUsers")]
 	pub async fn js_fetch_users(&self) -> napi::Result<()> {
 		Ok(self.fetch_users().await?)
 	}
 
 	/// List users attached to a specific buffer
-	#[napi(js_name = "list_buffer_users")]
+	#[napi(js_name = "listBufferUsers")]
 	pub async fn js_list_buffer_users(
 		&self,
 		path: String,

@@ -34,19 +34,19 @@ pub async fn connect(config: crate::api::Config) -> napi::Result<crate::Client> 
 
 #[napi]
 impl Client {
-	#[napi(js_name = "create_workspace")]
+	#[napi(js_name = "createWorkspace")]
 	/// create workspace with given id, if able to
 	pub async fn js_create_workspace(&self, workspace: String) -> napi::Result<()> {
 		Ok(self.create_workspace(workspace).await?)
 	}
 
-	#[napi(js_name = "delete_workspace")]
+	#[napi(js_name = "deleteWorkspace")]
 	/// delete workspace with given id, if able to
 	pub async fn js_delete_workspace(&self, workspace: String) -> napi::Result<()> {
 		Ok(self.delete_workspace(workspace).await?)
 	}
 
-	#[napi(js_name = "list_workspaces")]
+	#[napi(js_name = "listWorkspaces")]
 	/// list available workspaces
 	pub async fn js_list_workspaces(
 		&self,
@@ -56,7 +56,7 @@ impl Client {
 		Ok(self.list_workspaces(owned, invited).await?)
 	}
 
-	#[napi(js_name = "invite_to_workspace")]
+	#[napi(js_name = "inviteToWorkspace")]
 	/// invite user to given workspace, if able to
 	pub async fn js_invite_to_workspace(
 		&self,
@@ -66,31 +66,31 @@ impl Client {
 		Ok(self.invite_to_workspace(workspace, user).await?)
 	}
 
-	#[napi(js_name = "attach_workspace")]
+	#[napi(js_name = "attachWorkspace")]
 	/// join workspace with given id (will start its cursor controller)
 	pub async fn js_attach_workspace(&self, workspace: String) -> napi::Result<Workspace> {
 		Ok(self.attach_workspace(workspace).await?)
 	}
 
-	#[napi(js_name = "leave_workspace")]
+	#[napi(js_name = "leaveWorkspace")]
 	/// leave workspace and disconnect, returns true if workspace was active
 	pub async fn js_leave_workspace(&self, workspace: String) -> bool {
 		self.leave_workspace(&workspace)
 	}
 
-	#[napi(js_name = "get_workspace")]
+	#[napi(js_name = "getWorkspace")]
 	/// get workspace with given id, if it exists
 	pub fn js_get_workspace(&self, workspace: String) -> Option<Workspace> {
 		self.get_workspace(&workspace)
 	}
 
-	#[napi(js_name = "user")]
+	#[napi(js_name = "currentUser")]
 	/// return current sessions's user id
-	pub fn js_user(&self) -> JsUser {
-		self.user().clone().into()
+	pub fn js_current_user(&self) -> JsUser {
+		self.current_user().clone().into()
 	}
 
-	#[napi(js_name = "active_workspaces")]
+	#[napi(js_name = "activeWorkspaces")]
 	/// get list of all active workspaces
 	pub fn js_active_workspaces(&self) -> Vec<String> {
 		self.active_workspaces()

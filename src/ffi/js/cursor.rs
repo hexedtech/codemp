@@ -32,7 +32,7 @@ impl CursorController {
 	}
 
 	/// Clear the registered callback
-	#[napi(js_name = "clear_callback")]
+	#[napi(js_name = "clearCallback")]
 	pub fn js_clear_callback(&self) {
 		self.clear_callback();
 	}
@@ -44,7 +44,7 @@ impl CursorController {
 	}
 
 	/// Get next cursor event if available without blocking
-	#[napi(js_name = "try_recv")]
+	#[napi(js_name = "tryRecv")]
 	pub async fn js_try_recv(&self) -> napi::Result<Option<crate::api::Cursor>> {
 		Ok(self.try_recv().await?.map(crate::api::Cursor::from))
 	}
