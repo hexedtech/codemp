@@ -117,6 +117,19 @@ tasks.register('nativeBuild', Jar) {
 	}
 }
 
+publishing {
+	publications {
+		mavenJava(MavenPublication) {
+			artifact jar
+			//artifact sourcesJar
+			//artifact javadocJar
+			artifact windowsJar
+			artifact linuxJar
+			artifact macosJar
+		}
+	}
+}
+
 import com.vanniktech.maven.publish.SonatypeHost
 mavenPublishing {
 	publishToMavenCentral(SonatypeHost.CENTRAL_PORTAL) //, true) // TODO re-enable autopublish!
