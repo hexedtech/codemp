@@ -203,7 +203,7 @@ impl Client {
 	}
 
 	/// Get the currently logged in user.
-	pub fn my_user(&self) -> &User {
+	pub fn current_user(&self) -> &User {
 		&self.0.user
 	}
 }

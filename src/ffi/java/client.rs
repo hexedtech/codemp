@@ -7,15 +7,15 @@ use crate::{
 use jni_toolbox::jni;
 
 /// Connect using the given credentials to the default server, and return a [Client] to interact with it.
-#[jni(package = "mp.code", class = "Client", ptr)]
+#[jni(package = "mp.code", class = "Client")]
 fn connect(config: Config) -> Result<Client, ConnectionError> {
 	super::tokio().block_on(Client::connect(config))
 }
 
 /// Gets the current [crate::api::User].
-#[jni(package = "mp.code", class = "Client", ptr)]
-fn get_user(client: &mut Client) -> crate::api::User {
-	client.user().clone()
+#[jni(package = "mp.code", class = "Client")]
+fn current_user(client: &mut Client) -> crate::api::User {
+	client.current_user().clone()
 }
 
 /// Join a [Workspace] and return a pointer to it.
