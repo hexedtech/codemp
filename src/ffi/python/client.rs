@@ -1,5 +1,6 @@
 use super::a_sync_allow_threads;
 use super::Client;
+use crate::api::User;
 use crate::workspace::Workspace;
 use pyo3::prelude::*;
 
@@ -82,14 +83,9 @@ impl Client {
 		self.active_workspaces()
 	}
 
-	#[pyo3(name = "user_id")]
-	fn pyuser_id(&self) -> String {
-		self.my_user().id.to_string()
-	}
-
-	#[pyo3(name = "user_name")]
-	fn pyuser_name(&self) -> String {
-		self.my_user().name.clone()
+	#[pyo3(name = "current_user")]
+	fn pycurrent_user(&self) -> User {
+		self.current_user().clone()
 	}
 
 	#[pyo3(name = "refresh")]

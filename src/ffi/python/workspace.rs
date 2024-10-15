@@ -1,4 +1,5 @@
 use crate::api::controller::AsyncReceiver;
+use crate::api::User;
 use crate::buffer::Controller as BufferController;
 use crate::cursor::Controller as CursorController;
 use crate::workspace::Workspace;
@@ -25,7 +26,7 @@ impl Workspace {
 
 	#[pyo3(name = "detach_buffer")]
 	fn pydetach_buffer(&self, path: String) -> bool {
-		self.detach(path.as_str())
+		self.detach_buffer(path.as_str())
 	}
 
 	#[pyo3(name = "fetch_buffers")]
@@ -63,9 +64,9 @@ impl Workspace {
 		self.cursor()
 	}
 
-	#[pyo3(name = "buffer_by_name")]
-	fn pybuffer_by_name(&self, path: String) -> Option<BufferController> {
-		self.buffer_by_name(path.as_str())
+	#[pyo3(name = "get_buffer")]
+	fn pyget_buffer(&self, path: String) -> Option<BufferController> {
+		self.get_buffer(path.as_str())
 	}
 
 	#[pyo3(name = "active_buffers")]
