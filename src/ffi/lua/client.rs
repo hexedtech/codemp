@@ -3,20 +3,17 @@ use mlua::prelude::*;
 use mlua_codemp_patch as mlua;
 
 use super::ext::a_sync::a_sync;
-use super::ext::from_lua_serde;
+
+super::ext::impl_lua_serde! { CodempConfig CodempUser }
 
 impl LuaUserData for CodempClient {
-	fn add_fields<F: LuaUserDataFields<Self>>(fields: &mut F) {
-	}
-
 	fn add_methods<M: LuaUserDataMethods<Self>>(methods: &mut M) {
 		methods.add_meta_method(LuaMetaMethod::ToString, |_, this, ()| {
 			Ok(format!("{:?}", this))
 		});
 
-		fields.add_method("user", |_, this| Ok(this.user().id.to_string()));
-		fields.add_method("username", |_, this| Ok(this.my_user().name.clone()));
-		fields.add_method("active_workspaces", |_, this| Ok(this.active_workspaces()));
+		methods.add_method("current_user", |_, this, ()| Ok(this.current_user().clone()));
+		methods.add_method("active_workspaces", |_, this, ()| Ok(this.active_workspaces()));
 
 		methods.add_method(
 			"refresh",
@@ -53,16 +50,5 @@ impl LuaUserData for CodempClient {
 		methods.add_method("get_workspace", |_, this, (ws,): (String,)| {
 			Ok(this.get_workspace(&ws))
 		});
-	}
-}
-
-from_lua_serde! { CodempConfig }
-impl LuaUserData for CodempConfig {
-	fn add_fields<F: LuaUserDataFields<Self>>(fields: &mut F) {
-		fields.add_field_method_get("username", |_, this| Ok(this.username.clone()));
-		fields.add_field_method_get("password", |_, this| Ok(this.password.clone()));
-		fields.add_field_method_get("host", |_, this| Ok(this.host.clone()));
-		fields.add_field_method_get("port", |_, this| Ok(this.port));
-		fields.add_field_method_get("tls", |_, this| Ok(this.tls));
 	}
 }
