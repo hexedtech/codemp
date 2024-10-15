@@ -46,6 +46,7 @@ jobs:
         with:
           path: dist/java/artifacts
           pattern: codemp-java-*
+          merge-multiple: true
       - run: tree
         working-directory: dist/java
       - uses: actions/setup-java@v4
