@@ -140,7 +140,7 @@ impl Workspace {
 	}
 
 	/// Create a new buffer in the current workspace.
-	pub async fn create(&self, path: &str) -> RemoteResult<()> {
+	pub async fn create_buffer(&self, path: &str) -> RemoteResult<()> {
 		let mut workspace_client = self.0.services.ws();
 		workspace_client
 			.create_buffer(tonic::Request::new(BufferNode {
@@ -158,7 +158,7 @@ impl Workspace {
 	}
 
 	/// Attach to a buffer and return a handle to it.
-	pub async fn attach(&self, path: &str) -> ConnectionResult<buffer::Controller> {
+	pub async fn attach_buffer(&self, path: &str) -> ConnectionResult<buffer::Controller> {
 		let mut worskspace_client = self.0.services.ws();
 		let request = tonic::Request::new(BufferNode {
 			path: path.to_string(),
@@ -190,7 +190,7 @@ impl Workspace {
 	/// If this method returns `false` you have a dangling ref, maybe just waiting for garbage
 	/// collection or maybe preventing the controller from being dropped completely
 	#[allow(clippy::redundant_pattern_matching)] // all cases are clearer this way
-	pub fn detach(&self, path: &str) -> bool {
+	pub fn detach_buffer(&self, path: &str) -> bool {
 		match self.0.buffers.remove(path) {
 			None => true, // noop: we werent attached in the first place
 			Some((_name, controller)) => match Arc::into_inner(controller.0) {
@@ -256,8 +256,8 @@ impl Workspace {
 	}
 
 	/// Delete a buffer.
-	pub async fn delete(&self, path: &str) -> RemoteResult<()> {
-		self.detach(path); // just in case
+	pub async fn delete_buffer(&self, path: &str) -> RemoteResult<()> {
+		self.detach_buffer(path); // just in case
 
 		let mut workspace_client = self.0.services.ws();
 		workspace_client
@@ -285,13 +285,13 @@ impl Workspace {
 
 	/// Return a handle to the [buffer::Controller] with the given path, if present.
 	// #[cfg_attr(feature = "js", napi)] // https://github.com/napi-rs/napi-rs/issues/1120
-	pub fn buffer_by_name(&self, path: &str) -> Option<buffer::Controller> {
+	pub fn get_buffer(&self, path: &str) -> Option<buffer::Controller> {
 		self.0.buffers.get(path).map(|x| x.clone())
 	}
 
 	/// Get a list of all the currently attached buffers.
 	// #[cfg_attr(feature = "js", napi)] // https://github.com/napi-rs/napi-rs/issues/1120
-	pub fn buffer_list(&self) -> Vec<String> {
+	pub fn active_buffers(&self) -> Vec<String> {
 		self.0
 			.buffers
 			.iter()

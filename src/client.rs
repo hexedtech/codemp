@@ -153,7 +153,7 @@ impl Client {
 	}
 
 	/// Join and return a [`Workspace`].
-	pub async fn join_workspace(&self, workspace: impl AsRef<str>) -> ConnectionResult<Workspace> {
+	pub async fn attach_workspace(&self, workspace: impl AsRef<str>) -> ConnectionResult<Workspace> {
 		let token = self
 			.0
 			.session
@@ -203,7 +203,7 @@ impl Client {
 	}
 
 	/// Get the currently logged in user.
-	pub fn user(&self) -> &User {
+	pub fn my_user(&self) -> &User {
 		&self.0.user
 	}
 }
