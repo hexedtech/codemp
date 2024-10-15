@@ -52,6 +52,16 @@ tasks.register('linuxJar', Jar) {
 	}
 }
 
+tasks.register('multiplatformJar', Jar) {
+	outputs.upToDateWhen { false }
+	archiveClassifier = 'all'
+	from sourceSets.main.runtimeClasspath
+	from('artifacts') {
+		include('*')
+		into('natives/')
+	}
+}
+
 configurations {
 	windowsJar {
 		canBeConsumed = true
@@ -68,15 +78,27 @@ configurations {
 		canBeResolved = false
 		extendsFrom implementation, runtimeOnly
 	}
+	multiplatformJar {
+		canBeConsumed = true
+		canBeResolved = false
+		extendsFrom implementation, runtimeOnly
+	}
 }
 
 java {
 	sourceCompatibility = targetCompatibility = JavaVersion.VERSION_11
-	artifacts {
-		windowsJar(windowsJar)
-		macosJar(macosJar)
-		linuxJar(linuxJar)
-	}
+	withSourcesJar()
+	withJavadocJar()
+}
+
+artifacts {
+	archives jar
+	archives sourcesJar
+	archives javadocJar
+	windowsJar(windowsJar)
+	macosJar(macosJar)
+	linuxJar(linuxJar)
+	multiplatformJar(multiplatformJar)
 }
 
 repositories {
@@ -116,14 +138,25 @@ tasks.register('nativeBuild', Jar) {
 	}
 }
 
+publishing {
+	publications {
+		mavenJava(MavenPublication) {
+			artifact jar
+			artifact sourcesJar
+			artifact javadocJar
+			artifact windowsJar
+			artifact linuxJar
+			artifact macosJar
+			artifact multiplatformJar
+		}
+	}
+}
+
 import com.vanniktech.maven.publish.SonatypeHost
-import com.vanniktech.maven.publish.JavaLibrary
-import com.vanniktech.maven.publish.JavadocJar
 mavenPublishing {
 	publishToMavenCentral(SonatypeHost.CENTRAL_PORTAL) //, true) // TODO re-enable autopublish!
 	signAllPublications()
 	coordinates(project.group, rootProject.name, project.version)
-	configure(new JavaLibrary(new JavadocJar.Javadoc(), true))
 
 	pom {
 		name = rootProject.name
