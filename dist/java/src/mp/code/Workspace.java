@@ -4,6 +4,7 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Consumer;
 
+import lombok.Getter;
 import mp.code.exceptions.ConnectionException;
 import mp.code.exceptions.ConnectionRemoteException;
 import mp.code.exceptions.ControllerException;
@@ -232,7 +233,8 @@ public final class Workspace {
 	 * Represents a workspace-wide event.
 	 */
 	public static final class Event {
-		private final Type type;
+		/** The type of the event. */
+		public final @Getter Type type;
 		private final String argument;
 
 		Event(Type type, String argument) {
@@ -270,9 +272,24 @@ public final class Workspace {
 			} else return Optional.empty();
 		}
 
-		enum Type {
+		/**
+		 * The type of workspace event.
+		 */
+		public enum Type {
+			/**
+			 * Somebody joined a workspace.
+			 * @see #getUserJoined() to get the name
+			 */
 			USER_JOIN,
+			/**
+			 * Somebody left a workspace
+			 * @see #getUserLeft() to get the name
+			 */
 			USER_LEAVE,
+			/**
+			 * The filetree was updated.
+			 * @see #getChangedBuffer() to see the buffer that changed
+			 */
 			FILE_TREE_UPDATED
 		}
 	}
