@@ -33,7 +33,7 @@ public final class Extensions {
 	 * <p>
 	 * You may alternatively call this with true, in a separate and dedicated Java thread;
 	 * it will remain active in the background and act as event loop. Assign it like this:
-	 * <p><code>new Thread(() -> Extensions.drive(true)).start();</code></p>
+	 * <p><code>new Thread(() -&gt; Extensions.drive(true)).start();</code></p>
 	 * @param block true if it should use the current thread
 	 */
 	public static native void drive(boolean block);

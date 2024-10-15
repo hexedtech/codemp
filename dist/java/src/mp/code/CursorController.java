@@ -43,14 +43,15 @@ public final class CursorController {
 		return recv(this.ptr);
 	}
 
-	private static native void send(long self, Selection cursor) throws ControllerException;
+	private static native void send(long self, Selection selection) throws ControllerException;
 
 	/**
 	 * Tries to send a {@link Selection} update.
+	 * @param selection the update to send
 	 * @throws ControllerException if the controller was stopped
 	 */
-	public void send(Selection cursor) throws ControllerException {
-		send(this.ptr, cursor);
+	public void send(Selection selection) throws ControllerException {
+		send(this.ptr, selection);
 	}
 
 	private static native void callback(long self, Consumer<CursorController> cb);
@@ -58,6 +59,8 @@ public final class CursorController {
 	/**
 	 * Registers a callback to be invoked whenever a {@link Cursor} update occurs.
 	 * This will not work unless a Java thread has been dedicated to the event loop.
+	 * @param cb a {@link Consumer} that receives the controller when the change occurs;
+	 *           you should probably spawn a new thread in here, to avoid deadlocking
 	 * @see Extensions#drive(boolean)
 	 */
 	public void callback(Consumer<CursorController> cb) {
