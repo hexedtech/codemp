@@ -300,11 +300,11 @@ impl Workspace {
 	}
 
 	/// Get all names of users currently in this workspace
-	pub fn user_list(&self) -> Vec<String> {
+	pub fn user_list(&self) -> Vec<User> {
 		self.0
 			.users
 			.iter()
-			.map(|elem| elem.value().name.clone())
+			.map(|elem| elem.value().clone())
 			.collect()
 	}
 

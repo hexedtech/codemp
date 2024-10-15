@@ -1,5 +1,5 @@
 use crate::{
-	api::controller::AsyncReceiver,
+	api::{controller::AsyncReceiver, User},
 	errors::{ConnectionError, ControllerError, RemoteError},
 	ffi::java::null_check,
 	Workspace,
@@ -39,7 +39,7 @@ fn active_buffers(workspace: &mut Workspace) -> Vec<String> {
 
 /// Gets a list of the active buffers.
 #[jni(package = "mp.code", class = "Workspace")]
-fn user_list(workspace: &mut Workspace) -> Vec<String> {
+fn user_list(workspace: &mut Workspace) -> Vec<User> {
 	workspace.user_list()
 }
 

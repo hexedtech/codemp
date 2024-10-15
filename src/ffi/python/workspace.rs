@@ -80,7 +80,7 @@ impl Workspace {
 	}
 
 	#[pyo3(name = "user_list")]
-	fn pyuser_list(&self) -> Vec<String> {
+	fn pyuser_list(&self) -> Vec<User> {
 		self.user_list()
 	}
 

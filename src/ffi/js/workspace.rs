@@ -8,6 +8,8 @@ use napi::threadsafe_function::{
 };
 use napi_derive::napi;
 
+use super::client::JsUser;
+
 #[napi(object, js_name = "Event")]
 pub struct JsEvent {
 	pub r#type: String,
@@ -49,8 +51,8 @@ impl Workspace {
 
 	/// List all user names currently in this workspace
 	#[napi(js_name = "user_list")]
-	pub fn js_user_list(&self) -> Vec<String> {
-		self.user_list()
+	pub fn js_user_list(&self) -> Vec<JsUser> {
+		self.user_list().into_iter().map(JsUser::from).collect()
 	}
 
 	/// List all currently active buffers
