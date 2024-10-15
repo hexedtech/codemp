@@ -13,11 +13,11 @@
 //!
 //! // create and join a workspace
 //! client.create_workspace("some-workspace").await?;
-//! let workspace = client.join_workspace("some-workspace").await?;
+//! let workspace = client.attach_workspace("some-workspace").await?;
 //!
 //! // create a new buffer in this workspace and attach to it
-//! workspace.create("/my/file.txt").await?;
-//! let buffer = workspace.attach("/my/file.txt").await?;
+//! workspace.create_buffer("/my/file.txt").await?;
+//! let buffer = workspace.attach_buffer("/my/file.txt").await?;
 //!
 //! // write `hello!` at the beginning of this buffer
 //! buffer.send(codemp::api::TextChange {
@@ -49,12 +49,12 @@
 //! });
 //!
 //! // create and join a workspace
-//! await client.create_workspace("some-workspace");
-//! let workspace = await client.join_workspace("some-workspace");
+//! await client.createWorkspace("some-workspace");
+//! let workspace = await client.attachWorkspace("some-workspace");
 //!
 //! // create a new buffer in this workspace and attach to it
-//! await workspace.create("/my/file.txt");
-//! let buffer = await workspace.attach("/my/file.txt");
+//! await workspace.createBuffer("/my/file.txt");
+//! let buffer = await workspace.attachBuffer("/my/file.txt");
 //!
 //! // write `hello!` at the beginning of this buffer
 //! await buffer.send({
@@ -87,11 +87,11 @@
 //!
 //! # create and join a workspace
 //! client.create_workspace("some-workspace").wait()
-//! workspace = client.join_workspace("some-workspace").wait()
+//! workspace = client.attach_workspace("some-workspace").wait()
 //!
 //! # create a new buffer in this workspace and attach to it
 //! workspace.create("/my/file.txt").wait()
-//! buffer = workspace.attach("/my/file.txt").wait()
+//! buffer = workspace.attach_buffer("/my/file.txt").wait()
 //!
 //! # write `hello!` at the beginning of this buffer
 //! buffer.send(
@@ -132,7 +132,7 @@
 //!
 //! -- create and join a workspace
 //! client:create_workspace("my-workspace"):await()
-//! local workspace = client:join_workspace("my-workspace"):await()
+//! local workspace = client:attach_workspace("my-workspace"):await()
 //!
 //! -- create a new buffer in this workspace and attach to it
 //! workspace:create_buffer("/my/file.txt"):await()
@@ -170,11 +170,11 @@
 //!
 //! // create and join a workspace
 //! client.createWorkspace("some-workspace");
-//! Workspace workspace = client.joinWorkspace("some-workspace");
+//! Workspace workspace = client.attachWorkspace("some-workspace");
 //!
 //! // create a new buffer in this workspace and attach to it
 //! workspace.createBuffer("/my/file.txt");
-//! BufferController buffer = workspace.attachToBuffer("/my/file.txt");
+//! BufferController buffer = workspace.attachBuffer("/my/file.txt");
 //!
 //! // write `hello!` at the beginning of this buffer
 //! buffer.send(new data.TextChange(
@@ -184,7 +184,7 @@
 //!
 //! // wait for cursor movements
 //! while (true) {
-//!   data.Cursor event = workspace.getCursor().recv();
+//!   data.Cursor event = workspace.cursor().recv();
 //!   System.out.printf("user %s moved on buffer %s\n", event.user, event.buffer);
 //! }
 //! ```
