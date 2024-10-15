@@ -9,13 +9,13 @@ use jni_toolbox::jni;
 
 /// Get the workspace id.
 #[jni(package = "mp.code", class = "Workspace")]
-fn get_workspace_id(workspace: &mut Workspace) -> String {
+fn id(workspace: &mut Workspace) -> String {
 	workspace.id()
 }
 
 /// Get a cursor controller by name and returns a pointer to it.
 #[jni(package = "mp.code", class = "Workspace")]
-fn get_cursor(workspace: &mut Workspace) -> crate::cursor::Controller {
+fn cursor(workspace: &mut Workspace) -> crate::cursor::Controller {
 	workspace.cursor()
 }
 
@@ -27,7 +27,7 @@ fn get_buffer(workspace: &mut Workspace, path: String) -> Option<crate::buffer::
 
 /// Get the filetree.
 #[jni(package = "mp.code", class = "Workspace")]
-fn get_file_tree(workspace: &mut Workspace, filter: Option<String>, strict: bool) -> Vec<String> {
+fn filetree(workspace: &mut Workspace, filter: Option<String>, strict: bool) -> Vec<String> {
 	workspace.filetree(filter.as_deref(), strict)
 }
 
@@ -49,9 +49,9 @@ fn create_buffer(workspace: &mut Workspace, path: String) -> Result<(), RemoteEr
 	super::tokio().block_on(workspace.create_buffer(&path))
 }
 
-/// Attach to a buffer and return a pointer to its [crate::buffer::Controller].
+/// Attach to a buffer and return a pointer to its [`crate::buffer::Controller`].
 #[jni(package = "mp.code", class = "Workspace")]
-fn attach_to_buffer(
+fn attach_buffer(
 	workspace: &mut Workspace,
 	path: String,
 ) -> Result<crate::buffer::Controller, ConnectionError> {

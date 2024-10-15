@@ -6,6 +6,7 @@ use codemp_proto::workspace::workspace_event::Event as WorkspaceEventInner;
 #[derive(Debug, Clone)]
 #[cfg_attr(any(feature = "py", feature = "py-noabi"), pyo3::pyclass)]
 #[cfg_attr(feature = "serialize", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serialize", serde(tag = "type"))]
 pub enum Event {
 	/// Fired when the file tree changes.
 	/// Contains the modified buffer path (deleted, created or renamed).

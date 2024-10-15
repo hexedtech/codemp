@@ -25,24 +25,24 @@ public final class Workspace {
 		Extensions.CLEANER.register(this, () -> free(ptr));
 	}
 
-	private static native String get_workspace_id(long self);
+	private static native String id(long self);
 
 	/**
 	 * Gets the unique identifier of the current workspace.
 	 * @return the identifier
 	 */
-	public String getWorkspaceId() {
-		return get_workspace_id(this.ptr);
+	public String id() {
+		return id(this.ptr);
 	}
 
-	private static native CursorController get_cursor(long self);
+	private static native CursorController cursor(long self);
 
 	/**
 	 * Gets the {@link CursorController} for the current workspace.
 	 * @return the {@link CursorController}
 	 */
-	public CursorController getCursor() {
-		return get_cursor(this.ptr);
+	public CursorController cursor() {
+		return cursor(this.ptr);
 	}
 
 	private static native BufferController get_buffer(long self, String path);
@@ -57,7 +57,7 @@ public final class Workspace {
 		return Optional.ofNullable(get_buffer(this.ptr, path));
 	}
 
-	private static native String[] get_file_tree(long self, String filter, boolean strict);
+	private static native String[] filetree(long self, String filter, boolean strict);
 
 	/**
 	 * Gets the file tree for this workspace, optionally filtering it.
@@ -66,8 +66,8 @@ public final class Workspace {
 	 * @return an array containing file tree as flat paths
 	 */
 	@SuppressWarnings("OptionalUsedAsFieldOrParameterType")
-	public String[] getFileTree(Optional<String> filter, boolean strict) {
-		return get_file_tree(this.ptr, filter.orElse(null), strict);
+	public String[] filetree(Optional<String> filter, boolean strict) {
+		return filetree(this.ptr, filter.orElse(null), strict);
 	}
 
 	private static native String[] active_buffers(long self);
@@ -102,7 +102,7 @@ public final class Workspace {
 		create_buffer(this.ptr, path);
 	}
 
-	private static native BufferController attach_to_buffer(long self, String path) throws ConnectionException;
+	private static native BufferController attach_buffer(long self, String path) throws ConnectionException;
 
 	/**
 	 * Attaches to an existing buffer with the given path, if present.
@@ -110,19 +110,19 @@ public final class Workspace {
 	 * @return the {@link BufferController} associated with that path
 	 * @throws ConnectionException if an error occurs in communicating with the server, or if the buffer did not exist
 	 */
-	public BufferController attachToBuffer(String path) throws ConnectionException {
-		return attach_to_buffer(ptr, path);
+	public BufferController attachBuffer(String path) throws ConnectionException {
+		return attach_buffer(ptr, path);
 	}
 
-	private static native boolean detach_from_buffer(long self, String path);
+	private static native boolean detach_buffer(long self, String path);
 
 	/**
 	 * Detaches from a given buffer.
 	 * @param path the path of the buffer to detach from
 	 * @return a boolean, true only if there are still dangling references preventing controller from stopping
 	 */
-	public boolean detachFromBuffer(String path) {
-		return detach_from_buffer(this.ptr, path);
+	public boolean detachBuffer(String path) {
+		return detach_buffer(this.ptr, path);
 	}
 
 	private static native void fetch_buffers(long self) throws ConnectionRemoteException;
