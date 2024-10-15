@@ -46,6 +46,8 @@ jobs:
         with:
           path: dist/java/artifacts
           pattern: codemp-java-*
+      - run: tree
+        working-directory: dist/java
       - uses: actions/setup-java@v4
         with:
             distribution: 'temurin'
