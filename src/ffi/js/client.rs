@@ -66,10 +66,10 @@ impl Client {
 		Ok(self.invite_to_workspace(workspace, user).await?)
 	}
 
-	#[napi(js_name = "join_workspace")]
+	#[napi(js_name = "attach_workspace")]
 	/// join workspace with given id (will start its cursor controller)
-	pub async fn js_join_workspace(&self, workspace: String) -> napi::Result<Workspace> {
-		Ok(self.join_workspace(workspace).await?)
+	pub async fn js_attach_workspace(&self, workspace: String) -> napi::Result<Workspace> {
+		Ok(self.attach_workspace(workspace).await?)
 	}
 
 	#[napi(js_name = "leave_workspace")]

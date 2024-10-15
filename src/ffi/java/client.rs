@@ -20,8 +20,8 @@ fn get_user(client: &mut Client) -> crate::api::User {
 
 /// Join a [Workspace] and return a pointer to it.
 #[jni(package = "mp.code", class = "Client")]
-fn join_workspace(client: &mut Client, workspace: String) -> Result<Workspace, ConnectionError> {
-	super::tokio().block_on(client.join_workspace(workspace))
+fn attach_workspace(client: &mut Client, workspace: String) -> Result<Workspace, ConnectionError> {
+	super::tokio().block_on(client.attach_workspace(workspace))
 }
 
 /// Create a workspace on server, if allowed to.

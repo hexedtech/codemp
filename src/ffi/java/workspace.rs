@@ -22,7 +22,7 @@ fn get_cursor(workspace: &mut Workspace) -> crate::cursor::Controller {
 /// Get a buffer controller by name and returns a pointer to it.
 #[jni(package = "mp.code", class = "Workspace")]
 fn get_buffer(workspace: &mut Workspace, path: String) -> Option<crate::buffer::Controller> {
-	workspace.buffer_by_name(&path)
+	workspace.get_buffer(&path)
 }
 
 /// Get the filetree.
@@ -34,7 +34,7 @@ fn get_file_tree(workspace: &mut Workspace, filter: Option<String>, strict: bool
 /// Gets a list of the active buffers.
 #[jni(package = "mp.code", class = "Workspace")]
 fn active_buffers(workspace: &mut Workspace) -> Vec<String> {
-	workspace.buffer_list()
+	workspace.active_buffers()
 }
 
 /// Gets a list of the active buffers.
@@ -46,7 +46,7 @@ fn user_list(workspace: &mut Workspace) -> Vec<String> {
 /// Create a new buffer.
 #[jni(package = "mp.code", class = "Workspace")]
 fn create_buffer(workspace: &mut Workspace, path: String) -> Result<(), RemoteError> {
-	super::tokio().block_on(workspace.create(&path))
+	super::tokio().block_on(workspace.create_buffer(&path))
 }
 
 /// Attach to a buffer and return a pointer to its [crate::buffer::Controller].
@@ -55,13 +55,13 @@ fn attach_to_buffer(
 	workspace: &mut Workspace,
 	path: String,
 ) -> Result<crate::buffer::Controller, ConnectionError> {
-	super::tokio().block_on(workspace.attach(&path))
+	super::tokio().block_on(workspace.attach_buffer(&path))
 }
 
 /// Detach from a buffer.
 #[jni(package = "mp.code", class = "Workspace")]
-fn detach_from_buffer(workspace: &mut Workspace, path: String) -> bool {
-	workspace.detach(&path)
+fn detach_buffer(workspace: &mut Workspace, path: String) -> bool {
+	workspace.detach_buffer(&path)
 }
 
 /// Update the local buffer list.
@@ -88,7 +88,7 @@ fn list_buffer_users(
 /// Delete a buffer.
 #[jni(package = "mp.code", class = "Workspace")]
 fn delete_buffer(workspace: &mut Workspace, path: String) -> Result<(), RemoteError> {
-	super::tokio().block_on(workspace.delete(&path))
+	super::tokio().block_on(workspace.delete_buffer(&path))
 }
 
 /// Block and receive a workspace event.

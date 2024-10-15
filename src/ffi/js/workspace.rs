@@ -54,9 +54,9 @@ impl Workspace {
 	}
 
 	/// List all currently active buffers
-	#[napi(js_name = "buffer_list")]
-	pub fn js_buffer_list(&self) -> Vec<String> {
-		self.buffer_list()
+	#[napi(js_name = "active_buffers")]
+	pub fn js_active_buffers(&self) -> Vec<String> {
+		self.active_buffers()
 	}
 
 	/// Get workspace's Cursor Controller
@@ -66,27 +66,27 @@ impl Workspace {
 	}
 
 	/// Get a buffer controller by its name (path)
-	#[napi(js_name = "buffer_by_name")]
-	pub fn js_buffer_by_name(&self, path: String) -> Option<BufferController> {
-		self.buffer_by_name(&path)
+	#[napi(js_name = "get_buffer")]
+	pub fn js_get_buffer(&self, path: String) -> Option<BufferController> {
+		self.get_buffer(&path)
 	}
 
 	/// Create a new buffer in the current workspace
-	#[napi(js_name = "create")]
-	pub async fn js_create(&self, path: String) -> napi::Result<()> {
-		Ok(self.create(&path).await?)
+	#[napi(js_name = "create_buffer")]
+	pub async fn js_create_buffer(&self, path: String) -> napi::Result<()> {
+		Ok(self.create_buffer(&path).await?)
 	}
 
 	/// Attach to a workspace buffer, starting a BufferController
-	#[napi(js_name = "attach")]
-	pub async fn js_attach(&self, path: String) -> napi::Result<BufferController> {
-		Ok(self.attach(&path).await?)
+	#[napi(js_name = "attach_buffer")]
+	pub async fn js_attach_buffer(&self, path: String) -> napi::Result<BufferController> {
+		Ok(self.attach_buffer(&path).await?)
 	}
 
 	/// Delete a buffer from workspace
-	#[napi(js_name = "delete")]
-	pub async fn js_delete(&self, path: String) -> napi::Result<()> {
-		Ok(self.delete(&path).await?)
+	#[napi(js_name = "delete_buffer")]
+	pub async fn js_delete_buffer(&self, path: String) -> napi::Result<()> {
+		Ok(self.delete_buffer(&path).await?)
 	}
 
 	#[napi(js_name = "recv")]
@@ -128,9 +128,9 @@ impl Workspace {
 	/// Detach from an active buffer, stopping its underlying worker
 	/// this method returns true if no reference or last reference was held, false if there are still
 	/// dangling references to clear
-	#[napi(js_name = "detach")]
-	pub async fn js_detach(&self, path: String) -> bool {
-		self.detach(&path)
+	#[napi(js_name = "detach_buffer")]
+	pub async fn js_detach_buffer(&self, path: String) -> bool {
+		self.detach_buffer(&path)
 	}
 
 	/// Re-fetch remote buffer list

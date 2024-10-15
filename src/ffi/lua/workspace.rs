@@ -3,7 +3,6 @@ use mlua::prelude::*;
 use mlua_codemp_patch as mlua;
 
 use super::ext::a_sync::a_sync;
-use super::ext::from_lua_serde;
 
 impl LuaUserData for CodempWorkspace {
 	fn add_methods<M: LuaUserDataMethods<Self>>(methods: &mut M) {
@@ -11,26 +10,26 @@ impl LuaUserData for CodempWorkspace {
 			Ok(format!("{:?}", this))
 		});
 		methods.add_method(
-			"create",
-			|_, this, (name,): (String,)| a_sync! { this => this.create(&name).await? },
+			"create_buffer",
+			|_, this, (name,): (String,)| a_sync! { this => this.create_buffer(&name).await? },
 		);
 
 		methods.add_method(
-			"attach",
-			|_, this, (name,): (String,)| a_sync! { this => this.attach(&name).await? },
+			"attach_buffer",
+			|_, this, (name,): (String,)| a_sync! { this => this.attach_buffer(&name).await? },
 		);
 
-		methods.add_method("detach", |_, this, (name,): (String,)| {
-			Ok(this.detach(&name))
+		methods.add_method("detach_buffer", |_, this, (name,): (String,)| {
+			Ok(this.detach_buffer(&name))
 		});
 
 		methods.add_method(
-			"delete",
-			|_, this, (name,): (String,)| a_sync! { this => this.delete(&name).await? },
+			"delete_buffer",
+			|_, this, (name,): (String,)| a_sync! { this => this.delete_buffer(&name).await? },
 		);
 
 		methods.add_method("get_buffer", |_, this, (name,): (String,)| {
-			Ok(this.buffer_by_name(&name))
+			Ok(this.get_buffer(&name))
 		});
 
 		methods.add_method(
@@ -49,6 +48,9 @@ impl LuaUserData for CodempWorkspace {
 			},
 		);
 
+		fields.add_method("id", |_, this, ()| Ok(this.id()));
+		fields.add_method("cursor", |_, this, ()| Ok(this.cursor()));
+		fields.add_method("active_buffers", |_, this, ()| Ok(this.active_buffers()));
 		methods.add_method("user_list", |_, this, ()| Ok(this.user_list()));
 
 		methods.add_method("recv", |_, this, ()| a_sync! { this => this.recv().await? });
@@ -70,9 +72,6 @@ impl LuaUserData for CodempWorkspace {
 	}
 
 	fn add_fields<F: LuaUserDataFields<Self>>(fields: &mut F) {
-		fields.add_field_method_get("name", |_, this| Ok(this.id()));
-		fields.add_field_method_get("cursor", |_, this| Ok(this.cursor()));
-		fields.add_field_method_get("active_buffers", |_, this| Ok(this.buffer_list()));
 		// fields.add_field_method_get("users", |_, this| Ok(this.0.users())); // TODO
 	}
 }

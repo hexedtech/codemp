@@ -7,9 +7,6 @@ use super::ext::from_lua_serde;
 
 impl LuaUserData for CodempClient {
 	fn add_fields<F: LuaUserDataFields<Self>>(fields: &mut F) {
-		fields.add_field_method_get("id", |_, this| Ok(this.user().id.to_string()));
-		fields.add_field_method_get("username", |_, this| Ok(this.user().name.clone()));
-		fields.add_field_method_get("active_workspaces", |_, this| Ok(this.active_workspaces()));
 	}
 
 	fn add_methods<M: LuaUserDataMethods<Self>>(methods: &mut M) {
@@ -17,14 +14,18 @@ impl LuaUserData for CodempClient {
 			Ok(format!("{:?}", this))
 		});
 
+		fields.add_method("user", |_, this| Ok(this.user().id.to_string()));
+		fields.add_method("username", |_, this| Ok(this.my_user().name.clone()));
+		fields.add_method("active_workspaces", |_, this| Ok(this.active_workspaces()));
+
 		methods.add_method(
 			"refresh",
 			|_, this, ()| a_sync! { this => this.refresh().await? },
 		);
 
 		methods.add_method(
-			"join_workspace",
-			|_, this, (ws,): (String,)| a_sync! { this => this.join_workspace(ws).await? },
+			"attach_workspace",
+			|_, this, (ws,): (String,)| a_sync! { this => this.attach_workspace(ws).await? },
 		);
 
 		methods.add_method(

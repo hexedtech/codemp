@@ -11,20 +11,20 @@ use super::Promise;
 #[pymethods]
 impl Workspace {
 	// join a workspace
-	#[pyo3(name = "create")]
-	fn pycreate(&self, py: Python, path: String) -> PyResult<Promise> {
+	#[pyo3(name = "create_buffer")]
+	fn pycreate_buffer(&self, py: Python, path: String) -> PyResult<Promise> {
 		let this = self.clone();
-		a_sync_allow_threads!(py, this.create(path.as_str()).await)
+		a_sync_allow_threads!(py, this.create_buffer(path.as_str()).await)
 	}
 
-	#[pyo3(name = "attach")]
-	fn pyattach(&self, py: Python, path: String) -> PyResult<Promise> {
+	#[pyo3(name = "attach_buffer")]
+	fn pyattach_buffer(&self, py: Python, path: String) -> PyResult<Promise> {
 		let this = self.clone();
-		a_sync_allow_threads!(py, this.attach(path.as_str()).await)
+		a_sync_allow_threads!(py, this.attach_buffer(path.as_str()).await)
 	}
 
-	#[pyo3(name = "detach")]
-	fn pydetach(&self, path: String) -> bool {
+	#[pyo3(name = "detach_buffer")]
+	fn pydetach_buffer(&self, path: String) -> bool {
 		self.detach(path.as_str())
 	}
 
@@ -47,10 +47,10 @@ impl Workspace {
 		a_sync_allow_threads!(py, this.list_buffer_users(path.as_str()).await)
 	}
 
-	#[pyo3(name = "delete")]
-	fn pydelete(&self, py: Python, path: String) -> PyResult<Promise> {
+	#[pyo3(name = "delete_buffer")]
+	fn pydelete_buffer(&self, py: Python, path: String) -> PyResult<Promise> {
 		let this = self.clone();
-		a_sync_allow_threads!(py, this.delete(path.as_str()).await)
+		a_sync_allow_threads!(py, this.delete_buffer(path.as_str()).await)
 	}
 
 	#[pyo3(name = "id")]
@@ -68,9 +68,9 @@ impl Workspace {
 		self.buffer_by_name(path.as_str())
 	}
 
-	#[pyo3(name = "buffer_list")]
-	fn pybuffer_list(&self) -> Vec<String> {
-		self.buffer_list()
+	#[pyo3(name = "active_buffers")]
+	fn pyactive_buffers(&self) -> Vec<String> {
+		self.active_buffers()
 	}
 
 	#[pyo3(name = "filetree")]

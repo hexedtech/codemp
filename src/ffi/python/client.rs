@@ -14,11 +14,11 @@ impl Client {
 	// 	super::tokio().block_on(Client::connect(host, username, password))
 	// }
 
-	#[pyo3(name = "join_workspace")]
-	fn pyjoin_workspace(&self, py: Python<'_>, workspace: String) -> PyResult<super::Promise> {
+	#[pyo3(name = "attach_workspace")]
+	fn pyattach_workspace(&self, py: Python<'_>, workspace: String) -> PyResult<super::Promise> {
 		tracing::info!("attempting to join the workspace {}", workspace);
 		let this = self.clone();
-		a_sync_allow_threads!(py, this.join_workspace(workspace).await)
+		a_sync_allow_threads!(py, this.attach_workspace(workspace).await)
 		// let this = self.clone();
 		// Ok(super::Promise(Some(tokio().spawn(async move {
 		// 	Ok(this
@@ -84,12 +84,12 @@ impl Client {
 
 	#[pyo3(name = "user_id")]
 	fn pyuser_id(&self) -> String {
-		self.user().id.to_string()
+		self.my_user().id.to_string()
 	}
 
 	#[pyo3(name = "user_name")]
 	fn pyuser_name(&self) -> String {
-		self.user().name.clone()
+		self.my_user().name.clone()
 	}
 
 	#[pyo3(name = "refresh")]
