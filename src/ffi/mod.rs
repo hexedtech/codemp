@@ -83,8 +83,8 @@
 //!
 //! # connect first, api.code.mp is managed by hexed.technology
 //! client = codemp.connect(codemp.Config(
-//!   username='mail@example.net',
-//!   password='dont-use-this-password'
+//!   username = "mail@example.net",
+//!   password = "dont-use-this-password"
 //! )).wait()
 //!
 //! # create and join a workspace
@@ -92,7 +92,7 @@
 //! workspace = client.attach_workspace("some-workspace").wait()
 //!
 //! # create a new buffer in this workspace and attach to it
-//! workspace.create("/my/file.txt").wait()
+//! workspace.create_buffer("/my/file.txt").wait()
 //! buffer = workspace.attach_buffer("/my/file.txt").wait()
 //!
 //! # write `hello!` at the beginning of this buffer
