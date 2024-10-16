@@ -1,4 +1,5 @@
 use crate::api::controller::AsyncReceiver;
+use crate::api::User;
 use crate::buffer::Controller as BufferController;
 use crate::cursor::Controller as CursorController;
 use crate::workspace::Workspace;
@@ -11,21 +12,21 @@ use super::Promise;
 #[pymethods]
 impl Workspace {
 	// join a workspace
-	#[pyo3(name = "create")]
-	fn pycreate(&self, py: Python, path: String) -> PyResult<Promise> {
+	#[pyo3(name = "create_buffer")]
+	fn pycreate_buffer(&self, py: Python, path: String) -> PyResult<Promise> {
 		let this = self.clone();
-		a_sync_allow_threads!(py, this.create(path.as_str()).await)
+		a_sync_allow_threads!(py, this.create_buffer(path.as_str()).await)
 	}
 
-	#[pyo3(name = "attach")]
-	fn pyattach(&self, py: Python, path: String) -> PyResult<Promise> {
+	#[pyo3(name = "attach_buffer")]
+	fn pyattach_buffer(&self, py: Python, path: String) -> PyResult<Promise> {
 		let this = self.clone();
-		a_sync_allow_threads!(py, this.attach(path.as_str()).await)
+		a_sync_allow_threads!(py, this.attach_buffer(path.as_str()).await)
 	}
 
-	#[pyo3(name = "detach")]
-	fn pydetach(&self, path: String) -> bool {
-		self.detach(path.as_str())
+	#[pyo3(name = "detach_buffer")]
+	fn pydetach_buffer(&self, path: String) -> bool {
+		self.detach_buffer(path.as_str())
 	}
 
 	#[pyo3(name = "fetch_buffers")]
@@ -40,17 +41,17 @@ impl Workspace {
 		a_sync_allow_threads!(py, this.fetch_users().await)
 	}
 
-	#[pyo3(name = "list_buffer_users")]
-	fn pylist_buffer_users(&self, py: Python, path: String) -> PyResult<Promise> {
+	#[pyo3(name = "fetch_buffer_users")]
+	fn pyfetch_buffer_users(&self, py: Python, path: String) -> PyResult<Promise> {
 		// crate::Result<Vec<crate::api::User>>
 		let this = self.clone();
-		a_sync_allow_threads!(py, this.list_buffer_users(path.as_str()).await)
+		a_sync_allow_threads!(py, this.fetch_buffer_users(path.as_str()).await)
 	}
 
-	#[pyo3(name = "delete")]
-	fn pydelete(&self, py: Python, path: String) -> PyResult<Promise> {
+	#[pyo3(name = "delete_buffer")]
+	fn pydelete_buffer(&self, py: Python, path: String) -> PyResult<Promise> {
 		let this = self.clone();
-		a_sync_allow_threads!(py, this.delete(path.as_str()).await)
+		a_sync_allow_threads!(py, this.delete_buffer(path.as_str()).await)
 	}
 
 	#[pyo3(name = "id")]
@@ -63,24 +64,24 @@ impl Workspace {
 		self.cursor()
 	}
 
-	#[pyo3(name = "buffer_by_name")]
-	fn pybuffer_by_name(&self, path: String) -> Option<BufferController> {
-		self.buffer_by_name(path.as_str())
+	#[pyo3(name = "get_buffer")]
+	fn pyget_buffer(&self, path: String) -> Option<BufferController> {
+		self.get_buffer(path.as_str())
 	}
 
-	#[pyo3(name = "buffer_list")]
-	fn pybuffer_list(&self) -> Vec<String> {
-		self.buffer_list()
+	#[pyo3(name = "active_buffers")]
+	fn pyactive_buffers(&self) -> Vec<String> {
+		self.active_buffers()
 	}
 
-	#[pyo3(name = "filetree")]
-	#[pyo3(signature = (filter=None, strict=false))]
-	fn pyfiletree(&self, filter: Option<&str>, strict: bool) -> Vec<String> {
-		self.filetree(filter, strict)
+	#[pyo3(name = "search_buffers")]
+	#[pyo3(signature = (filter=None))]
+	fn pysearch_buffers(&self, filter: Option<&str>) -> Vec<String> {
+		self.search_buffers(filter)
 	}
 
 	#[pyo3(name = "user_list")]
-	fn pyuser_list(&self) -> Vec<String> {
+	fn pyuser_list(&self) -> Vec<User> {
 		self.user_list()
 	}
 

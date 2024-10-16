@@ -101,6 +101,7 @@ macro_rules! callback_args {
 callback_args! {
 	Str: String,
 	VecStr: Vec<String>,
+	VecUser: Vec<CodempUser>,
 	Client: CodempClient,
 	CursorController: CodempCursorController,
 	BufferController: CodempBufferController,

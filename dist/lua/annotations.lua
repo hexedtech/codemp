@@ -158,15 +158,31 @@ function MaybeBufferUpdatePromise:cancel() end
 ---invoke callback asynchronously as soon as promise is ready
 function MaybeBufferUpdatePromise:and_then(cb) end
 
+---@class (exact) UserListPromise : Promise
+local UserListPromise = {}
+--- block until promise is ready and return value
+--- @return User[]
+function UserListPromise:await() end
+--- cancel promise execution
+function UserListPromise:cancel() end
+---@param cb fun(x: User[]) callback to invoke
+---invoke callback asynchronously as soon as promise is ready
+function UserListPromise:and_then(cb) end
+
 -- [[ END ASYNC STUFF ]]
 
 
 ---@class (exact) Client
----@field id string uuid of local user
----@field username string name of local user
----@field active_workspaces string[] array of all currently active workspace names
 ---the effective local client, handling connecting to codemp server
 local Client = {}
+
+---@return User
+---current logged in user for this client
+function Client:current_user() end
+
+---@return string[]
+---array of all currently active workspace names
+function Client:active_workspaces() end
 
 ---@return NilPromise
 ---@async
@@ -179,7 +195,7 @@ function Client:refresh() end
 ---@async
 ---@nodiscard
 ---join requested workspace if possible and subscribe to event bus
-function Client:join_workspace(ws) end
+function Client:attach_workspace(ws) end
 
 ---@param ws string workspace id to create
 ---@return NilPromise
@@ -207,13 +223,17 @@ function Client:delete_workspace(ws) end
 ---grant user acccess to workspace
 function Client:invite_to_workspace(ws, user) end
 
----@param owned boolean? list owned workspaces, default true
----@param invited boolean? list invited workspaces, default true
 ---@return StringArrayPromise
 ---@async
 ---@nodiscard
----grant user acccess to workspace
-function Client:list_workspaces(owned, invited) end
+---fetch and list owned workspaces
+function Client:fetch_owned_workspaces() end
+
+---@return StringArrayPromise
+---@async
+---@nodiscard
+---fetch and list joined workspaces
+function Client:fetch_joined_workspaces() end
 
 ---@param ws string workspace id to get
 ---@return Workspace?
@@ -222,26 +242,41 @@ function Client:get_workspace(ws) end
 
 
 
+---@class User
+---@field id string user uuid
+---@field name string user display name
+
+
+
 ---@class (exact) Workspace
----@field name string workspace name
----@field cursor CursorController workspace cursor controller
----@field active_buffers string[] array of all currently active buffer names
 ---a joined codemp workspace
 local Workspace = {}
+
+---@return string
+---workspace id
+function Workspace:id() end
+
+---@return string[]
+---array of all currently active buffer names
+function Workspace:active_buffers() end
+
+---@return CursorController
+---reference to workspace's CursorController
+function Workspace:cursor() end
 
 ---@param path string relative path ("name") of new buffer
 ---@return NilPromise
 ---@async
 ---@nodiscard
 ---create a new empty buffer
-function Workspace:create(path) end
+function Workspace:create_buffer(path) end
 
 ---@param path string relative path ("name") of buffer to delete
 ---@return NilPromise
 ---@async
 ---@nodiscard
 ---delete buffer from workspace
-function Workspace:delete(path) end
+function Workspace:delete_buffer(path) end
 
 ---@param path string relative path ("name") of buffer to get
 ---@return BufferController?
@@ -253,20 +288,19 @@ function Workspace:get_buffer(path) end
 ---@async
 ---@nodiscard
 ---attach to a remote buffer, synching content and changes and returning its controller
-function Workspace:attach(path) end
+function Workspace:attach_buffer(path) end
 
 ---@param path string relative path ("name") of buffer to detach from
 ---@return boolean success
 ---detach from an active buffer, closing all streams. returns false if there are still dangling references
-function Workspace:detach(path) end
+function Workspace:detach_buffer(path) end
 
 ---@param filter? string apply a filter to the return elements
----@param strict? boolean whether to strictly match or just check whether it starts with it
 ---@return string[]
 ---return the list of available buffers in this workspace, as relative paths from workspace root
-function Workspace:filetree(filter, strict) end
+function Workspace:search_buffers(filter) end
 
----@return string[]
+---@return User[]
 ---return all names of users currently in this workspace
 function Workspace:user_list() end
 
@@ -281,6 +315,13 @@ function Workspace:fetch_buffers(path) end
 ---@nodiscard
 ---force refresh users list from workspace
 function Workspace:fetch_users(path) end
+
+---@param path string the buffer to look in
+---@return UserListPromise
+---@async
+---@nodiscard
+---fetch the list of users in the given buffer
+function Workspace:fetch_buffer_users(path) end
 
 ---@class (exact) WorkspaceEvent
 ---@field type string
@@ -320,8 +361,8 @@ local BufferController = {}
 
 ---@class TextChange
 ---@field content string text content of change
----@field start integer start index of change
----@field finish integer end index of change
+---@field start_idx integer start index of change
+---@field end_idx integer end index of change
 local TextChange = {}
 
 ---@class (exact) BufferUpdate

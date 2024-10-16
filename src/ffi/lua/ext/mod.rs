@@ -5,7 +5,7 @@ pub mod log;
 pub(crate) use a_sync::tokio;
 pub(crate) use callback::callback;
 
-macro_rules! from_lua_serde {
+macro_rules! impl_lua_serde {
 	($($t:ty)*) => {
 		$(
 			impl FromLua for $t {
@@ -13,8 +13,14 @@ macro_rules! from_lua_serde {
 					lua.from_value(value)
 				}
 			}
+
+			impl IntoLua for $t {
+				fn into_lua(self, lua: &Lua) -> LuaResult<LuaValue> {
+					lua.to_value(&self)
+				}
+			}
 		)*
 	};
 }
 
-pub(crate) use from_lua_serde;
+pub(crate) use impl_lua_serde;

@@ -170,9 +170,9 @@ impl<'j> jni_toolbox::IntoJavaObject<'j> for crate::api::Event {
 		env: &mut jni::JNIEnv<'j>,
 	) -> Result<jni::objects::JObject<'j>, jni::errors::Error> {
 		let (ordinal, arg) = match self {
-			crate::api::Event::UserJoin(arg) => (0, env.new_string(arg)?),
-			crate::api::Event::UserLeave(arg) => (1, env.new_string(arg)?),
-			crate::api::Event::FileTreeUpdated(arg) => (2, env.new_string(arg)?),
+			crate::api::Event::UserJoin { name: arg } => (0, env.new_string(arg)?),
+			crate::api::Event::UserLeave { name: arg } => (1, env.new_string(arg)?),
+			crate::api::Event::FileTreeUpdated { path: arg } => (2, env.new_string(arg)?),
 		};
 
 		let type_class = env.find_class("mp/code/Workspace$Event$Type")?;
@@ -242,8 +242,8 @@ impl<'j> jni_toolbox::IntoJavaObject<'j> for crate::api::TextChange {
 			class,
 			"(JJLjava/lang/String;)V",
 			&[
-				jni::objects::JValueGen::Long(self.start.into()),
-				jni::objects::JValueGen::Long(self.end.into()),
+				jni::objects::JValueGen::Long(self.start_idx.into()),
+				jni::objects::JValueGen::Long(self.end_idx.into()),
 				jni::objects::JValueGen::Object(&content),
 			],
 		)
@@ -438,11 +438,11 @@ impl<'j> jni_toolbox::FromJava<'j> for crate::api::TextChange {
 		change: Self::From,
 	) -> Result<Self, jni::errors::Error> {
 		let start = env
-			.get_field(&change, "start", "J")?
+			.get_field(&change, "startIdx", "J")?
 			.j()?
 			.clamp(0, u32::MAX.into()) as u32;
 		let end = env
-			.get_field(&change, "end", "J")?
+			.get_field(&change, "endIdx", "J")?
 			.j()?
 			.clamp(0, u32::MAX.into()) as u32;
 
@@ -457,8 +457,8 @@ impl<'j> jni_toolbox::FromJava<'j> for crate::api::TextChange {
 		};
 
 		Ok(Self {
-			start,
-			end,
+			start_idx: start,
+			end_idx: end,
 			content,
 		})
 	}

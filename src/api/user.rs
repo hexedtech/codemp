@@ -6,6 +6,7 @@ use uuid::Uuid;
 
 /// Represents a service user
 #[derive(Debug, Clone)]
+#[cfg_attr(any(feature = "py", feature = "py-noabi"), pyo3::pyclass)]
 #[cfg_attr(feature = "serialize", derive(serde::Serialize, serde::Deserialize))]
 pub struct User {
 	/// User unique identifier, should never change.

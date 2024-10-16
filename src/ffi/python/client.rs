@@ -1,5 +1,6 @@
 use super::a_sync_allow_threads;
 use super::Client;
+use crate::api::User;
 use crate::workspace::Workspace;
 use pyo3::prelude::*;
 
@@ -14,11 +15,11 @@ impl Client {
 	// 	super::tokio().block_on(Client::connect(host, username, password))
 	// }
 
-	#[pyo3(name = "join_workspace")]
-	fn pyjoin_workspace(&self, py: Python<'_>, workspace: String) -> PyResult<super::Promise> {
+	#[pyo3(name = "attach_workspace")]
+	fn pyattach_workspace(&self, py: Python<'_>, workspace: String) -> PyResult<super::Promise> {
 		tracing::info!("attempting to join the workspace {}", workspace);
 		let this = self.clone();
-		a_sync_allow_threads!(py, this.join_workspace(workspace).await)
+		a_sync_allow_threads!(py, this.attach_workspace(workspace).await)
 		// let this = self.clone();
 		// Ok(super::Promise(Some(tokio().spawn(async move {
 		// 	Ok(this
@@ -54,16 +55,18 @@ impl Client {
 		a_sync_allow_threads!(py, this.invite_to_workspace(workspace, user).await)
 	}
 
-	#[pyo3(name = "list_workspaces")]
-	fn pylist_workspaces(
-		&self,
-		py: Python<'_>,
-		owned: bool,
-		invited: bool,
-	) -> PyResult<super::Promise> {
-		tracing::info!("attempting to list workspaces");
+	#[pyo3(name = "fetch_owned_workspaces")]
+	fn pyfetch_owned_workspaces(&self, py: Python<'_>) -> PyResult<super::Promise> {
+		tracing::info!("attempting to fetch owned workspaces");
 		let this = self.clone();
-		a_sync_allow_threads!(py, this.list_workspaces(owned, invited).await)
+		a_sync_allow_threads!(py, this.fetch_owned_workspaces().await)
+	}
+
+	#[pyo3(name = "fetch_joined_workspaces")]
+	fn pyfetch_joined_workspaces(&self, py: Python<'_>) -> PyResult<super::Promise> {
+		tracing::info!("attempting to fetch joined workspaces");
+		let this = self.clone();
+		a_sync_allow_threads!(py, this.fetch_joined_workspaces().await)
 	}
 
 	#[pyo3(name = "leave_workspace")]
@@ -82,14 +85,9 @@ impl Client {
 		self.active_workspaces()
 	}
 
-	#[pyo3(name = "user_id")]
-	fn pyuser_id(&self) -> String {
-		self.user().id.to_string()
-	}
-
-	#[pyo3(name = "user_name")]
-	fn pyuser_name(&self) -> String {
-		self.user().name.clone()
+	#[pyo3(name = "current_user")]
+	fn pycurrent_user(&self) -> User {
+		self.current_user().clone()
 	}
 
 	#[pyo3(name = "refresh")]

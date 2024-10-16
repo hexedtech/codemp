@@ -26,7 +26,7 @@ use codemp_proto::{
 };
 
 use dashmap::{DashMap, DashSet};
-use std::{collections::BTreeSet, sync::Arc};
+use std::sync::Arc;
 use tokio::sync::{mpsc, mpsc::error::TryRecvError};
 use tonic::Streaming;
 use uuid::Uuid;
@@ -140,7 +140,7 @@ impl Workspace {
 	}
 
 	/// Create a new buffer in the current workspace.
-	pub async fn create(&self, path: &str) -> RemoteResult<()> {
+	pub async fn create_buffer(&self, path: &str) -> RemoteResult<()> {
 		let mut workspace_client = self.0.services.ws();
 		workspace_client
 			.create_buffer(tonic::Request::new(BufferNode {
@@ -158,7 +158,7 @@ impl Workspace {
 	}
 
 	/// Attach to a buffer and return a handle to it.
-	pub async fn attach(&self, path: &str) -> ConnectionResult<buffer::Controller> {
+	pub async fn attach_buffer(&self, path: &str) -> ConnectionResult<buffer::Controller> {
 		let mut worskspace_client = self.0.services.ws();
 		let request = tonic::Request::new(BufferNode {
 			path: path.to_string(),
@@ -190,7 +190,7 @@ impl Workspace {
 	/// If this method returns `false` you have a dangling ref, maybe just waiting for garbage
 	/// collection or maybe preventing the controller from being dropped completely
 	#[allow(clippy::redundant_pattern_matching)] // all cases are clearer this way
-	pub fn detach(&self, path: &str) -> bool {
+	pub fn detach_buffer(&self, path: &str) -> bool {
 		match self.0.buffers.remove(path) {
 			None => true, // noop: we werent attached in the first place
 			Some((_name, controller)) => match Arc::into_inner(controller.0) {
@@ -201,45 +201,48 @@ impl Workspace {
 	}
 
 	/// Re-fetch the list of available buffers in the workspace.
-	pub async fn fetch_buffers(&self) -> RemoteResult<()> {
+	pub async fn fetch_buffers(&self) -> RemoteResult<Vec<String>> {
 		let mut workspace_client = self.0.services.ws();
-		let buffers = workspace_client
+		let resp = workspace_client
 			.list_buffers(tonic::Request::new(Empty {}))
 			.await?
-			.into_inner()
-			.buffers;
+			.into_inner();
+
+		let mut out = Vec::new();
 
 		self.0.filetree.clear();
-		for b in buffers {
-			self.0.filetree.insert(b.path);
+		for b in resp.buffers {
+			self.0.filetree.insert(b.path.clone());
+			out.push(b.path);
 		}
 
-		Ok(())
+		Ok(out)
 	}
 
 	/// Re-fetch the list of all users in the workspace.
-	pub async fn fetch_users(&self) -> RemoteResult<()> {
+	pub async fn fetch_users(&self) -> RemoteResult<Vec<User>> {
 		let mut workspace_client = self.0.services.ws();
-		let users = BTreeSet::from_iter(
-			workspace_client
-				.list_users(tonic::Request::new(Empty {}))
-				.await?
-				.into_inner()
-				.users
-				.into_iter()
-				.map(User::from),
-		);
+		let users = workspace_client
+			.list_users(tonic::Request::new(Empty {}))
+			.await?
+			.into_inner()
+			.users
+			.into_iter()
+			.map(User::from);
+
+		let mut result = Vec::new();
 
 		self.0.users.clear();
 		for u in users {
-			self.0.users.insert(u.id, u);
+			self.0.users.insert(u.id, u.clone());
+			result.push(u);
 		}
 
-		Ok(())
+		Ok(result)
 	}
 
-	/// Get a list of the [User]s attached to a specific buffer.
-	pub async fn list_buffer_users(&self, path: &str) -> RemoteResult<Vec<User>> {
+	/// Fetch a list of the [User]s attached to a specific buffer.
+	pub async fn fetch_buffer_users(&self, path: &str) -> RemoteResult<Vec<User>> {
 		let mut workspace_client = self.0.services.ws();
 		let buffer_users = workspace_client
 			.list_buffer_users(tonic::Request::new(BufferNode {
@@ -256,8 +259,8 @@ impl Workspace {
 	}
 
 	/// Delete a buffer.
-	pub async fn delete(&self, path: &str) -> RemoteResult<()> {
-		self.detach(path); // just in case
+	pub async fn delete_buffer(&self, path: &str) -> RemoteResult<()> {
+		self.detach_buffer(path); // just in case
 
 		let mut workspace_client = self.0.services.ws();
 		workspace_client
@@ -285,13 +288,13 @@ impl Workspace {
 
 	/// Return a handle to the [buffer::Controller] with the given path, if present.
 	// #[cfg_attr(feature = "js", napi)] // https://github.com/napi-rs/napi-rs/issues/1120
-	pub fn buffer_by_name(&self, path: &str) -> Option<buffer::Controller> {
+	pub fn get_buffer(&self, path: &str) -> Option<buffer::Controller> {
 		self.0.buffers.get(path).map(|x| x.clone())
 	}
 
 	/// Get a list of all the currently attached buffers.
 	// #[cfg_attr(feature = "js", napi)] // https://github.com/napi-rs/napi-rs/issues/1120
-	pub fn buffer_list(&self) -> Vec<String> {
+	pub fn active_buffers(&self) -> Vec<String> {
 		self.0
 			.buffers
 			.iter()
@@ -300,31 +303,23 @@ impl Workspace {
 	}
 
 	/// Get all names of users currently in this workspace
-	pub fn user_list(&self) -> Vec<String> {
+	pub fn user_list(&self) -> Vec<User> {
 		self.0
 			.users
 			.iter()
-			.map(|elem| elem.value().name.clone())
+			.map(|elem| elem.value().clone())
 			.collect()
 	}
 
 	/// Get the filetree as it is currently cached.
 	/// A filter may be applied, and it may be strict (equality check) or not (starts_with check).
 	// #[cfg_attr(feature = "js", napi)] // https://github.com/napi-rs/napi-rs/issues/1120
-	pub fn filetree(&self, filter: Option<&str>, strict: bool) -> Vec<String> {
+	pub fn search_buffers(&self, filter: Option<&str>) -> Vec<String> {
 		let mut tree = self
 			.0
 			.filetree
 			.iter()
-			.filter(|f| {
-				filter.map_or(true, |flt| {
-					if strict {
-						f.as_str() == flt
-					} else {
-						f.starts_with(flt)
-					}
-				})
-			})
+			.filter(|f| filter.map_or(true, |flt| f.starts_with(flt)))
 			.map(|f| f.clone())
 			.collect::<Vec<String>>();
 		tree.sort();

@@ -1,9 +1,10 @@
 package mp.code;
 
 import java.util.Optional;
-import java.util.UUID;
 import java.util.function.Consumer;
 
+import lombok.Getter;
+import mp.code.data.User;
 import mp.code.exceptions.ConnectionException;
 import mp.code.exceptions.ConnectionRemoteException;
 import mp.code.exceptions.ControllerException;
@@ -24,24 +25,24 @@ public final class Workspace {
 		Extensions.CLEANER.register(this, () -> free(ptr));
 	}
 
-	private static native String get_workspace_id(long self);
+	private static native String id(long self);
 
 	/**
 	 * Gets the unique identifier of the current workspace.
 	 * @return the identifier
 	 */
-	public String getWorkspaceId() {
-		return get_workspace_id(this.ptr);
+	public String id() {
+		return id(this.ptr);
 	}
 
-	private static native CursorController get_cursor(long self);
+	private static native CursorController cursor(long self);
 
 	/**
 	 * Gets the {@link CursorController} for the current workspace.
 	 * @return the {@link CursorController}
 	 */
-	public CursorController getCursor() {
-		return get_cursor(this.ptr);
+	public CursorController cursor() {
+		return cursor(this.ptr);
 	}
 
 	private static native BufferController get_buffer(long self, String path);
@@ -56,17 +57,16 @@ public final class Workspace {
 		return Optional.ofNullable(get_buffer(this.ptr, path));
 	}
 
-	private static native String[] get_file_tree(long self, String filter, boolean strict);
+	private static native String[] search_buffers(long self, String filter);
 
 	/**
-	 * Gets the file tree for this workspace, optionally filtering it.
-	 * @param filter applies an optional filter to the outputs
-	 * @param strict whether it should be a strict match (equals) or not (startsWith)
+	 * Searches for buffers matching the filter in this workspace.
+	 * @param filter the filter to apply
 	 * @return an array containing file tree as flat paths
 	 */
 	@SuppressWarnings("OptionalUsedAsFieldOrParameterType")
-	public String[] getFileTree(Optional<String> filter, boolean strict) {
-		return get_file_tree(this.ptr, filter.orElse(null), strict);
+	public String[] searchBuffers(Optional<String> filter) {
+		return search_buffers(this.ptr, filter.orElse(null));
 	}
 
 	private static native String[] active_buffers(long self);
@@ -101,7 +101,7 @@ public final class Workspace {
 		create_buffer(this.ptr, path);
 	}
 
-	private static native BufferController attach_to_buffer(long self, String path) throws ConnectionException;
+	private static native BufferController attach_buffer(long self, String path) throws ConnectionException;
 
 	/**
 	 * Attaches to an existing buffer with the given path, if present.
@@ -109,52 +109,54 @@ public final class Workspace {
 	 * @return the {@link BufferController} associated with that path
 	 * @throws ConnectionException if an error occurs in communicating with the server, or if the buffer did not exist
 	 */
-	public BufferController attachToBuffer(String path) throws ConnectionException {
-		return attach_to_buffer(ptr, path);
+	public BufferController attachBuffer(String path) throws ConnectionException {
+		return attach_buffer(ptr, path);
 	}
 
-	private static native boolean detach_from_buffer(long self, String path);
+	private static native boolean detach_buffer(long self, String path);
 
 	/**
 	 * Detaches from a given buffer.
 	 * @param path the path of the buffer to detach from
 	 * @return a boolean, true only if there are still dangling references preventing controller from stopping
 	 */
-	public boolean detachFromBuffer(String path) {
-		return detach_from_buffer(this.ptr, path);
+	public boolean detachBuffer(String path) {
+		return detach_buffer(this.ptr, path);
 	}
 
-	private static native void fetch_buffers(long self) throws ConnectionRemoteException;
+	private static native String[] fetch_buffers(long self) throws ConnectionRemoteException;
 
 	/**
-	 * Updates the local list of buffers.
+	 * Updates and fetches the local list of buffers.
+	 * @return the updated list
 	 * @throws ConnectionRemoteException if an error occurs in communicating with the server
 	 */
-	public void fetchBuffers() throws ConnectionRemoteException {
-		fetch_buffers(this.ptr);
+	public String[] fetchBuffers() throws ConnectionRemoteException {
+		return fetch_buffers(this.ptr);
 	}
 
-	private static native void fetch_users(long self) throws ConnectionRemoteException;
+	private static native User[] fetch_users(long self) throws ConnectionRemoteException;
 
 	/**
-	 * Updates the local list of users.
+	 * Updates and fetches the local list of users.
+	 * @return the updated list
 	 * @throws ConnectionRemoteException if an error occurs in communicating with the server
 	 */
-	public void fetchUsers() throws ConnectionRemoteException {
-		fetch_buffers(this.ptr);
+	public User[] fetchUsers() throws ConnectionRemoteException {
+		return fetch_users(this.ptr);
 	}
 
-	private static native UUID[] list_buffer_users(long self, String path) throws ConnectionRemoteException;
+	private static native User[] fetch_buffer_users(long self, String path) throws ConnectionRemoteException;
 
 	/**
-	 * Lists the user attached to a certain buffer.
+	 * Fetches the users attached to a certain buffer.
 	 * The user must be attached to the buffer to perform this operation.
 	 * @param path the path of the buffer to search
-	 * @return an array of user {@link UUID UUIDs}
+	 * @return an array of {@link User}s 
 	 * @throws ConnectionRemoteException if an error occurs in communicating with the server, or the user wasn't attached
 	 */
-	public UUID[] listBufferUsers(String path) throws ConnectionRemoteException {
-		return list_buffer_users(this.ptr, path);
+	public User[] fetchBufferUsers(String path) throws ConnectionRemoteException {
+		return fetch_buffer_users(this.ptr, path);
 	}
 
 	private static native void delete_buffer(long self, String path) throws ConnectionRemoteException;
@@ -234,7 +236,8 @@ public final class Workspace {
 	 * Represents a workspace-wide event.
 	 */
 	public static final class Event {
-		private final Type type;
+		/** The type of the event. */
+		public final @Getter Type type;
 		private final String argument;
 
 		Event(Type type, String argument) {
@@ -272,9 +275,24 @@ public final class Workspace {
 			} else return Optional.empty();
 		}
 
-		enum Type {
+		/**
+		 * The type of workspace event.
+		 */
+		public enum Type {
+			/**
+			 * Somebody joined a workspace.
+			 * @see #getUserJoined() to get the name
+			 */
 			USER_JOIN,
+			/**
+			 * Somebody left a workspace
+			 * @see #getUserLeft() to get the name
+			 */
 			USER_LEAVE,
+			/**
+			 * The filetree was updated.
+			 * @see #getChangedBuffer() to see the buffer that changed
+			 */
 			FILE_TREE_UPDATED
 		}
 	}

@@ -3,15 +3,15 @@ pub mod controllers;
 pub mod workspace;
 
 use crate::{
-	api::{Config, Cursor, TextChange},
+	api::{BufferUpdate, Config, Cursor, Selection, TextChange, User},
 	buffer::Controller as BufferController,
 	cursor::Controller as CursorController,
 	Client, Workspace,
 };
 
-use pyo3::prelude::*;
 use pyo3::{
 	exceptions::{PyConnectionError, PyRuntimeError, PySystemError},
+	prelude::*,
 	types::PyDict,
 };
 
@@ -153,13 +153,37 @@ fn init() -> PyResult<Driver> {
 	Ok(Driver(Some(rt_stop_tx)))
 }
 
-#[pyfunction]
-fn get_default_config() -> crate::api::Config {
-	let mut conf = crate::api::Config::new("".to_string(), "".to_string());
-	conf.host = Some(conf.host().to_string());
-	conf.port = Some(conf.port());
-	conf.tls = Some(false);
-	conf
+#[pymethods]
+impl User {
+	#[getter]
+	fn get_id(&self) -> pyo3::PyResult<String> {
+		Ok(self.id.to_string())
+	}
+
+	#[setter]
+	fn set_id(&mut self, value: String) -> pyo3::PyResult<()> {
+		self.id = value
+			.parse()
+			.map_err(|x: <uuid::Uuid as std::str::FromStr>::Err| {
+				pyo3::exceptions::PyRuntimeError::new_err(x.to_string())
+			})?;
+		Ok(())
+	}
+
+	#[getter]
+	fn get_name(&self) -> pyo3::PyResult<String> {
+		Ok(self.name.clone())
+	}
+
+	#[setter]
+	fn set_name(&mut self, value: String) -> pyo3::PyResult<()> {
+		self.name = value;
+		Ok(())
+	}
+
+	fn __str__(&self) -> String {
+		format!("{self:?}")
+	}
 }
 
 #[pymethods]
@@ -176,7 +200,7 @@ impl Config {
 			let port = kwgs.get_item("port")?.and_then(|e| e.extract().ok());
 			let tls = kwgs.get_item("tls")?.and_then(|e| e.extract().ok());
 
-			Ok(Config {
+			Ok(Self {
 				username,
 				password,
 				host,
@@ -184,8 +208,118 @@ impl Config {
 				tls,
 			})
 		} else {
-			Ok(Config::new(username, password))
+			Ok(Self::new(username, password))
 		}
+	}
+
+	fn __str__(&self) -> String {
+		format!("{self:?}")
+	}
+}
+
+#[pymethods]
+impl Cursor {
+	fn __str__(&self) -> String {
+		format!("{self:?}")
+	}
+}
+
+#[pymethods]
+impl Selection {
+	#[new]
+	#[pyo3(signature = (**kwds))]
+	pub fn py_new(kwds: Option<&Bound<'_, PyDict>>) -> PyResult<Self> {
+		if let Some(kwds) = kwds {
+			let start_row = if let Some(e) = kwds.get_item("start_row")? {
+				e.extract()?
+			} else {
+				0
+			};
+
+			let start_col = if let Some(e) = kwds.get_item("start_col")? {
+				e.extract()?
+			} else {
+				0
+			};
+
+			let end_row = if let Some(e) = kwds.get_item("end_row")? {
+				e.extract()?
+			} else {
+				0
+			};
+
+			let end_col = if let Some(e) = kwds.get_item("end_col")? {
+				e.extract()?
+			} else {
+				0
+			};
+
+			let buffer = if let Some(e) = kwds.get_item("buffer")? {
+				e.extract()?
+			} else {
+				String::default()
+			};
+
+			Ok(Self {
+				start_row,
+				start_col,
+				end_row,
+				end_col,
+				buffer,
+			})
+		} else {
+			Ok(Self::default())
+		}
+	}
+
+	fn __str__(&self) -> String {
+		format!("{self:?}")
+	}
+}
+
+#[pymethods]
+impl BufferUpdate {
+	fn __str__(&self) -> String {
+		format!("{self:?}")
+	}
+}
+
+#[pymethods]
+impl TextChange {
+	#[new]
+	#[pyo3(signature = (**kwds))]
+	pub fn py_new(kwds: Option<&Bound<'_, PyDict>>) -> PyResult<Self> {
+		if let Some(kwds) = kwds {
+			let start_idx = if let Some(e) = kwds.get_item("start")? {
+				e.extract()?
+			} else {
+				0
+			};
+
+			let end_idx = if let Some(e) = kwds.get_item("end")? {
+				e.extract()?
+			} else {
+				0
+			};
+
+			let content = if let Some(e) = kwds.get_item("content")? {
+				e.extract()?
+			} else {
+				String::default()
+			};
+
+			Ok(Self {
+				start_idx,
+				end_idx,
+				content,
+			})
+		} else {
+			Ok(Self::default())
+		}
+	}
+
+	fn __str__(&self) -> String {
+		format!("{self:?}")
 	}
 }
 
@@ -254,26 +388,23 @@ impl From<crate::errors::ControllerError> for PyErr {
 	}
 }
 
-impl IntoPy<PyObject> for crate::api::User {
-	fn into_py(self, py: Python<'_>) -> PyObject {
-		self.id.to_string().into_py(py)
-	}
-}
-
 #[pymodule]
 fn codemp(m: &Bound<'_, PyModule>) -> PyResult<()> {
 	m.add_function(wrap_pyfunction!(version, m)?)?;
 	m.add_function(wrap_pyfunction!(init, m)?)?;
-	m.add_function(wrap_pyfunction!(get_default_config, m)?)?;
 	m.add_function(wrap_pyfunction!(connect, m)?)?;
 	m.add_function(wrap_pyfunction!(set_logger, m)?)?;
 	m.add_class::<Driver>()?;
 
+	m.add_class::<BufferUpdate>()?;
 	m.add_class::<TextChange>()?;
 	m.add_class::<BufferController>()?;
 
 	m.add_class::<Cursor>()?;
+	m.add_class::<Selection>()?;
 	m.add_class::<CursorController>()?;
+
+	m.add_class::<User>()?;
 
 	m.add_class::<Workspace>()?;
 	m.add_class::<Client>()?;

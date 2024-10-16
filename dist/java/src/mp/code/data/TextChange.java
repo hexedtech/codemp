@@ -10,19 +10,18 @@ import lombok.ToString;
 @ToString
 @EqualsAndHashCode
 @RequiredArgsConstructor
-@SuppressWarnings("OptionalUsedAsFieldOrParameterType")
 public class TextChange {
 	/**
 	 * The starting position of the change.
 	 * If negative, it is clamped to 0.
 	 */
-	public final long start;
+	public final long startIdx;
 
 	/**
 	 * The ending position of the change.
 	 * If negative, it is clamped to 0.
 	 */
-	public final long end;
+	public final long endIdx;
 
 	/**
 	 * The content of the change.
@@ -37,7 +36,7 @@ public class TextChange {
 	 * @return true if this change represents a deletion
 	 */
 	public boolean isDelete() {
-		return this.start < this.end;
+		return this.startIdx < this.endIdx;
 	}
 
 	/**
@@ -64,14 +63,14 @@ public class TextChange {
 	 * @return the mutated string
 	 */
 	public String apply(String input) {
-		long preIndex = Math.min(this.start, input.length());
+		long preIndex = Math.min(this.startIdx, input.length());
 		String pre = "";
 		try {
 			pre = input.substring(0, (int) preIndex);
 		} catch(IndexOutOfBoundsException ignored) {}
 		String post = "";
 		try {
-			post = input.substring((int) this.end);
+			post = input.substring((int) this.endIdx);
 		} catch(IndexOutOfBoundsException ignored) {}
 		return pre + this.content + post;
 	}

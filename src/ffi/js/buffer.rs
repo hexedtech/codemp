@@ -32,13 +32,13 @@ impl BufferController {
 	}
 
 	/// Remove registered buffer callback
-	#[napi(js_name = "clear_callback")]
+	#[napi(js_name = "clearCallback")]
 	pub fn js_clear_callback(&self) {
 		self.clear_callback();
 	}
 
 	/// Get buffer path
-	#[napi(js_name = "get_path")]
+	#[napi(js_name = "path")]
 	pub fn js_path(&self) -> &str {
 		self.path()
 	}
@@ -50,7 +50,7 @@ impl BufferController {
 	}
 
 	/// Return next buffer event if present
-	#[napi(js_name = "try_recv")]
+	#[napi(js_name = "tryRecv")]
 	pub async fn js_try_recv(&self) -> napi::Result<Option<BufferUpdate>> {
 		Ok(self.try_recv().await?)
 	}

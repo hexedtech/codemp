@@ -7,21 +7,21 @@ use crate::{
 use jni_toolbox::jni;
 
 /// Connect using the given credentials to the default server, and return a [Client] to interact with it.
-#[jni(package = "mp.code", class = "Client", ptr)]
+#[jni(package = "mp.code", class = "Client")]
 fn connect(config: Config) -> Result<Client, ConnectionError> {
 	super::tokio().block_on(Client::connect(config))
 }
 
 /// Gets the current [crate::api::User].
-#[jni(package = "mp.code", class = "Client", ptr)]
-fn get_user(client: &mut Client) -> crate::api::User {
-	client.user().clone()
+#[jni(package = "mp.code", class = "Client")]
+fn current_user(client: &mut Client) -> crate::api::User {
+	client.current_user().clone()
 }
 
 /// Join a [Workspace] and return a pointer to it.
 #[jni(package = "mp.code", class = "Client")]
-fn join_workspace(client: &mut Client, workspace: String) -> Result<Workspace, ConnectionError> {
-	super::tokio().block_on(client.join_workspace(workspace))
+fn attach_workspace(client: &mut Client, workspace: String) -> Result<Workspace, ConnectionError> {
+	super::tokio().block_on(client.attach_workspace(workspace))
 }
 
 /// Create a workspace on server, if allowed to.
@@ -46,14 +46,16 @@ fn invite_to_workspace(
 	super::tokio().block_on(client.invite_to_workspace(workspace, user))
 }
 
-/// List available workspaces.
+/// List owned workspaces.
 #[jni(package = "mp.code", class = "Client")]
-fn list_workspaces(
-	client: &mut Client,
-	owned: bool,
-	invited: bool,
-) -> Result<Vec<String>, RemoteError> {
-	super::tokio().block_on(client.list_workspaces(owned, invited))
+fn fetch_owned_workspaces(client: &mut Client) -> Result<Vec<String>, RemoteError> {
+	super::tokio().block_on(client.fetch_owned_workspaces())
+}
+
+/// List joined workspaces.
+#[jni(package = "mp.code", class = "Client")]
+fn fetch_joined_workspaces(client: &mut Client) -> Result<Vec<String>, RemoteError> {
+	super::tokio().block_on(client.fetch_joined_workspaces())
 }
 
 /// List available workspaces.

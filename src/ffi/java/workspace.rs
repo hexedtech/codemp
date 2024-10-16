@@ -1,5 +1,5 @@
 use crate::{
-	api::controller::AsyncReceiver,
+	api::{controller::AsyncReceiver, User},
 	errors::{ConnectionError, ControllerError, RemoteError},
 	ffi::java::null_check,
 	Workspace,
@@ -9,86 +9,86 @@ use jni_toolbox::jni;
 
 /// Get the workspace id.
 #[jni(package = "mp.code", class = "Workspace")]
-fn get_workspace_id(workspace: &mut Workspace) -> String {
+fn id(workspace: &mut Workspace) -> String {
 	workspace.id()
 }
 
 /// Get a cursor controller by name and returns a pointer to it.
 #[jni(package = "mp.code", class = "Workspace")]
-fn get_cursor(workspace: &mut Workspace) -> crate::cursor::Controller {
+fn cursor(workspace: &mut Workspace) -> crate::cursor::Controller {
 	workspace.cursor()
 }
 
 /// Get a buffer controller by name and returns a pointer to it.
 #[jni(package = "mp.code", class = "Workspace")]
 fn get_buffer(workspace: &mut Workspace, path: String) -> Option<crate::buffer::Controller> {
-	workspace.buffer_by_name(&path)
+	workspace.get_buffer(&path)
 }
 
-/// Get the filetree.
+/// Searches for buffers matching the filter.
 #[jni(package = "mp.code", class = "Workspace")]
-fn get_file_tree(workspace: &mut Workspace, filter: Option<String>, strict: bool) -> Vec<String> {
-	workspace.filetree(filter.as_deref(), strict)
+fn search_buffers(workspace: &mut Workspace, filter: Option<String>) -> Vec<String> {
+	workspace.search_buffers(filter.as_deref())
 }
 
 /// Gets a list of the active buffers.
 #[jni(package = "mp.code", class = "Workspace")]
 fn active_buffers(workspace: &mut Workspace) -> Vec<String> {
-	workspace.buffer_list()
+	workspace.active_buffers()
 }
 
 /// Gets a list of the active buffers.
 #[jni(package = "mp.code", class = "Workspace")]
-fn user_list(workspace: &mut Workspace) -> Vec<String> {
+fn user_list(workspace: &mut Workspace) -> Vec<User> {
 	workspace.user_list()
 }
 
 /// Create a new buffer.
 #[jni(package = "mp.code", class = "Workspace")]
 fn create_buffer(workspace: &mut Workspace, path: String) -> Result<(), RemoteError> {
-	super::tokio().block_on(workspace.create(&path))
+	super::tokio().block_on(workspace.create_buffer(&path))
 }
 
-/// Attach to a buffer and return a pointer to its [crate::buffer::Controller].
+/// Attach to a buffer and return a pointer to its [`crate::buffer::Controller`].
 #[jni(package = "mp.code", class = "Workspace")]
-fn attach_to_buffer(
+fn attach_buffer(
 	workspace: &mut Workspace,
 	path: String,
 ) -> Result<crate::buffer::Controller, ConnectionError> {
-	super::tokio().block_on(workspace.attach(&path))
+	super::tokio().block_on(workspace.attach_buffer(&path))
 }
 
 /// Detach from a buffer.
 #[jni(package = "mp.code", class = "Workspace")]
-fn detach_from_buffer(workspace: &mut Workspace, path: String) -> bool {
-	workspace.detach(&path)
+fn detach_buffer(workspace: &mut Workspace, path: String) -> bool {
+	workspace.detach_buffer(&path)
 }
 
 /// Update the local buffer list.
 #[jni(package = "mp.code", class = "Workspace")]
-fn fetch_buffers(workspace: &mut Workspace) -> Result<(), RemoteError> {
+fn fetch_buffers(workspace: &mut Workspace) -> Result<Vec<String>, RemoteError> {
 	super::tokio().block_on(workspace.fetch_buffers())
 }
 
 /// Update the local user list.
 #[jni(package = "mp.code", class = "Workspace")]
-fn fetch_users(workspace: &mut Workspace) -> Result<(), RemoteError> {
+fn fetch_users(workspace: &mut Workspace) -> Result<Vec<User>, RemoteError> {
 	super::tokio().block_on(workspace.fetch_users())
 }
 
-/// List users attached to a buffer.
+/// Fetch users attached to a buffer.
 #[jni(package = "mp.code", class = "Workspace")]
-fn list_buffer_users(
+fn fetch_buffer_users(
 	workspace: &mut Workspace,
 	path: String,
 ) -> Result<Vec<crate::api::User>, RemoteError> {
-	super::tokio().block_on(workspace.list_buffer_users(&path))
+	super::tokio().block_on(workspace.fetch_buffer_users(&path))
 }
 
 /// Delete a buffer.
 #[jni(package = "mp.code", class = "Workspace")]
 fn delete_buffer(workspace: &mut Workspace, path: String) -> Result<(), RemoteError> {
-	super::tokio().block_on(workspace.delete(&path))
+	super::tokio().block_on(workspace.delete_buffer(&path))
 }
 
 /// Block and receive a workspace event.

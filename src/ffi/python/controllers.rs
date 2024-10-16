@@ -13,22 +13,8 @@ use super::Promise;
 #[pymethods]
 impl CursorController {
 	#[pyo3(name = "send")]
-	fn pysend(
-		&self,
-		_py: Python,
-		path: String,
-		start: (i32, i32),
-		end: (i32, i32),
-	) -> PyResult<()> {
-		let pos = Selection {
-			start_row: start.0,
-			start_col: start.1,
-			end_row: end.0,
-			end_col: end.1,
-			buffer: path,
-		};
-		let this = self.clone();
-		this.send(pos)?;
+	fn pysend(&self, _py: Python, pos: Selection) -> PyResult<()> {
+		self.send(pos)?;
 		Ok(())
 	}
 
@@ -86,12 +72,7 @@ impl BufferController {
 	}
 
 	#[pyo3(name = "send")]
-	fn pysend(&self, _py: Python, start: u32, end: u32, txt: String) -> PyResult<()> {
-		let op = TextChange {
-			start,
-			end,
-			content: txt,
-		};
+	fn pysend(&self, _py: Python, op: TextChange) -> PyResult<()> {
 		let this = self.clone();
 		this.send(op)?;
 		Ok(())
