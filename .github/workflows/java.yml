@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - stable
+      - ci/java-publish
 
 permissions:
   contents: read
@@ -55,7 +56,6 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "8.10"
-        working-directory: dist/java
       - run: gradle publish
         working-directory: dist/java
         env:
