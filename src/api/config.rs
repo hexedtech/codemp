@@ -8,7 +8,7 @@
 /// `host`, `port` and `tls` affect all connections to all gRPC services; the
 /// resulting endpoint is composed like this:
 ///     http{tls?'s':''}://{host}:{port}
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 #[cfg_attr(feature = "js", napi_derive::napi(object))]
 #[cfg_attr(
 	any(feature = "py", feature = "py-noabi"),
