@@ -44,7 +44,7 @@ impl Workspace {
 	}
 
 	/// List all available buffers in this workspace
-	#[napi(js_name = "search_buffers")]
+	#[napi(js_name = "searchBuffers")]
 	pub fn js_search_buffers(&self, filter: Option<&str>) -> Vec<String> {
 		self.search_buffers(filter)
 	}
