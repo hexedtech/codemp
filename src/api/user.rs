@@ -12,7 +12,7 @@ pub struct User {
 	/// User unique identifier, should never change.
 	pub id: Uuid,
 	/// User name, can change but should be unique.
-	#[pyo3(get, set)]
+	#[cfg_attr(any(feature = "py", feature = "py-noabi"), pyo3(get, set))]
 	pub name: String,
 }
 
