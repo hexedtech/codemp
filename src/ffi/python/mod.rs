@@ -174,7 +174,7 @@ impl User {
 	fn get_name(&self) -> pyo3::PyResult<String> {
 		Ok(self.name.clone())
 	}
-	
+
 	#[setter]
 	fn set_name(&mut self, value: String) -> pyo3::PyResult<()> {
 		self.name = value;
@@ -189,7 +189,7 @@ impl User {
 #[pymethods]
 impl Config {
 	#[new]
-	#[pyo3(signature = (username, password, **kwds))]
+	#[pyo3(signature = (*, username, password, **kwds))]
 	pub fn pynew(
 		username: String,
 		password: String,
