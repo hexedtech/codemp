@@ -1,5 +1,7 @@
 //! # Event
 //! Real time notification of changes in a workspace, to either users or buffers.
+#![allow(non_upper_case_globals, non_camel_case_types)] // pyo3 fix your shit
+
 use codemp_proto::workspace::workspace_event::Event as WorkspaceEventInner;
 
 /// Event in a [crate::Workspace].
@@ -10,21 +12,21 @@ use codemp_proto::workspace::workspace_event::Event as WorkspaceEventInner;
 pub enum Event {
 	/// Fired when the file tree changes.
 	/// Contains the modified buffer path (deleted, created or renamed).
-	FileTreeUpdated(String),
+	FileTreeUpdated { path: String },
 	/// Fired when an user joins the current workspace.
-	UserJoin(String),
+	UserJoin { name: String },
 	/// Fired when an user leaves the current workspace.
-	UserLeave(String),
+	UserLeave { name: String },
 }
 
 impl From<WorkspaceEventInner> for Event {
 	fn from(event: WorkspaceEventInner) -> Self {
 		match event {
-			WorkspaceEventInner::Join(e) => Self::UserJoin(e.user.name),
-			WorkspaceEventInner::Leave(e) => Self::UserLeave(e.user.name),
-			WorkspaceEventInner::Create(e) => Self::FileTreeUpdated(e.path),
-			WorkspaceEventInner::Delete(e) => Self::FileTreeUpdated(e.path),
-			WorkspaceEventInner::Rename(e) => Self::FileTreeUpdated(e.after),
+			WorkspaceEventInner::Join(e) => Self::UserJoin { name: e.user.name },
+			WorkspaceEventInner::Leave(e) => Self::UserLeave { name: e.user.name },
+			WorkspaceEventInner::Create(e) => Self::FileTreeUpdated { path: e.path },
+			WorkspaceEventInner::Delete(e) => Self::FileTreeUpdated { path: e.path },
+			WorkspaceEventInner::Rename(e) => Self::FileTreeUpdated { path: e.after },
 		}
 	}
 }

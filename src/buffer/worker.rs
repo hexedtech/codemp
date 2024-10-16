@@ -160,8 +160,8 @@ impl BufferWorker {
 	async fn handle_editor_change(&mut self, change: TextChange, tx: &mpsc::Sender<Operation>) {
 		let last_ver = self.oplog.local_version();
 		// clip to buffer extents
-		let clip_start = change.start as usize;
-		let mut clip_end = change.end as usize;
+		let clip_start = change.start_idx as usize;
+		let mut clip_end = change.end_idx as usize;
 		let b_len = self.branch.len();
 		if clip_end > b_len {
 			tracing::warn!("clipping TextChange end span from {clip_end} to {b_len}");
@@ -262,8 +262,8 @@ impl BufferWorker {
 							.map(|x| i64::from_ne_bytes(x.to_ne_bytes()))
 							.collect(), // TODO this is wasteful
 						change: crate::api::TextChange {
-							start: dtop.start() as u32,
-							end: dtop.start() as u32,
+							start_idx: dtop.start() as u32,
+							end_idx: dtop.start() as u32,
 							content: dtop.content_as_str().unwrap_or_default().to_string(),
 						},
 					}
@@ -276,8 +276,8 @@ impl BufferWorker {
 						.map(|x| i64::from_ne_bytes(x.to_ne_bytes()))
 						.collect(), // TODO this is wasteful
 					change: crate::api::TextChange {
-						start: dtop.start() as u32,
-						end: dtop.end() as u32,
+						start_idx: dtop.start() as u32,
+						end_idx: dtop.end() as u32,
 						content: dtop.content_as_str().unwrap_or_default().to_string(),
 					},
 				},

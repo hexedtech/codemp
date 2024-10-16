@@ -10,8 +10,8 @@ use crate::{
 };
 
 use pyo3::{
-	prelude::*,
 	exceptions::{PyConnectionError, PyRuntimeError, PySystemError},
+	prelude::*,
 	types::PyDict,
 };
 
@@ -162,7 +162,11 @@ impl User {
 
 	#[setter]
 	fn set_id(&mut self, value: String) -> pyo3::PyResult<()> {
-		self.id = value.parse().map_err(|x: <uuid::Uuid as std::str::FromStr>::Err| pyo3::exceptions::PyRuntimeError::new_err(x.to_string()))?;
+		self.id = value
+			.parse()
+			.map_err(|x: <uuid::Uuid as std::str::FromStr>::Err| {
+				pyo3::exceptions::PyRuntimeError::new_err(x.to_string())
+			})?;
 		Ok(())
 	}
 
@@ -220,7 +224,7 @@ impl Selection {
 			} else {
 				0
 			};
-			
+
 			let start_col = if let Some(e) = kwds.get_item("start_col")? {
 				e.extract()?
 			} else {
@@ -245,7 +249,13 @@ impl Selection {
 				String::default()
 			};
 
-			Ok(Self { start_row, start_col, end_row, end_col, buffer })
+			Ok(Self {
+				start_row,
+				start_col,
+				end_row,
+				end_col,
+				buffer,
+			})
 		} else {
 			Ok(Self::default())
 		}
@@ -269,13 +279,13 @@ impl TextChange {
 	#[pyo3(signature = (**kwds))]
 	pub fn py_new(kwds: Option<&Bound<'_, PyDict>>) -> PyResult<Self> {
 		if let Some(kwds) = kwds {
-			let start = if let Some(e) = kwds.get_item("start")? {
+			let start_idx = if let Some(e) = kwds.get_item("start")? {
 				e.extract()?
 			} else {
 				0
 			};
 
-			let end = if let Some(e) = kwds.get_item("end")? {
+			let end_idx = if let Some(e) = kwds.get_item("end")? {
 				e.extract()?
 			} else {
 				0
@@ -287,7 +297,11 @@ impl TextChange {
 				String::default()
 			};
 
-			Ok(Self { start, end, content })
+			Ok(Self {
+				start_idx,
+				end_idx,
+				content,
+			})
 		} else {
 			Ok(Self::default())
 		}

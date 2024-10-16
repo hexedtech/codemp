@@ -21,7 +21,7 @@
 //!
 //! // write `hello!` at the beginning of this buffer
 //! buffer.send(codemp::api::TextChange {
-//!   start: 0, end: 0,
+//!   start_idx: 0, end_idx: 0,
 //!   content: "hello!".to_string(),
 //! })?;
 //!
@@ -58,7 +58,7 @@
 //!
 //! // write `hello!` at the beginning of this buffer
 //! await buffer.send({
-//!   start: 0, end: 0,
+//!   start_idx: 0, end_idx: 0,
 //!   content: "hello!",
 //! });
 //!
@@ -94,7 +94,7 @@
 //!
 //! # write `hello!` at the beginning of this buffer
 //! buffer.send(codemp.TextChange(
-//!   start=0, end=0,
+//!   start_idx=0, end_idx=0,
 //!   content="hello!"
 //! )).wait()
 //!
@@ -141,7 +141,7 @@
 //!
 //! -- write `hello!` at the beginning of this buffer
 //! buffer:send({
-//!   start = 0, finish = 0,
+//!   start_idx = 0, end_idx = 0,
 //!   content = "hello!"
 //! }):await()
 //!

@@ -361,8 +361,8 @@ local BufferController = {}
 
 ---@class TextChange
 ---@field content string text content of change
----@field start integer start index of change
----@field finish integer end index of change
+---@field start_idx integer start index of change
+---@field end_idx integer end index of change
 local TextChange = {}
 
 ---@class (exact) BufferUpdate

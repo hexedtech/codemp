@@ -19,15 +19,15 @@ pub struct JsEvent {
 impl From<crate::api::Event> for JsEvent {
 	fn from(value: crate::api::Event) -> Self {
 		match value {
-			crate::api::Event::FileTreeUpdated(value) => Self {
+			crate::api::Event::FileTreeUpdated { path: value } => Self {
 				r#type: "filetree".into(),
 				value,
 			},
-			crate::api::Event::UserJoin(value) => Self {
+			crate::api::Event::UserJoin { name: value } => Self {
 				r#type: "join".into(),
 				value,
 			},
-			crate::api::Event::UserLeave(value) => Self {
+			crate::api::Event::UserLeave { name: value } => Self {
 				r#type: "leave".into(),
 				value,
 			},

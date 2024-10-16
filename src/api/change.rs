@@ -55,10 +55,9 @@ pub struct BufferUpdate {
 #[cfg_attr(feature = "serialize", derive(serde::Serialize, serde::Deserialize))]
 pub struct TextChange {
 	/// Range start of text change, as char indexes in buffer previous state.
-	pub start: u32,
+	pub start_idx: u32,
 	/// Range end of text change, as char indexes in buffer previous state.
-	#[cfg_attr(feature = "serialize", serde(alias = "finish"))] // Lua uses `end` as keyword
-	pub end: u32,
+	pub end_idx: u32,
 	/// New content of text inside span.
 	pub content: String,
 }
@@ -66,7 +65,7 @@ pub struct TextChange {
 impl TextChange {
 	/// Returns the [`std::ops::Range`] representing this change's span.
 	pub fn span(&self) -> std::ops::Range<usize> {
-		self.start as usize..self.end as usize
+		self.start_idx as usize..self.end_idx as usize
 	}
 }
 
@@ -76,7 +75,7 @@ impl TextChange {
 	///
 	/// Note that this is is **not** mutually exclusive with [TextChange::is_insert].
 	pub fn is_delete(&self) -> bool {
-		self.start < self.end
+		self.start_idx < self.end_idx
 	}
 
 	/// Returns true if this [`TextChange`] adds new text.
@@ -93,9 +92,9 @@ impl TextChange {
 
 	/// Applies this text change to given text, returning a new string.
 	pub fn apply(&self, txt: &str) -> String {
-		let pre_index = std::cmp::min(self.start as usize, txt.len());
+		let pre_index = std::cmp::min(self.start_idx as usize, txt.len());
 		let pre = txt.get(..pre_index).unwrap_or("").to_string();
-		let post = txt.get(self.end as usize..).unwrap_or("").to_string();
+		let post = txt.get(self.end_idx as usize..).unwrap_or("").to_string();
 		format!("{}{}{}", pre, self.content, post)
 	}
 }
@@ -105,8 +104,8 @@ mod tests {
 	#[test]
 	fn textchange_apply_works_for_insertions() {
 		let change = super::TextChange {
-			start: 5,
-			end: 5,
+			start_idx: 5,
+			end_idx: 5,
 			content: " cruel".to_string(),
 		};
 		let result = change.apply("hello world!");
@@ -116,8 +115,8 @@ mod tests {
 	#[test]
 	fn textchange_apply_works_for_deletions() {
 		let change = super::TextChange {
-			start: 5,
-			end: 11,
+			start_idx: 5,
+			end_idx: 11,
 			content: "".to_string(),
 		};
 		let result = change.apply("hello cruel world!");
@@ -127,8 +126,8 @@ mod tests {
 	#[test]
 	fn textchange_apply_works_for_replacements() {
 		let change = super::TextChange {
-			start: 5,
-			end: 11,
+			start_idx: 5,
+			end_idx: 11,
 			content: " not very pleasant".to_string(),
 		};
 		let result = change.apply("hello cruel world!");
@@ -138,8 +137,8 @@ mod tests {
 	#[test]
 	fn textchange_apply_never_panics() {
 		let change = super::TextChange {
-			start: 100,
-			end: 110,
+			start_idx: 100,
+			end_idx: 110,
 			content: "a very long string \n which totally matters".to_string(),
 		};
 		let result = change.apply("a short text");
@@ -152,8 +151,8 @@ mod tests {
 	#[test]
 	fn empty_textchange_doesnt_alter_buffer() {
 		let change = super::TextChange {
-			start: 42,
-			end: 42,
+			start_idx: 42,
+			end_idx: 42,
 			content: "".to_string(),
 		};
 		let result = change.apply("some important text");
