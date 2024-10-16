@@ -33,14 +33,20 @@ Thus, we also provide pre-made Java glue code, wrapping all native calls and def
 
 The Java bindings have no known major quirk. However, here are a list of facts that are useful to know when developing with these:
 
-* Memory management is entirely delegated to the JVM's garbage collector.
-  * A more elegant solution than `Object.finalize()`, who is deprecated in newer Java versions, may be coming eventually.
+* Memory management is entirely delegated to the JVM's garbage collector using the `Cleaner` API.
+  * Because of this, we require Java 11 as minimum version: `Cleaner` was added in version 9. This should not be a problem, as IDEs tend to run on recent versions, but if there is actual demand for it we may add a Java 8-friendly version using `Object.finalize()` (which is deprecated in modern JDKs).
 * Exceptions coming from the native side have generally been made checked to imitate Rust's philosophy with `Result`.
   * `JNIException`s are however unchecked: there is nothing you can do to recover from them, as they usually represent a severe error in the glue code. If they arise, it's probably a bug.
 
 ### Using
-`codemp` **will be available soon** as an artifact on [Maven Central](https://mvnrepository.com)
+`codemp` is available on [Maven Central](https://central.sonatype.com/artifact/mp.code/codemp), with each officially supported OS as an archive classifier.
 
 ### Building
-This is a [Gradle](https://gradle.org/) project: building requires having both Gradle and Cargo installed, as well as the JDK (any non-abandoned version).
-Once you have all the requirements, building is as simple as running `gradle build`: the output is going to be a JAR under `build/libs`, which you can import into your classpath with your IDE of choice.
+> [!NOTE]
+> The following instructions assume `dist/java` as current working directory.
+
+This is a [Gradle](https://gradle.org/) project, so you must have install `gradle` (as well as JDK 11 or higher) in order to build it.
+- You can build a JAR without bundling the native library with `gradle build`.
+- Otherwise, you can compile the project for your current OS and create a JAR that bundles the resulting binary with `gradle nativeBuild`; do note that this second way of building also requires Cargo and the relevant Rust toolchain.
+
+In both cases, the output is going to be a JAR under `build/libs`, which you can import into your classpath with your IDE of choice.
