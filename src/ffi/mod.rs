@@ -7,9 +7,10 @@
 //! use codemp::api::controller::{AsyncReceiver, AsyncSender}; // needed for send/recv trait methods
 //!
 //! // connect first, api.code.mp is managed by hexed.technology
-//! let client = codemp::Client::connect(codemp::api::Config::new(
-//!   "mail@example.net", "dont-use-this-password"
-//! )).await?;
+//! let client = codemp::Client::connect(codemp::api::Config {
+//!   username: "mail@example.net".into(), password: "dont-use-this-password".into(),
+//!   ..Default::default()
+//! }).await?;
 //!
 //! // create and join a workspace
 //! client.create_workspace("some-workspace").await?;
@@ -45,7 +46,8 @@
 //!
 //! // connect first, api.code.mp is managed by hexed.technology
 //! let client = await codemp.connect({
-//!   username: "mail@example.net", password: "dont-use-this-password"
+//!   username: "mail@example.net",
+//!   password: "dont-use-this-password"
 //! });
 //!
 //! // create and join a workspace
@@ -80,9 +82,10 @@
 //! import codemp
 //!
 //! # connect first, api.code.mp is managed by hexed.technology
-//! client = codemp.connect(
-//!   codemp.Config('mail@example.net', 'dont-use-this-password')
-//! ).wait()
+//! client = codemp.connect(codemp.Config(
+//!   username='mail@example.net',
+//!   password='dont-use-this-password'
+//! )).wait()
 //!
 //! # create and join a workspace
 //! client.create_workspace("some-workspace").wait()
@@ -128,7 +131,8 @@
 //!
 //! -- connect first, api.code.mp is managed by hexed.technology
 //! local client = CODEMP.connect({
-//!   username = "mail@example.net", password = "dont-use-this-password"
+//!   username = "mail@example.net",
+//!   password = "dont-use-this-password"
 //! }):await()
 //!
 //! -- create and join a workspace
@@ -165,9 +169,10 @@
 //! import mp.code.*;
 //!
 //! // connect first, api.code.mp is managed by hexed.technology
-//! Client client = Client.connect(
-//!   new data.Config("mail@example.net", "dont-use-this-password")
-//! );
+//! Client client = Client.connect(new data.Config(
+//!   "mail@example.net",
+//!   "dont-use-this-password"
+//! ));
 //!
 //! // create and join a workspace
 //! client.createWorkspace("some-workspace");
