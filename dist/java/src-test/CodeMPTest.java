@@ -6,6 +6,7 @@ import mp.code.data.User;
 import mp.code.exceptions.ConnectionException;
 import mp.code.exceptions.ConnectionRemoteException;
 import mp.code.exceptions.ControllerException;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import java.util.Objects;
@@ -15,15 +16,15 @@ import java.util.UUID;
 
 import static mp.code.data.DetachResult.DETACHING;
 
+@SuppressWarnings({"StatementWithEmptyBody", "OptionalGetWithoutIsPresent"})
 public class CodeMPTest {
 	private final Client client;
 	private final Client otherClient;
 
 	// client connection init
 	public CodeMPTest() throws ConnectionException {
-		System.out.println("aaaa");
-		//new Thread(() -> Extensions.drive(true)); // drive thread so callback works
-		Extensions.setupTracing(null, true);
+		new Thread(() -> Extensions.drive(true)); // drive thread so callback works
+		//Extensions.setupTracing(null, true);
 
 		this.client = Client.connect(new Config(
 			Objects.requireNonNull(System.getenv("CODEMP_TEST_USERNAME_1")),
@@ -32,6 +33,11 @@ public class CodeMPTest {
 			50053,
 			false
 		));
+
+		// failed tests may have cluttered the list, clean it first
+		for(String ws : this.client.listWorkspaces(true, false)) {
+			this.client.deleteWorkspace(ws);
+		}
 
 		this.otherClient = Client.connect(new Config(
 			Objects.requireNonNull(System.getenv("CODEMP_TEST_USERNAME_2")),
@@ -45,12 +51,12 @@ public class CodeMPTest {
 	@Test
 	void testGetUser() {
 		User u = this.client.getUser();
-		System.out.println("User name:" + u.name);
-		System.out.println("User ID: " + u.id);
+		//assert u.name.equals(System.getenv("CODEMP_TEST_USERNAME_1"));
+		//assert u.id.toString().equals(System.getenv("CODEMP_TEST_ID_1"));
 	}
 
 	@Test
-	void testWorkspaceInteraction() throws ConnectionException {
+	void testWorkspaceInteractions() throws ConnectionException {
 		String randomName = UUID.randomUUID().toString();
 
 		int oldOwned = this.client.listWorkspaces(true, false).length;
@@ -71,7 +77,7 @@ public class CodeMPTest {
 
 		this.client.inviteToWorkspace(randomName, this.otherClient.getUser().name);
 		assert this.client.leaveWorkspace(randomName);
-		assert this.otherClient.leaveWorkspace(randomName);
+		assert !this.otherClient.leaveWorkspace(randomName);
 
 		this.client.deleteWorkspace(randomName);
 	}
@@ -85,155 +91,136 @@ public class CodeMPTest {
 	void testBufferInteractions() throws ConnectionException, ControllerException, InterruptedException {
 		String randomWorkspace = UUID.randomUUID().toString();
 		String randomBuffer = UUID.randomUUID().toString();
+
+		// prepare first client
 		this.client.createWorkspace(randomWorkspace);
 		Workspace ws = this.client.joinWorkspace(randomWorkspace);
 
-		this.client.inviteToWorkspace(ws.getWorkspaceId(), this.otherClient.getUser().name);
-
+		// test buffer creation and verify that the buffer list has changed
 		int oldFileTree = ws.getFileTree(Optional.empty(), true).length;
 		ws.createBuffer(randomBuffer);
 		assert (oldFileTree + 1) == ws.getFileTree(Optional.empty(), true).length;
 
+		// test buffer filters
 		assert ws.getFileTree(Optional.of(randomBuffer.substring(0, 10)), true).length == 0;
 		assert ws.getFileTree(Optional.of(randomBuffer.substring(0, 10)), false).length == 1;
-
-		ws.deleteBuffer(randomBuffer);
-		assert oldFileTree == ws.getFileTree(Optional.empty(), true).length;
-
-		ws.createBuffer(randomBuffer);
 
 		int oldActive = ws.activeBuffers().length;
 		ws.attachToBuffer(randomBuffer);
 		assert (oldActive + 1) == ws.activeBuffers().length;
 
-		Optional<BufferController> buffer = ws.getBuffer(randomBuffer);
-		assert buffer.isPresent();
+		BufferController buffer = ws.getBuffer(randomBuffer).get();
 
-		buffer.get().callback(bufferController -> {
-			assert true;
-		});
+		// prepare second client and clean queue
+		this.client.inviteToWorkspace(ws.getWorkspaceId(), this.otherClient.getUser().name);
+		BufferController otherBuffer = this.otherClient.joinWorkspace(randomWorkspace).attachToBuffer(randomBuffer);
+		while(buffer.tryRecv().isPresent()) {}
 
-		Thread t = new Thread(() -> parallelBufferThreadTask(randomWorkspace, randomBuffer));
-		t.start();
+		TextChange textChange = new TextChange(0, 0, "", OptionalLong.empty());
 
-		// wait for other thread to attach
-		while(ws.listBufferUsers(randomBuffer).length == 1) {
-			wait(50);
-		}
+		/* Testing callback */
+		buffer.callback(bufferController -> new Thread(() -> {
+			try {
+				assert bufferController.recv().equals(textChange);
+			} catch(ControllerException e) {
+				throw new RuntimeException(e);
+			}
+		}).start());
 
-		buffer.get().poll();
-		buffer.get().clearCallback();
+		otherBuffer.send(textChange);
+		buffer.poll();
+		buffer.clearCallback();
 
-		buffer.get().recv();
+		otherBuffer.send(textChange);
+		buffer.recv();
 
-		buffer.get().poll();
-		assert buffer.get().tryRecv().isPresent();
+		otherBuffer.send(textChange);
+		buffer.poll();
+		assert buffer.tryRecv().isPresent();
 
-		assert buffer.get().tryRecv().isEmpty();
-
-		buffer.get().send(new TextChange(0, 0, "1", OptionalLong.empty()));
+		assert buffer.tryRecv().isEmpty();
 
 		assert ws.detachFromBuffer(randomBuffer) == DETACHING;
-		ws.deleteBuffer(randomBuffer);
 
+		this.otherClient.getWorkspace(randomWorkspace).get().createBuffer(UUID.randomUUID().toString());
 		assert ws.event().getChangedBuffer().isPresent();
-		t.join(1000);
+
+		ws.deleteBuffer(randomBuffer);
+		Assertions.assertEquals(oldFileTree, ws.getFileTree(Optional.empty(), true).length);
 
 		this.client.leaveWorkspace(randomWorkspace);
 		this.client.deleteWorkspace(randomWorkspace);
 	}
 
-	private void parallelBufferThreadTask(String workspace, String buffer) {
-		try {
-			Workspace w = this.otherClient.joinWorkspace(workspace);
-			BufferController controller = w.attachToBuffer(buffer);
-			for(int i = 0; i < 3; i++) {
-				try {
-					wait(200);
-					controller.send(new TextChange(
-						0, 0, "1", OptionalLong.empty()
-					));
-				} catch(InterruptedException e) {
-					break;
-				}
-			}
-			w.detachFromBuffer(buffer);
+	@Test
+	void testWorkspaceEvents() throws ConnectionException, ControllerException {
+		String randomWorkspace = UUID.randomUUID().toString();
 
-			String anotherRandomBuffer = UUID.randomUUID().toString();
-			w.createBuffer(anotherRandomBuffer);
-			w.deleteBuffer(anotherRandomBuffer);
-		} catch(ConnectionException | ControllerException e) {
-			throw new RuntimeException(e);
-		}
+		// prepare first client
+		this.client.createWorkspace(randomWorkspace);
+		Workspace ws = this.client.joinWorkspace(randomWorkspace);
+		this.client.inviteToWorkspace(randomWorkspace, this.otherClient.getUser().name);
+
+		// prepare second client
+		this.otherClient.joinWorkspace(randomWorkspace).createBuffer(UUID.randomUUID().toString());
+
+		// block until event is received
+		assert ws.event().getChangedBuffer().isPresent();
+
+		// cleanup
+		this.otherClient.leaveWorkspace(randomWorkspace);
+		this.client.deleteWorkspace(randomWorkspace);
 	}
 
 	@Test
-	void testCursorInteractions() throws ConnectionException, InterruptedException, ControllerException {
+	void testCursorInteractions() throws ConnectionException, ControllerException, InterruptedException {
 		String randomWorkspace = UUID.randomUUID().toString();
 		String randomBuffer = UUID.randomUUID().toString();
 
 		// prepare first client
 		this.client.createWorkspace(randomWorkspace);
 		Workspace ws = this.client.joinWorkspace(randomWorkspace);
-		this.client.inviteToWorkspace(ws.getWorkspaceId(), this.otherClient.getUser().name);
 		ws.createBuffer(randomBuffer);
 		ws.attachToBuffer(randomBuffer);
 		CursorController cursor = ws.getCursor();
 
-		// prepare second client (ignore initial cursor for convenience)
-		this.otherClient.joinWorkspace(randomWorkspace).attachToBuffer(randomBuffer);
+		// prepare second client and clean queue
+		this.client.inviteToWorkspace(ws.getWorkspaceId(), this.otherClient.getUser().name);
+		CursorController otherCursor = this.otherClient.joinWorkspace(randomWorkspace).getCursor();
+		while(cursor.tryRecv().isPresent()) {}
 
-		cursor.callback(bufferController -> {
-			assert true;
-		});
+		Cursor someCursor = new Cursor(
+			0, 0, 0, 0, randomBuffer, this.otherClient.getUser().name
+		);
 
-		Thread t = new Thread(() -> parallelCursorThreadTask(randomWorkspace, randomBuffer));
-		t.start();
+		/* Testing callback */
+		cursor.callback(cursorController -> new Thread(() -> {
+			try {
+				assert cursorController.recv().equals(someCursor);
+			} catch(ControllerException e) {
+				throw new RuntimeException(e);
+			}
+		}).start());
 
-		// wait for other thread to attach
-		while(ws.listBufferUsers(randomBuffer).length == 1) {
-			wait(50);
-		}
+		otherCursor.send(someCursor);
+		cursor.poll(); // wait for other thread to send
+		cursor.clearCallback(); // should have now received the first callback, clear it
 
+		/* Testing recv and tryRecv */
+		otherCursor.send(someCursor);
+		cursor.recv(); // block until receive
+
+		// send flat cursor
+		otherCursor.send(new Cursor(
+			0, 0, 0, 0, randomBuffer, this.otherClient.getUser().name
+		));
 		cursor.poll();
-		cursor.clearCallback();
+		assert cursor.tryRecv().isPresent(); // expect something (and consume)
+		assert cursor.tryRecv().isEmpty(); // expect nothing
 
-		cursor.recv();
-
-		cursor.poll();
-		assert cursor.tryRecv().isPresent();
-
-		assert cursor.tryRecv().isEmpty();
-
-		cursor.send(new Cursor(0, 0, 0, 0, randomBuffer, this.client.getUser().name));
-
-		assert ws.detachFromBuffer(randomBuffer) == DETACHING;
-		ws.deleteBuffer(randomBuffer);
-
-		t.join(1000);
-
+		// cleanup
+		this.otherClient.leaveWorkspace(randomWorkspace);
 		this.client.leaveWorkspace(randomWorkspace);
 		this.client.deleteWorkspace(randomWorkspace);
-
-	}
-
-	private void parallelCursorThreadTask(String workspace, String buffer) {
-		try {
-			@SuppressWarnings("OptionalGetWithoutIsPresent")
-			Workspace w = this.otherClient.getWorkspace(workspace).get();
-			for(int i = 0; i < 3; i++) {
-				try {
-					wait(200);
-					w.getCursor().send(new Cursor(
-						0, 0, 0, 0, buffer, this.otherClient.getUser().name
-					));
-				} catch(InterruptedException e) {
-					break;
-				}
-			}
-			w.detachFromBuffer(buffer);
-		} catch(ControllerException e) {
-			throw new RuntimeException(e);
-		}
 	}
 }
