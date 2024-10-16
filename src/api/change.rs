@@ -31,18 +31,18 @@ pub struct BufferUpdate {
 /// ### Examples
 /// To insert 'a' after 4th character we should send:
 /// ```
-/// codemp::api::TextChange { start: 4, end: 4, content: "a".into() };
+/// codemp::api::TextChange { start_idx: 4, end_idx: 4, content: "a".into() };
 /// ```
 ///
 /// To delete the fourth character we should send:
 /// ```
-/// codemp::api::TextChange { start: 3, end: 4, content: "".into() };
+/// codemp::api::TextChange { start_idx: 3, end_idx: 4, content: "".into() };
 /// ```
 ///
 /// ```
 /// let change = codemp::api::TextChange {
-///   start: 6,
-///   end: 11,
+///   start_idx: 6,
+///   end_idx: 11,
 ///   content: "mom".to_string()
 /// };
 /// let before = "hello world!";

@@ -72,7 +72,7 @@
 //! if let Some(mut update) = buffer.try_recv().await.unwrap() {
 //!   println!(
 //!     "content: {}, span: {}-{}",
-//!     update.change.content, update.change.start, update.change.end
+//!     update.change.content, update.change.start_idx, update.change.end_idx
 //!   );
 //!   buffer.ack(update.version);
 //! } // if None, no changes are currently available
