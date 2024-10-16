@@ -13,7 +13,6 @@ import java.util.OptionalLong;
 @ToString
 @EqualsAndHashCode
 @RequiredArgsConstructor
-@SuppressWarnings("OptionalUsedAsFieldOrParameterType")
 public class TextChange {
 	/**
 	 * The starting position of the change.

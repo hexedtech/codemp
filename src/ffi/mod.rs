@@ -80,10 +80,9 @@
 //! import codemp
 //!
 //! # connect first, api.code.mp is managed by hexed.technology
-//! config = codemp.get_default_config()
-//! config.username = "mail@example.net"
-//! config.password = "dont-use-this-password"
-//! client = codemp.connect(config).wait()
+//! client = codemp.connect(
+//!   codemp.Config('mail@example.net', 'dont-use-this-password')
+//! ).wait()
 //!
 //! # create and join a workspace
 //! client.create_workspace("some-workspace").wait()
@@ -94,14 +93,16 @@
 //! buffer = workspace.attach_buffer("/my/file.txt").wait()
 //!
 //! # write `hello!` at the beginning of this buffer
-//! buffer.send(
-//!   0, 0, "hello!"
-//! ).wait()
+//! buffer.send(codemp.TextChange(
+//!   start=0, end=0,
+//!   content="hello!"
+//! )).wait()
 //!
 //! # wait for cursor movements
 //! while true:
 //!   event = workspace.cursor().recv().wait()
 //!   print(f"user {event.user} moved on buffer {event.buffer}")
+//!
 //! ```
 //!
 //! ## Lua
