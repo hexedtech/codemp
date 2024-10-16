@@ -170,6 +170,17 @@ impl User {
 		Ok(())
 	}
 
+	#[getter]
+	fn get_name(&self) -> pyo3::PyResult<String> {
+		Ok(self.name.clone())
+	}
+	
+	#[setter]
+	fn set_name(&mut self, value: String) -> pyo3::PyResult<()> {
+		self.name = value;
+		Ok(())
+	}
+
 	fn __str__(&self) -> String {
 		format!("{self:?}")
 	}
