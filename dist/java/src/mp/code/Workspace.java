@@ -198,6 +198,8 @@ public final class Workspace {
 	/**
 	 * Registers a callback to be invoked whenever a new {@link Event} is ready to be received.
 	 * This will not work unless a Java thread has been dedicated to the event loop.
+	 * @param cb a {@link Consumer} that receives the controller when the change occurs;
+	 *           you should probably spawn a new thread in here, to avoid deadlocking
 	 * @see Extensions#drive(boolean)
 	 */
 	public void callback(Consumer<Workspace> cb) {

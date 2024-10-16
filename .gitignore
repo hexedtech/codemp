@@ -28,6 +28,7 @@ dist/java/.gradle/
 dist/java/.project
 dist/java/.settings/
 dist/java/bin/
+dist/java/artifacts/
 
 # intellij insists on creating the wrapper every time even if it's not strictly necessary
 dist/java/gradle/

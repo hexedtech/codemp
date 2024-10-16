@@ -3,9 +3,6 @@ package mp.code.data;
 import lombok.EqualsAndHashCode;
 import lombok.RequiredArgsConstructor;
 import lombok.ToString;
-import mp.code.Extensions;
-
-import java.util.OptionalLong;
 
 /**
  * A data class holding information about a text change.
