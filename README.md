@@ -14,10 +14,10 @@ as well as a remote virtual workspace for you and your team.
 
 > `codemp` is build with state-of-the-art CRDT technology, guaranteeing eventual consistency.
 
-This means that everyone is guaranteed to converge to a consistent state once all changes are received
-no matter the order or the timing due to unreliable networks or constrained resources. And similarly, your
-changes will always carry their original intention. On top of this baseline, `codemp`'s protocol is optimized for speed 
-and low network footprint, meaning even slow connections can provide stable real-time editing.
+This means that all agents are guaranteed to converge to a consistent state once all changes are received,
+_no matter their order or timing_, while preserving each operation's original intention. On top of this
+baseline, `codemp`'s protocol is optimized for speed and low network footprint, meaning even slow
+connections or dated hardware can provide stable real-time editing.
 
 The full documentation is available on [docs.rs](https://docs.rs/codemp/).
 
