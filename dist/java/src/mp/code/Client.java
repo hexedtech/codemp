@@ -59,7 +59,7 @@ public final class Client {
 	private static native void create_workspace(long self, String workspaceId) throws ConnectionRemoteException;
 
 	/**
-	 * Creates a workspace. You need to call {@link #joinWorkspace(String)} to actually join
+	 * Creates a workspace. You need to call {@link #attachWorkspace(String)} to actually join
 	 * and interact with it.
 	 * @param workspaceId the id of the new workspace
 	 * @throws ConnectionRemoteException if an error occurs in communicating with the server
