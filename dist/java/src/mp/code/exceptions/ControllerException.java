@@ -2,8 +2,8 @@ package mp.code.exceptions;
 
 /**
  * An exception that may occur when a {@link mp.code.BufferController} or
- * a {@link mp.code.CursorController} perform an illegal operation.
- * It may also occur as a result of {@link mp.code.Workspace#event()}.
+ * a {@link mp.code.CursorController} or {@link mp.code.Workspace} (in the
+ * receiver part) perform an illegal operation.
  */
 public abstract class ControllerException extends Exception {
 

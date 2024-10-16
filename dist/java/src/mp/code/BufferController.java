@@ -70,6 +70,7 @@ public final class BufferController {
 
 	/**
 	 * Tries to send a {@link TextChange} update.
+	 * @param change the update to send
 	 * @throws ControllerException if the controller was stopped
 	 */
 	public void send(TextChange change) throws ControllerException {
@@ -81,6 +82,8 @@ public final class BufferController {
 	/**
 	 * Registers a callback to be invoked whenever a {@link BufferUpdate} occurs.
 	 * This will not work unless a Java thread has been dedicated to the event loop.
+	 * @param cb a {@link Consumer} that receives the controller when the change occurs;
+	 *           you should probably spawn a new thread in here, to avoid deadlocking
 	 * @see Extensions#drive(boolean)
 	 */
 	public void callback(Consumer<BufferController> cb) {

@@ -23,26 +23,39 @@ jobs:
             filename: codemp.dll
           - runner: macos-14
             target: darwin-arm64
-            filename: codemp.dylib
+            filename: libcodemp.dylib
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: arduino/setup-protoc@v3
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
+      - run: cargo build --release --features=java
+      - uses: actions/upload-artifact@v4
+        with:
+          name: codemp-java-${{ matrix.platform.target }}
+          path: target/release/${{ matrix.platform.filename }}
+
+  publish:
+    needs: [build]
+    runs-on: ubuntu-latest 
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist/java/artifacts
+          pattern: codemp-java-*
+          merge-multiple: true
+      - run: tree
+        working-directory: dist/java
       - uses: actions/setup-java@v4
         with:
             distribution: 'temurin'
             java-version: '11'
       - uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: "8.10" # Quotes required to prevent YAML converting to number
-      - run: gradle build
+          gradle-version: "8.10"
         working-directory: dist/java
-      - uses: actions/upload-artifact@v4
-        with:
-          name: codemp-java-${{ matrix.platform.target }}
-          path: dist/java/build/libs
       - run: gradle publish
         working-directory: dist/java
         env:
@@ -50,3 +63,4 @@ jobs:
           ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
           ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.MAVEN_CENTRAL_GPG_SECRET_KEY }}
           ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.MAVEN_CENTRAL_GPG_PASSWORD }}
+
