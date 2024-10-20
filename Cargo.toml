@@ -64,7 +64,7 @@ napi-build = { version = "2.1", optional = true }
 pyo3-build-config = { version = "0.22", optional = true }
 
 [features]
-default = ["js"]
+default = []
 # extra
 async-trait = ["dep:async-trait"]
 serialize = ["dep:serde", "uuid/serde"]
