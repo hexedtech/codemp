@@ -279,14 +279,14 @@ impl TextChange {
 	) -> PyResult<Self> {
 		if let Some(kwds) = kwds {
 			Ok(Self {
-				start_idx,
-				end_idx,
+				start_idx: start,
+				end_idx: end,
 				content,
 			})
 		} else {
 			Ok(Self {
-				start_idx,
-				end_idx,
+				start_idx: start,
+				end_idx: end,
 				content,
 			})
 		}

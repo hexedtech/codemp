@@ -72,9 +72,8 @@ impl BufferController {
 	}
 
 	#[pyo3(name = "ack")]
-	fn pyack(&self, py: Python, v: Vec<u64>) -> PyResult<()> {
-		let this = self.clone();
-		a_sync_allow_threads!(py, this.ack(v))
+	fn pyack(&self, py: Python, v: Vec<i64>) -> () {
+		self.ack(v)
 	}
 
 	#[pyo3(name = "send")]
