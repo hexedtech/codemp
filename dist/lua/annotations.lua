@@ -324,8 +324,9 @@ function Workspace:fetch_users(path) end
 function Workspace:fetch_buffer_users(path) end
 
 ---@class (exact) WorkspaceEvent
----@field type string
----@field value string
+---@field type string can be "UserJoin", "UserLeave" or "FileTreeUpdated"
+---@field name? string present for "UserJoin" and "UserLeave"
+---@field path? string present for "FileTreeUpdated"
 
 ---@return MaybeWorkspaceEventPromise
 ---@async
