@@ -30,7 +30,6 @@ jobs:
         toolchain:
           - stable
           - beta
-          - nightly
     steps:
       - uses: arduino/setup-protoc@v3
         with:
@@ -49,7 +48,6 @@ jobs:
         toolchain:
           - stable
           - beta
-          - nightly
     steps:
       - uses: arduino/setup-protoc@v3
         with:
