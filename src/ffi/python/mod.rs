@@ -227,39 +227,16 @@ impl Cursor {
 #[pymethods]
 impl Selection {
 	#[new]
-	#[pyo3(signature = (**kwds))]
-	pub fn py_new(kwds: Option<&Bound<'_, PyDict>>) -> PyResult<Self> {
+	#[pyo3(signature = (*, start_row, start_col, end_row, end_col, buffer, **kwds))]
+	pub fn py_new(
+		start_row: i32,
+		start_col: i32,
+		end_row: i32,
+		end_col: i32,
+		buffer: String,
+		kwds: Option<&Bound<'_, PyDict>>,
+	) -> PyResult<Self> {
 		if let Some(kwds) = kwds {
-			let start_row = if let Some(e) = kwds.get_item("start_row")? {
-				e.extract()?
-			} else {
-				0
-			};
-
-			let start_col = if let Some(e) = kwds.get_item("start_col")? {
-				e.extract()?
-			} else {
-				0
-			};
-
-			let end_row = if let Some(e) = kwds.get_item("end_row")? {
-				e.extract()?
-			} else {
-				0
-			};
-
-			let end_col = if let Some(e) = kwds.get_item("end_col")? {
-				e.extract()?
-			} else {
-				0
-			};
-
-			let buffer = if let Some(e) = kwds.get_item("buffer")? {
-				e.extract()?
-			} else {
-				String::default()
-			};
-
 			Ok(Self {
 				start_row,
 				start_col,
@@ -268,7 +245,13 @@ impl Selection {
 				buffer,
 			})
 		} else {
-			Ok(Self::default())
+			Ok(Self {
+				start_row,
+				start_col,
+				end_row,
+				end_col,
+				buffer,
+			})
 		}
 	}
 
@@ -287,34 +270,25 @@ impl BufferUpdate {
 #[pymethods]
 impl TextChange {
 	#[new]
-	#[pyo3(signature = (**kwds))]
-	pub fn py_new(kwds: Option<&Bound<'_, PyDict>>) -> PyResult<Self> {
+	#[pyo3(signature = (*, start, end, content, **kwds))]
+	pub fn py_new(
+		start: u32,
+		end: u32,
+		content: String,
+		kwds: Option<&Bound<'_, PyDict>>,
+	) -> PyResult<Self> {
 		if let Some(kwds) = kwds {
-			let start_idx = if let Some(e) = kwds.get_item("start")? {
-				e.extract()?
-			} else {
-				0
-			};
-
-			let end_idx = if let Some(e) = kwds.get_item("end")? {
-				e.extract()?
-			} else {
-				0
-			};
-
-			let content = if let Some(e) = kwds.get_item("content")? {
-				e.extract()?
-			} else {
-				String::default()
-			};
-
 			Ok(Self {
 				start_idx,
 				end_idx,
 				content,
 			})
 		} else {
-			Ok(Self::default())
+			Ok(Self {
+				start_idx,
+				end_idx,
+				content,
+			})
 		}
 	}
 
