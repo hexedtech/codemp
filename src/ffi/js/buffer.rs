@@ -33,10 +33,9 @@ impl BufferController {
 
 	/// Acknowledge TextChange
 	#[napi(js_name = "ack")]
-	pub fn js_ack(&self, version: Vec<i64>){
+	pub fn js_ack(&self, version: Vec<i64>) {
 		self.ack(version);
 	}
-
 
 	/// Remove registered buffer callback
 	#[napi(js_name = "clearCallback")]
