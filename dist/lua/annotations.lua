@@ -377,9 +377,6 @@ local BufferUpdate = {}
 function TextChange:apply(other) end
 
 ---@param change TextChange text change to broadcast
----@return NilPromise
----@async
----@nodiscard
 ---update buffer with a text change; note that to delete content should be empty but not span, while to insert span should be empty but not content (can insert and delete at the same time)
 function BufferController:send(change) end
 
@@ -438,9 +435,6 @@ local CursorController = {}
 ---@field sel Selection selected region for this user
 
 ---@param cursor Selection cursor position to broadcast
----@return NilPromise
----@async
----@nodiscard
 ---update cursor position by sending a cursor event to server
 function CursorController:send(cursor) end
 
