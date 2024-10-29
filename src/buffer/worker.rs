@@ -83,7 +83,7 @@ impl BufferController {
 			content_checkout: req_rx,
 			delta_req: recv_rx,
 			callback: cb_rx,
-			oplog: OpLog::new(),
+			oplog,
 			branch: Branch::new(),
 			timer: Timer::new(10), // TODO configurable!
 		};
