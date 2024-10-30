@@ -58,7 +58,7 @@ jobs:
           CODEMP_TEST_PASSWORD_BOB: ${{ secrets.CODEMP_TEST_PASSWORD_BOB }}
 
   test-build:
-    needs: [test-unit]
+    needs: [test-functional]
     runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
