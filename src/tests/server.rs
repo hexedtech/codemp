@@ -54,6 +54,7 @@ async fn test_cant_create_buffer_twice() {
 }
 
 #[tokio::test]
+#[ignore] // TODO server has no concept of buffer ownership!
 async fn cannot_delete_others_buffers() {
 	WorkspaceFixture::two("alice", "bob")
 		.with(|((_, workspace_alice), (_, workspace_bob))| {

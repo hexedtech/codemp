@@ -125,7 +125,6 @@ async fn test_content_converges() {
 				eprintln!("bob  : {bob_content}");
 
 				assert_or_err!(alice_content == bob_content);
-				assert_or_err!(false);
 
 				Ok(())
 			}
