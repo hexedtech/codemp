@@ -100,8 +100,8 @@ async fn test_content_converges() {
 
 				// TODO is there a nicer way to make sure we received all changes?
 
-				for i in 0..100 {
-					tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+				for i in 0..20 {
+					tokio::time::sleep(std::time::Duration::from_millis(200)).await;
 					match bob.try_recv().await? {
 						Some(change) => bob.ack(change.version),
 						None => break,
@@ -109,8 +109,8 @@ async fn test_content_converges() {
 					eprintln!("bob more to recv at attempt #{i}");
 				}
 
-				for i in 0..100 {
-					tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+				for i in 0..20 {
+					tokio::time::sleep(std::time::Duration::from_millis(200)).await;
 					match alice.try_recv().await? {
 						Some(change) => alice.ack(change.version),
 						None => break,
