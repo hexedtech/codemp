@@ -14,12 +14,23 @@ permissions:
 jobs:
   test-unit:
     runs-on: ubuntu-latest
+    steps:
+      - uses: arduino/setup-protoc@v3
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo test --verbose
+
+  test-beta:
+    runs-on: ubuntu-latest
+    needs: [test-unit]
     strategy:
       fail-fast: false
       matrix:
         toolchain:
-          - stable
           - beta
+          - nightly
     steps:
       - uses: arduino/setup-protoc@v3
         with:
@@ -29,6 +40,22 @@ jobs:
         with:
           toolchain: ${{ matrix.toolchain }}
       - run: cargo test --verbose
+
+  test-functional:
+    needs: [test-unit]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: arduino/setup-protoc@v3
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo test --verbose --features=test-e2e
+        env:
+          CODEMP_TEST_USERNAME_ALICE: ${{ secrets.CODEMP_TEST_USERNAME_ALICE }}
+          CODEMP_TEST_PASSWORD_ALICE: ${{ secrets.CODEMP_TEST_PASSWORD_ALICE }}
+          CODEMP_TEST_USERNAME_BOB: ${{ secrets.CODEMP_TEST_USERNAME_BOB }}
+          CODEMP_TEST_PASSWORD_BOB: ${{ secrets.CODEMP_TEST_PASSWORD_BOB }}
 
   test-build:
     needs: [test-unit]
@@ -45,32 +72,10 @@ jobs:
           - js
           - py
           - luajit
-          - lua54
-        toolchain:
-          - stable
-          - beta
     steps:
       - uses: arduino/setup-protoc@v3
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: ${{ matrix.toolchain }}
+      - uses: dtolnay/rust-toolchain@stable
       - run: cargo build --release --verbose --features=${{ matrix.features }}
-
-  test-functional:
-    needs: [test-unit]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: arduino/setup-protoc@v3
-        with:
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@master
-      - run: cargo test --verbose --features=test-e2e
-        env:
-          CODEMP_TEST_USERNAME_ALICE: ${{ secrets.CODEMP_TEST_USERNAME_ALICE }}
-          CODEMP_TEST_PASSWORD_ALICE: ${{ secrets.CODEMP_TEST_PASSWORD_ALICE }}
-          CODEMP_TEST_USERNAME_BOB: ${{ secrets.CODEMP_TEST_USERNAME_BOB }}
-          CODEMP_TEST_PASSWORD_BOB: ${{ secrets.CODEMP_TEST_PASSWORD_BOB }}
