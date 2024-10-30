@@ -68,8 +68,6 @@ jobs:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: ${{ matrix.toolchain }}
       - run: cargo test --verbose --features=test-e2e
         env:
           CODEMP_TEST_USERNAME_ALICE: ${{ secrets.CODEMP_TEST_USERNAME_ALICE }}
