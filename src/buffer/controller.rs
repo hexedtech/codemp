@@ -56,7 +56,7 @@ pub(crate) struct BufferControllerInner {
 	pub(crate) ops_in: mpsc::UnboundedSender<TextChange>,
 	pub(crate) poller: mpsc::UnboundedSender<oneshot::Sender<()>>,
 	pub(crate) content_request: mpsc::Sender<oneshot::Sender<String>>,
-	pub(crate) delta_request: mpsc::Sender<(LocalVersion, oneshot::Sender<Option<BufferUpdate>>)>,
+	pub(crate) delta_request: mpsc::Sender<oneshot::Sender<Option<BufferUpdate>>>,
 	pub(crate) callback: watch::Sender<Option<ControllerCallback<BufferController>>>,
 	pub(crate) ack_tx: mpsc::UnboundedSender<LocalVersion>,
 }
@@ -93,7 +93,7 @@ impl AsyncReceiver<BufferUpdate> for BufferController {
 		}
 
 		let (tx, rx) = oneshot::channel();
-		self.0.delta_request.send((last_update, tx)).await?;
+		self.0.delta_request.send(tx).await?;
 		Ok(rx.await?)
 	}
 
