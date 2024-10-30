@@ -89,19 +89,19 @@ impl WorkspaceFixture {
 		}
 	}
 
-	pub fn one(user: &str) -> Self {
+	pub fn one(user: &str, ws: &str) -> Self {
 		Self {
 			user: user.to_string(),
 			invite: None,
-			workspace: uuid::Uuid::new_v4().to_string(),
+			workspace: format!("{ws}-{}", uuid::Uuid::new_v4()),
 		}
 	}
 
-	pub fn two(user: &str, invite: &str) -> Self {
+	pub fn two(user: &str, invite: &str, ws: &str) -> Self {
 		Self {
 			user: user.to_string(),
 			invite: Some(invite.to_string()),
-			workspace: uuid::Uuid::new_v4().to_string(),
+			workspace: format!("{ws}-{}", uuid::Uuid::new_v4()),
 		}
 	}
 }

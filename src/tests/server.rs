@@ -2,7 +2,7 @@ use super::{assert_or_err, fixtures::{ClientFixture, ScopedFixture, WorkspaceFix
 
 #[tokio::test]
 async fn cannot_delete_others_workspaces() {
-	WorkspaceFixture::two("alice", "bob")
+	WorkspaceFixture::two("alice", "bob", "test-cannot-delete-others-workspaces")
 		.with(|((_, ws_alice), (client_bob, _))| {
 			let ws_alice = ws_alice.clone();
 			let client_bob = client_bob.clone();
@@ -20,7 +20,7 @@ async fn cannot_delete_others_workspaces() {
 
 #[tokio::test]
 async fn test_buffer_create() {
-	WorkspaceFixture::one("alice")
+	WorkspaceFixture::one("alice", "test-buffer-create")
 		.with(|(_, workspace_alice): &mut (crate::Client, crate::Workspace)| {
 			let buffer_name = uuid::Uuid::new_v4().to_string();
 			let workspace_alice = workspace_alice.clone();
@@ -38,7 +38,7 @@ async fn test_buffer_create() {
 
 #[tokio::test]
 async fn test_cant_create_buffer_twice() {
-	WorkspaceFixture::one("alice")
+	WorkspaceFixture::one("alice", "test-cant-create-buffer-twice")
 		.with(|(_, ws): &mut (crate::Client, crate::Workspace)| {
 			let ws = ws.clone();
 			async move {
@@ -56,7 +56,7 @@ async fn test_cant_create_buffer_twice() {
 #[tokio::test]
 #[ignore] // TODO server has no concept of buffer ownership!
 async fn cannot_delete_others_buffers() {
-	WorkspaceFixture::two("alice", "bob")
+	WorkspaceFixture::two("alice", "bob", "test-cannot-delete-others-buffers")
 		.with(|((_, workspace_alice), (_, workspace_bob))| {
 			let buffer_name = uuid::Uuid::new_v4().to_string();
 			let workspace_alice = workspace_alice.clone();
@@ -76,7 +76,7 @@ async fn test_workspace_interactions() {
 	if let Err(e) = async {
 		let client_alice = ClientFixture::of("alice").setup().await?;
 		let client_bob = ClientFixture::of("bob").setup().await?;
-		let workspace_name = uuid::Uuid::new_v4().to_string();
+		let workspace_name = format!("test-workspace-interactions-{}", uuid::Uuid::new_v4().to_string());
 
 		client_alice.create_workspace(&workspace_name).await?;
 		let owned_workspaces = client_alice.fetch_owned_workspaces().await?;

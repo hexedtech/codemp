@@ -3,7 +3,7 @@ use super::{assert_or_err, fixtures::{ScopedFixture, WorkspaceFixture}};
 
 #[tokio::test]
 async fn test_buffer_search() {
-	WorkspaceFixture::one("alice")
+	WorkspaceFixture::one("alice", "test-buffer-search")
 		.with(|(_, workspace_alice): &mut (crate::Client, crate::Workspace)| {
 			let buffer_name = uuid::Uuid::new_v4().to_string();
 			let workspace_alice = workspace_alice.clone();
@@ -23,7 +23,7 @@ async fn test_buffer_search() {
 
 #[tokio::test]
 async fn test_send_operation() {
-	WorkspaceFixture::two("alice", "bob")
+	WorkspaceFixture::two("alice", "bob", "test-send-operation")
 		.with(|((_, workspace_alice), (_, workspace_bob))| {
 			let buffer_name = uuid::Uuid::new_v4().to_string();
 			let workspace_alice = workspace_alice.clone();
@@ -53,7 +53,7 @@ async fn test_send_operation() {
 
 #[tokio::test]
 async fn test_content_converges() {
-	WorkspaceFixture::two("alice", "bob")
+	WorkspaceFixture::two("alice", "bob", "test-content-converges")
 		.with(|((_, workspace_alice), (_, workspace_bob))| {
 			let buffer_name = uuid::Uuid::new_v4().to_string();
 			let workspace_alice = workspace_alice.clone();
