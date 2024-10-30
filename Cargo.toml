@@ -68,6 +68,8 @@ default = []
 # extra
 async-trait = ["dep:async-trait"]
 serialize = ["dep:serde", "uuid/serde"]
+# special tests which require more setup
+test-e2e = []
 # ffi
 java = ["lazy_static", "jni", "tracing-subscriber", "jni-toolbox"]
 js = ["napi-build", "tracing-subscriber", "napi", "napi-derive"]

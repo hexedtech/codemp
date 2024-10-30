@@ -125,6 +125,9 @@ pub mod ext;
 /// language-specific ffi "glue"
 pub mod ffi;
 
+#[cfg(any(feature = "test-e2e", test))]
+pub mod tests;
+
 /// internal network services and interceptors
 pub(crate) mod network;
 
