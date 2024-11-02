@@ -1,7 +1,5 @@
 use std::{error::Error, future::Future};
 
-// TODO create a BufferFixture too
-
 #[allow(async_fn_in_trait)]
 pub trait ScopedFixture<T: Sized> {
 	async fn setup(&mut self) -> Result<T, Box<dyn Error>>;
@@ -44,6 +42,7 @@ pub struct ClientFixture {
 	username: Option<String>,
 	password: Option<String>,
 }
+
 impl ClientFixture {
 	pub fn of(name: &str) -> Self {
 		Self {
@@ -77,14 +76,15 @@ impl ScopedFixture<crate::Client> for ClientFixture {
 
 pub struct WorkspaceFixture {
 	user: String,
-	invite: Option<String>,
+	invitee: Option<String>,
 	workspace: String,
 }
+
 impl WorkspaceFixture {
-	pub fn of(user: &str, invite: &str, workspace: &str) -> Self {
+	pub fn of(user: &str, invitee: &str, workspace: &str) -> Self {
 		Self {
 			user: user.to_string(),
-			invite: Some(invite.to_string()),
+			invitee: Some(invitee.to_string()),
 			workspace: workspace.to_string(),
 		}
 	}
@@ -92,7 +92,7 @@ impl WorkspaceFixture {
 	pub fn one(user: &str, ws: &str) -> Self {
 		Self {
 			user: user.to_string(),
-			invite: None,
+			invitee: None,
 			workspace: format!("{ws}-{}", uuid::Uuid::new_v4()),
 		}
 	}
@@ -100,7 +100,7 @@ impl WorkspaceFixture {
 	pub fn two(user: &str, invite: &str, ws: &str) -> Self {
 		Self {
 			user: user.to_string(),
-			invite: Some(invite.to_string()),
+			invitee: Some(invite.to_string()),
 			workspace: format!("{ws}-{}", uuid::Uuid::new_v4()),
 		}
 	}
@@ -127,9 +127,9 @@ impl ScopedFixture<(crate::Client, crate::Workspace)> for WorkspaceFixture {
 impl ScopedFixture<((crate::Client, crate::Workspace), (crate::Client, crate::Workspace))> for WorkspaceFixture {
 	async fn setup(&mut self) -> Result<((crate::Client, crate::Workspace), (crate::Client, crate::Workspace)), Box<dyn Error>> {
 		let client = ClientFixture::of(&self.user).setup().await?;
-		let invite_client = ClientFixture::of(
+		let invitee_client = ClientFixture::of(
 			&self
-				.invite
+				.invitee
 				.clone()
 				.unwrap_or(uuid::Uuid::new_v4().to_string()),
 		)
@@ -137,17 +137,90 @@ impl ScopedFixture<((crate::Client, crate::Workspace), (crate::Client, crate::Wo
 		.await?;
 		client.create_workspace(&self.workspace).await?;
 		client
-			.invite_to_workspace(&self.workspace, invite_client.current_user().name.clone())
+			.invite_to_workspace(&self.workspace, invitee_client.current_user().name.clone())
 			.await?;
 		let workspace = client.attach_workspace(&self.workspace).await?;
-		let invite = invite_client.attach_workspace(&self.workspace).await?;
-		Ok(((client, workspace), (invite_client, invite)))
+		let invitee_workspace = invitee_client.attach_workspace(&self.workspace).await?;
+		Ok(((client, workspace), (invitee_client, invitee_workspace)))
 	}
 
 	async fn cleanup(&mut self, resource: Option<((crate::Client, crate::Workspace), (crate::Client, crate::Workspace))>) {
-		if let Some(((client, _workspace), (_, _))) = resource {
+		if let Some(((client, _), (_, _))) = resource {
 			client.leave_workspace(&self.workspace);
 			if let Err(e) = client.delete_workspace(&self.workspace).await {
+				eprintln!("could not delete workspace: {e}");
+			}
+		}
+	}
+}
+
+pub struct BufferFixture {
+	user: String,
+	invitee: Option<String>,
+	workspace: String,
+	buffer: String
+}
+
+impl BufferFixture {
+	pub fn of(user: &str, invitee: &str, workspace: &str, buffer: &str) -> Self {
+		Self {
+			user: user.to_string(),
+			invitee: Some(invitee.to_string()),
+			workspace: workspace.to_string(),
+			buffer: buffer.to_string()
+		}
+	}
+
+	pub fn one(user: &str, ws: &str, buf: &str) -> Self {
+		Self {
+			user: user.to_string(),
+			invitee: None,
+			workspace: format!("{ws}-{}", uuid::Uuid::new_v4()),
+			buffer: buf.to_string()
+		}
+	}
+
+	pub fn two(user: &str, invite: &str, ws: &str, buf: &str) -> Self {
+		Self {
+			user: user.to_string(),
+			invitee: Some(invite.to_string()),
+			workspace: format!("{ws}-{}", uuid::Uuid::new_v4()),
+			buffer: buf.to_string()
+		}
+	}
+}
+
+impl ScopedFixture<((crate::Client, crate::Workspace, crate::buffer::Controller), (crate::Client, crate::Workspace, crate::buffer::Controller))> for BufferFixture {
+	async fn setup(&mut self) -> Result<((crate::Client, crate::Workspace, crate::buffer::Controller), (crate::Client, crate::Workspace, crate::buffer::Controller)), Box<dyn Error>> {
+		let client = ClientFixture::of(&self.user).setup().await?;
+		let invitee_client = ClientFixture::of(
+			&self
+				.invitee
+				.clone()
+				.unwrap_or(uuid::Uuid::new_v4().to_string()),
+		)
+		.setup()
+		.await?;
+		client.create_workspace(&self.workspace).await?;
+		client
+			.invite_to_workspace(&self.workspace, invitee_client.current_user().name.clone())
+			.await?;
+
+		let workspace = client.attach_workspace(&self.workspace).await?;
+		workspace.create_buffer(&self.buffer).await?;
+		let buffer = workspace.attach_buffer(&self.buffer).await?;
+
+		let invitee_workspace = invitee_client.attach_workspace(&self.workspace).await?;
+		let invitee_buffer = invitee_workspace.attach_buffer(&self.buffer).await?;
+
+		Ok(((client, workspace, buffer), (invitee_client, invitee_workspace, invitee_buffer)))
+	}
+
+	async fn cleanup(&mut self, resource: Option<((crate::Client, crate::Workspace, crate::buffer::Controller), (crate::Client, crate::Workspace, crate::buffer::Controller))>) {
+		if let Some(((client, _, _), (_, _, _))) = resource {
+			// buffer deletion is implied in workspace deletion
+			client.leave_workspace(&self.workspace);
+			if let Err(e) = client.delete_workspace(&self.workspace).await { 
 				eprintln!("could not delete workspace: {e}");
 			}
 		}
