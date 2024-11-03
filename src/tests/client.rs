@@ -128,9 +128,27 @@ async fn test_attach_and_leave_workspace_interactions() {
 		})
 		.await
 }
+
+#[tokio::test]
+async fn test_delete_empty_workspace() {
+	ClientFixture::of("alice")
+		.with(|client| {
+			let client = client.clone();
+
+			async move {
+				let workspace_name = uuid::Uuid::new_v4().to_string();
+
+				client.create_workspace(&workspace_name).await?;
+				client.delete_workspace(&workspace_name).await?;
+
+				assert_or_err!(client.get_workspace(&workspace_name).is_none());
+				assert_or_err!(client.fetch_owned_workspaces().await?.is_empty());
+
 				Ok(())
 			}
 		})
+		.await
+}
 		.await;
 }
 
