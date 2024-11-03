@@ -85,6 +85,49 @@ async fn test_attaching_to_non_existing_is_error() {
 		})
 		.await
 }
+
+#[tokio::test]
+async fn test_attach_and_leave_workspace_interactions() {
+	ClientFixture::of("alice")
+		.with(|client| {
+			let client = client.clone();
+
+			async move {
+				let workspace_name = uuid::Uuid::new_v4().to_string();
+
+				client.create_workspace(&workspace_name).await?;
+				// leaving a workspace you are not attached to, returns true
+				assert_or_err!(
+				client.leave_workspace(&workspace_name),
+				"leaving a workspace you are not attached to returned false, should return true."
+			);
+
+				// leaving a workspace you are attached to, returns true
+				// when there is only one reference to it.
+				client.attach_workspace(&workspace_name).await?;
+				assert_or_err!(
+					client.leave_workspace(&workspace_name),
+					"leaving a workspace with a single reference returned false."
+				);
+
+				// we are also implicitly testing repeated leaving and attaching
+				// to the same workspace.
+				let res = client.attach_workspace(&workspace_name).await;
+				assert_or_err!(res.is_ok(), "could not attach to the same workspace immediately after successfully leaving it.");
+
+				// we should have an extra reference here, which should make the
+				// consume return false.
+				let ws = res.unwrap();
+				assert_or_err!(
+					!client.leave_workspace(&workspace_name),
+					"leaving a workspace while some reference still exist returned true."
+				);
+
+				Ok(())
+			}
+		})
+		.await
+}
 				Ok(())
 			}
 		})
