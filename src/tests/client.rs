@@ -185,6 +185,63 @@ async fn test_deleting_twice_or_non_existing_is_an_error() {
 // 		})
 // 		.await
 // }
+
+#[tokio::test]
+async fn test_invite_user_to_workspace_and_invited_lookup() {
+	WorkspaceFixture::one("bob", "workspace-di-bob")
+		.with(
+			|(client_bob, workspace_bob): &mut (crate::Client, crate::Workspace)| {
+				let client_bob = client_bob.clone();
+				let workspace_bob = workspace_bob.clone();
+
+				async move {
+					let client_alice = ClientFixture::of("alice").setup().await?;
+
+					let wrong_workspace_name = uuid::Uuid::new_v4().to_string();
+					// inviting to a non existing workspace is an error
+					assert_or_err!(client_bob
+						.invite_to_workspace(
+							wrong_workspace_name,
+							client_alice.current_user().name.clone(),
+						)
+						.await
+						.is_err());
+
+					client_bob
+						.invite_to_workspace(
+							workspace_bob.id(),
+							client_alice.current_user().name.clone(),
+						)
+						.await?;
+
+					// there are two users now in the workspace of bob
+					// alice is one of the users
+					// bob is one of the users
+					// the workspace appears in the joined workspaces for alice
+					// the workspace does not appear in the owned workspaces for alice
+
+					let user_list = workspace_bob.fetch_users().await?;
+					assert_or_err!(user_list.len() == 2);
+					assert_or_err!(user_list
+						.iter()
+						.any(|u| u.name == client_alice.current_user().name));
+					assert_or_err!(user_list
+						.iter()
+						.any(|u| u.name == client_bob.current_user().name));
+
+					let alice_owned_workspaces = client_alice.fetch_owned_workspaces().await?;
+					let alice_invited_workspaces = client_alice.fetch_joined_workspaces().await?;
+
+					assert_or_err!(alice_owned_workspaces.is_empty());
+					assert_or_err!(alice_invited_workspaces.contains(&workspace_bob.id()));
+					Ok(())
+				}
+			},
+		)
+		.await
+}
+
+// Now we can use workspace fixtures with invite.
 		.await;
 }
 
