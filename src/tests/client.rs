@@ -47,6 +47,26 @@ async fn test_cant_create_same_workspace_more_than_once() {
 		})
 		.await
 }
+
+#[tokio::test]
+async fn test_workspace_attach_and_active_workspaces() {
+	ClientFixture::of("alice")
+		.with(|client| {
+			let client = client.clone();
+
+			async move {
+				let workspace_name = uuid::Uuid::new_v4().to_string();
+
+				client.create_workspace(&workspace_name).await?;
+				let ws = client.attach_workspace(&workspace_name).await?;
+
+				assert_or_err!(ws.id() == workspace_name);
+				assert_or_err!(client.active_workspaces().contains(&workspace_name));
+				Ok(())
+			}
+		})
+		.await
+}
 				Ok(())
 			}
 		})
