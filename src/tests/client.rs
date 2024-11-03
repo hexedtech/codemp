@@ -1,20 +1,35 @@
+use super::{
+	assert_or_err,
+	fixtures::{ClientFixture, ScopedFixture, WorkspaceFixture},
+};
 use crate::api::{AsyncReceiver, AsyncSender};
 use super::{assert_or_err, fixtures::{ScopedFixture, WorkspaceFixture}};
 
 #[tokio::test]
-async fn test_buffer_search() {
-	WorkspaceFixture::one("alice", "test-buffer-search")
-		.with(|(_, workspace_alice): &mut (crate::Client, crate::Workspace)| {
-			let buffer_name = uuid::Uuid::new_v4().to_string();
-			let workspace_alice = workspace_alice.clone();
+async fn test_workspace_creation_and_lookup() {
+	ClientFixture::of("alice")
+		.with(|client| {
+			let client = client.clone();
 
 			async move {
-				workspace_alice.create_buffer(&buffer_name).await?;
-				assert_or_err!(!workspace_alice
-					.search_buffers(Some(&buffer_name[0..4]))
-					.is_empty());
-				assert_or_err!(workspace_alice.search_buffers(Some("_")).is_empty());
-				workspace_alice.delete_buffer(&buffer_name).await?;
+				let workspace_name = uuid::Uuid::new_v4().to_string();
+				let wrong_name = uuid::Uuid::new_v4().to_string();
+
+				client.create_workspace(&workspace_name).await?;
+				let ws = client.get_workspace(&workspace_name);
+				assert_or_err!(ws.is_some());
+				assert_or_err!(ws.unwrap().id() == workspace_name);
+
+				assert_or_err!(client.get_workspace(&wrong_name).is_none());
+
+				let wslist = client.fetch_owned_workspaces().await?;
+				assert_or_err!(wslist.len() == 1);
+				assert_or_err!(wslist.contains(&workspace_name));
+				Ok(())
+			}
+		})
+		.await
+}
 				Ok(())
 			}
 		})
