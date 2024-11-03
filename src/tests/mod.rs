@@ -5,6 +5,7 @@ mod client;
 mod server;
 
 pub mod fixtures;
+use crate::errors::{ConnectionError, RemoteError};
 
 #[derive(Debug)]
 pub struct AssertionError(String);
@@ -22,6 +23,27 @@ impl std::fmt::Display for AssertionError {
 }
 
 impl std::error::Error for AssertionError {}
+
+impl From<ConnectionError> for AssertionError {
+	fn from(value: ConnectionError) -> Self {
+		match value {
+			ConnectionError::Transport(error) => AssertionError::new(&format!(
+				"Connection::Transport error during setup of a test: {}",
+				error,
+			)),
+			ConnectionError::Remote(remote_error) => AssertionError::new(&format!(
+				"Connection::Remote error during setup of a test: {}",
+				remote_error,
+			)),
+		}
+	}
+}
+
+impl From<RemoteError> for AssertionError {
+	fn from(value: RemoteError) -> Self {
+		AssertionError::new(&format!("Remote error during setup of a test: {}", value,))
+	}
+}
 
 #[macro_export]
 macro_rules! assert_or_err {
