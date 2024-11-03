@@ -86,7 +86,7 @@ async fn test_workspace_interactions() {
 		let client_bob = ClientFixture::of("bob").setup().await?;
 		let workspace_name = format!(
 			"test-workspace-interactions-{}",
-			uuid::Uuid::new_v4().to_string()
+			uuid::Uuid::new_v4()
 		);
 
 		client_alice.create_workspace(&workspace_name).await?;
