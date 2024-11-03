@@ -185,10 +185,10 @@ impl Workspace {
 	///
 	/// This will stop and drop its [`buffer::Controller`].
 	///
-	/// Returns `true` if connectly dropped or wasn't present, `false` if dropped but wasn't last ref
-	///
-	/// If this method returns `false` you have a dangling ref, maybe just waiting for garbage
-	/// collection or maybe preventing the controller from being dropped completely
+	/// Returns `true` if it was connectly dropped or wasn't present, `false` if it was dropped but
+	/// wasn't the last existing reference to it. If this method returns `false` it means you have
+	/// a dangling reference somewhere. It may just be waiting for garbage collection, but as long
+	/// as it exists, it will prevent the controller from being completely dropped.
 	#[allow(clippy::redundant_pattern_matching)] // all cases are clearer this way
 	pub fn detach_buffer(&self, path: &str) -> bool {
 		match self.0.buffers.remove(path) {
