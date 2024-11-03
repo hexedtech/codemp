@@ -168,6 +168,23 @@ async fn test_deleting_twice_or_non_existing_is_an_error() {
 		})
 		.await
 }
+
+// Now we can begin using WorkspaceFixtures for with a single user.
+
+// #[tokio::test]
+// async fn test_delete_workspace_with_users_attached() {
+// 	WorkspaceFixture::one("bob", "to-be-deleted")
+// 		.with(|(client, workspace): &mut (crate::Client, crate::Workspace)| {
+
+// 			async move {
+// 				client.delete_workspace(workspace.id()).await?;
+
+// 				// TODO: I Don't know what should happen here.
+// 				Ok(())
+// 			}
+// 		})
+// 		.await
+// }
 		.await;
 }
 
