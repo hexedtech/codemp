@@ -149,6 +149,25 @@ async fn test_delete_empty_workspace() {
 		})
 		.await
 }
+
+#[tokio::test]
+async fn test_deleting_twice_or_non_existing_is_an_error() {
+	ClientFixture::of("alice")
+		.with(|client| {
+			let client = client.clone();
+
+			async move {
+				let workspace_name = uuid::Uuid::new_v4().to_string();
+
+				client.create_workspace(&workspace_name).await?;
+				client.delete_workspace(&workspace_name).await?;
+
+				assert_or_err!(client.delete_workspace(&workspace_name).await.is_err());
+				Ok(())
+			}
+		})
+		.await
+}
 		.await;
 }
 
