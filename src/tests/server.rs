@@ -1,38 +1,46 @@
-use super::{assert_or_err, fixtures::{ClientFixture, ScopedFixture, WorkspaceFixture}};
+use super::{
+	assert_or_err,
+	fixtures::{ClientFixture, ScopedFixture, WorkspaceFixture},
+};
 
-#[tokio::test]
-async fn cannot_delete_others_workspaces() {
-	WorkspaceFixture::two("alice", "bob", "test-cannot-delete-others-workspaces")
-		.with(|((_, ws_alice), (client_bob, _))| {
-			let ws_alice = ws_alice.clone();
-			let client_bob = client_bob.clone();
-			async move {
-				assert_or_err!(
-					client_bob.delete_workspace(&ws_alice.id()).await.is_err(),
-					"bob was allowed to delete a workspace he didn't own!"
-				);
-				Ok(())
-			}
+// Moved this in client for now.
+// #[tokio::test]
+// async fn cannot_delete_others_workspaces() {
+// 	WorkspaceFixture::two("alice", "bob", "test-cannot-delete-others-workspaces")
+// 		.with(|((_, ws_alice), (client_bob, _))| {
+// 			let ws_alice = ws_alice.clone();
+// 			let client_bob = client_bob.clone();
+// 			async move {
+// 				assert_or_err!(
+// 					client_bob.delete_workspace(&ws_alice.id()).await.is_err(),
+// 					"bob was allowed to delete a workspace he didn't own!"
+// 				);
+// 				Ok(())
+// 			}
 
-		})
-		.await
-}
+// 		})
+// 		.await
+// }
 
 #[tokio::test]
 async fn test_buffer_create() {
 	WorkspaceFixture::one("alice", "test-buffer-create")
-		.with(|(_, workspace_alice): &mut (crate::Client, crate::Workspace)| {
-			let buffer_name = uuid::Uuid::new_v4().to_string();
-			let workspace_alice = workspace_alice.clone();
+		.with(
+			|(_, workspace_alice): &mut (crate::Client, crate::Workspace)| {
+				let buffer_name = uuid::Uuid::new_v4().to_string();
+				let workspace_alice = workspace_alice.clone();
 
-			async move {
-				workspace_alice.create_buffer(&buffer_name).await?;
-				assert_or_err!(vec![buffer_name.clone()] == workspace_alice.fetch_buffers().await?);
-				workspace_alice.delete_buffer(&buffer_name).await?;
+				async move {
+					workspace_alice.create_buffer(&buffer_name).await?;
+					assert_or_err!(
+						vec![buffer_name.clone()] == workspace_alice.fetch_buffers().await?
+					);
+					workspace_alice.delete_buffer(&buffer_name).await?;
 
-				Ok(())
-			}
-		})
+					Ok(())
+				}
+			},
+		)
 		.await;
 }
 
@@ -76,7 +84,10 @@ async fn test_workspace_interactions() {
 	if let Err(e) = async {
 		let client_alice = ClientFixture::of("alice").setup().await?;
 		let client_bob = ClientFixture::of("bob").setup().await?;
-		let workspace_name = format!("test-workspace-interactions-{}", uuid::Uuid::new_v4().to_string());
+		let workspace_name = format!(
+			"test-workspace-interactions-{}",
+			uuid::Uuid::new_v4().to_string()
+		);
 
 		client_alice.create_workspace(&workspace_name).await?;
 		let owned_workspaces = client_alice.fetch_owned_workspaces().await?;

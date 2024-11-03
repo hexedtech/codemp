@@ -124,8 +124,21 @@ impl ScopedFixture<(crate::Client, crate::Workspace)> for WorkspaceFixture {
 	}
 }
 
-impl ScopedFixture<((crate::Client, crate::Workspace), (crate::Client, crate::Workspace))> for WorkspaceFixture {
-	async fn setup(&mut self) -> Result<((crate::Client, crate::Workspace), (crate::Client, crate::Workspace)), Box<dyn Error>> {
+impl
+	ScopedFixture<(
+		(crate::Client, crate::Workspace),
+		(crate::Client, crate::Workspace),
+	)> for WorkspaceFixture
+{
+	async fn setup(
+		&mut self,
+	) -> Result<
+		(
+			(crate::Client, crate::Workspace),
+			(crate::Client, crate::Workspace),
+		),
+		Box<dyn Error>,
+	> {
 		let client = ClientFixture::of(&self.user).setup().await?;
 		let invitee_client = ClientFixture::of(
 			&self
@@ -144,7 +157,13 @@ impl ScopedFixture<((crate::Client, crate::Workspace), (crate::Client, crate::Wo
 		Ok(((client, workspace), (invitee_client, invitee_workspace)))
 	}
 
-	async fn cleanup(&mut self, resource: Option<((crate::Client, crate::Workspace), (crate::Client, crate::Workspace))>) {
+	async fn cleanup(
+		&mut self,
+		resource: Option<(
+			(crate::Client, crate::Workspace),
+			(crate::Client, crate::Workspace),
+		)>,
+	) {
 		if let Some(((client, _), (_, _))) = resource {
 			client.leave_workspace(&self.workspace);
 			if let Err(e) = client.delete_workspace(&self.workspace).await {
@@ -158,7 +177,7 @@ pub struct BufferFixture {
 	user: String,
 	invitee: Option<String>,
 	workspace: String,
-	buffer: String
+	buffer: String,
 }
 
 impl BufferFixture {
@@ -167,7 +186,7 @@ impl BufferFixture {
 			user: user.to_string(),
 			invitee: Some(invitee.to_string()),
 			workspace: workspace.to_string(),
-			buffer: buffer.to_string()
+			buffer: buffer.to_string(),
 		}
 	}
 
@@ -176,7 +195,7 @@ impl BufferFixture {
 			user: user.to_string(),
 			invitee: None,
 			workspace: format!("{ws}-{}", uuid::Uuid::new_v4()),
-			buffer: buf.to_string()
+			buffer: buf.to_string(),
 		}
 	}
 
@@ -185,13 +204,26 @@ impl BufferFixture {
 			user: user.to_string(),
 			invitee: Some(invite.to_string()),
 			workspace: format!("{ws}-{}", uuid::Uuid::new_v4()),
-			buffer: buf.to_string()
+			buffer: buf.to_string(),
 		}
 	}
 }
 
-impl ScopedFixture<((crate::Client, crate::Workspace, crate::buffer::Controller), (crate::Client, crate::Workspace, crate::buffer::Controller))> for BufferFixture {
-	async fn setup(&mut self) -> Result<((crate::Client, crate::Workspace, crate::buffer::Controller), (crate::Client, crate::Workspace, crate::buffer::Controller)), Box<dyn Error>> {
+impl
+	ScopedFixture<(
+		(crate::Client, crate::Workspace, crate::buffer::Controller),
+		(crate::Client, crate::Workspace, crate::buffer::Controller),
+	)> for BufferFixture
+{
+	async fn setup(
+		&mut self,
+	) -> Result<
+		(
+			(crate::Client, crate::Workspace, crate::buffer::Controller),
+			(crate::Client, crate::Workspace, crate::buffer::Controller),
+		),
+		Box<dyn Error>,
+	> {
 		let client = ClientFixture::of(&self.user).setup().await?;
 		let invitee_client = ClientFixture::of(
 			&self
@@ -213,14 +245,23 @@ impl ScopedFixture<((crate::Client, crate::Workspace, crate::buffer::Controller)
 		let invitee_workspace = invitee_client.attach_workspace(&self.workspace).await?;
 		let invitee_buffer = invitee_workspace.attach_buffer(&self.buffer).await?;
 
-		Ok(((client, workspace, buffer), (invitee_client, invitee_workspace, invitee_buffer)))
+		Ok((
+			(client, workspace, buffer),
+			(invitee_client, invitee_workspace, invitee_buffer),
+		))
 	}
 
-	async fn cleanup(&mut self, resource: Option<((crate::Client, crate::Workspace, crate::buffer::Controller), (crate::Client, crate::Workspace, crate::buffer::Controller))>) {
+	async fn cleanup(
+		&mut self,
+		resource: Option<(
+			(crate::Client, crate::Workspace, crate::buffer::Controller),
+			(crate::Client, crate::Workspace, crate::buffer::Controller),
+		)>,
+	) {
 		if let Some(((client, _, _), (_, _, _))) = resource {
 			// buffer deletion is implied in workspace deletion
 			client.leave_workspace(&self.workspace);
-			if let Err(e) = client.delete_workspace(&self.workspace).await { 
+			if let Err(e) = client.delete_workspace(&self.workspace).await {
 				eprintln!("could not delete workspace: {e}");
 			}
 		}
