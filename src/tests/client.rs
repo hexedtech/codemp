@@ -16,14 +16,26 @@ async fn test_workspace_creation_and_lookup() {
 
 				client.create_workspace(&workspace_name).await?;
 				let ws = client.get_workspace(&workspace_name);
-				assert_or_err!(ws.is_some());
-				assert_or_err!(ws.unwrap().id() == workspace_name);
+				assert_or_err!(
+					ws.is_some(),
+					"Failed to retrieve the workspace just created."
+				);
+				assert_or_err!(
+					ws.unwrap().id() == workspace_name,
+					"The retreived workspace has a different name than the one created."
+				);
 
-				assert_or_err!(client.get_workspace(&wrong_name).is_none());
+				assert_or_err!(
+					client.get_workspace(&wrong_name).is_none(),
+					"Looking up a non existent workspace returned something."
+				);
 
 				let wslist = client.fetch_owned_workspaces().await?;
-				assert_or_err!(wslist.len() == 1);
-				assert_or_err!(wslist.contains(&workspace_name));
+				assert_or_err!(wslist.len() == 1, "the amount of owned workspaces is not 1");
+				assert_or_err!(
+					wslist.contains(&workspace_name),
+					"the newly create workspace is not present in the owned list."
+				);
 				Ok(())
 			}
 		})
@@ -40,7 +52,10 @@ async fn test_cant_create_same_workspace_more_than_once() {
 				let workspace_name = uuid::Uuid::new_v4().to_string();
 
 				client.create_workspace(&workspace_name).await?;
-				assert_or_err!(client.create_workspace(workspace_name).await.is_err());
+				assert_or_err!(
+					client.create_workspace(workspace_name).await.is_err(),
+					"a workspace was created twice without error."
+				);
 				Ok(())
 			}
 		})
@@ -59,8 +74,14 @@ async fn test_workspace_attach_and_active_workspaces() {
 				client.create_workspace(&workspace_name).await?;
 				let ws = client.attach_workspace(&workspace_name).await?;
 
-				assert_or_err!(ws.id() == workspace_name);
-				assert_or_err!(client.active_workspaces().contains(&workspace_name));
+				assert_or_err!(
+					ws.id() == workspace_name,
+					"we attached to a workspace that has a different name than the one requested."
+				);
+				assert_or_err!(
+					client.active_workspaces().contains(&workspace_name),
+					"the workspace is not present in the active workspaces list after attaching."
+				);
 				Ok(())
 			}
 		})
@@ -78,7 +99,10 @@ async fn test_attaching_to_non_existing_is_error() {
 
 				// we don't create any workspace.
 				// client.create_workspace(workspace_name).await?;
-				assert_or_err!(client.attach_workspace(&workspace_name).await.is_err());
+				assert_or_err!(
+					client.attach_workspace(&workspace_name).await.is_err(),
+					"we attached to a non existing workspace."
+				);
 				Ok(())
 			}
 		})
@@ -116,7 +140,7 @@ async fn test_attach_and_leave_workspace_interactions() {
 
 				// we should have an extra reference here, which should make the
 				// consume return false.
-				let ws = res.unwrap();
+				let _ws = res.unwrap();
 				assert_or_err!(
 					!client.leave_workspace(&workspace_name),
 					"leaving a workspace while some reference still exist returned true."
@@ -140,8 +164,14 @@ async fn test_delete_empty_workspace() {
 				client.create_workspace(&workspace_name).await?;
 				client.delete_workspace(&workspace_name).await?;
 
-				assert_or_err!(client.get_workspace(&workspace_name).is_none());
-				assert_or_err!(client.fetch_owned_workspaces().await?.is_empty());
+				assert_or_err!(
+					client.get_workspace(&workspace_name).is_none(),
+					"a deleted workspaces was still available for lookup."
+				);
+				assert_or_err!(
+					client.fetch_owned_workspaces().await?.is_empty(),
+					"a deleted workspace was still present in the owned workspaces list."
+				);
 
 				Ok(())
 			}
@@ -161,7 +191,10 @@ async fn test_deleting_twice_or_non_existing_is_an_error() {
 				client.create_workspace(&workspace_name).await?;
 				client.delete_workspace(&workspace_name).await?;
 
-				assert_or_err!(client.delete_workspace(&workspace_name).await.is_err());
+				assert_or_err!(
+					client.delete_workspace(&workspace_name).await.is_err(),
+					"we could delete a workspace twice, or a non existing one."
+				);
 				Ok(())
 			}
 		})
@@ -204,7 +237,8 @@ async fn test_invite_user_to_workspace_and_invited_lookup() {
 							client_alice.current_user().name.clone(),
 						)
 						.await
-						.is_err());
+						.is_err(),
+						"we invited a user to a non existing workspace.");
 
 					client_bob
 						.invite_to_workspace(
@@ -220,19 +254,24 @@ async fn test_invite_user_to_workspace_and_invited_lookup() {
 					// the workspace does not appear in the owned workspaces for alice
 
 					let user_list = workspace_bob.fetch_users().await?;
-					assert_or_err!(user_list.len() == 2);
+					assert_or_err!(user_list.len() == 2,
+						"after inviting alice there should be only two users in a workspace.");
 					assert_or_err!(user_list
 						.iter()
-						.any(|u| u.name == client_alice.current_user().name));
+						.any(|u| u.name == client_alice.current_user().name),
+						"alice was invited but is not present as one of the users.");
 					assert_or_err!(user_list
 						.iter()
-						.any(|u| u.name == client_bob.current_user().name));
+						.any(|u| u.name == client_bob.current_user().name),
+						"bob owns the workspace but is not present in the workspace.");
 
 					let alice_owned_workspaces = client_alice.fetch_owned_workspaces().await?;
 					let alice_invited_workspaces = client_alice.fetch_joined_workspaces().await?;
 
-					assert_or_err!(alice_owned_workspaces.is_empty());
-					assert_or_err!(alice_invited_workspaces.contains(&workspace_bob.id()));
+					assert_or_err!(alice_owned_workspaces.is_empty(),
+						"The workspace alice was invided to is listed as owned for her.");
+					assert_or_err!(alice_invited_workspaces.contains(&workspace_bob.id()),
+						"The list of workspaces to which alice was invited to does not contain the one bob invited her to.");
 					Ok(())
 				}
 			},
