@@ -237,14 +237,16 @@ impl
 
 	async fn cleanup(
 		&mut self,
-		mut resource: Option<(
+		resource: Option<(
 			(crate::Client, crate::Workspace, crate::buffer::Controller),
 			(crate::Client, crate::Workspace, crate::buffer::Controller),
 		)>,
 	) {
-		if let Some(((_, ws, buf), (_, _, _))) = resource.take() {
-			if let Err(e) = ws.delete_buffer(buf.path()).await {
-				eprintln!("could not delete buffer: {e:?}");
+		if let Some(((client, _, _), (_, _, _))) = resource {
+			// buffer deletion is implied in workspace deletion
+			client.leave_workspace(&self.workspace);
+			if let Err(e) = client.delete_workspace(&self.workspace).await {
+				eprintln!("could not delete workspace: {e}");
 			}
 		}
 	}
