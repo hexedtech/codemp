@@ -78,3 +78,23 @@ macro_rules! assert_or_err {
 }
 
 pub use assert_or_err;
+
+#[macro_export]
+macro_rules! fixture {
+	($fixture:expr => | $($arg:ident),* | $body:expr) => {
+		#[allow(unused_parens)]
+		$fixture
+			.with(|($($arg),*)| {
+				$(
+					let $arg = $arg.clone();
+				)*
+
+				async move {
+					$body
+				}
+			})
+			.await;
+	};
+}
+
+pub use fixture;
