@@ -48,6 +48,7 @@ impl From<RemoteError> for AssertionError {
 #[macro_export]
 macro_rules! assert_or_err {
 	($s:expr) => {
+		#[allow(clippy::bool_comparison)]
 		if !$s {
 			return Err($crate::tests::AssertionError::new(&format!(
 				"assertion failed at line {}: {}",
@@ -58,6 +59,18 @@ macro_rules! assert_or_err {
 		}
 	};
 	($s:expr, $msg:literal) => {
+		#[allow(clippy::bool_comparison)]
+		if !$s {
+			return Err($crate::tests::AssertionError::new(&format!(
+				"{} (line {})",
+				$msg,
+				std::line!(),
+			))
+			.into());
+		}
+	};
+	($s:expr, raw $msg:literal) => {
+		#[allow(clippy::bool_comparison)]
 		if !$s {
 			return Err($crate::tests::AssertionError::new($msg).into());
 		}
