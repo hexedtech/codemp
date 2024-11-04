@@ -26,7 +26,7 @@ use super::{
 async fn test_buffer_create() {
 	WorkspaceFixture::one("alice", "test-buffer-create")
 		.with(
-			|(_, workspace_alice): &mut (crate::Client, crate::Workspace)| {
+			|(_, workspace_alice)| {
 				let buffer_name = uuid::Uuid::new_v4().to_string();
 				let workspace_alice = workspace_alice.clone();
 
@@ -47,7 +47,7 @@ async fn test_buffer_create() {
 #[tokio::test]
 async fn test_cant_create_buffer_twice() {
 	WorkspaceFixture::one("alice", "test-cant-create-buffer-twice")
-		.with(|(_, ws): &mut (crate::Client, crate::Workspace)| {
+		.with(|(_, ws)| {
 			let ws = ws.clone();
 			async move {
 				ws.create_buffer("cacca").await?;
@@ -65,7 +65,7 @@ async fn test_cant_create_buffer_twice() {
 #[ignore] // TODO server has no concept of buffer ownership!
 async fn cannot_delete_others_buffers() {
 	WorkspaceFixture::two("alice", "bob", "test-cannot-delete-others-buffers")
-		.with(|((_, workspace_alice), (_, workspace_bob))| {
+		.with(|(_, workspace_alice, _, workspace_bob)| {
 			let buffer_name = uuid::Uuid::new_v4().to_string();
 			let workspace_alice = workspace_alice.clone();
 			let workspace_bob = workspace_bob.clone();

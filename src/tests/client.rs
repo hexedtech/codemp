@@ -222,7 +222,7 @@ async fn test_deleting_twice_or_non_existing_is_an_error() {
 async fn test_invite_user_to_workspace_and_invited_lookup() {
 	WorkspaceFixture::one("bob", "workspace-di-bob")
 		.with(
-			|(client_bob, workspace_bob): &mut (crate::Client, crate::Workspace)| {
+			|(client_bob, workspace_bob)| {
 				let client_bob = client_bob.clone();
 				let workspace_bob = workspace_bob.clone();
 
@@ -284,7 +284,7 @@ async fn test_invite_user_to_workspace_and_invited_lookup() {
 #[tokio::test]
 async fn cannot_delete_others_workspaces() {
 	WorkspaceFixture::two("alice", "bob", "test-cannot-delete-others-workspaces")
-		.with(|((_, ws_alice), (client_bob, _))| {
+		.with(|(_, ws_alice, client_bob, _)| {
 			let ws_alice = ws_alice.clone();
 			let client_bob = client_bob.clone();
 			async move {
@@ -302,7 +302,7 @@ async fn cannot_delete_others_workspaces() {
 async fn test_buffer_search() {
 	WorkspaceFixture::one("alice", "test-buffer-search")
 		.with(
-			|(_, workspace_alice): &mut (crate::Client, crate::Workspace)| {
+			|(_, workspace_alice)| {
 				let buffer_name = uuid::Uuid::new_v4().to_string();
 				let workspace_alice = workspace_alice.clone();
 
@@ -323,7 +323,7 @@ async fn test_buffer_search() {
 #[tokio::test]
 async fn test_send_operation() {
 	WorkspaceFixture::two("alice", "bob", "test-send-operation")
-		.with(|((_, workspace_alice), (_, workspace_bob))| {
+		.with(|(_, workspace_alice, _, workspace_bob)| {
 			let buffer_name = uuid::Uuid::new_v4().to_string();
 			let workspace_alice = workspace_alice.clone();
 			let workspace_bob = workspace_bob.clone();
@@ -353,7 +353,7 @@ async fn test_send_operation() {
 #[tokio::test]
 async fn test_content_converges() {
 	WorkspaceFixture::two("alice", "bob", "test-content-converges")
-		.with(|((_, workspace_alice), (_, workspace_bob))| {
+		.with(|(_, workspace_alice, _, workspace_bob)| {
 			let buffer_name = uuid::Uuid::new_v4().to_string();
 			let workspace_alice = workspace_alice.clone();
 			let workspace_bob = workspace_bob.clone();

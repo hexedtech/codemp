@@ -124,21 +124,8 @@ impl ScopedFixture<(crate::Client, crate::Workspace)> for WorkspaceFixture {
 	}
 }
 
-impl
-	ScopedFixture<(
-		(crate::Client, crate::Workspace),
-		(crate::Client, crate::Workspace),
-	)> for WorkspaceFixture
-{
-	async fn setup(
-		&mut self,
-	) -> Result<
-		(
-			(crate::Client, crate::Workspace),
-			(crate::Client, crate::Workspace),
-		),
-		Box<dyn Error>,
-	> {
+impl ScopedFixture<(crate::Client, crate::Workspace, crate::Client, crate::Workspace)> for WorkspaceFixture {
+	async fn setup(&mut self) -> Result<(crate::Client, crate::Workspace, crate::Client, crate::Workspace), Box<dyn Error>> {
 		let client = ClientFixture::of(&self.user).setup().await?;
 		let invitee_client = ClientFixture::of(
 			&self
@@ -154,17 +141,14 @@ impl
 			.await?;
 		let workspace = client.attach_workspace(&self.workspace).await?;
 		let invitee_workspace = invitee_client.attach_workspace(&self.workspace).await?;
-		Ok(((client, workspace), (invitee_client, invitee_workspace)))
+		Ok((client, workspace, invitee_client, invitee_workspace))
 	}
 
 	async fn cleanup(
 		&mut self,
-		resource: Option<(
-			(crate::Client, crate::Workspace),
-			(crate::Client, crate::Workspace),
-		)>,
+		resource: Option<(crate::Client, crate::Workspace, crate::Client, crate::Workspace)>,
 	) {
-		if let Some(((client, _), (_, _))) = resource {
+		if let Some((client, _, _, _)) = resource {
 			client.leave_workspace(&self.workspace);
 			if let Err(e) = client.delete_workspace(&self.workspace).await {
 				eprintln!("could not delete workspace: {e}");
