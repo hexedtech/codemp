@@ -115,14 +115,23 @@ async fn test_lookup_after_leave() {
 #[tokio::test]
 async fn test_attach_after_leave() {
 	super::fixture! {
-		WorkspaceFixture::one("alice", "test-attach-after-leave") => |client, workspace| {
-			let ws_name = workspace.id();
-			drop(workspace);
-			client.leave_workspace(&ws_name);
+		ClientFixture::of("alice") => |client| {
+			let ws_name = uuid::Uuid::new_v4().to_string();
+			client.create_workspace(&ws_name).await?;
+
+			let could_attach = client.attach_workspace(&ws_name).await.is_ok();
+			let clean_leave = client.leave_workspace(&ws_name);
 			// TODO this is very server specific! disconnect may be instant or caught with next
 			// keepalive, let's arbitrarily say that after 20 seconds we should have been disconnected
 			tokio::time::sleep(std::time::Duration::from_secs(20)).await;
-			client.attach_workspace(&ws_name).await?;
+			let could_attach_again = client.attach_workspace(&ws_name).await;
+			let could_delete = client.delete_workspace(&ws_name).await;
+
+			assert_or_err!(could_attach);
+			assert_or_err!(clean_leave);
+			could_attach_again?;
+			could_delete?;
+
 			Ok(())
 		}
 	}
