@@ -64,6 +64,23 @@ async fn test_attach_and_leave_workspace() {
 }
 
 #[tokio::test]
+async fn test_invite_user_to_workspace() {
+	let client_alice = ClientFixture::of("alice").setup().await.expect("failed setting up alice's client");
+	let client_bob = ClientFixture::of("bob").setup().await.expect("failed setting up bob's client");
+	let ws_name = uuid::Uuid::new_v4().to_string();
+
+	// after this we can't just fail anymore: we need to cleanup, so store errs
+	client_alice.create_workspace(&ws_name).await.expect("failed creating workspace");
+	let could_invite = client_alice.invite_to_workspace(&ws_name, &client_bob.current_user().name).await;
+	let ws_list = client_bob.fetch_joined_workspaces().await.unwrap_or_default(); // can't fail, empty is err
+	let could_delete = client_alice.delete_workspace(&ws_name).await;
+
+	could_invite.expect("could not invite bob");
+	assert!(ws_list.contains(&ws_name));
+	could_delete.expect("could not delete workspace");
+}
+
+#[tokio::test]
 async fn test_workspace_lookup() {
 	super::fixture! {
 		WorkspaceFixture::one("alice", "test-lookup") => |client, workspace| {
@@ -157,61 +174,24 @@ async fn test_deleting_workspace_twice_is_an_error() {
 }
 
 #[tokio::test]
-async fn test_invite_user_to_workspace_and_invited_lookup() {
-	WorkspaceFixture::one("alice", "test-invite")
-		.with(
-			|(client_bob, workspace_bob)| {
-				let client_bob = client_bob.clone();
-				let workspace_bob = workspace_bob.clone();
-
-				async move {
-					let client_alice = ClientFixture::of("alice").setup().await?;
-
-					let wrong_workspace_name = uuid::Uuid::new_v4().to_string();
-					// inviting to a non existing workspace is an error
-					assert_or_err!(client_bob
-						.invite_to_workspace(
-							wrong_workspace_name,
-							client_alice.current_user().name.clone(),
-						)
-						.await
-						.is_err());
-
-					client_bob
-						.invite_to_workspace(
-							workspace_bob.id(),
-							client_alice.current_user().name.clone(),
-						)
-						.await?;
-
-					// there are two users now in the workspace of bob
-					// alice is one of the users
-					// bob is one of the users
-					// the workspace appears in the joined workspaces for alice
-					// the workspace does not appear in the owned workspaces for alice
-
-					let user_list = workspace_bob.fetch_users().await?;
-					assert_or_err!(user_list.len() == 2);
-					assert_or_err!(user_list
-						.iter()
-						.any(|u| u.name == client_alice.current_user().name));
-					assert_or_err!(user_list
-						.iter()
-						.any(|u| u.name == client_bob.current_user().name));
-
-					let alice_owned_workspaces = client_alice.fetch_owned_workspaces().await?;
-					let alice_invited_workspaces = client_alice.fetch_joined_workspaces().await?;
-
-					assert_or_err!(alice_owned_workspaces.is_empty());
-					assert_or_err!(alice_invited_workspaces.contains(&workspace_bob.id()));
-					Ok(())
-				}
-			},
-		)
-		.await
+async fn test_cannot_invite_self() {
+	super::fixture! {
+		WorkspaceFixture::one("alice", "test-invite-self") => |client, workspace| {
+			assert_or_err!(client.invite_to_workspace(workspace.id(), &client.current_user().name).await.is_err());
+			Ok(())
+		}
+	}
 }
 
-// Now we can use workspace fixtures with invite.
+#[tokio::test]
+async fn test_cannot_invite_to_nonexisting() {
+	super::fixture! {
+		WorkspaceFixture::two("alice", "bob", "test-invite-self") => |client, _ws, client_bob, _workspace_bob| {
+			assert_or_err!(client.invite_to_workspace(uuid::Uuid::new_v4().to_string(), &client_bob.current_user().name).await.is_err());
+			Ok(())
+		}
+	}
+}
 
 #[tokio::test]
 async fn cannot_delete_others_workspaces() {
