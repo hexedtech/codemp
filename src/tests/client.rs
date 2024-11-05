@@ -320,8 +320,10 @@ async fn test_content_converges() {
 					x??;
 				}
 
-				// TODO is there a nicer way to make sure we received all changes?
+				// test runners may be slow, give 1s to catch up, just in case
+				tokio::time::sleep(std::time::Duration::from_secs(1)).await;
 
+				// TODO is there a nicer way to make sure we received all changes?
 				for i in 0..20 {
 					tokio::time::sleep(std::time::Duration::from_millis(200)).await;
 					match bob.try_recv().await? {
