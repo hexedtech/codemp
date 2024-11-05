@@ -5,28 +5,24 @@ use super::{
 use crate::api::{AsyncReceiver, AsyncSender};
 
 #[tokio::test]
-async fn test_workspace_creation_and_lookup() {
+async fn test_workspace_creation_and_deletion() {
 	super::fixture! {
 		ClientFixture::of("alice") => |client| {
 			let workspace_name = uuid::Uuid::new_v4().to_string();
-			let wrong_name = uuid::Uuid::new_v4().to_string();
 
 			client.create_workspace(&workspace_name).await?;
-			let wslist = client.fetch_owned_workspaces().await.unwrap_or_default();
-			let ws = client.get_workspace(&workspace_name);
-			let ws_exists = ws.is_some();
-			let ws_name_matches = ws.map_or(false, |x| x.id() == workspace_name);
-			let ws_wrong_name_doesnt_exist = client.get_workspace(&wrong_name).is_none();
+
+			// we can't error, so we return empty vec which will be interpreted as err
+			let workspace_list_before = client.fetch_owned_workspaces().await.unwrap_or_default();
 
 			let res = client.delete_workspace(&workspace_name).await;
 
-			assert_or_err!(ws_exists);
-			assert_or_err!(ws_name_matches);
-			assert_or_err!(ws_wrong_name_doesnt_exist);
-			assert_or_err!(res.is_ok());
-			assert_or_err!(client.get_workspace(&workspace_name).is_none());
-			assert_or_err!(wslist.len() == 1);
-			assert_or_err!(wslist.contains(&workspace_name));
+			// we can and should err here, because empty vec will be counted as success!
+			let workspace_list_after = client.fetch_owned_workspaces().await?;
+
+			assert_or_err!(workspace_list_before.contains(&workspace_name));
+			assert_or_err!(res.is_ok(), "failed deleting workspace");
+			assert_or_err!(workspace_list_after.contains(&workspace_name) == false);
 
 			Ok(())
 		}
@@ -68,6 +64,17 @@ async fn test_attach_and_leave_workspace() {
 }
 
 #[tokio::test]
+async fn test_workspace_lookup() {
+	super::fixture! {
+		WorkspaceFixture::one("alice", "test-lookup") => |client, workspace| {
+			assert_or_err!(client.get_workspace(&workspace.id()).is_some());
+			assert_or_err!(client.get_workspace(&uuid::Uuid::new_v4().to_string()).is_none());
+			Ok(())
+		}
+	}
+}
+
+#[tokio::test]
 async fn test_leave_workspace_with_dangling_ref() {
 	super::fixture! {
 		WorkspaceFixture::one("alice", "test-dangling-ref") => |client, workspace| {
@@ -78,10 +85,24 @@ async fn test_leave_workspace_with_dangling_ref() {
 }
 
 #[tokio::test]
+async fn test_lookup_after_leave() {
+	super::fixture! {
+		WorkspaceFixture::one("alice", "test-lookup-after-leave") => |client, workspace| {
+			client.leave_workspace(&workspace.id());
+			assert_or_err!(client.get_workspace(&workspace.id()).is_none());
+			Ok(())
+		}
+	}
+}
+
+#[tokio::test]
 async fn test_attach_after_leave() {
 	super::fixture! {
-		WorkspaceFixture::one("alice", "test-dangling-ref") => |client, workspace| {
+		WorkspaceFixture::one("alice", "test-attach-after-leave") => |client, workspace| {
 			client.leave_workspace(&workspace.id());
+			// TODO this is very server specific! disconnect may be instant or caught with next
+			// keepalive, let's arbitrarily say that after 20 seconds we should have been disconnected
+			tokio::time::sleep(std::time::Duration::from_secs(20)).await;
 			assert_or_err!(client.attach_workspace(&workspace.id()).await.is_ok());
 			Ok(())
 		}
@@ -137,7 +158,7 @@ async fn test_deleting_workspace_twice_is_an_error() {
 
 #[tokio::test]
 async fn test_invite_user_to_workspace_and_invited_lookup() {
-	WorkspaceFixture::one("bob", "workspace-di-bob")
+	WorkspaceFixture::one("alice", "test-invite")
 		.with(
 			|(client_bob, workspace_bob)| {
 				let client_bob = client_bob.clone();
