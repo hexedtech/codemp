@@ -2,8 +2,6 @@ name: test
 
 on:
   push:
-  pull_request:
-    types: [synchronize, review_requested]
 
 env:
   CARGO_TERM_COLOR: always
