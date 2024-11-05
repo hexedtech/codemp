@@ -21,7 +21,7 @@ async fn test_workspace_creation_and_deletion() {
 			let workspace_list_after = client.fetch_owned_workspaces().await?;
 
 			assert_or_err!(workspace_list_before.contains(&workspace_name));
-			assert_or_err!(res.is_ok(), "failed deleting workspace");
+			res?;
 			assert_or_err!(workspace_list_after.contains(&workspace_name) == false);
 
 			Ok(())
@@ -103,7 +103,7 @@ async fn test_attach_after_leave() {
 			// TODO this is very server specific! disconnect may be instant or caught with next
 			// keepalive, let's arbitrarily say that after 20 seconds we should have been disconnected
 			tokio::time::sleep(std::time::Duration::from_secs(20)).await;
-			assert_or_err!(client.attach_workspace(&workspace.id()).await.is_ok());
+			client.attach_workspace(&workspace.id()).await?;
 			Ok(())
 		}
 	}
