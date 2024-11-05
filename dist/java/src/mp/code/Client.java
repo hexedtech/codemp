@@ -128,7 +128,8 @@ public final class Client {
 	/**
 	 * Leaves a workspace.
 	 * @param workspaceId the id of the workspaces to leave
-	 * @return true if it succeeded (usually fails if the workspace wasn't active)
+	 * @return true if it succeeded or wasn't in the workspace; false if there are still
+	 *         leftover references around
 	 */
 	public boolean leaveWorkspace(String workspaceId) {
 		return leave_workspace(this.ptr, workspaceId);
