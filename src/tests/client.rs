@@ -116,11 +116,13 @@ async fn test_lookup_after_leave() {
 async fn test_attach_after_leave() {
 	super::fixture! {
 		WorkspaceFixture::one("alice", "test-attach-after-leave") => |client, workspace| {
-			client.leave_workspace(&workspace.id());
+			let ws_name = workspace.id();
+			drop(workspace);
+			client.leave_workspace(&ws_name);
 			// TODO this is very server specific! disconnect may be instant or caught with next
-			// keepalive, let's arbitrarily say that after 30 seconds we should have been disconnected
-			tokio::time::sleep(std::time::Duration::from_secs(30)).await;
-			client.attach_workspace(&workspace.id()).await?;
+			// keepalive, let's arbitrarily say that after 20 seconds we should have been disconnected
+			tokio::time::sleep(std::time::Duration::from_secs(20)).await;
+			client.attach_workspace(&ws_name).await?;
 			Ok(())
 		}
 	}
