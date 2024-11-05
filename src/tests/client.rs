@@ -65,14 +65,28 @@ async fn test_attach_and_leave_workspace() {
 
 #[tokio::test]
 async fn test_invite_user_to_workspace() {
-	let client_alice = ClientFixture::of("alice").setup().await.expect("failed setting up alice's client");
-	let client_bob = ClientFixture::of("bob").setup().await.expect("failed setting up bob's client");
+	let client_alice = ClientFixture::of("alice")
+		.setup()
+		.await
+		.expect("failed setting up alice's client");
+	let client_bob = ClientFixture::of("bob")
+		.setup()
+		.await
+		.expect("failed setting up bob's client");
 	let ws_name = uuid::Uuid::new_v4().to_string();
 
 	// after this we can't just fail anymore: we need to cleanup, so store errs
-	client_alice.create_workspace(&ws_name).await.expect("failed creating workspace");
-	let could_invite = client_alice.invite_to_workspace(&ws_name, &client_bob.current_user().name).await;
-	let ws_list = client_bob.fetch_joined_workspaces().await.unwrap_or_default(); // can't fail, empty is err
+	client_alice
+		.create_workspace(&ws_name)
+		.await
+		.expect("failed creating workspace");
+	let could_invite = client_alice
+		.invite_to_workspace(&ws_name, &client_bob.current_user().name)
+		.await;
+	let ws_list = client_bob
+		.fetch_joined_workspaces()
+		.await
+		.unwrap_or_default(); // can't fail, empty is err
 	let could_delete = client_alice.delete_workspace(&ws_name).await;
 
 	could_invite.expect("could not invite bob");
@@ -224,22 +238,20 @@ async fn cannot_delete_others_workspaces() {
 #[tokio::test]
 async fn test_buffer_search() {
 	WorkspaceFixture::one("alice", "test-buffer-search")
-		.with(
-			|(_, workspace_alice)| {
-				let buffer_name = uuid::Uuid::new_v4().to_string();
-				let workspace_alice = workspace_alice.clone();
+		.with(|(_, workspace_alice)| {
+			let buffer_name = uuid::Uuid::new_v4().to_string();
+			let workspace_alice = workspace_alice.clone();
 
-				async move {
-					workspace_alice.create_buffer(&buffer_name).await?;
-					assert_or_err!(!workspace_alice
-						.search_buffers(Some(&buffer_name[0..4]))
-						.is_empty());
-					assert_or_err!(workspace_alice.search_buffers(Some("_")).is_empty());
-					workspace_alice.delete_buffer(&buffer_name).await?;
-					Ok(())
-				}
-			},
-		)
+			async move {
+				workspace_alice.create_buffer(&buffer_name).await?;
+				assert_or_err!(!workspace_alice
+					.search_buffers(Some(&buffer_name[0..4]))
+					.is_empty());
+				assert_or_err!(workspace_alice.search_buffers(Some("_")).is_empty());
+				workspace_alice.delete_buffer(&buffer_name).await?;
+				Ok(())
+			}
+		})
 		.await;
 }
 
