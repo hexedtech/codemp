@@ -124,8 +124,25 @@ impl ScopedFixture<(crate::Client, crate::Workspace)> for WorkspaceFixture {
 	}
 }
 
-impl ScopedFixture<(crate::Client, crate::Workspace, crate::Client, crate::Workspace)> for WorkspaceFixture {
-	async fn setup(&mut self) -> Result<(crate::Client, crate::Workspace, crate::Client, crate::Workspace), Box<dyn Error>> {
+impl
+	ScopedFixture<(
+		crate::Client,
+		crate::Workspace,
+		crate::Client,
+		crate::Workspace,
+	)> for WorkspaceFixture
+{
+	async fn setup(
+		&mut self,
+	) -> Result<
+		(
+			crate::Client,
+			crate::Workspace,
+			crate::Client,
+			crate::Workspace,
+		),
+		Box<dyn Error>,
+	> {
 		let client = ClientFixture::of(&self.user).setup().await?;
 		let invitee_client = ClientFixture::of(
 			&self
@@ -146,7 +163,12 @@ impl ScopedFixture<(crate::Client, crate::Workspace, crate::Client, crate::Works
 
 	async fn cleanup(
 		&mut self,
-		resource: Option<(crate::Client, crate::Workspace, crate::Client, crate::Workspace)>,
+		resource: Option<(
+			crate::Client,
+			crate::Workspace,
+			crate::Client,
+			crate::Workspace,
+		)>,
 	) {
 		if let Some((client, _, _, _)) = resource {
 			client.leave_workspace(&self.workspace);
@@ -195,16 +217,24 @@ impl BufferFixture {
 
 impl
 	ScopedFixture<(
-		(crate::Client, crate::Workspace, crate::buffer::Controller),
-		(crate::Client, crate::Workspace, crate::buffer::Controller),
+		crate::Client,
+		crate::Workspace,
+		crate::buffer::Controller,
+		crate::Client,
+		crate::Workspace,
+		crate::buffer::Controller,
 	)> for BufferFixture
 {
 	async fn setup(
 		&mut self,
 	) -> Result<
 		(
-			(crate::Client, crate::Workspace, crate::buffer::Controller),
-			(crate::Client, crate::Workspace, crate::buffer::Controller),
+			crate::Client,
+			crate::Workspace,
+			crate::buffer::Controller,
+			crate::Client,
+			crate::Workspace,
+			crate::buffer::Controller,
 		),
 		Box<dyn Error>,
 	> {
@@ -230,19 +260,27 @@ impl
 		let invitee_buffer = invitee_workspace.attach_buffer(&self.buffer).await?;
 
 		Ok((
-			(client, workspace, buffer),
-			(invitee_client, invitee_workspace, invitee_buffer),
+			client,
+			workspace,
+			buffer,
+			invitee_client,
+			invitee_workspace,
+			invitee_buffer,
 		))
 	}
 
 	async fn cleanup(
 		&mut self,
 		resource: Option<(
-			(crate::Client, crate::Workspace, crate::buffer::Controller),
-			(crate::Client, crate::Workspace, crate::buffer::Controller),
+			crate::Client,
+			crate::Workspace,
+			crate::buffer::Controller,
+			crate::Client,
+			crate::Workspace,
+			crate::buffer::Controller,
 		)>,
 	) {
-		if let Some(((client, _, _), (_, _, _))) = resource {
+		if let Some((client, _, _, _, _, _)) = resource {
 			// buffer deletion is implied in workspace deletion
 			client.leave_workspace(&self.workspace);
 			if let Err(e) = client.delete_workspace(&self.workspace).await {
