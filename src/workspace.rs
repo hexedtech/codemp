@@ -37,7 +37,7 @@ use napi_derive::napi;
 /// A currently active shared development environment
 ///
 /// Workspaces encapsulate a working environment: cursor positions, filetree, user list
-/// and more. Each holds a [cursor::Controller] and a map of [buffer::Controller]s.
+/// and more. Each holds a [`cursor::Controller`] and a map of [`buffer::Controller`]s.
 /// Using a workspace handle, it's possible to receive events (user join/leave, filetree updates)
 /// and create/delete/attach to new buffers.
 #[derive(Debug, Clone)]
