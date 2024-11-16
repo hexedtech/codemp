@@ -41,7 +41,7 @@ use napi_derive::napi;
 /// Using a workspace handle, it's possible to receive events (user join/leave, filetree updates)
 /// and create/delete/attach to new buffers.
 #[derive(Debug, Clone)]
-#[cfg_attr(any(feature = "py", feature = "py-noabi"), pyo3::pyclass)]
+#[cfg_attr(feature = "py", pyo3::pyclass)]
 #[cfg_attr(feature = "js", napi)]
 pub struct Workspace(Arc<WorkspaceInner>);
 

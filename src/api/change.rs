@@ -9,7 +9,7 @@
 /// be provided every time.
 #[derive(Clone, Debug, Default)]
 #[cfg_attr(feature = "js", napi_derive::napi(object))]
-#[cfg_attr(any(feature = "py", feature = "py-noabi"), pyo3::pyclass(get_all))]
+#[cfg_attr(feature = "py", pyo3::pyclass(get_all))]
 #[cfg_attr(feature = "serialize", derive(serde::Serialize, serde::Deserialize))]
 pub struct BufferUpdate {
 	/// Optional content hash after applying this change.
@@ -51,7 +51,7 @@ pub struct BufferUpdate {
 /// ```
 #[derive(Clone, Debug, Default)]
 #[cfg_attr(feature = "js", napi_derive::napi(object))]
-#[cfg_attr(any(feature = "py", feature = "py-noabi"), pyo3::pyclass(get_all))]
+#[cfg_attr(feature = "py", pyo3::pyclass(get_all))]
 #[cfg_attr(feature = "serialize", derive(serde::Serialize, serde::Deserialize))]
 pub struct TextChange {
 	/// Range start of text change, as char indexes in buffer previous state.
@@ -69,7 +69,7 @@ impl TextChange {
 	}
 }
 
-#[cfg_attr(any(feature = "py", feature = "py-noabi"), pyo3::pymethods)]
+#[cfg_attr(feature = "py", pyo3::pymethods)]
 impl TextChange {
 	/// Returns true if this [`TextChange`] deletes existing text.
 	///
