@@ -69,7 +69,7 @@ jobs:
           - java
           - js
           - py
-          - luajit
+          - lua
     steps:
       - uses: arduino/setup-protoc@v3
         with:
