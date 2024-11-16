@@ -240,7 +240,7 @@ dependencies = [
  "jni",
  "jni-toolbox",
  "lazy_static",
- "mlua-codemp-patch",
+ "mlua",
  "napi",
  "napi-build",
  "napi-derive",
@@ -911,12 +911,13 @@ dependencies = [
 ]
 
 [[package]]
-name = "mlua-codemp-patch"
-version = "0.10.0-beta.2"
+name = "mlua"
+version = "0.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5a52f529509c236114a5cf5bb3c0c06ff0695ad45d718256930ec2416edf3817"
+checksum = "0ae9546e4a268c309804e8bbb7526e31cbfdedca7cd60ac1b987d0b212e0d876"
 dependencies = [
  "bstr",
+ "either",
  "erased-serde",
  "mlua-sys",
  "mlua_derive",
@@ -929,9 +930,9 @@ dependencies = [
 
 [[package]]
 name = "mlua-sys"
-version = "0.6.4"
+version = "0.6.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e9eebac25c35a13285456c88ee2fde93d9aee8bcfdaf03f9d6d12be3391351ec"
+checksum = "efa6bf1a64f06848749b7e7727417f4ec2121599e2a10ef0a8a3888b0e9a5a0d"
 dependencies = [
  "cc",
  "cfg-if",
@@ -940,9 +941,9 @@ dependencies = [
 
 [[package]]
 name = "mlua_derive"
-version = "0.10.0-beta.1"
+version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "13e6f40fa1fd8426285688f4a37b56beac69284743d057ee6db352b543f4b621"
+checksum = "2cfc5faa2e0d044b3f5f0879be2920e0a711c97744c42cf1c295cb183668933e"
 dependencies = [
  "proc-macro2",
  "quote",

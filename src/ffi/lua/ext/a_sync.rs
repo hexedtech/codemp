@@ -1,5 +1,4 @@
 use mlua::prelude::*;
-use mlua_codemp_patch as mlua;
 
 pub(crate) fn tokio() -> &'static tokio::runtime::Runtime {
 	use std::sync::OnceLock;
@@ -21,7 +20,8 @@ macro_rules! a_sync {
 					Some(
 						crate::ffi::lua::ext::a_sync::tokio()
 							.spawn(async move {
-								Ok(crate::ffi::lua::ext::callback::CallbackArg::from($x))
+								let res = $x;
+								Ok(crate::ffi::lua::ext::callback::CallbackArg::from(res))
 							})
 					)
 				)
@@ -47,13 +47,20 @@ impl LuaUserData for Promise {
 		// TODO: await MUST NOT be used in callbacks!!
 		methods.add_method_mut("await", |_, this, ()| match this.0.take() {
 			None => Err(LuaError::runtime("Promise already awaited")),
-			Some(x) => tokio().block_on(x).map_err(LuaError::runtime)?,
+			Some(x) => Ok(
+				tokio()
+					.block_on(x)
+					.map_err(LuaError::runtime)?
+					.map_err(LuaError::runtime)?
+			),
 		});
 		methods.add_method_mut("cancel", |_, this, ()| match this.0.take() {
 			None => Err(LuaError::runtime("Promise already awaited")),
 			Some(x) => Ok(x.abort()),
 		});
-		methods.add_method_mut("and_then", |_, this, (cb,): (LuaFunction,)| {
+		methods.add_method_mut("and_then", |lua, this, (cb,): (LuaFunction,)| {
+			let key = uuid::Uuid::new_v4().to_string();
+			lua.set_named_registry_value(&key, cb)?;
 			match this.0.take() {
 				None => Err(LuaError::runtime("Promise already awaited")),
 				Some(x) => {
@@ -64,9 +71,9 @@ impl LuaUserData for Promise {
 							}
 							Ok(res) => match res {
 								Err(e) => super::callback().failure(e),
-								Ok(val) => super::callback().invoke(cb, val),
+								Ok(val) => super::callback().invoke(key, val, true),
 							},
-						}
+						};
 					});
 					Ok(())
 				}

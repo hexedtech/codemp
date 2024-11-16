@@ -1,6 +1,5 @@
 use crate::prelude::*;
 use mlua::prelude::*;
-use mlua_codemp_patch as mlua;
 
 use super::ext::a_sync::a_sync;
 
@@ -31,11 +30,23 @@ impl LuaUserData for CodempBufferController {
 			|_, this, ()| a_sync! { this => this.content().await? },
 		);
 
-		methods.add_method("clear_callback", |_, this, ()| Ok(this.clear_callback()));
-		methods.add_method("callback", |_, this, (cb,): (LuaFunction,)| {
+		methods.add_method("clear_callback", move |lua, this, ()| {
+			this.clear_callback();
+			lua.unset_named_registry_value(&this.lua_callback_id())
+		});
+
+		methods.add_method("callback", move |lua, this, (cb,): (LuaFunction,)| {
+			let key = this.lua_callback_id();
+			lua.set_named_registry_value(&key, cb)?;
 			Ok(this.callback(move |controller: CodempBufferController| {
-				super::ext::callback().invoke(cb.clone(), controller)
+				super::ext::callback().invoke(key.clone(), controller, false)
 			}))
 		});
+	}
+}
+
+impl CodempBufferController {
+	fn lua_callback_id(&self) -> String {
+		format!("codemp-buffercontroller({}:{})-callback-registry", self.workspace_id(), self.path())
 	}
 }

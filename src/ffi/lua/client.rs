@@ -1,6 +1,5 @@
 use crate::prelude::*;
 use mlua::prelude::*;
-use mlua_codemp_patch as mlua;
 
 use super::ext::a_sync::a_sync;
 

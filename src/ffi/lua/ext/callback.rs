@@ -1,7 +1,6 @@
 use crate::ext::IgnorableError;
 use crate::prelude::*;
 use mlua::prelude::*;
-use mlua_codemp_patch as mlua;
 
 pub(crate) fn callback() -> &'static CallbackChannel<LuaCallback> {
 	static CHANNEL: std::sync::OnceLock<CallbackChannel<LuaCallback>> = std::sync::OnceLock::new();
@@ -25,21 +24,19 @@ impl Default for CallbackChannel<LuaCallback> {
 }
 
 impl CallbackChannel<LuaCallback> {
-	pub(crate) fn invoke(&self, cb: LuaFunction, arg: impl Into<CallbackArg>) {
+	pub(crate) fn invoke(&self, key: String, arg: impl Into<CallbackArg>, cleanup: bool) {
 		self.tx
-			.send(LuaCallback::Invoke(cb, arg.into()))
+			.send(LuaCallback::Invoke(key, arg.into(), cleanup))
 			.unwrap_or_warn("error scheduling callback")
 	}
 
 	pub(crate) fn failure(&self, err: impl std::error::Error) {
 		self.tx
-			.send(LuaCallback::Fail(format!(
-				"promise failed with error: {err:?}"
-			)))
+			.send(LuaCallback::Fail(format!("callback returned error: {err:?}")))
 			.unwrap_or_warn("error scheduling callback failure")
 	}
 
-	pub(crate) fn recv(&self) -> Option<LuaCallback> {
+	pub(crate) fn recv(&self, lua: &Lua) -> Option<(LuaFunction, CallbackArg)> {
 		match self.rx.try_lock() {
 			Err(e) => {
 				tracing::debug!("backing off from callback mutex: {e}");
@@ -51,7 +48,25 @@ impl CallbackChannel<LuaCallback> {
 					None
 				}
 				Err(tokio::sync::mpsc::error::TryRecvError::Empty) => None,
-				Ok(cb) => Some(cb),
+				Ok(LuaCallback::Fail(msg)) => {
+					tracing::error!("callback returned error: {msg}");
+					None
+				},
+				Ok(LuaCallback::Invoke(key, arg, cleanup)) => {
+					let cb = match lua.named_registry_value::<LuaFunction>(&key) {
+						Ok(x) => x,
+						Err(e) => {
+							tracing::error!("could not get callback to invoke: {e}");
+							return None;
+						},
+					};
+					if cleanup {
+						if let Err(e) = lua.unset_named_registry_value(&key) {
+							tracing::warn!("could not unset callback from registry: {e}");
+						}
+					}
+					Some((cb, arg))
+				},
 			},
 		}
 	}
@@ -59,7 +74,7 @@ impl CallbackChannel<LuaCallback> {
 
 pub(crate) enum LuaCallback {
 	Fail(String),
-	Invoke(LuaFunction, CallbackArg),
+	Invoke(String, CallbackArg, bool),
 }
 
 macro_rules! callback_args {
