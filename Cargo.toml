@@ -64,20 +64,21 @@ napi-build = { version = "2.1", optional = true }
 pyo3-build-config = { version = "0.22", optional = true }
 
 [features]
-default = []
+default = ["lua-jit", "py-abi3"]
 # extra
 async-trait = ["dep:async-trait"]
 serialize = ["dep:serde", "uuid/serde"]
 # special tests which require more setup
 test-e2e = []
 # ffi
-java = ["lazy_static", "jni", "tracing-subscriber", "jni-toolbox"]
-js = ["napi-build", "tracing-subscriber", "napi", "napi-derive"]
-py-noabi = ["pyo3", "tracing-subscriber", "pyo3-build-config"]
-py = ["py-noabi", "pyo3/abi3-py38"]
-lua = ["mlua-codemp-patch", "tracing-subscriber", "lazy_static", "serialize"]
-lua54 =["lua", "mlua-codemp-patch/lua54"] 
-luajit = ["lua", "mlua-codemp-patch/luajit"]
+java = ["dep:lazy_static", "dep:jni", "dep:tracing-subscriber", "dep:jni-toolbox"]
+js = ["dep:napi-build", "dep:tracing-subscriber", "dep:napi", "dep:napi-derive"]
+py = ["dep:pyo3", "dep:tracing-subscriber", "dep:pyo3-build-config"]
+lua = ["serialize", "dep:mlua-codemp-patch", "dep:tracing-subscriber", "dep:lazy_static"]
+# ffi variants
+lua-jit = ["mlua-codemp-patch?/luajit"]
+lua-54 = ["mlua-codemp-patch?/lua54"]
+py-abi3 = ["pyo3?/abi3-py38"]
 
 
 [package.metadata.docs.rs] # enabled features when building on docs.rs
