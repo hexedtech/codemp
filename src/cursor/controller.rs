@@ -25,12 +25,19 @@ use codemp_proto::{
 #[cfg_attr(feature = "js", napi_derive::napi)]
 pub struct CursorController(pub(crate) Arc<CursorControllerInner>);
 
+impl CursorController {
+	pub fn workspace_id(&self) -> &str {
+		&self.0.workspace_id
+	}
+}
+
 #[derive(Debug)]
 pub(crate) struct CursorControllerInner {
 	pub(crate) op: mpsc::UnboundedSender<CursorPosition>,
 	pub(crate) stream: mpsc::Sender<oneshot::Sender<Option<Cursor>>>,
 	pub(crate) poll: mpsc::UnboundedSender<oneshot::Sender<()>>,
 	pub(crate) callback: watch::Sender<Option<ControllerCallback<CursorController>>>,
+	pub(crate) workspace_id: String,
 }
 
 #[cfg_attr(feature = "async-trait", async_trait::async_trait)]

@@ -40,6 +40,7 @@ impl BufferController {
 		path: &str,
 		tx: mpsc::Sender<Operation>,
 		rx: Streaming<BufferEvent>,
+		workspace_id: &str,
 	) -> Self {
 		let init = diamond_types::LocalVersion::default();
 
@@ -57,7 +58,7 @@ impl BufferController {
 		let agent_id = oplog.get_or_create_agent_id(&user_id.to_string());
 
 		let controller = Arc::new(BufferControllerInner {
-			name: path.to_string(),
+			path: path.to_string(),
 			latest_version: latest_version_rx,
 			local_version: my_version_rx,
 			ops_in: opin_tx,
@@ -66,6 +67,7 @@ impl BufferController {
 			delta_request: recv_tx,
 			callback: cb_tx,
 			ack_tx,
+			workspace_id: workspace_id.to_string(),
 		});
 
 		let weak = Arc::downgrade(&controller);

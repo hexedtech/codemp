@@ -28,6 +28,7 @@ impl CursorController {
 		user_map: Arc<dashmap::DashMap<Uuid, User>>,
 		tx: mpsc::Sender<CursorPosition>,
 		rx: Streaming<CursorEvent>,
+		workspace_id: &str,
 	) -> Self {
 		// TODO we should tweak the channel buffer size to better propagate backpressure
 		let (op_tx, op_rx) = mpsc::unbounded_channel();
@@ -39,6 +40,7 @@ impl CursorController {
 			stream: stream_tx,
 			callback: cb_tx,
 			poll: poll_tx,
+			workspace_id: workspace_id.to_string(),
 		});
 
 		let weak = Arc::downgrade(&controller);

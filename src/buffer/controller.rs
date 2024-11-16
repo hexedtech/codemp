@@ -22,9 +22,14 @@ use crate::ext::IgnorableError;
 pub struct BufferController(pub(crate) Arc<BufferControllerInner>);
 
 impl BufferController {
+	/// Get id of workspace containing this controller
+	pub fn workspace_id(&self) -> &str {
+		&self.0.workspace_id
+	}
+
 	/// Get the buffer path.
 	pub fn path(&self) -> &str {
-		&self.0.name
+		&self.0.path
 	}
 
 	/// Return buffer whole content, updating internal acknowledgement tracker.
@@ -50,7 +55,7 @@ impl BufferController {
 
 #[derive(Debug)]
 pub(crate) struct BufferControllerInner {
-	pub(crate) name: String,
+	pub(crate) path: String,
 	pub(crate) latest_version: watch::Receiver<diamond_types::LocalVersion>,
 	pub(crate) local_version: watch::Receiver<diamond_types::LocalVersion>,
 	pub(crate) ops_in: mpsc::UnboundedSender<TextChange>,
@@ -59,6 +64,7 @@ pub(crate) struct BufferControllerInner {
 	pub(crate) delta_request: mpsc::Sender<oneshot::Sender<Option<BufferUpdate>>>,
 	pub(crate) callback: watch::Sender<Option<ControllerCallback<BufferController>>>,
 	pub(crate) ack_tx: mpsc::UnboundedSender<LocalVersion>,
+	pub(crate) workspace_id: String,
 }
 
 #[cfg_attr(feature = "async-trait", async_trait::async_trait)]
