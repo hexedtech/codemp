@@ -74,7 +74,7 @@ test-e2e = []
 java = ["dep:lazy_static", "dep:jni", "dep:tracing-subscriber", "dep:jni-toolbox"]
 js = ["dep:napi-build", "dep:tracing-subscriber", "dep:napi", "dep:napi-derive"]
 py = ["dep:pyo3", "dep:tracing-subscriber", "dep:pyo3-build-config"]
-lua = ["serialize", "dep:mlua", "dep:tracing-subscriber", "dep:lazy_static"]
+lua = ["serialize", "dep:mlua-codemp-patch", "dep:tracing-subscriber", "dep:lazy_static"]
 # ffi variants
 lua-jit = ["mlua?/luajit"]
 lua-54 = ["mlua?/lua54"]
