@@ -38,7 +38,7 @@ jobs:
       - uses: arduino/setup-protoc@v3
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
-      - run: cargo build --release --features=luajit
+      - run: cargo build --release --features=lua
       - id: previoustag
         uses: "WyriHaximus/github-action-get-previous-tag@v1"
         with:
