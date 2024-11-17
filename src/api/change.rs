@@ -13,6 +13,7 @@
 #[cfg_attr(feature = "serialize", derive(serde::Serialize, serde::Deserialize))]
 pub struct BufferUpdate {
 	/// Optional content hash after applying this change.
+	#[cfg_attr(feature = "serialize", serde(skip_serializing_if = "Option::is_none"))]
 	pub hash: Option<i64>,
 	/// CRDT version after this change has been applied.
 	pub version: Vec<i64>,
