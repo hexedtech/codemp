@@ -91,9 +91,11 @@ jobs:
       matrix:
         versions:
           - python: 3.8
-            features: py-noabi
+            extra: ''
+            name: 'py'
           - python: 3.x
-            features: py
+            extra: '--no-default-features'
+            name: 'py-noabi'
         platform:
           - runner: windows-latest
             target: x64
@@ -114,12 +116,12 @@ jobs:
           working-directory: dist/py
           target: ${{ matrix.platform.target }}
           container: 'off'
-          args: --release --out ./build --features ${{ matrix.versions.features }}
+          args: --release --out ./build ${{ matrix.versions.extra }} --features py
           sccache: 'true'
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
-          name: codemp-${{ matrix.versions.features }}-windows-${{ matrix.platform.target }}
+          name: codemp-${{ matrix.versions.name }}-windows-${{ matrix.platform.target }}
           path: dist/py/build
 
   macos:
