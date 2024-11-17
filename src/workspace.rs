@@ -113,7 +113,7 @@ impl Workspace {
 
 		let users = Arc::new(DashMap::default());
 
-		let controller = cursor::Controller::spawn(users.clone(), tx, cur_stream);
+		let controller = cursor::Controller::spawn(users.clone(), tx, cur_stream, &name);
 
 		let ws = Self(Arc::new(WorkspaceInner {
 			name,
@@ -175,7 +175,7 @@ impl Workspace {
 		);
 		let stream = self.0.services.buf().attach(req).await?.into_inner();
 
-		let controller = buffer::Controller::spawn(self.0.user.id, path, tx, stream);
+		let controller = buffer::Controller::spawn(self.0.user.id, path, tx, stream, &self.0.name);
 		self.0.buffers.insert(path.to_string(), controller.clone());
 
 		Ok(controller)

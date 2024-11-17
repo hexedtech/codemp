@@ -6,7 +6,6 @@ mod workspace;
 
 use crate::prelude::*;
 use mlua::prelude::*;
-use mlua_codemp_patch as mlua;
 
 // define multiple entrypoints, so this library can have multiple names and still work
 #[mlua::lua_module(name = "codemp")]
@@ -57,15 +56,11 @@ fn entrypoint(lua: &Lua) -> LuaResult<LuaTable> {
 		"poll_callback",
 		lua.create_function(|lua, ()| {
 			let mut val = LuaMultiValue::new();
-			match ext::callback().recv() {
+			match ext::callback().recv(lua) {
 				None => {}
-				Some(ext::callback::LuaCallback::Invoke(cb, arg)) => {
+				Some((cb, arg)) => {
 					val.push_back(LuaValue::Function(cb));
 					val.push_back(arg.into_lua(lua)?);
-				}
-				Some(ext::callback::LuaCallback::Fail(msg)) => {
-					val.push_back(false.into_lua(lua)?);
-					val.push_back(msg.into_lua(lua)?);
 				}
 			}
 			Ok(val)

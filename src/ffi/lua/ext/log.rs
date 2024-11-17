@@ -1,7 +1,6 @@
 use std::{io::Write, sync::Mutex};
 
 use mlua::prelude::*;
-use mlua_codemp_patch as mlua;
 use tokio::sync::mpsc;
 
 #[derive(Debug, Clone)]
@@ -19,7 +18,7 @@ impl Write for LuaLoggerProducer {
 
 // TODO can we make this less verbose?
 pub(crate) fn setup_tracing(
-	_: &Lua,
+	lua: &Lua,
 	(printer, debug): (LuaValue, Option<bool>),
 ) -> LuaResult<bool> {
 	let level = if debug.unwrap_or_default() {
@@ -37,14 +36,6 @@ pub(crate) fn setup_tracing(
 		.with_source_location(false);
 
 	let success = match printer {
-		LuaValue::Boolean(_)
-		| LuaValue::LightUserData(_)
-		| LuaValue::Integer(_)
-		| LuaValue::Number(_)
-		| LuaValue::Table(_)
-		| LuaValue::Thread(_)
-		| LuaValue::UserData(_)
-		| LuaValue::Error(_) => return Err(LuaError::BindError), // TODO full BadArgument type??
 		LuaValue::Nil => tracing_subscriber::fmt()
 			.event_format(format)
 			.with_max_level(level)
@@ -63,6 +54,8 @@ pub(crate) fn setup_tracing(
 				.is_ok()
 		}
 		LuaValue::Function(cb) => {
+			let key = uuid::Uuid::new_v4().to_string();
+			lua.set_named_registry_value(&key, cb)?;
 			let (tx, mut rx) = mpsc::unbounded_channel();
 			let res = tracing_subscriber::fmt()
 				.event_format(format)
@@ -74,12 +67,13 @@ pub(crate) fn setup_tracing(
 			if res {
 				super::a_sync::tokio().spawn(async move {
 					while let Some(msg) = rx.recv().await {
-						super::callback().invoke(cb.clone(), msg);
+						super::callback().invoke(key.clone(), msg, false);
 					}
 				});
 			}
 			res
-		}
+		},
+		_ => return Err(LuaError::BindError), // TODO full BadArgument type??
 	};
 
 	Ok(success)
