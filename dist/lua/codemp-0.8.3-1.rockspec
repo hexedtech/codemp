@@ -1,9 +1,9 @@
 package = "codemp"
-version = "0.8.2-1"
+version = "0.8.3-1"
 
 source = {
 	url = "git+https://github.com/hexedtech/codemp",
-	tag = "v0.8.2",
+	tag = "v0.8.3",
 }
 
 dependencies = {
