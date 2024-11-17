@@ -2,8 +2,8 @@ name: javascript
 
 on:
   push:
-    branches:
-      - stable
+    tags:
+      - 'v*.*.*'
 
 permissions:
   contents: read

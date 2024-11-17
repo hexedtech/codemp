@@ -2,8 +2,8 @@ name: lua
 
 on:
   push:
-    branches:
-      - stable
+    tags:
+      - 'v*.*.*'
 
 permissions:
   contents: read

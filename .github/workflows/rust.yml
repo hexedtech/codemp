@@ -2,8 +2,8 @@ name: rust
 
 on:
   push:
-    branches:
-      - stable
+    tags:
+      - 'v*.*.*'
 
 env:
   CARGO_TERM_COLOR: always

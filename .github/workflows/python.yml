@@ -7,8 +7,8 @@ name: python
 
 on:
   push:
-    branches:
-      - stable
+    tags:
+      - 'v*.*.*'
 
 permissions:
   contents: read
