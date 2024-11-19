@@ -37,7 +37,7 @@ pub struct Client(Arc<ClientInner>);
 
 #[derive(Debug)]
 struct ClientInner {
-	user: User,
+	user: Arc<User>,
 	config: crate::api::Config,
 	workspaces: DashMap<String, Workspace>,
 	auth: AuthClient<Channel>,
@@ -67,7 +67,7 @@ impl Client {
 			SessionClient::with_interceptor(channel, network::SessionInterceptor(claims.channel()));
 
 		Ok(Client(Arc::new(ClientInner {
-			user: resp.user.into(),
+			user: Arc::new(resp.user.into()),
 			workspaces: DashMap::default(),
 			claims,
 			auth,
