@@ -91,8 +91,8 @@ class TextChange:
 	Editor agnostic representation of a text change, it translate between internal
 	codemp text operations and editor operations
 	"""
-	start: int
-	end: int
+	start_idx: int
+	end_idx: int
 	content: str
 
 	def __new__(cls, *, start: int, end: int, content: str, **kwargs): ...
