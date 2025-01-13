@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use diamond_types::list::encoding::EncodeOptions;
+use diamond_types::list::encoding::ENCODE_PATCH;
 use diamond_types::list::{Branch, OpLog};
 use diamond_types::LocalVersion;
 use tokio::sync::{mpsc, oneshot, watch};
@@ -192,7 +192,7 @@ impl BufferWorker {
 
 		if change.is_delete() || change.is_insert() {
 			tx.send(Operation {
-				data: self.oplog.encode_from(EncodeOptions::default(), &last_ver),
+				data: self.oplog.encode_from(ENCODE_PATCH, &last_ver),
 			})
 			.await
 			.unwrap_or_warn("failed to send change!");
