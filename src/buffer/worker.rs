@@ -19,6 +19,7 @@ use super::controller::{BufferController, BufferControllerInner};
 struct BufferWorker {
 	agent_id: u32,
 	path: String,
+	workspace_id: String,
 	latest_version: watch::Sender<diamond_types::LocalVersion>,
 	local_version: watch::Sender<diamond_types::LocalVersion>,
 	ack_rx: mpsc::UnboundedReceiver<LocalVersion>,
@@ -75,6 +76,7 @@ impl BufferController {
 		let worker = BufferWorker {
 			agent_id,
 			path: path.to_string(),
+			workspace_id: workspace_id.to_string(),
 			latest_version: latest_version_tx,
 			local_version: my_version_tx,
 			ack_rx,
@@ -95,15 +97,16 @@ impl BufferController {
 		BufferController(controller)
 	}
 
+	#[tracing::instrument(skip(worker, tx, rx), fields(ws = worker.workspace_id, path = worker.path))]
 	async fn work(
 		mut worker: BufferWorker,
 		tx: mpsc::Sender<Operation>,
 		mut rx: Streaming<BufferEvent>,
 	) {
-		tracing::debug!("controller worker started");
+		tracing::debug!("buffer worker started");
 		loop {
 			if worker.controller.upgrade().is_none() {
-				break;
+				break tracing::debug!("buffer worker clean exit");
 			};
 
 			// block until one of these is ready
@@ -114,6 +117,7 @@ impl BufferController {
 				res = worker.ack_rx.recv() => match res {
 					None => break tracing::error!("ack channel closed"),
 					Some(v) => {
+						tracing::debug!("client acked change");
 						worker.branch.merge(&worker.oplog, &v);
 						worker.local_version.send(worker.branch.local_version())
 							.unwrap_or_warn("could not ack local version");
@@ -160,11 +164,12 @@ impl BufferController {
 			}
 		}
 
-		tracing::debug!("controller worker stopped");
+		tracing::debug!("buffer worker stopped");
 	}
 }
 
 impl BufferWorker {
+	#[tracing::instrument(skip(self, tx))]
 	async fn handle_editor_change(&mut self, change: TextChange, tx: &mpsc::Sender<Operation>) {
 		let last_ver = self.oplog.local_version();
 		// clip to buffer extents
@@ -205,11 +210,16 @@ impl BufferWorker {
 		}
 	}
 
+	#[tracing::instrument(skip(self))]
 	async fn handle_server_change(&mut self, change: BufferEvent) -> bool {
 		match self.controller.upgrade() {
-			None => true, // clean exit actually, just weird we caught it here
+			None => { // clean exit actually, just weird we caught it here
+				tracing::debug!("clean exit while handling server change");
+				true
+			}, 
 			Some(controller) => match self.oplog.decode_and_add(&change.op.data) {
 				Ok(local_version) => {
+					tracing::debug!("updating local version: {local_version:?}");
 					self.latest_version
 						.send(local_version)
 						.unwrap_or_warn("failed to update latest version!");
@@ -229,6 +239,7 @@ impl BufferWorker {
 		}
 	}
 
+	#[tracing::instrument(skip(self, tx))]
 	async fn handle_delta_request(&mut self, tx: oneshot::Sender<Option<BufferUpdate>>) {
 		let last_ver = self.branch.local_version();
 		if let Some((lv, Some(dtop))) = self
@@ -285,9 +296,11 @@ impl BufferWorker {
 					},
 				},
 			};
+			tracing::debug!("sending update {tc:?}");
 			tx.send(Some(tc))
 				.unwrap_or_warn("could not update ops channel -- is controller dead?");
 		} else {
+			tracing::debug!("no enqueued changes");
 			tx.send(None)
 				.unwrap_or_warn("could not update ops channel -- is controller dead?");
 		}

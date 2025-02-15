@@ -84,6 +84,7 @@ impl AsyncReceiver<Event> for Workspace {
 }
 
 impl Workspace {
+	#[tracing::instrument(skip(name, user, token, claims), fields(ws = name))]
 	pub(crate) async fn connect(
 		name: String,
 		user: Arc<User>,
@@ -165,6 +166,7 @@ impl Workspace {
 	}
 
 	/// Attach to a buffer and return a handle to it.
+	#[tracing::instrument(skip(self))]
 	pub async fn attach_buffer(&self, path: &str) -> ConnectionResult<buffer::Controller> {
 		let mut worskspace_client = self.0.services.ws();
 		let request = tonic::Request::new(BufferNode {
@@ -326,7 +328,7 @@ impl Workspace {
 			.0
 			.filetree
 			.iter()
-			.filter(|f| filter.map_or(true, |flt| f.starts_with(flt)))
+			.filter(|f| filter.is_none_or(|flt| f.starts_with(flt)))
 			.map(|f| f.clone())
 			.collect::<Vec<String>>();
 		tree.sort();
@@ -342,7 +344,8 @@ struct WorkspaceWorker {
 }
 
 impl WorkspaceWorker {
-	pub(crate) async fn work(mut self, name: String, mut stream: Streaming<WorkspaceEvent>, weak: Weak<WorkspaceInner>) {
+	#[tracing::instrument(skip(self, stream, weak))]
+	pub(crate) async fn work(mut self, ws: String, mut stream: Streaming<WorkspaceEvent>, weak: Weak<WorkspaceInner>) {
 		tracing::debug!("workspace worker starting");
 		loop {
 			tokio::select! {
@@ -352,13 +355,16 @@ impl WorkspaceWorker {
 				},
 
 				res = stream.message() => match res {
-					Err(e) => break tracing::error!("workspace '{}' stream closed: {}", name, e),
-					Ok(None) => break tracing::info!("leaving workspace {}", name),
+					Err(e) => break tracing::error!("workspace '{ws}' stream closed: {e}"),
+					Ok(None) => break tracing::info!("leaving workspace {ws}"),
 					Ok(Some(WorkspaceEvent { event: None })) => {
-						tracing::warn!("workspace {} received empty event", name)
+						tracing::warn!("workspace {ws} received empty event")
 					}
 					Ok(Some(WorkspaceEvent { event: Some(ev) })) => {
-						let Some(inner) = weak.upgrade() else { break };
+						let Some(inner) = weak.upgrade() else {
+							break tracing::debug!("workspace worker clean exit");
+						};
+						tracing::debug!("received workspace event: {ev:?}");
 						let update = crate::api::Event::from(&ev);
 						match ev {
 							// user
@@ -391,7 +397,7 @@ impl WorkspaceWorker {
 							if let Some(ws) = weak.upgrade() {
 								cb.call(Workspace(ws));
 							} else {
-								break tracing::debug!("workspace worker clean exit");
+								break tracing::debug!("workspace worker clean (late) exit");
 							}
 						}
 					}
