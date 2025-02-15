@@ -66,8 +66,12 @@ impl Config {
 
 #[derive(Clone, Default)]
 #[repr(transparent)]
-#[cfg_attr(feature = "serialize", derive(serde::Serialize, serde::Deserialize), serde(transparent))]
-#[cfg_attr(feature = "py", derive(pyo3::IntoPyObject), pyo3(transparent))]
+#[cfg_attr(
+	feature = "serialize",
+	derive(serde::Serialize, serde::Deserialize),
+	serde(transparent)
+)]
+#[cfg_attr(feature = "py", derive(pyo3::FromPyObject, pyo3::IntoPyObject))]
 #[cfg_attr(feature = "js", napi(transparent))]
 pub struct Password(String);
 
