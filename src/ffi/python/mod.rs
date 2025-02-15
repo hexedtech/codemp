@@ -236,7 +236,7 @@ impl Selection {
 		buffer: String,
 		kwds: Option<&Bound<'_, PyDict>>,
 	) -> PyResult<Self> {
-		if let Some(kwds) = kwds {
+		if let Some(_kwds) = kwds {
 			Ok(Self {
 				start_row,
 				start_col,
@@ -277,7 +277,7 @@ impl TextChange {
 		content: String,
 		kwds: Option<&Bound<'_, PyDict>>,
 	) -> PyResult<Self> {
-		if let Some(kwds) = kwds {
+		if let Some(_kwds) = kwds {
 			Ok(Self {
 				start_idx: start,
 				end_idx: end,

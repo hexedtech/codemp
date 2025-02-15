@@ -82,6 +82,8 @@ macro_rules! null_check {
 
 pub(crate) use null_check;
 
+use crate::api::config::Password;
+
 impl jni_toolbox::JniToolboxError for crate::errors::ConnectionError {
 	fn jclass(&self) -> String {
 		match self {
@@ -336,7 +338,8 @@ impl<'j> jni_toolbox::FromJava<'j> for crate::api::Config {
 			if jfield.is_null() {
 				return Err(jni::errors::Error::NullPtr("Password can never be null!"));
 			}
-			unsafe { env.get_string_unchecked(&jfield.into()) }?.into()
+			let s: String = unsafe { env.get_string_unchecked(&jfield.into()) }?.into();
+			Password::from(s)
 		};
 
 		let host = {

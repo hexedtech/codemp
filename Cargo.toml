@@ -48,10 +48,10 @@ mlua = { version = "0.10", features = ["module", "serialize", "error-send"], opt
 
 # glue (js)
 napi = { version = "2.16", features = ["full"], optional = true } 
-napi-derive = { version="2.16",  optional = true}
+napi-derive = { version="2.16", optional = true }
 
 # glue (python)
-pyo3 = { version = "0.22", features = ["extension-module", "multiple-pymethods"], optional = true}
+pyo3 = { version = "0.23", features = ["extension-module", "multiple-pymethods"], optional = true}
 
 # extra
 async-trait = { version = "0.1", optional = true }
