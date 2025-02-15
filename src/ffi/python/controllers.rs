@@ -72,12 +72,12 @@ impl BufferController {
 	}
 
 	#[pyo3(name = "ack")]
-	fn pyack(&self, py: Python, v: Vec<i64>) -> () {
+	fn pyack(&self, v: Vec<i64>) -> () {
 		self.ack(v)
 	}
 
 	#[pyo3(name = "send")]
-	fn pysend(&self, _py: Python, op: TextChange) -> PyResult<()> {
+	fn pysend(&self, op: TextChange) -> PyResult<()> {
 		let this = self.clone();
 		this.send(op)?;
 		Ok(())
