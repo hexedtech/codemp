@@ -81,6 +81,12 @@ impl From<String> for Password {
 	}
 }
 
+impl From<&str> for Password {
+	fn from(value: &str) -> Self {
+		Password(value.to_string())
+	}
+}
+
 impl From<Password> for String {
 	fn from(value: Password) -> Self {
 		value.0
