@@ -84,8 +84,10 @@ impl Promise {
 macro_rules! a_sync {
 	($x:expr) => {{
 		Ok($crate::ffi::python::Promise(Some(
-			$crate::ffi::python::tokio()
-				.spawn(async move { Ok($x.map(|f| Python::with_gil(|py| f.into_py(py)))?) }),
+			$crate::ffi::python::tokio().spawn(async move {
+				let res = $x?;
+				Python::with_gil(|py| Ok(res.into_pyobject(py)?.into_any().unbind()))
+			}),
 		)))
 	}};
 }
@@ -95,8 +97,10 @@ macro_rules! a_sync_allow_threads {
 	($py:ident, $x:expr) => {{
 		$py.allow_threads(move || {
 			Ok($crate::ffi::python::Promise(Some(
-				$crate::ffi::python::tokio()
-					.spawn(async move { Ok($x.map(|f| Python::with_gil(|py| f.into_py(py)))?) }),
+				$crate::ffi::python::tokio().spawn(async move {
+					let res = $x?;
+					Python::with_gil(|gil| Ok(res.into_pyobject(gil)?.into_any().unbind()))
+				}),
 			)))
 		})
 	}};
@@ -300,7 +304,13 @@ impl TextChange {
 #[pyfunction]
 fn connect(py: Python, config: Py<Config>) -> PyResult<Promise> {
 	let conf: Config = config.extract(py)?;
-	a_sync!(Client::connect(conf).await)
+	Ok(Promise(Some(crate::ffi::python::tokio().spawn(
+		async move {
+			let client = Client::connect(conf).await?;
+			Python::with_gil(|py| Ok(client.into_pyobject(py)?.into_any().unbind()))
+		},
+	))))
+	// a_sync!(Client::connect(conf).await)
 }
 
 #[pyfunction]
