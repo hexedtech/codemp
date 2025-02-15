@@ -13,6 +13,7 @@ use codemp_proto::cursor::{CursorEvent, CursorPosition};
 use super::controller::{CursorController, CursorControllerInner};
 
 struct CursorWorker {
+	workspace_id: String,
 	op: mpsc::UnboundedReceiver<CursorPosition>,
 	map: Arc<dashmap::DashMap<Uuid, User>>,
 	stream: mpsc::Receiver<oneshot::Sender<Option<Cursor>>>,
@@ -24,6 +25,7 @@ struct CursorWorker {
 }
 
 impl CursorWorker {
+	#[tracing::instrument(skip(self, tx))]
 	fn handle_recv(&mut self, tx: oneshot::Sender<Option<Cursor>>) {
 		tx.send(
 			self.store.pop_front().and_then(|event| {
@@ -71,6 +73,7 @@ impl CursorController {
 		let weak = Arc::downgrade(&controller);
 
 		let worker = CursorWorker {
+			workspace_id: workspace_id.to_string(),
 			op: op_rx,
 			map: user_map,
 			stream: stream_rx,
@@ -86,16 +89,17 @@ impl CursorController {
 		CursorController(controller)
 	}
 
+	#[tracing::instrument(skip(worker, tx, rx), fields(ws = worker.workspace_id))]
 	async fn work(
 		mut worker: CursorWorker,
 		tx: mpsc::Sender<CursorPosition>,
 		mut rx: Streaming<CursorEvent>,
 	) {
+		tracing::debug!("starting cursor worker");
 		loop {
-			tracing::debug!("cursor worker polling");
 			if worker.controller.upgrade().is_none() {
-				break;
-			}; // clean exit: all controllers dropped
+				break tracing::debug!("cursor worker clean exit");
+			};
 			tokio::select! {
 				biased;
 
@@ -110,7 +114,7 @@ impl CursorController {
 
 				// server sents us a cursor
 				Ok(Some(cur)) = rx.message() => match worker.controller.upgrade() {
-					None => break, // clean exit, just weird that we got it here
+					None => break tracing::debug!("cursor worker clean (late) exit"), // clean exit, just weird that we got it here
 					Some(controller) => {
 						tracing::debug!("received cursor from server");
 						worker.store.push_back(cur);
@@ -127,8 +131,9 @@ impl CursorController {
 				// client wants to get next cursor event
 				Some(tx) = worker.stream.recv() => worker.handle_recv(tx),
 
-				else => break,
+				else => break tracing::debug!("cursor worker clean-ish exit"),
 			}
 		}
+		tracing::debug!("stopping cursor worker");
 	}
 }
