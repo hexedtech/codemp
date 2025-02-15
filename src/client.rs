@@ -47,6 +47,7 @@ struct ClientInner {
 
 impl Client {
 	/// Connect to the server, authenticate and instantiate a new [`Client`].
+	#[tracing::instrument]
 	pub async fn connect(config: crate::api::Config) -> ConnectionResult<Self> {
 		// TODO move these two into network.rs
 		let channel = Endpoint::from_shared(config.endpoint())?.connect().await?;
@@ -157,6 +158,7 @@ impl Client {
 	}
 
 	/// Join and return a [`Workspace`].
+	#[tracing::instrument(skip(self, workspace), fields(ws = workspace.as_ref()))]
 	pub async fn attach_workspace(
 		&self,
 		workspace: impl AsRef<str>,
