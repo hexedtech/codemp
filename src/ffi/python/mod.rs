@@ -202,7 +202,7 @@ impl Config {
 
 			Ok(Self {
 				username,
-				password,
+				password: password.into(),
 				host,
 				port,
 				tls,

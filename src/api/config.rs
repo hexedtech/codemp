@@ -1,6 +1,10 @@
 //! # Config
 //! Data structure defining clients configuration
 
+use std::fmt::{Debug, Display};
+
+use serde::Serialize;
+
 /// Configuration struct for the `codemp` client.
 ///
 /// `username` and `password` are required fields, everything else is optional.
@@ -8,7 +12,7 @@
 /// `host`, `port` and `tls` affect all connections to all gRPC services; the
 /// resulting endpoint is composed like this:
 ///     http{tls?'s':''}://{host}:{port}
-#[derive(Clone, Default)]
+#[derive(Clone, Debug, Default)]
 #[cfg_attr(feature = "js", napi_derive::napi(object))]
 #[cfg_attr(feature = "py", pyo3::pyclass(get_all, set_all))]
 #[cfg_attr(feature = "serialize", derive(serde::Serialize, serde::Deserialize))]
@@ -16,7 +20,7 @@ pub struct Config {
 	/// User identifier used to register, possibly your email.
 	pub username: String,
 	/// User password chosen upon registration.
-	pub password: String, // must not leak this!
+	pub password: Password, // must not leak this!
 	/// Address of server to connect to, default api.code.mp.
 	pub host: Option<String>,
 	/// Port to connect to, default 50053.
@@ -30,7 +34,7 @@ impl Config {
 	pub fn new(username: impl ToString, password: impl ToString) -> Self {
 		Self {
 			username: username.to_string(),
-			password: password.to_string(),
+			password: password.to_string().into(),
 			host: None,
 			port: None,
 			tls: None,
@@ -62,24 +66,30 @@ impl Config {
 	}
 }
 
-// manual impl: we want to obfuscate the password field!!
-// TODO: can we just tag password to be obfuscated in debug print?
-//       reimplementing the whole Debug thing is pretty lame
-impl std::fmt::Debug for Config {
+#[derive(Clone, Default)]
+#[cfg_attr(feature = "serialize", derive(serde::Serialize, serde::Deserialize), serde(transparent))]
+pub struct Password(String);
+
+impl From<String> for Password {
+	fn from(value: String) -> Self {
+		Password(value)
+	}
+}
+
+impl From<Password> for String {
+	fn from(value: Password) -> Self {
+		value.0
+	}
+}
+
+impl Display for Password {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		if f.alternate() {
-			write!(f,
-r#"""Config {{
-    username: {},
-    password: ********,
-    host: {:#?},
-    port: {:#?},
-    tls: {:#?}
-}}"""#,
-				self.username, self.host, self.port, self.tls
-			)
-		} else {
-			write!(f, "Config {{ username: {}, password: ********, host: {:?}, port: {:?}, tls: {:?} }}", self.username, self.host, self.port, self.tls)
-		}
+		write!(f, "********")
+	}
+}
+
+impl Debug for Password {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(f, "********")
 	}
 }

@@ -56,7 +56,7 @@ impl Client {
 		let resp = auth
 			.login(LoginRequest {
 				username: config.username.clone(),
-				password: config.password.clone(),
+				password: config.password.to_string().clone(),
 			})
 			.await?
 			.into_inner();

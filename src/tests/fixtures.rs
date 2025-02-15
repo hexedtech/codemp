@@ -64,7 +64,7 @@ impl ScopedFixture<crate::Client> for ClientFixture {
 		});
 		let client = crate::Client::connect(crate::api::Config {
 			username,
-			password,
+			password: password.into(),
 			tls: Some(false),
 			..Default::default()
 		})
