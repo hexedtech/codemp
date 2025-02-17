@@ -115,7 +115,7 @@ impl BufferController {
 
 				// received new change ack, merge editor branch up to that version
 				res = worker.ack_rx.recv() => match res {
-					None => break tracing::error!("ack channel closed"),
+					None => break tracing::debug!("stopping: ack channel closed"),
 					Some(v) => {
 						tracing::debug!("client acked change");
 						worker.branch.merge(&worker.oplog, &v);
@@ -126,7 +126,7 @@ impl BufferController {
 
 				// received a new poller, add it to collection
 				res = worker.poller.recv() => match res {
-					None => break tracing::error!("poller channel closed"),
+					None => break tracing::debug!("stopping: poller channel closed"),
 					Some(tx) => worker.pollers.push(tx),
 				},
 
@@ -213,10 +213,11 @@ impl BufferWorker {
 	#[tracing::instrument(skip(self))]
 	async fn handle_server_change(&mut self, change: BufferEvent) -> bool {
 		match self.controller.upgrade() {
-			None => { // clean exit actually, just weird we caught it here
+			None => {
+				// clean exit actually, just weird we caught it here
 				tracing::debug!("clean exit while handling server change");
 				true
-			}, 
+			}
 			Some(controller) => match self.oplog.decode_and_add(&change.op.data) {
 				Ok(local_version) => {
 					tracing::debug!("updating local version: {local_version:?}");
