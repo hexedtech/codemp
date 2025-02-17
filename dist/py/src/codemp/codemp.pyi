@@ -1,5 +1,7 @@
 from typing import Tuple, Optional, Callable
 
+def version() -> str: ...
+
 class Driver:
 	"""
 	this is akin to a big red button with a white "STOP" on top of it.

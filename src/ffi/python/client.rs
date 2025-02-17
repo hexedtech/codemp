@@ -31,14 +31,14 @@ impl Client {
 
 	#[pyo3(name = "create_workspace")]
 	fn pycreate_workspace(&self, py: Python<'_>, workspace: String) -> PyResult<super::Promise> {
-		tracing::info!("attempting to create workspace {}", workspace);
+		tracing::info!("creating workspace {}", workspace);
 		let this = self.clone();
 		a_sync_allow_threads!(py, this.create_workspace(workspace).await)
 	}
 
 	#[pyo3(name = "delete_workspace")]
 	fn pydelete_workspace(&self, py: Python<'_>, workspace: String) -> PyResult<super::Promise> {
-		tracing::info!("attempting to delete workspace {}", workspace);
+		tracing::info!("deleting workspace {}", workspace);
 		let this = self.clone();
 		a_sync_allow_threads!(py, this.delete_workspace(workspace).await)
 	}
@@ -50,21 +50,21 @@ impl Client {
 		workspace: String,
 		user: String,
 	) -> PyResult<super::Promise> {
-		tracing::info!("attempting to invite {user} to workspace {workspace}");
+		tracing::info!("inviting {user} to workspace {workspace}");
 		let this = self.clone();
 		a_sync_allow_threads!(py, this.invite_to_workspace(workspace, user).await)
 	}
 
 	#[pyo3(name = "fetch_owned_workspaces")]
 	fn pyfetch_owned_workspaces(&self, py: Python<'_>) -> PyResult<super::Promise> {
-		tracing::info!("attempting to fetch owned workspaces");
+		tracing::info!("fetching owned workspaces");
 		let this = self.clone();
 		a_sync_allow_threads!(py, this.fetch_owned_workspaces().await)
 	}
 
 	#[pyo3(name = "fetch_joined_workspaces")]
 	fn pyfetch_joined_workspaces(&self, py: Python<'_>) -> PyResult<super::Promise> {
-		tracing::info!("attempting to fetch joined workspaces");
+		tracing::info!("fetching joined workspaces");
 		let this = self.clone();
 		a_sync_allow_threads!(py, this.fetch_joined_workspaces().await)
 	}
