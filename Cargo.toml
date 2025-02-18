@@ -21,15 +21,15 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 # core
 tracing = "0.1"
-thiserror = "1.0"
+thiserror = "2.0"
 # crdt
 diamond-types = "1.0"
 # proto
 codemp-proto = "0.7"
-uuid = { version = "1.10", features = ["v4"] }
+uuid = { version = "1.13", features = ["v4"] }
 tonic = { version = "0.12", features = ["tls", "tls-roots"] }
 # api
-tokio = { version = "1.40", features = ["macros", "rt-multi-thread", "sync"] }
+tokio = { version = "1.43", features = ["macros", "rt-multi-thread", "sync"] }
 xxhash-rust = { version = "0.8", features = ["xxh3"] }
 # client
 tokio-stream = "0.1"
