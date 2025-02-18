@@ -39,7 +39,6 @@ dashmap = "6.1"
 tracing-subscriber = { version = "0.3", optional = true }
 
 # glue (java)
-lazy_static = { version = "1.5", optional = true }
 jni = { version = "0.21", features = ["invocation"], optional = true }
 jni-toolbox = { version = "0.2", optional = true, features = ["uuid"] }
 
@@ -71,10 +70,10 @@ serialize = ["dep:serde", "uuid/serde"]
 # special tests which require more setup
 test-e2e = []
 # ffi
-java = ["dep:lazy_static", "dep:jni", "dep:tracing-subscriber", "dep:jni-toolbox"]
+java = ["dep:jni", "dep:tracing-subscriber", "dep:jni-toolbox"]
 js = ["dep:napi-build", "dep:tracing-subscriber", "dep:napi", "dep:napi-derive"]
 py = ["dep:pyo3", "dep:tracing-subscriber", "dep:pyo3-build-config"]
-lua = ["serialize", "dep:mlua", "dep:tracing-subscriber", "dep:lazy_static"]
+lua = ["serialize", "dep:mlua", "dep:tracing-subscriber"]
 # ffi variants
 lua-jit = ["mlua?/luajit"]
 lua-54 = ["mlua?/lua54"]
