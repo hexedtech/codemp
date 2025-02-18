@@ -23,8 +23,6 @@ Before writing the tag, make sure all these steps have been followed:
 	- note that the rockspec file contains current version in its name so must be renamed
 	- note that rockspec versions have a fourth component: "revision". we don't use it so always set is as `1`
 - [ ] update `Cargo.lock` (basically delete it and re-run `cargo build`. check diff before committing!)
-- [ ] **make sure docs build without warning or errors** (`cargo doc --features=serialize`)
-- [ ] **make sure that core crate builds** with `--release --features=js,py,java,lua`
 - [ ] **make sure the version you're about to release is available** (on all registries!)
 - [ ] update last tag in "commits since last tag" badge (in README.md)
 - [ ] commit all these changes (in `release/vX.Y.Z` branch), open a PR and have it approved and merged

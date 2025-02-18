@@ -20,6 +20,16 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - run: cargo test --verbose
 
+  test-doc:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: arduino/setup-protoc@v3
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo doc --features=serialize
+
   test-beta:
     runs-on: ubuntu-latest
     needs: [test-unit]
