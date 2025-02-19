@@ -174,7 +174,7 @@ impl Workspace {
 		});
 		let credentials = worskspace_client.access_buffer(request).await?.into_inner();
 
-		let (tx, rx) = mpsc::channel(256);
+		let (tx, rx) = mpsc::channel(1);
 		let mut req = tonic::Request::new(tokio_stream::wrappers::ReceiverStream::new(rx));
 		req.metadata_mut().insert(
 			"buffer",

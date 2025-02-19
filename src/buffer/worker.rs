@@ -23,7 +23,7 @@ struct BufferWorker {
 	latest_version: watch::Sender<diamond_types::LocalVersion>,
 	local_version: watch::Sender<diamond_types::LocalVersion>,
 	ack_rx: mpsc::UnboundedReceiver<LocalVersion>,
-	ops_in: mpsc::UnboundedReceiver<TextChange>,
+	ops_in: mpsc::UnboundedReceiver<(TextChange, oneshot::Sender<bool>)>,
 	poller: mpsc::UnboundedReceiver<oneshot::Sender<()>>,
 	pollers: Vec<oneshot::Sender<()>>,
 	content_checkout: mpsc::Receiver<oneshot::Sender<String>>,
@@ -133,7 +133,7 @@ impl BufferController {
 				// received a text change from editor
 				res = worker.ops_in.recv() => match res {
 					None => break tracing::debug!("stopping: editor closed channel"),
-					Some(change) => worker.handle_editor_change(change, &tx).await,
+					Some((change, sent)) => worker.handle_editor_change(change, sent, &tx).await,
 				},
 
 				// received a message from server: add to oplog and update latest version (+unlock pollers)
@@ -170,7 +170,7 @@ impl BufferController {
 
 impl BufferWorker {
 	#[tracing::instrument(skip(self, tx))]
-	async fn handle_editor_change(&mut self, change: TextChange, tx: &mpsc::Sender<Operation>) {
+	async fn handle_editor_change(&mut self, change: TextChange, sent: oneshot::Sender<bool>, tx: &mpsc::Sender<Operation>) {
 		let last_ver = self.oplog.local_version();
 		// clip to buffer extents
 		let clip_start = change.start_idx as usize;
@@ -199,14 +199,17 @@ impl BufferWorker {
 			tx.send(Operation {
 				data: self.oplog.encode_from(ENCODE_PATCH, &last_ver),
 			})
-			.await
-			.unwrap_or_warn("failed to send change!");
+				.await
+				.unwrap_or_warn("failed to send change!");
 			self.latest_version
 				.send(self.oplog.local_version())
 				.unwrap_or_warn("failed to update latest version!");
 			self.local_version
 				.send(self.branch.local_version())
 				.unwrap_or_warn("failed to update local version!");
+			let _ = sent.send(true);
+		} else {
+			let _ = sent.send(false);
 		}
 	}
 

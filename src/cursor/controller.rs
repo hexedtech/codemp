@@ -45,7 +45,7 @@ impl Controller<Selection, Cursor> for CursorController {}
 
 #[cfg_attr(feature = "async-trait", async_trait::async_trait)]
 impl AsyncSender<Selection> for CursorController {
-	fn send(&self, mut cursor: Selection) -> ControllerResult<()> {
+	fn send(&self, mut cursor: Selection) -> ControllerResult<impl std::future::Future<Output = bool>> {
 		if cursor.start_row > cursor.end_row
 			|| (cursor.start_row == cursor.end_row && cursor.start_col > cursor.end_col)
 		{
@@ -53,7 +53,7 @@ impl AsyncSender<Selection> for CursorController {
 			std::mem::swap(&mut cursor.start_col, &mut cursor.end_col);
 		}
 
-		Ok(self.0.op.send(CursorPosition {
+		self.0.op.send(CursorPosition {
 			buffer: BufferNode {
 				path: cursor.buffer,
 			},
@@ -65,7 +65,9 @@ impl AsyncSender<Selection> for CursorController {
 				row: cursor.end_row,
 				col: cursor.end_col,
 			},
-		})?)
+		})?;
+
+		Ok(std::future::ready(true))
 	}
 }
 

@@ -58,7 +58,7 @@ pub(crate) struct BufferControllerInner {
 	pub(crate) path: String,
 	pub(crate) latest_version: watch::Receiver<diamond_types::LocalVersion>,
 	pub(crate) local_version: watch::Receiver<diamond_types::LocalVersion>,
-	pub(crate) ops_in: mpsc::UnboundedSender<TextChange>,
+	pub(crate) ops_in: mpsc::UnboundedSender<(TextChange, oneshot::Sender<bool>)>,
 	pub(crate) poller: mpsc::UnboundedSender<oneshot::Sender<()>>,
 	pub(crate) content_request: mpsc::Sender<oneshot::Sender<String>>,
 	pub(crate) delta_request: mpsc::Sender<oneshot::Sender<Option<BufferUpdate>>>,
@@ -71,9 +71,10 @@ pub(crate) struct BufferControllerInner {
 impl Controller<TextChange, BufferUpdate> for BufferController {}
 
 impl AsyncSender<TextChange> for BufferController {
-	fn send(&self, op: TextChange) -> ControllerResult<()> {
-		self.0.ops_in.send(op)?;
-		Ok(())
+	fn send(&self, op: TextChange) -> ControllerResult<impl std::future::Future<Output = bool>> {
+		let (tx, rx) = oneshot::channel();
+		self.0.ops_in.send((op, tx))?;
+		Ok(async move { rx.await.unwrap_or(false) })
 	}
 }
 

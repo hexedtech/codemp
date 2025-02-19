@@ -39,7 +39,7 @@ where
 /// Details about the receiving end are left to the implementor.
 pub trait AsyncSender<T: Sized + Send + Sync>: Sized + Send + Sync {
 	/// Enqueue a new value to be sent to all other users without blocking
-	fn send(&self, x: T) -> ControllerResult<()>;
+	fn send(&self, x: T) -> ControllerResult<impl std::future::Future<Output = bool>>;
 }
 
 /// Asynchronous and thread-safe handle to receive data from a stream.
