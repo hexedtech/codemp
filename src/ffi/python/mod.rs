@@ -3,7 +3,7 @@ pub mod controllers;
 pub mod workspace;
 
 use crate::{
-	api::{BufferUpdate, Config, Cursor, Selection, TextChange, User},
+	api::{BufferUpdate, Config, Cursor, Event, Selection, TextChange, User},
 	buffer::Controller as BufferController,
 	cursor::Controller as CursorController,
 	Client, Workspace,
@@ -391,6 +391,7 @@ fn codemp(m: &Bound<'_, PyModule>) -> PyResult<()> {
 	m.add_class::<User>()?;
 
 	m.add_class::<Workspace>()?;
+	m.add_class::<Event>()?;
 	m.add_class::<Client>()?;
 	m.add_class::<Config>()?;
 

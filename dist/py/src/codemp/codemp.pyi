@@ -1,4 +1,4 @@
-from typing import Tuple, Optional, Callable
+from typing import Optional, Callable
 
 def version() -> str: ...
 
@@ -61,8 +61,32 @@ class Client:
 	def current_user(self)                      -> User: ...
 	def refresh(self)                           -> Promise[None]: ...
 
+class FileTreeUpdated:
+	"""
+	Fired when the file tree changes.
+	Contains the modified buffer path (deleted, created or renamed)
+	"""
+	path: str
+
+class UserJoin:
+	"""
+	Fired when a user joins the workspace
+	"""
+	name: str
+
+class UserLeave:
+	"""
+	Fired when a user leaves the workspace
+	"""
+	name: str
+
 class Event:
-	pass
+	"""
+	Workspace events to notify users of changes happening in the workspace.
+	"""
+	FileTreeUpdated: FileTreeUpdated
+	UserJoin: UserJoin
+	UserLeave: UserLeave
 
 class Workspace:
 	"""
