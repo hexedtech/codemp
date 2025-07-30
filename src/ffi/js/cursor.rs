@@ -12,9 +12,8 @@ impl CursorController {
 		ts_args_type = "fun: (event: CursorController) => void"
 	)]
 	pub fn js_callback(&self, fun: ThreadsafeFunction<crate::cursor::controller::CursorController>) -> napi::Result<()> {
-		let tsfn: ThreadsafeFunction<crate::cursor::controller::CursorController> = fun;
 		self.callback(move |controller: CursorController| {
-			tsfn.call(Ok(controller.clone()), ThreadsafeFunctionCallMode::Blocking);
+			fun.call(Ok(controller.clone()), ThreadsafeFunctionCallMode::Blocking);
 			//check this with tracing also we could use Ok(event) to get the error
 			// If it blocks the main thread too many time we have to change this
 		});
