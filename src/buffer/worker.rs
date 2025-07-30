@@ -1,15 +1,15 @@
 use std::sync::Arc;
 
+use diamond_types::LocalVersion;
 use diamond_types::list::encoding::ENCODE_PATCH;
 use diamond_types::list::{Branch, OpLog};
-use diamond_types::LocalVersion;
 use tokio::sync::{mpsc, oneshot, watch};
 use tonic::Streaming;
 use uuid::Uuid;
 
-use crate::api::controller::ControllerCallback;
 use crate::api::BufferUpdate;
 use crate::api::TextChange;
+use crate::api::controller::ControllerCallback;
 use crate::ext::IgnorableError;
 
 use codemp_proto::buffer::{BufferEvent, Operation};

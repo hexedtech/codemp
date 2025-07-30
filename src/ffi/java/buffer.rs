@@ -1,4 +1,4 @@
-use jni::{objects::JObject, JNIEnv};
+use jni::{JNIEnv, objects::JObject};
 use jni_toolbox::jni;
 
 use crate::{

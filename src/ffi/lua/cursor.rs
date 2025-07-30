@@ -37,6 +37,9 @@ impl LuaUserData for CodempCursorController {
 
 impl CodempCursorController {
 	fn lua_callback_id(&self) -> String {
-		format!("codemp-cursorcontroller({})-callback-registry", self.workspace_id())
+		format!(
+			"codemp-cursorcontroller({})-callback-registry",
+			self.workspace_id()
+		)
 	}
 }

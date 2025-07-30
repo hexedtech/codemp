@@ -73,10 +73,12 @@ async fn test_workspace_interactions() {
 			.invite_to_workspace(&workspace_name, &client_bob.current_user().name)
 			.await?;
 		client_bob.attach_workspace(&workspace_name).await?;
-		assert_or_err!(client_bob
-			.fetch_joined_workspaces()
-			.await?
-			.contains(&workspace_name));
+		assert_or_err!(
+			client_bob
+				.fetch_joined_workspaces()
+				.await?
+				.contains(&workspace_name)
+		);
 
 		assert_or_err!(client_bob.leave_workspace(&workspace_name));
 		assert_or_err!(client_alice.leave_workspace(&workspace_name));

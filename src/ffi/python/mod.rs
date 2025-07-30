@@ -3,10 +3,10 @@ pub mod controllers;
 pub mod workspace;
 
 use crate::{
+	Client, Workspace,
 	api::{BufferUpdate, Config, Cursor, Event, Selection, TextChange, User},
 	buffer::Controller as BufferController,
 	cursor::Controller as CursorController,
-	Client, Workspace,
 };
 
 use pyo3::{

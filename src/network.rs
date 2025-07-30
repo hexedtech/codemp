@@ -3,7 +3,7 @@ use codemp_proto::{
 	workspace::workspace_client::WorkspaceClient,
 };
 use tonic::{
-	service::{interceptor::InterceptedService, Interceptor},
+	service::{Interceptor, interceptor::InterceptedService},
 	transport::{Channel, Endpoint},
 };
 

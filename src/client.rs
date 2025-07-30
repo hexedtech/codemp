@@ -17,9 +17,9 @@ use crate::{
 	workspace::Workspace,
 };
 use codemp_proto::{
-	auth::{auth_client::AuthClient, LoginRequest},
+	auth::{LoginRequest, auth_client::AuthClient},
 	common::{Empty, Token},
-	session::{session_client::SessionClient, InviteRequest, WorkspaceRequest},
+	session::{InviteRequest, WorkspaceRequest, session_client::SessionClient},
 };
 
 #[cfg(feature = "py")]

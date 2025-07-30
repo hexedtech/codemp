@@ -5,7 +5,7 @@ use tonic::Streaming;
 use uuid::Uuid;
 
 use crate::{
-	api::{controller::ControllerCallback, Cursor, Selection, User},
+	api::{Cursor, Selection, User, controller::ControllerCallback},
 	ext::IgnorableError,
 };
 use codemp_proto::cursor::{CursorEvent, CursorPosition};
@@ -27,26 +27,25 @@ struct CursorWorker {
 impl CursorWorker {
 	#[tracing::instrument(skip(self, tx))]
 	fn handle_recv(&mut self, tx: oneshot::Sender<Option<Cursor>>) {
-		tx.send(
-			self.store.pop_front().and_then(|event| {
-				let user_id = Uuid::from(event.user);
-				if let Some(user_name) = self.map.get(&user_id).map(|u| u.name.clone()) {
-					Some(Cursor {
-						user: user_name,
-						sel: Selection {
-							buffer: event.position.buffer.path,
-							start_row: event.position.start.row,
-							start_col: event.position.start.col,
-							end_row: event.position.end.row,
-							end_col: event.position.end.col
-						}
-					})
-				} else {
-					tracing::warn!("received cursor for unknown user {user_id}");
-					None
-				}
-			})
-		).unwrap_or_warn("client gave up receiving!");
+		tx.send(self.store.pop_front().and_then(|event| {
+			let user_id = Uuid::from(event.user);
+			if let Some(user_name) = self.map.get(&user_id).map(|u| u.name.clone()) {
+				Some(Cursor {
+					user: user_name,
+					sel: Selection {
+						buffer: event.position.buffer.path,
+						start_row: event.position.start.row,
+						start_col: event.position.start.col,
+						end_row: event.position.end.row,
+						end_col: event.position.end.col,
+					},
+				})
+			} else {
+				tracing::warn!("received cursor for unknown user {user_id}");
+				None
+			}
+		}))
+		.unwrap_or_warn("client gave up receiving!");
 	}
 }
 

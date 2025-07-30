@@ -2,7 +2,7 @@ use crate::{
 	api::{AsyncReceiver, AsyncSender, Cursor, Selection},
 	errors::ControllerError,
 };
-use jni::{objects::JObject, JNIEnv};
+use jni::{JNIEnv, objects::JObject};
 use jni_toolbox::jni;
 
 use super::null_check;

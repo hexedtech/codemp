@@ -47,6 +47,10 @@ impl LuaUserData for CodempBufferController {
 
 impl CodempBufferController {
 	fn lua_callback_id(&self) -> String {
-		format!("codemp-buffercontroller({}:{})-callback-registry", self.workspace_id(), self.path())
+		format!(
+			"codemp-buffercontroller({}:{})-callback-registry",
+			self.workspace_id(),
+			self.path()
+		)
 	}
 }

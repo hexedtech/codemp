@@ -1,7 +1,7 @@
+use crate::Workspace;
 use crate::api::controller::AsyncReceiver;
 use crate::buffer::controller::BufferController;
 use crate::cursor::controller::CursorController;
-use crate::Workspace;
 use napi::threadsafe_function::ErrorStrategy::Fatal;
 use napi::threadsafe_function::{
 	ThreadSafeCallContext, ThreadsafeFunction, ThreadsafeFunctionCallMode,
@@ -121,7 +121,7 @@ impl Workspace {
 			})?;
 		self.callback(move |controller: Workspace| {
 			tsfn.call(controller.clone(), ThreadsafeFunctionCallMode::Blocking); //check this with tracing also we could use Ok(event) to get the error
-			                                                            // If it blocks the main thread too many time we have to change this
+			// If it blocks the main thread too many time we have to change this
 		});
 
 		Ok(())

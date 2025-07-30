@@ -5,8 +5,8 @@
 
 use crate::{
 	api::{
-		controller::{AsyncReceiver, ControllerCallback},
 		Event, User,
+		controller::{AsyncReceiver, ControllerCallback},
 	},
 	buffer, cursor,
 	errors::{ConnectionResult, ControllerResult, RemoteResult},
@@ -18,16 +18,19 @@ use codemp_proto::{
 	common::{Empty, Token},
 	files::BufferNode,
 	workspace::{
+		WorkspaceEvent,
 		workspace_event::{
 			Event as WorkspaceEventInner, FileCreate, FileDelete, FileRename, UserJoin, UserLeave,
 		},
-		WorkspaceEvent,
 	},
 };
 
 use dashmap::{DashMap, DashSet};
 use std::sync::{Arc, Weak};
-use tokio::sync::{mpsc::{self, error::TryRecvError}, oneshot, watch};
+use tokio::sync::{
+	mpsc::{self, error::TryRecvError},
+	oneshot, watch,
+};
 use tonic::Streaming;
 use uuid::Uuid;
 
@@ -184,7 +187,8 @@ impl Workspace {
 		);
 		let stream = self.0.services.buf().attach(req).await?.into_inner();
 
-		let controller = buffer::Controller::spawn(self.0.current_user.id, path, tx, stream, &self.0.name);
+		let controller =
+			buffer::Controller::spawn(self.0.current_user.id, path, tx, stream, &self.0.name);
 		self.0.buffers.insert(path.to_string(), controller.clone());
 
 		Ok(controller)
@@ -345,7 +349,12 @@ struct WorkspaceWorker {
 
 impl WorkspaceWorker {
 	#[tracing::instrument(skip(self, stream, weak))]
-	pub(crate) async fn work(mut self, ws: String, mut stream: Streaming<WorkspaceEvent>, weak: Weak<WorkspaceInner>) {
+	pub(crate) async fn work(
+		mut self,
+		ws: String,
+		mut stream: Streaming<WorkspaceEvent>,
+		weak: Weak<WorkspaceInner>,
+	) {
 		tracing::debug!("workspace worker starting");
 		loop {
 			tokio::select! {

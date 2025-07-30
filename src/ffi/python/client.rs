@@ -1,5 +1,5 @@
-use super::a_sync_allow_threads;
 use super::Client;
+use super::a_sync_allow_threads;
 use crate::api::User;
 use crate::workspace::Workspace;
 use pyo3::prelude::*;

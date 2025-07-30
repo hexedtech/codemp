@@ -244,9 +244,11 @@ async fn test_buffer_search() {
 
 			async move {
 				workspace_alice.create_buffer(&buffer_name).await?;
-				assert_or_err!(!workspace_alice
-					.search_buffers(Some(&buffer_name[0..4]))
-					.is_empty());
+				assert_or_err!(
+					!workspace_alice
+						.search_buffers(Some(&buffer_name[0..4]))
+						.is_empty()
+				);
 				assert_or_err!(workspace_alice.search_buffers(Some("_")).is_empty());
 				workspace_alice.delete_buffer(&buffer_name).await?;
 				Ok(())

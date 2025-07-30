@@ -1,8 +1,8 @@
 use crate::{
+	Workspace,
 	api::Config,
 	client::Client,
 	errors::{ConnectionError, RemoteError},
-	Workspace,
 };
 use jni_toolbox::jni;
 

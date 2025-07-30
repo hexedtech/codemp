@@ -6,9 +6,9 @@ use std::sync::Arc;
 use diamond_types::LocalVersion;
 use tokio::sync::{mpsc, oneshot, watch};
 
-use crate::api::controller::{AsyncReceiver, AsyncSender, Controller, ControllerCallback};
 use crate::api::BufferUpdate;
 use crate::api::TextChange;
+use crate::api::controller::{AsyncReceiver, AsyncSender, Controller, ControllerCallback};
 use crate::errors::ControllerResult;
 use crate::ext::IgnorableError;
 

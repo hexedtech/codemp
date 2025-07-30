@@ -47,12 +47,10 @@ impl LuaUserData for Promise {
 		// TODO: await MUST NOT be used in callbacks!!
 		methods.add_method_mut("await", |_, this, ()| match this.0.take() {
 			None => Err(LuaError::runtime("Promise already awaited")),
-			Some(x) => Ok(
-				tokio()
-					.block_on(x)
-					.map_err(LuaError::runtime)?
-					.map_err(LuaError::runtime)?
-			),
+			Some(x) => Ok(tokio()
+				.block_on(x)
+				.map_err(LuaError::runtime)?
+				.map_err(LuaError::runtime)?),
 		});
 		methods.add_method_mut("cancel", |_, this, ()| match this.0.take() {
 			None => Err(LuaError::runtime("Promise already awaited")),

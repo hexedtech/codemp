@@ -68,8 +68,9 @@ impl Config {
 impl std::fmt::Debug for Config {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		if f.alternate() {
-			write!(f,
-r#"""Config {{
+			write!(
+				f,
+				r#"""Config {{
     username: {},
     password: ********,
     host: {:#?},
@@ -79,7 +80,11 @@ r#"""Config {{
 				self.username, self.host, self.port, self.tls
 			)
 		} else {
-			write!(f, "Config {{ username: {}, password: ********, host: {:?}, port: {:?}, tls: {:?} }}", self.username, self.host, self.port, self.tls)
+			write!(
+				f,
+				"Config {{ username: {}, password: ********, host: {:?}, port: {:?}, tls: {:?} }}",
+				self.username, self.host, self.port, self.tls
+			)
 		}
 	}
 }

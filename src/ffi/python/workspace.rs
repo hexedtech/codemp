@@ -1,13 +1,13 @@
-use crate::api::controller::AsyncReceiver;
 use crate::api::User;
+use crate::api::controller::AsyncReceiver;
 use crate::buffer::Controller as BufferController;
 use crate::cursor::Controller as CursorController;
 use crate::workspace::Workspace;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 
-use super::a_sync_allow_threads;
 use super::Promise;
+use super::a_sync_allow_threads;
 
 #[pymethods]
 impl Workspace {

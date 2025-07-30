@@ -1,10 +1,10 @@
 use crate::{
-	api::{controller::AsyncReceiver, User},
+	Workspace,
+	api::{User, controller::AsyncReceiver},
 	errors::{ConnectionError, ControllerError, RemoteError},
 	ffi::java::null_check,
-	Workspace,
 };
-use jni::{objects::JObject, JNIEnv};
+use jni::{JNIEnv, objects::JObject};
 use jni_toolbox::jni;
 
 /// Get the workspace id.

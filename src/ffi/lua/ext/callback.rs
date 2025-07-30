@@ -32,7 +32,9 @@ impl CallbackChannel<LuaCallback> {
 
 	pub(crate) fn failure(&self, err: impl std::error::Error) {
 		self.tx
-			.send(LuaCallback::Fail(format!("callback returned error: {err:?}")))
+			.send(LuaCallback::Fail(format!(
+				"callback returned error: {err:?}"
+			)))
 			.unwrap_or_warn("error scheduling callback failure")
 	}
 
@@ -51,14 +53,14 @@ impl CallbackChannel<LuaCallback> {
 				Ok(LuaCallback::Fail(msg)) => {
 					tracing::error!("callback returned error: {msg}");
 					None
-				},
+				}
 				Ok(LuaCallback::Invoke(key, arg, cleanup)) => {
 					let cb = match lua.named_registry_value::<LuaFunction>(&key) {
 						Ok(x) => x,
 						Err(e) => {
 							tracing::error!("could not get callback to invoke: {e}");
 							return None;
-						},
+						}
 					};
 					if cleanup {
 						if let Err(e) = lua.unset_named_registry_value(&key) {
@@ -66,7 +68,7 @@ impl CallbackChannel<LuaCallback> {
 						}
 					}
 					Some((cb, arg))
-				},
+				}
 			},
 		}
 	}
