@@ -2,10 +2,7 @@ use crate::Workspace;
 use crate::api::controller::AsyncReceiver;
 use crate::buffer::controller::BufferController;
 use crate::cursor::controller::CursorController;
-use napi::threadsafe_function::ErrorStrategy::Fatal;
-use napi::threadsafe_function::{
-	ThreadSafeCallContext, ThreadsafeFunction, ThreadsafeFunctionCallMode,
-};
+use napi::threadsafe_function::{ThreadsafeFunction, ThreadsafeFunctionCallMode};
 use napi_derive::napi;
 
 use super::client::JsUser;
@@ -45,8 +42,8 @@ impl Workspace {
 
 	/// List all available buffers in this workspace
 	#[napi(js_name = "searchBuffers")]
-	pub fn js_search_buffers(&self, filter: Option<&str>) -> Vec<String> {
-		self.search_buffers(filter)
+	pub fn js_search_buffers(&self, filter: Option<String>) -> Vec<String> {
+		self.search_buffers(filter.as_deref())
 	}
 
 	/// List all user names currently in this workspace
@@ -114,13 +111,10 @@ impl Workspace {
 	}
 
 	#[napi(js_name = "callback", ts_args_type = "fun: (event: Workspace) => void")]
-	pub fn js_callback(&self, fun: napi::JsFunction) -> napi::Result<()> {
-		let tsfn: ThreadsafeFunction<crate::Workspace, Fatal> = fun
-			.create_threadsafe_function(0, |ctx: ThreadSafeCallContext<crate::Workspace>| {
-				Ok(vec![ctx.value])
-			})?;
+	pub fn js_callback(&self, fun: ThreadsafeFunction<Workspace>) -> napi::Result<()> {
+		let tsfn: ThreadsafeFunction<crate::Workspace> = fun;
 		self.callback(move |controller: Workspace| {
-			tsfn.call(controller.clone(), ThreadsafeFunctionCallMode::Blocking); //check this with tracing also we could use Ok(event) to get the error
+			tsfn.call(Ok(controller.clone()), ThreadsafeFunctionCallMode::Blocking); //check this with tracing also we could use Ok(event) to get the error
 			// If it blocks the main thread too many time we have to change this
 		});
 

@@ -1,9 +1,6 @@
 use crate::api::controller::{AsyncReceiver, AsyncSender};
 use crate::cursor::controller::CursorController;
-use napi::threadsafe_function::ErrorStrategy::Fatal;
-use napi::threadsafe_function::{
-	ThreadSafeCallContext, ThreadsafeFunction, ThreadsafeFunctionCallMode,
-};
+use napi::threadsafe_function::{ ThreadsafeFunction, ThreadsafeFunctionCallMode};
 use napi_derive::napi;
 
 #[napi]
@@ -14,16 +11,10 @@ impl CursorController {
 		js_name = "callback",
 		ts_args_type = "fun: (event: CursorController) => void"
 	)]
-	pub fn js_callback(&self, fun: napi::JsFunction) -> napi::Result<()> {
-		let tsfn: ThreadsafeFunction<crate::cursor::controller::CursorController, Fatal> = fun
-			.create_threadsafe_function(
-				0,
-				|ctx: ThreadSafeCallContext<crate::cursor::controller::CursorController>| {
-					Ok(vec![ctx.value])
-				},
-			)?;
+	pub fn js_callback(&self, fun: ThreadsafeFunction<crate::cursor::controller::CursorController>) -> napi::Result<()> {
+		let tsfn: ThreadsafeFunction<crate::cursor::controller::CursorController> = fun;
 		self.callback(move |controller: CursorController| {
-			tsfn.call(controller.clone(), ThreadsafeFunctionCallMode::Blocking);
+			tsfn.call(Ok(controller.clone()), ThreadsafeFunctionCallMode::Blocking);
 			//check this with tracing also we could use Ok(event) to get the error
 			// If it blocks the main thread too many time we have to change this
 		});
