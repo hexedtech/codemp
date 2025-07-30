@@ -10,7 +10,7 @@ authors = [
 	"cschen <cschen@codemp.dev>"
 ]
 license = "GPL-3.0-only"
-edition = "2021"
+edition = "2024"
 version = "0.8.5"
 exclude = ["dist/*"]
 
@@ -26,10 +26,10 @@ thiserror = "2.0"
 diamond-types = "1.0"
 # proto
 codemp-proto = "0.7"
-uuid = { version = "1.13", features = ["v4"] }
-tonic = { version = "0.12", features = ["tls", "tls-roots"] }
+uuid = { version = "1.17", features = ["v4"] }
+tonic = { version = "0.14", features = ["tls-native-roots"] }
 # api
-tokio = { version = "1.43", features = ["macros", "rt-multi-thread", "sync"] }
+tokio = { version = "1.47", features = ["macros", "rt-multi-thread", "sync"] }
 xxhash-rust = { version = "0.8", features = ["xxh3"] }
 # client
 tokio-stream = "0.1"
