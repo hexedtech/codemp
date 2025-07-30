@@ -43,14 +43,14 @@ jni = { version = "0.21", features = ["invocation"], optional = true }
 jni-toolbox = { version = "0.2", optional = true, features = ["uuid"] }
 
 # glue (lua)
-mlua = { version = "0.10", features = ["module", "serialize", "error-send"], optional = true }
+mlua = { version = "0.11", features = ["module", "serialize", "error-send"], optional = true }
 
 # glue (js)
-napi = { version = "2.16", features = ["full"], optional = true } 
-napi-derive = { version="2.16",  optional = true}
+napi = { version = "3.1", features = ["full"], optional = true } 
+napi-derive = { version="3.1",  optional = true}
 
 # glue (python)
-pyo3 = { version = "0.23", features = ["extension-module", "multiple-pymethods"], optional = true}
+pyo3 = { version = "0.25", features = ["extension-module", "multiple-pymethods"], optional = true}
 
 # extra
 async-trait = { version = "0.1", optional = true }
@@ -58,9 +58,9 @@ serde = { version = "1.0", features = ["derive"], optional = true }
 
 [build-dependencies]
 # glue (js)
-napi-build = { version = "2.1", optional = true }
+napi-build = { version = "2.2", optional = true }
 # glue (python)
-pyo3-build-config = { version = "0.23", optional = true }
+pyo3-build-config = { version = "0.25", optional = true }
 
 [features]
 default = ["lua-jit", "py-abi3"]
