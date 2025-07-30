@@ -26,7 +26,7 @@ pub(crate) fn jvm() -> std::sync::Arc<jni::JavaVM> {
 
 /// Called upon initialisation of the JVM.
 #[allow(non_snake_case)]
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "system" fn JNI_OnLoad(vm: jni::JavaVM, _: *mut std::ffi::c_void) -> jni::sys::jint {
 	unsafe { JVM = Some(std::sync::Arc::new(vm)) };
 	jni::sys::JNI_VERSION_1_1
@@ -320,23 +320,25 @@ impl<'j> jni_toolbox::FromJava<'j> for crate::api::Config {
 		config: Self::From,
 	) -> Result<Self, jni::errors::Error> {
 		let username = {
-			let jfield = env
+			let jfield: jni::objects::JString<'j> = env
 				.get_field(&config, "username", "Ljava/lang/String;")?
-				.l()?;
+				.l()?
+				.into();
 			if jfield.is_null() {
 				return Err(jni::errors::Error::NullPtr("Username can never be null!"));
 			}
-			unsafe { env.get_string_unchecked(&jfield.into()) }?.into()
+			unsafe { env.get_string_unchecked(&jfield) }?.into()
 		};
 
 		let password = {
-			let jfield = env
+			let jfield: jni::objects::JString<'j> = env
 				.get_field(&config, "password", "Ljava/lang/String;")?
-				.l()?;
+				.l()?
+				.into();
 			if jfield.is_null() {
 				return Err(jni::errors::Error::NullPtr("Password can never be null!"));
 			}
-			unsafe { env.get_string_unchecked(&jfield.into()) }?.into()
+			unsafe { env.get_string_unchecked(&jfield) }?.into()
 		};
 
 		let host = {
@@ -346,8 +348,9 @@ impl<'j> jni_toolbox::FromJava<'j> for crate::api::Config {
 			if env.call_method(&jfield, "isPresent", "()Z", &[])?.z()? {
 				let field = env
 					.call_method(&jfield, "get", "()Ljava/lang/Object;", &[])?
-					.l()?;
-				Some(unsafe { env.get_string_unchecked(&field.into()) }?.into())
+					.l()?
+					.into();
+				Some(unsafe { env.get_string_unchecked(&field) }?.into())
 			} else {
 				None
 			}
@@ -412,13 +415,14 @@ impl<'j> jni_toolbox::FromJava<'j> for crate::api::Selection {
 		let end_col = env.get_field(&cursor, "endCol", "I")?.i()?;
 
 		let buffer = {
-			let jfield = env
+			let jfield: jni::objects::JString<'j> = env
 				.get_field(&cursor, "buffer", "Ljava/lang/String;")?
-				.l()?;
+				.l()?
+				.into();
 			if jfield.is_null() {
 				return Err(jni::errors::Error::NullPtr("Buffer can never be null!"));
 			}
-			unsafe { env.get_string_unchecked(&jfield.into()) }?.into()
+			unsafe { env.get_string_unchecked(&jfield) }?.into()
 		};
 
 		Ok(Self {
@@ -447,13 +451,14 @@ impl<'j> jni_toolbox::FromJava<'j> for crate::api::TextChange {
 			.clamp(0, u32::MAX.into()) as u32;
 
 		let content = {
-			let jfield = env
+			let jfield: jni::objects::JString<'j> = env
 				.get_field(&change, "content", "Ljava/lang/String;")?
-				.l()?;
+				.l()?
+				.into();
 			if jfield.is_null() {
 				return Err(jni::errors::Error::NullPtr("Content can never be null!"));
 			}
-			unsafe { env.get_string_unchecked(&jfield.into()) }?.into()
+			unsafe { env.get_string_unchecked(&jfield) }?.into()
 		};
 
 		Ok(Self {
