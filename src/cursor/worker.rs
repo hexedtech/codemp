@@ -32,13 +32,17 @@ impl CursorWorker {
 			if let Some(user_name) = self.map.get(&user_id).map(|u| u.name.clone()) {
 				Some(Cursor {
 					user: user_name,
-					sel: Selection {
-						buffer: event.position.buffer.path,
-						start_row: event.position.start.row,
-						start_col: event.position.start.col,
-						end_row: event.position.end.row,
-						end_col: event.position.end.col,
-					},
+					sel: event
+						.position
+						.into_iter()
+						.map(|x| Selection {
+							buffer: x.buffer.path,
+							start_row: x.start.row,
+							start_col: x.start.col,
+							end_row: x.end.row,
+							end_col: x.end.col,
+						})
+						.collect(),
 				})
 			} else {
 				tracing::warn!("received cursor for unknown user {user_id}");
@@ -54,7 +58,7 @@ impl CursorController {
 		user_map: Arc<dashmap::DashMap<Uuid, User>>,
 		tx: mpsc::Sender<CursorPosition>,
 		rx: Streaming<CursorEvent>,
-		workspace_id: &str,
+		workspace_id: Uuid,
 	) -> Self {
 		// TODO we should tweak the channel buffer size to better propagate backpressure
 		let (op_tx, op_rx) = mpsc::unbounded_channel();

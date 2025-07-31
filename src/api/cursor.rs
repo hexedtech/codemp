@@ -14,7 +14,7 @@ pub struct Cursor {
 	/// User who sent the cursor.
 	pub user: String,
 	/// The updated cursor selection.
-	pub sel: Selection,
+	pub sel: Vec<Selection>,
 }
 
 /// A cursor selection span.

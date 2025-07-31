@@ -41,7 +41,7 @@ impl BufferController {
 		path: &str,
 		tx: mpsc::Sender<Operation>,
 		rx: Streaming<BufferEvent>,
-		workspace_id: &str,
+		workspace_id: Uuid,
 	) -> Self {
 		let init = diamond_types::LocalVersion::default();
 

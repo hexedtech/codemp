@@ -18,8 +18,10 @@ use crate::{
 };
 use codemp_proto::{
 	auth::{LoginRequest, auth_client::AuthClient},
-	common::{Empty, Token},
-	session::{InviteRequest, WorkspaceRequest, session_client::SessionClient},
+	common::{Empty, Identifier, Token},
+	session::{
+		InviteRequest, OwnedWorkspaceRequest, WorkspaceRequest, session_client::SessionClient,
+	},
 };
 
 #[cfg(feature = "py")]
@@ -39,7 +41,7 @@ pub struct Client(Arc<ClientInner>);
 struct ClientInner {
 	user: Arc<User>,
 	config: crate::api::Config,
-	workspaces: DashMap<String, Workspace>,
+	workspaces: DashMap<uuid::Uuid, Workspace>,
 	auth: AuthClient<Channel>,
 	session: SessionClient<InterceptedService<Channel, network::SessionInterceptor>>,
 	claims: InternallyMutable<Token>,
@@ -91,15 +93,20 @@ impl Client {
 	}
 
 	/// Attempt to create a new workspace with given name.
-	pub async fn create_workspace(&self, name: impl AsRef<str>) -> RemoteResult<()> {
-		self.0
+	pub async fn create_workspace(
+		&self,
+		name: impl AsRef<str>,
+	) -> RemoteResult<crate::api::WorkspaceInfo> {
+		let info = self
+			.0
 			.session
 			.clone()
-			.create_workspace(WorkspaceRequest {
-				workspace: name.as_ref().to_string(),
+			.create_workspace(OwnedWorkspaceRequest {
+				name: name.as_ref().to_string(),
 			})
-			.await?;
-		Ok(())
+			.await?
+			.into_inner();
+		Ok(crate::api::WorkspaceInfo::from(info))
 	}
 
 	/// Delete an existing workspace if possible.
@@ -107,8 +114,8 @@ impl Client {
 		self.0
 			.session
 			.clone()
-			.delete_workspace(WorkspaceRequest {
-				workspace: name.as_ref().to_string(),
+			.delete_workspace(OwnedWorkspaceRequest {
+				name: name.as_ref().to_string(),
 			})
 			.await?;
 		Ok(())
@@ -132,43 +139,44 @@ impl Client {
 	}
 
 	/// Fetch the names of all workspaces owned by the current user.
-	pub async fn fetch_owned_workspaces(&self) -> RemoteResult<Vec<String>> {
-		self.fetch_workspaces(true).await
-	}
-
-	/// Fetch the names of all workspaces the current user has joined.
-	pub async fn fetch_joined_workspaces(&self) -> RemoteResult<Vec<String>> {
-		self.fetch_workspaces(false).await
-	}
-
-	async fn fetch_workspaces(&self, owned: bool) -> RemoteResult<Vec<String>> {
-		let workspaces = self
+	pub async fn fetch_owned_workspaces(&self) -> RemoteResult<Vec<crate::api::WorkspaceInfo>> {
+		Ok(self
 			.0
 			.session
 			.clone()
-			.list_workspaces(Empty {})
+			.fetch_owned_workspaces(Empty {})
 			.await?
-			.into_inner();
+			.into_inner()
+			.owned
+			.into_iter()
+			.map(|x| crate::api::WorkspaceInfo::from(x))
+			.collect())
+	}
 
-		if owned {
-			Ok(workspaces.owned)
-		} else {
-			Ok(workspaces.invited)
-		}
+	/// Fetch the names of all workspaces the current user has joined.
+	pub async fn fetch_joined_workspaces(&self) -> RemoteResult<Vec<crate::api::WorkspaceInfo>> {
+		Ok(self
+			.0
+			.session
+			.clone()
+			.fetch_invited_workspaces(Empty {})
+			.await?
+			.into_inner()
+			.invited
+			.into_iter()
+			.map(|x| crate::api::WorkspaceInfo::from(x))
+			.collect())
 	}
 
 	/// Join and return a [`Workspace`].
 	#[tracing::instrument(skip(self, workspace), fields(ws = workspace.as_ref()))]
-	pub async fn attach_workspace(
-		&self,
-		workspace: impl AsRef<str>,
-	) -> ConnectionResult<Workspace> {
+	pub async fn attach_workspace(&self, workspace: uuid::Uuid) -> ConnectionResult<Workspace> {
 		let token = self
 			.0
 			.session
 			.clone()
 			.access_workspace(WorkspaceRequest {
-				workspace: workspace.as_ref().to_string(),
+				id: Identifier::from(workspace),
 			})
 			.await?
 			.into_inner();
@@ -182,24 +190,22 @@ impl Client {
 		)
 		.await?;
 
-		self.0
-			.workspaces
-			.insert(workspace.as_ref().to_string(), ws.clone());
+		self.0.workspaces.insert(workspace, ws.clone());
 
 		Ok(ws)
 	}
 
 	/// Leave the [`Workspace`] with the given name.
-	pub fn leave_workspace(&self, id: &str) -> bool {
-		match self.0.workspaces.remove(id) {
+	pub fn leave_workspace(&self, id: uuid::Uuid) -> bool {
+		match self.0.workspaces.remove(&id) {
 			None => true,
 			Some(x) => x.1.consume(),
 		}
 	}
 
 	/// Gets a [`Workspace`] handle by name.
-	pub fn get_workspace(&self, id: &str) -> Option<Workspace> {
-		self.0.workspaces.get(id).map(|x| x.clone())
+	pub fn get_workspace(&self, id: uuid::Uuid) -> Option<Workspace> {
+		self.0.workspaces.get(&id).map(|x| x.clone())
 	}
 
 	/// Get the names of all active [`Workspace`]s.

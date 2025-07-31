@@ -16,7 +16,7 @@ use crate::{
 
 use codemp_proto::{
 	common::{Empty, Token},
-	files::BufferNode,
+	files::{BufferNode, BufferRequest},
 	workspace::{
 		WorkspaceEvent,
 		workspace_event::{
@@ -25,7 +25,7 @@ use codemp_proto::{
 	},
 };
 
-use dashmap::{DashMap, DashSet};
+use dashmap::DashMap;
 use std::sync::{Arc, Weak};
 use tokio::sync::{
 	mpsc::{self, error::TryRecvError},
@@ -50,12 +50,12 @@ pub struct Workspace(Arc<WorkspaceInner>);
 
 #[derive(Debug)]
 struct WorkspaceInner {
-	name: String,
+	id: Uuid,
 	current_user: Arc<User>,
 	cursor: cursor::Controller,
 	buffers: DashMap<String, buffer::Controller>,
 	services: Services,
-	filetree: DashSet<String>,
+	filetree: DashMap<String, crate::api::BufferNode>,
 	users: Arc<DashMap<Uuid, User>>,
 	events: tokio::sync::Mutex<mpsc::UnboundedReceiver<crate::api::Event>>,
 	callback: watch::Sender<Option<ControllerCallback<Workspace>>>,
@@ -87,9 +87,9 @@ impl AsyncReceiver<Event> for Workspace {
 }
 
 impl Workspace {
-	#[tracing::instrument(skip(name, user, token, claims), fields(ws = name))]
+	#[tracing::instrument(skip(id, user, token, claims), fields(ws = %id))]
 	pub(crate) async fn connect(
-		name: String,
+		id: Uuid,
 		user: Arc<User>,
 		config: crate::api::Config,
 		token: Token,
@@ -111,14 +111,14 @@ impl Workspace {
 			.into_inner();
 
 		let users = Arc::new(DashMap::default());
-		let controller = cursor::Controller::spawn(users.clone(), tx, cur_stream, &name);
+		let controller = cursor::Controller::spawn(users.clone(), tx, cur_stream, id);
 
 		let ws = Self(Arc::new(WorkspaceInner {
-			name: name.clone(),
+			id,
 			current_user: user,
 			cursor: controller,
 			buffers: DashMap::default(),
-			filetree: DashSet::default(),
+			filetree: DashMap::default(),
 			users,
 			events: tokio::sync::Mutex::new(ev_rx),
 			services,
@@ -136,11 +136,11 @@ impl Workspace {
 		};
 
 		let _t = tokio::spawn(async move {
-			worker.work(name, ws_stream, weak).await;
+			worker.work(id, ws_stream, weak).await;
 		});
 
 		ws.fetch_users().await?;
-		ws.fetch_buffers().await?;
+		ws.fetch_buffers("").await?;
 
 		Ok(ws)
 	}
@@ -151,19 +151,26 @@ impl Workspace {
 	}
 
 	/// Create a new buffer in the current workspace.
-	pub async fn create_buffer(&self, path: &str) -> RemoteResult<()> {
+	pub async fn create_buffer(&self, path: &str, ephemeral: bool) -> RemoteResult<()> {
 		let mut workspace_client = self.0.services.ws();
 		workspace_client
 			.create_buffer(tonic::Request::new(BufferNode {
 				path: path.to_string(),
+				ephemeral,
 			}))
 			.await?;
 
 		// add to filetree
-		self.0.filetree.insert(path.to_string());
+		self.0.filetree.insert(
+			path.to_string(),
+			crate::api::BufferNode {
+				path: path.to_string(),
+				ephemeral,
+			},
+		);
 
 		// fetch buffers
-		self.fetch_buffers().await?;
+		self.fetch_buffers("").await?;
 
 		Ok(())
 	}
@@ -188,7 +195,7 @@ impl Workspace {
 		let stream = self.0.services.buf().attach(req).await?.into_inner();
 
 		let controller =
-			buffer::Controller::spawn(self.0.current_user.id, path, tx, stream, &self.0.name);
+			buffer::Controller::spawn(self.0.current_user.id, path, tx, stream, self.0.id);
 		self.0.buffers.insert(path.to_string(), controller.clone());
 
 		Ok(controller)
@@ -214,10 +221,12 @@ impl Workspace {
 	}
 
 	/// Re-fetch the list of available buffers in the workspace.
-	pub async fn fetch_buffers(&self) -> RemoteResult<Vec<String>> {
+	pub async fn fetch_buffers(&self, filter: impl AsRef<str>) -> RemoteResult<Vec<String>> {
 		let mut workspace_client = self.0.services.ws();
 		let resp = workspace_client
-			.list_buffers(tonic::Request::new(Empty {}))
+			.list_buffers(tonic::Request::new(BufferRequest {
+				path: filter.as_ref().to_string(),
+			}))
 			.await?
 			.into_inner();
 
@@ -225,8 +234,10 @@ impl Workspace {
 
 		self.0.filetree.clear();
 		for b in resp.buffers {
-			self.0.filetree.insert(b.path.clone());
-			out.push(b.path);
+			out.push(b.path.clone());
+			self.0
+				.filetree
+				.insert(b.path.clone(), crate::api::BufferNode::from(b));
 		}
 
 		Ok(out)
@@ -258,7 +269,7 @@ impl Workspace {
 	pub async fn fetch_buffer_users(&self, path: &str) -> RemoteResult<Vec<User>> {
 		let mut workspace_client = self.0.services.ws();
 		let buffer_users = workspace_client
-			.list_buffer_users(tonic::Request::new(BufferNode {
+			.list_buffer_users(tonic::Request::new(BufferRequest {
 				path: path.to_string(),
 			}))
 			.await?
@@ -277,7 +288,7 @@ impl Workspace {
 
 		let mut workspace_client = self.0.services.ws();
 		workspace_client
-			.delete_buffer(tonic::Request::new(BufferNode {
+			.delete_buffer(tonic::Request::new(BufferRequest {
 				path: path.to_string(),
 			}))
 			.await?;
@@ -289,8 +300,8 @@ impl Workspace {
 
 	/// Get the workspace unique id.
 	// #[cfg_attr(feature = "js", napi)] // https://github.com/napi-rs/napi-rs/issues/1120
-	pub fn id(&self) -> String {
-		self.0.name.clone()
+	pub fn id(&self) -> Uuid {
+		self.0.id
 	}
 
 	/// Return a handle to the [`cursor::Controller`].
@@ -332,8 +343,8 @@ impl Workspace {
 			.0
 			.filetree
 			.iter()
-			.filter(|f| filter.is_none_or(|flt| f.starts_with(flt)))
-			.map(|f| f.clone())
+			.filter(|f| filter.is_none_or(|flt| f.key().starts_with(flt)))
+			.map(|f| f.key().clone())
 			.collect::<Vec<String>>();
 		tree.sort();
 		tree
@@ -351,7 +362,7 @@ impl WorkspaceWorker {
 	#[tracing::instrument(skip(self, stream, weak))]
 	pub(crate) async fn work(
 		mut self,
-		ws: String,
+		ws: Uuid,
 		mut stream: Streaming<WorkspaceEvent>,
 		weak: Weak<WorkspaceInner>,
 	) {
@@ -384,12 +395,13 @@ impl WorkspaceWorker {
 								inner.users.remove(&user.id.uuid());
 							}
 							// buffer
-							WorkspaceEventInner::Create(FileCreate { path }) => {
-								inner.filetree.insert(path);
+							WorkspaceEventInner::Create(FileCreate { path, ephemeral }) => {
+								inner.filetree.insert(path.clone(), crate::api::BufferNode { path, ephemeral });
 							}
 							WorkspaceEventInner::Rename(FileRename { before, after }) => {
-								inner.filetree.remove(&before);
-								inner.filetree.insert(after);
+								if let Some((_path, node)) = inner.filetree.remove(&before) {
+									inner.filetree.insert(after.clone(), crate::api::BufferNode { path: after, ephemeral: node.ephemeral });
+								}
 							}
 							WorkspaceEventInner::Delete(FileDelete { path }) => {
 								inner.filetree.remove(&path);
