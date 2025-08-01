@@ -3,7 +3,7 @@ use mlua::prelude::*;
 
 use super::ext::a_sync::a_sync;
 
-super::ext::impl_lua_serde! { CodempTextChange CodempBufferUpdate }
+super::ext::impl_lua_serde! { CodempTextChange CodempBufferUpdate CodempBufferNode }
 
 impl LuaUserData for CodempBufferController {
 	fn add_methods<M: LuaUserDataMethods<Self>>(methods: &mut M) {

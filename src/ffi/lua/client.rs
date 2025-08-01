@@ -25,7 +25,10 @@ impl LuaUserData for CodempClient {
 
 		methods.add_method(
 			"attach_workspace",
-			|_, this, (ws,): (String,)| a_sync! { this => this.attach_workspace(ws).await? },
+			|_, this, (ws,): (String,)| {
+				let ws_id = super::ext::lua_parse_uuid(&ws, 1, "ws")?;
+				a_sync! { this => this.attach_workspace(ws_id).await? }
+			},
 		);
 
 		methods.add_method(
@@ -53,11 +56,13 @@ impl LuaUserData for CodempClient {
 		);
 
 		methods.add_method("leave_workspace", |_, this, (ws,): (String,)| {
-			Ok(this.leave_workspace(&ws))
+			let ws_id = super::ext::lua_parse_uuid(&ws, 1, "ws")?;
+			Ok(this.leave_workspace(ws_id))
 		});
 
 		methods.add_method("get_workspace", |_, this, (ws,): (String,)| {
-			Ok(this.get_workspace(&ws))
+			let ws_id = super::ext::lua_parse_uuid(&ws, 1, "ws")?;
+			Ok(this.get_workspace(ws_id))
 		});
 	}
 }

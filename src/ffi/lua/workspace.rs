@@ -3,7 +3,7 @@ use mlua::prelude::*;
 
 use super::ext::a_sync::a_sync;
 
-super::ext::impl_lua_serde! { CodempEvent }
+super::ext::impl_lua_serde! { CodempEvent CodempWorkspaceInfo }
 
 impl LuaUserData for CodempWorkspace {
 	fn add_methods<M: LuaUserDataMethods<Self>>(methods: &mut M) {
@@ -12,7 +12,7 @@ impl LuaUserData for CodempWorkspace {
 		});
 		methods.add_method(
 			"create_buffer",
-			|_, this, (name,): (String,)| a_sync! { this => this.create_buffer(&name).await? },
+			|_, this, (name, ephemeral): (String, bool)| a_sync! { this => this.create_buffer(&name, ephemeral).await? },
 		);
 
 		methods.add_method(
@@ -34,25 +34,25 @@ impl LuaUserData for CodempWorkspace {
 		});
 
 		methods.add_method(
-			"fetch_buffers",
-			|_, this, ()| a_sync! { this => this.fetch_buffers().await? },
+			"list_buffers",
+			|_, this, (filter,): (String,)| a_sync! { this => this.list_buffers(filter).await? },
 		);
 		methods.add_method(
-			"fetch_users",
-			|_, this, ()| a_sync! { this => this.fetch_users().await? },
+			"list_users",
+			|_, this, ()| a_sync! { this => this.list_users().await? },
 		);
 
 		methods.add_method("search_buffers", |_, this, (filter,): (Option<String>,)| {
 			Ok(this.search_buffers(filter.as_deref()))
 		});
 
-		methods.add_method("fetch_buffer_users", |_, this, (path,): (String,)| {
+		methods.add_method("list_buffer_users", |_, this, (path,): (String,)| {
 			a_sync! {
-				this => this.fetch_buffer_users(&path).await?
+				this => this.list_buffer_users(&path).await?
 			}
 		});
 
-		methods.add_method("id", |_, this, ()| Ok(this.id()));
+		methods.add_method("id", |_, this, ()| Ok(this.id().to_string()));
 		methods.add_method("cursor", |_, this, ()| Ok(this.cursor()));
 		methods.add_method("active_buffers", |_, this, ()| Ok(this.active_buffers()));
 		methods.add_method("user_list", |_, this, ()| Ok(this.user_list()));
