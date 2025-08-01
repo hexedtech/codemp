@@ -6,6 +6,7 @@ pub use crate::api::{
 	BufferUpdate as CodempBufferUpdate, Config as CodempConfig, Controller as CodempController,
 	Cursor as CodempCursor, Event as CodempEvent, Selection as CodempSelection,
 	TextChange as CodempTextChange, User as CodempUser,
+	WorkspaceInfo as CodempWorkspaceInfo, BufferNode as CodempBufferNode,
 };
 
 pub use crate::{
