@@ -139,8 +139,8 @@ impl Workspace {
 			worker.work(id, ws_stream, weak).await;
 		});
 
-		ws.fetch_users().await?;
-		ws.fetch_buffers("").await?;
+		ws.list_users().await?;
+		ws.list_buffers("").await?;
 
 		Ok(ws)
 	}
@@ -170,7 +170,7 @@ impl Workspace {
 		);
 
 		// fetch buffers
-		self.fetch_buffers("").await?;
+		self.list_buffers("").await?;
 
 		Ok(())
 	}
@@ -221,7 +221,7 @@ impl Workspace {
 	}
 
 	/// Re-fetch the list of available buffers in the workspace.
-	pub async fn fetch_buffers(&self, filter: impl AsRef<str>) -> RemoteResult<Vec<String>> {
+	pub async fn list_buffers(&self, filter: impl AsRef<str>) -> RemoteResult<Vec<String>> {
 		let mut workspace_client = self.0.services.ws();
 		let resp = workspace_client
 			.list_buffers(tonic::Request::new(BufferRequest {
@@ -244,7 +244,7 @@ impl Workspace {
 	}
 
 	/// Re-fetch the list of all users in the workspace.
-	pub async fn fetch_users(&self) -> RemoteResult<Vec<User>> {
+	pub async fn list_users(&self) -> RemoteResult<Vec<User>> {
 		let mut workspace_client = self.0.services.ws();
 		let users = workspace_client
 			.list_users(tonic::Request::new(Empty {}))
@@ -266,7 +266,7 @@ impl Workspace {
 	}
 
 	/// Fetch a list of the [User]s attached to a specific buffer.
-	pub async fn fetch_buffer_users(&self, path: &str) -> RemoteResult<Vec<User>> {
+	pub async fn list_buffer_users(&self, path: &str) -> RemoteResult<Vec<User>> {
 		let mut workspace_client = self.0.services.ws();
 		let buffer_users = workspace_client
 			.list_buffer_users(tonic::Request::new(BufferRequest {
