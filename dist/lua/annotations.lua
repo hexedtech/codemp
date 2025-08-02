@@ -169,6 +169,39 @@ function UserListPromise:cancel() end
 ---invoke callback asynchronously as soon as promise is ready
 function UserListPromise:and_then(cb) end
 
+---@class (exact) WorkspaceInfoPromise : Promise
+local WorkspaceInfoPromise = {}
+--- block until promise is ready and return value
+--- @return WorkspaceInfo
+function WorkspaceInfoPromise:await() end
+--- cancel promise execution
+function WorkspaceInfoPromise:cancel() end
+---@param cb fun(x: WorkspaceInfo) callback to invoke
+---invoke callback asynchronously as soon as promise is ready
+function WorkspaceInfoPromise:and_then(cb) end
+
+---@class (exact) WorkspaceInfoListPromise : Promise
+local WorkspaceInfoListPromise = {}
+--- block until promise is ready and return value
+--- @return WorkspaceInfo[]
+function WorkspaceInfoListPromise:await() end
+--- cancel promise execution
+function WorkspaceInfoListPromise:cancel() end
+---@param cb fun(x: WorkspaceInfo[]) callback to invoke
+---invoke callback asynchronously as soon as promise is ready
+function WorkspaceInfoListPromise:and_then(cb) end
+
+---@class (exact) BufferNodeListPromise : Promise
+local BufferNodeListPromise = {}
+--- block until promise is ready and return value
+--- @return BufferNode[]
+function BufferNodeListPromise:await() end
+--- cancel promise execution
+function BufferNodeListPromise:cancel() end
+---@param cb fun(x: BufferNode[]) callback to invoke
+---invoke callback asynchronously as soon as promise is ready
+function BufferNodeListPromise:and_then(cb) end
+
 -- [[ END ASYNC STUFF ]]
 
 
@@ -198,7 +231,7 @@ function Client:refresh() end
 function Client:attach_workspace(ws) end
 
 ---@param ws string workspace id to create
----@return NilPromise
+---@return WorkspaceInfoPromise
 ---@async
 ---@nodiscard
 ---create a new workspace with given id
@@ -223,13 +256,13 @@ function Client:delete_workspace(ws) end
 ---grant user acccess to workspace
 function Client:invite_to_workspace(ws, user) end
 
----@return StringArrayPromise
+---@return WorkspaceInfoListPromise
 ---@async
 ---@nodiscard
 ---fetch and list owned workspaces
 function Client:fetch_owned_workspaces() end
 
----@return StringArrayPromise
+---@return WorkspaceInfoListPromise
 ---@async
 ---@nodiscard
 ---fetch and list joined workspaces
@@ -243,8 +276,16 @@ function Client:get_workspace(ws) end
 
 
 ---@class User
+---represents a service user and contains all its relevant info
 ---@field id string user uuid
 ---@field name string user display name
+
+
+---@class WorkspaceInfo
+---represents informations about a workspace, without having an handle to it
+---@field id string
+---@field name string
+---@field owner User
 
 
 
@@ -265,11 +306,12 @@ function Workspace:active_buffers() end
 function Workspace:cursor() end
 
 ---@param path string relative path ("name") of new buffer
+---@param ephemeral boolean wether this buffer is ephemeral (auto deletes)
 ---@return NilPromise
 ---@async
 ---@nodiscard
 ---create a new empty buffer
-function Workspace:create_buffer(path) end
+function Workspace:create_buffer(path, ephemeral) end
 
 ---@param path string relative path ("name") of buffer to delete
 ---@return NilPromise
@@ -304,11 +346,12 @@ function Workspace:search_buffers(filter) end
 ---return all names of users currently in this workspace
 function Workspace:user_list() end
 
----@return NilPromise
+---@param filter string filter buffers we want to fetch relative to this path
+---@return BufferNodeListPromise
 ---@async
 ---@nodiscard
 ---force refresh buffer list from workspace
-function Workspace:fetch_buffers(path) end
+function Workspace:list_buffers(filter) end
 
 ---@return NilPromise
 ---@async
@@ -353,6 +396,13 @@ function Workspace:clear_callback() end
 ---register a new callback to be called on workspace events (replaces any previously registered one)
 function Workspace:callback(cb) end
 
+
+
+
+---@class BufferNode
+---@field id string
+---@field name string
+---@field owner User
 
 
 

@@ -137,4 +137,5 @@ callback_args! {
 	BufferUpdate: CodempBufferUpdate,
 	MaybeBufferUpdate: Option<CodempBufferUpdate>,
 	BufferNode: CodempBufferNode,
+	VecBufferNode: Vec<CodempBufferNode>,
 }

@@ -221,7 +221,7 @@ impl Workspace {
 	}
 
 	/// Re-fetch the list of available buffers in the workspace.
-	pub async fn list_buffers(&self, filter: impl AsRef<str>) -> RemoteResult<Vec<String>> {
+	pub async fn list_buffers(&self, filter: impl AsRef<str>) -> RemoteResult<Vec<crate::api::BufferNode>> {
 		let mut workspace_client = self.0.services.ws();
 		let resp = workspace_client
 			.list_buffers(tonic::Request::new(BufferRequest {

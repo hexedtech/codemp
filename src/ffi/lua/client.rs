@@ -15,7 +15,7 @@ impl LuaUserData for CodempClient {
 			Ok(this.current_user().clone())
 		});
 		methods.add_method("active_workspaces", |_, this, ()| {
-			Ok(this.active_workspaces())
+			Ok(this.active_workspaces().into_iter().map(|x| x.to_string()).collect::<Vec<String>>())
 		});
 
 		methods.add_method(

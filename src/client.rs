@@ -169,7 +169,7 @@ impl Client {
 	}
 
 	/// Join and return a [`Workspace`].
-	#[tracing::instrument(skip(self, workspace), fields(ws = workspace.as_ref()))]
+	#[tracing::instrument(skip(self, workspace), fields(ws = %workspace))]
 	pub async fn attach_workspace(&self, workspace: uuid::Uuid) -> ConnectionResult<Workspace> {
 		let token = self
 			.0
@@ -182,7 +182,7 @@ impl Client {
 			.into_inner();
 
 		let ws = Workspace::connect(
-			workspace.as_ref().to_string(),
+			workspace,
 			self.0.user.clone(),
 			self.0.config.clone(),
 			token,
@@ -209,11 +209,11 @@ impl Client {
 	}
 
 	/// Get the names of all active [`Workspace`]s.
-	pub fn active_workspaces(&self) -> Vec<String> {
+	pub fn active_workspaces(&self) -> Vec<uuid::Uuid> {
 		self.0
 			.workspaces
 			.iter()
-			.map(|x| x.key().to_string())
+			.map(|x| *x.key())
 			.collect()
 	}
 
