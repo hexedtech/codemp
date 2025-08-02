@@ -3,6 +3,7 @@ use super::a_sync_allow_threads;
 use crate::api::User;
 use crate::workspace::Workspace;
 use pyo3::prelude::*;
+use uuid::Uuid;
 
 #[pymethods]
 impl Client {
@@ -16,7 +17,7 @@ impl Client {
 	// }
 
 	#[pyo3(name = "attach_workspace")]
-	fn pyattach_workspace(&self, py: Python<'_>, workspace: String) -> PyResult<super::Promise> {
+	fn pyattach_workspace(&self, py: Python<'_>, workspace: Uuid) -> PyResult<super::Promise> {
 		tracing::info!("attempting to join the workspace {}", workspace);
 		let this = self.clone();
 		a_sync_allow_threads!(py, this.attach_workspace(workspace).await)
@@ -70,18 +71,18 @@ impl Client {
 	}
 
 	#[pyo3(name = "leave_workspace")]
-	fn pyleave_workspace(&self, id: String) -> bool {
-		self.leave_workspace(id.as_str())
+	fn pyleave_workspace(&self, id: Uuid) -> bool {
+		self.leave_workspace(id)
 	}
 
 	// join a workspace
 	#[pyo3(name = "get_workspace")]
-	fn pyget_workspace(&self, id: String) -> Option<Workspace> {
-		self.get_workspace(id.as_str())
+	fn pyget_workspace(&self, id: Uuid) -> Option<Workspace> {
+		self.get_workspace(id)
 	}
 
 	#[pyo3(name = "active_workspaces")]
-	fn pyactive_workspaces(&self) -> Vec<String> {
+	fn pyactive_workspaces(&self) -> Vec<Uuid> {
 		self.active_workspaces()
 	}
 

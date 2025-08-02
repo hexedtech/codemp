@@ -72,7 +72,7 @@ impl BufferController {
 	}
 
 	#[pyo3(name = "ack")]
-	fn pyack(&self, v: Vec<i64>) -> () {
+	fn pyack(&self, v: Vec<i64>) {
 		self.ack(v)
 	}
 
@@ -128,18 +128,21 @@ impl BufferController {
 #[pymethods]
 impl Cursor {
 	#[getter(start)]
-	fn pystart(&self) -> (i32, i32) {
-		(self.sel.start_row, self.sel.start_col)
+	fn pystart(&self) -> Vec<(i32, i32)> {
+		self.sel
+			.iter()
+			.map(|s| (s.start_row, s.start_col))
+			.collect()
 	}
 
 	#[getter(end)]
-	fn pyend(&self) -> (i32, i32) {
-		(self.sel.end_row, self.sel.end_col)
+	fn pyend(&self) -> Vec<(i32, i32)> {
+		self.sel.iter().map(|s| (s.end_row, s.end_col)).collect()
 	}
 
 	#[getter(buffer)]
 	fn pybuffer(&self) -> String {
-		self.sel.buffer.clone()
+		self.sel.iter().map(|s| s.buffer.clone()).collect()
 	}
 
 	#[getter(user)]

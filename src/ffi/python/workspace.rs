@@ -13,9 +13,9 @@ use super::a_sync_allow_threads;
 impl Workspace {
 	// join a workspace
 	#[pyo3(name = "create_buffer")]
-	fn pycreate_buffer(&self, py: Python, path: String) -> PyResult<Promise> {
+	fn pycreate_buffer(&self, py: Python, path: String, ephemeral: bool) -> PyResult<Promise> {
 		let this = self.clone();
-		a_sync_allow_threads!(py, this.create_buffer(path.as_str()).await)
+		a_sync_allow_threads!(py, this.create_buffer(path.as_str(), ephemeral).await)
 	}
 
 	#[pyo3(name = "attach_buffer")]
@@ -30,22 +30,22 @@ impl Workspace {
 	}
 
 	#[pyo3(name = "fetch_buffers")]
-	fn pyfetch_buffers(&self, py: Python) -> PyResult<Promise> {
+	fn pylist_buffers(&self, py: Python, filter: String) -> PyResult<Promise> {
 		let this = self.clone();
-		a_sync_allow_threads!(py, this.fetch_buffers().await)
+		a_sync_allow_threads!(py, this.list_buffers(filter.as_str()).await)
 	}
 
 	#[pyo3(name = "fetch_users")]
-	fn pyfetch_users(&self, py: Python) -> PyResult<Promise> {
+	fn pylist_users(&self, py: Python) -> PyResult<Promise> {
 		let this = self.clone();
-		a_sync_allow_threads!(py, this.fetch_users().await)
+		a_sync_allow_threads!(py, this.list_users().await)
 	}
 
 	#[pyo3(name = "fetch_buffer_users")]
-	fn pyfetch_buffer_users(&self, py: Python, path: String) -> PyResult<Promise> {
+	fn pylist_buffer_users(&self, py: Python, path: String) -> PyResult<Promise> {
 		// crate::Result<Vec<crate::api::User>>
 		let this = self.clone();
-		a_sync_allow_threads!(py, this.fetch_buffer_users(path.as_str()).await)
+		a_sync_allow_threads!(py, this.list_buffer_users(path.as_str()).await)
 	}
 
 	#[pyo3(name = "delete_buffer")]
@@ -55,7 +55,7 @@ impl Workspace {
 	}
 
 	#[pyo3(name = "id")]
-	fn pyid(&self) -> String {
+	fn pyid(&self) -> uuid::Uuid {
 		self.id()
 	}
 

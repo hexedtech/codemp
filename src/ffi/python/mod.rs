@@ -91,7 +91,7 @@ macro_rules! a_sync {
 		)))
 	}};
 }
-pub(crate) use a_sync;
+//pub(crate) use a_sync;
 
 macro_rules! a_sync_allow_threads {
 	($py:ident, $x:expr) => {{
@@ -330,10 +330,10 @@ fn set_logger(py: Python, logging_cb: PyObject, debug: bool) -> bool {
 		.with_level(true)
 		.with_target(true)
 		.with_thread_ids(false)
-		.with_thread_names(false)
+		.with_thread_names(true)
 		.with_file(false)
 		.with_line_number(false)
-		.with_source_location(false)
+		.with_source_location(true)
 		.compact();
 
 	let log_subscribed = tracing_subscriber::fmt()
