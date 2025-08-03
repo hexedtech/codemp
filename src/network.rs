@@ -40,10 +40,10 @@ impl Services {
 		let channel = Endpoint::from_shared(dest.to_string())?.connect().await?;
 		let inter = WorkspaceInterceptor { session, workspace };
 		Ok(Self {
-			cursor: CursorClient::with_interceptor(channel.clone(), inter.clone()),
 			workspace: WorkspaceClient::with_interceptor(channel.clone(), inter.clone()),
-			// TODO technically we could keep buffers on separate servers, and thus manage buffer
-			// connections separately, but for now it's more convenient to bundle them with workspace
+			// TODO technically we could keep buffers and cursors on separate servers, and thus manage
+			// their connections separately, but for now it's more convenient to bundle them with workspace
+			cursor: CursorClient::with_interceptor(channel.clone(), inter.clone()),
 			buffer: BufferClient::with_interceptor(channel.clone(), inter.clone()),
 		})
 	}

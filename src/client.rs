@@ -171,26 +171,49 @@ impl Client {
 	/// Join and return a [`Workspace`].
 	#[tracing::instrument(skip(self, workspace), fields(ws = %workspace))]
 	pub async fn attach_workspace(&self, workspace: uuid::Uuid) -> ConnectionResult<Workspace> {
-		let token = self
-			.0
-			.session
-			.clone()
-			.access_workspace(WorkspaceRequest {
+		let mut session_client = self.0.session.clone();
+		let token = session_client
+			.get_workspace_token(WorkspaceRequest {
 				id: Identifier::from(workspace),
 			})
 			.await?
 			.into_inner();
 
+		let workspace_claims = InternallyMutable::new(token);
+
 		let ws = Workspace::connect(
 			workspace,
 			self.0.user.clone(),
 			self.0.config.clone(),
-			token,
+			workspace_claims.channel(),
 			self.0.claims.channel(),
 		)
 		.await?;
-
 		self.0.workspaces.insert(workspace, ws.clone());
+		let mut workspace_client = ws.services().ws();
+
+		let weak = Arc::downgrade(&ws.0);
+		tokio::spawn(async move {
+			let fut = async move {
+				loop {
+					// TODO either configurable token refresh time or calculate depending on token lifetime
+					tokio::time::sleep(std::time::Duration::from_secs(240)).await;
+					if weak.upgrade().is_none() { break };
+					let new_credentials = session_client.get_workspace_token(
+						tonic::Request::new(WorkspaceRequest { id: Identifier::from(workspace) })
+					)
+						.await?
+						.into_inner();
+					workspace_claims.set(new_credentials);
+					workspace_client.keep_alive(tonic::Request::new(Empty {})).await?;
+				}
+				Ok::<(), tonic::Status>(())
+			};
+
+			if let Err(e) = fut.await {
+				tracing::error!("error in keepalive task for workspace {workspace}: {e}");
+			}
+		});
 
 		Ok(ws)
 	}

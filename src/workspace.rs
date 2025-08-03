@@ -45,7 +45,7 @@ use napi_derive::napi;
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "py", pyo3::pyclass)]
 #[cfg_attr(feature = "js", napi)]
-pub struct Workspace(Arc<WorkspaceInner>);
+pub struct Workspace(pub(crate) Arc<WorkspaceInner>);
 
 #[derive(Debug)]
 struct WorkspaceInner {
@@ -87,17 +87,16 @@ impl AsyncReceiver<Event> for Workspace {
 }
 
 impl Workspace {
-	#[tracing::instrument(skip(id, user, token, claims), fields(ws = %id))]
+	#[tracing::instrument(skip(id, user, workspace_claim, user_claim), fields(ws = %id))]
 	pub(crate) async fn connect(
 		id: Uuid,
 		user: Arc<User>,
 		config: crate::api::Config,
-		token: Token,
-		claims: tokio::sync::watch::Receiver<codemp_proto::common::Token>,
+		workspace_claim: tokio::sync::watch::Receiver<codemp_proto::common::Token>,
+		user_claim: tokio::sync::watch::Receiver<codemp_proto::common::Token>,
 	) -> ConnectionResult<Self> {
-		let workspace_claim = InternallyMutable::new(token);
 		let services =
-			Services::try_new(&config.endpoint(), claims, workspace_claim.channel()).await?;
+			Services::try_new(&config.endpoint(), user_claim, workspace_claim).await?;
 		let ws_stream = services.ws().attach(Empty {}).await?.into_inner();
 
 		let (tx, rx) = mpsc::channel(128);
@@ -144,6 +143,10 @@ impl Workspace {
 		ws.list_buffers("").await?;
 
 		Ok(ws)
+	}
+
+	pub(crate) fn services(&self) -> &Services {
+		&self.0.services
 	}
 
 	/// drop arc, return true if was last
