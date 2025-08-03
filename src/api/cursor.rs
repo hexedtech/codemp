@@ -10,9 +10,21 @@ use pyo3::prelude::*;
 #[cfg_attr(feature = "py", pyclass(get_all))]
 #[cfg_attr(feature = "serialize", derive(serde::Serialize, serde::Deserialize))]
 // #[cfg_attr(feature = "py", pyo3(crate = "reexported::pyo3"))]
-pub struct Cursor {
+pub struct CursorEvent {
 	/// User who sent the cursor.
 	pub user: String,
+	/// Cursor position data
+	pub cursor: Cursor,
+}
+
+
+/// An event that occurred about a user's cursor.
+#[derive(Clone, Debug, Default)]
+#[cfg_attr(feature = "js", napi_derive::napi(object))]
+#[cfg_attr(feature = "py", pyclass(get_all))]
+#[cfg_attr(feature = "serialize", derive(serde::Serialize, serde::Deserialize))]
+// #[cfg_attr(feature = "py", pyo3(crate = "reexported::pyo3"))]
+pub struct Cursor {
 	/// Path of buffer this cursor is on
 	pub buffer: String,
 	/// The updated cursor selection.

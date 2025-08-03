@@ -7,15 +7,11 @@ use tokio::sync::{mpsc, oneshot, watch};
 
 use crate::{
 	api::{
-		Controller, Cursor, Selection,
-		controller::{AsyncReceiver, AsyncSender, ControllerCallback},
+		controller::{AsyncReceiver, AsyncSender, ControllerCallback}, cursor::CursorEvent, Controller, Cursor
 	},
 	errors::ControllerResult,
 };
-use codemp_proto::{
-	cursor::{CursorPosition, CursorUpdate, RowCol},
-	files::BufferNode,
-};
+use codemp_proto::cursor::{CursorPosition, CursorUpdate, RowCol};
 
 /// A [Controller] for asynchronously sending and receiving [Cursor] event.
 ///
@@ -34,44 +30,49 @@ impl CursorController {
 #[derive(Debug)]
 pub(crate) struct CursorControllerInner {
 	pub(crate) op: mpsc::UnboundedSender<CursorUpdate>,
-	pub(crate) stream: mpsc::Sender<oneshot::Sender<Option<Cursor>>>,
+	pub(crate) stream: mpsc::Sender<oneshot::Sender<Option<CursorEvent>>>,
 	pub(crate) poll: mpsc::UnboundedSender<oneshot::Sender<()>>,
 	pub(crate) callback: watch::Sender<Option<ControllerCallback<CursorController>>>,
 	pub(crate) workspace_id: String,
 }
 
 #[cfg_attr(feature = "async-trait", async_trait::async_trait)]
-impl Controller<Selection, Cursor> for CursorController {}
+impl Controller<Cursor, CursorEvent> for CursorController {}
 
 #[cfg_attr(feature = "async-trait", async_trait::async_trait)]
-impl AsyncSender<Selection> for CursorController {
-	fn send(&self, mut cursor: Selection) -> ControllerResult<()> {
-		if cursor.start_row > cursor.end_row
-			|| (cursor.start_row == cursor.end_row && cursor.start_col > cursor.end_col)
-		{
-			std::mem::swap(&mut cursor.start_row, &mut cursor.end_row);
-			std::mem::swap(&mut cursor.start_col, &mut cursor.end_col);
+impl AsyncSender<Cursor> for CursorController {
+	fn send(&self, mut cursor: Cursor) -> ControllerResult<()> {
+		for sel in cursor.sel.iter_mut() {
+			if sel.start_row > sel.end_row
+				|| (sel.start_row == sel.end_row && sel.start_col > sel.end_col)
+			{
+				std::mem::swap(&mut sel.start_row, &mut sel.end_row);
+				std::mem::swap(&mut sel.start_col, &mut sel.end_col);
+			}
 		}
 
-		Ok(self.0.op.send(CursorPosition {
-			buffer: BufferNode {
-				path: cursor.buffer,
-			},
-			start: RowCol {
-				row: cursor.start_row,
-				col: cursor.start_col,
-			},
-			end: RowCol {
-				row: cursor.end_row,
-				col: cursor.end_col,
-			},
+		Ok(self.0.op.send(CursorUpdate {
+			buffer: cursor.buffer,
+			cursors: cursor.sel
+				.into_iter()
+				.map(|x| CursorPosition {
+					start: RowCol {
+						row: x.start_row,
+						col: x.start_col,
+					},
+					end: RowCol {
+						row: x.end_row,
+						col: x.end_col,
+					}
+				})
+				.collect()
 		})?)
 	}
 }
 
 #[cfg_attr(feature = "async-trait", async_trait::async_trait)]
-impl AsyncReceiver<Cursor> for CursorController {
-	async fn try_recv(&self) -> ControllerResult<Option<Cursor>> {
+impl AsyncReceiver<CursorEvent> for CursorController {
+	async fn try_recv(&self) -> ControllerResult<Option<CursorEvent>> {
 		let (tx, rx) = oneshot::channel();
 		self.0.stream.send(tx).await?;
 		Ok(rx.await?)

@@ -16,7 +16,7 @@ struct CursorWorker {
 	workspace_id: String,
 	op: mpsc::UnboundedReceiver<CursorUpdate>,
 	map: Arc<dashmap::DashMap<Uuid, User>>,
-	stream: mpsc::Receiver<oneshot::Sender<Option<Cursor>>>,
+	stream: mpsc::Receiver<oneshot::Sender<Option<crate::api::cursor::CursorEvent>>>,
 	poll: mpsc::UnboundedReceiver<oneshot::Sender<()>>,
 	pollers: Vec<oneshot::Sender<()>>,
 	store: std::collections::VecDeque<codemp_proto::cursor::CursorEvent>,
@@ -26,24 +26,26 @@ struct CursorWorker {
 
 impl CursorWorker {
 	#[tracing::instrument(skip(self, tx))]
-	fn handle_recv(&mut self, tx: oneshot::Sender<Option<Cursor>>) {
+	fn handle_recv(&mut self, tx: oneshot::Sender<Option<crate::api::cursor::CursorEvent>>) {
 		tx.send(self.store.pop_front().and_then(|event| {
 			let user_id = Uuid::from(event.user);
 			if let Some(user_name) = self.map.get(&user_id).map(|u| u.name.clone()) {
-				Some(Cursor {
+				Some(crate::api::cursor::CursorEvent {
 					user: user_name,
-					buffer: event.position.buffer,
-					sel: event
-						.position
-						.cursors
-						.into_iter()
-						.map(|x| Selection {
-							start_row: x.start.row,
-							start_col: x.start.col,
-							end_row: x.end.row,
-							end_col: x.end.col,
-						})
-						.collect(),
+					cursor: Cursor {
+						buffer: event.position.buffer,
+						sel: event
+							.position
+							.cursors
+							.into_iter()
+							.map(|x| Selection {
+								start_row: x.start.row,
+								start_col: x.start.col,
+								end_row: x.end.row,
+								end_col: x.end.col,
+							})
+							.collect(),
+					}
 				})
 			} else {
 				tracing::warn!("received cursor for unknown user {user_id}");
