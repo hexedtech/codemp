@@ -18,10 +18,9 @@ use codemp_proto::{
 	common::{Empty, Token},
 	files::{BufferNode, BufferRequest},
 	workspace::{
-		WorkspaceEvent,
 		workspace_event::{
-			Event as WorkspaceEventInner, FileCreate, FileDelete, FileRename, UserJoin, UserLeave,
-		},
+			Event as WorkspaceEventInner, FileCreate, FileDelete, FileRename, UserJoin, UserJoinBuffer, UserJoinWorkspace, UserLeave, UserLeaveBuffer, UserLeaveWorkspace
+		}, WorkspaceEvent
 	},
 };
 
@@ -56,6 +55,7 @@ struct WorkspaceInner {
 	buffers: DashMap<String, buffer::Controller>,
 	services: Services,
 	filetree: DashMap<String, crate::api::BufferNode>,
+	buffer_users: DashMap<String, Vec<Uuid>>,
 	users: Arc<DashMap<Uuid, User>>,
 	events: tokio::sync::Mutex<mpsc::UnboundedReceiver<crate::api::Event>>,
 	callback: watch::Sender<Option<ControllerCallback<Workspace>>>,
@@ -119,6 +119,7 @@ impl Workspace {
 			cursor: controller,
 			buffers: DashMap::default(),
 			filetree: DashMap::default(),
+			buffer_users: DashMap::default(),
 			users,
 			events: tokio::sync::Mutex::new(ev_rx),
 			services,
@@ -178,25 +179,48 @@ impl Workspace {
 	/// Attach to a buffer and return a handle to it.
 	#[tracing::instrument(skip(self))]
 	pub async fn attach_buffer(&self, path: &str) -> ConnectionResult<buffer::Controller> {
-		let mut worskspace_client = self.0.services.ws();
-		let request = tonic::Request::new(BufferNode {
-			path: path.to_string(),
+		let mut workspace_client = self.0.services.ws();
+		let mut buffer_client = self.0.services.buf();
+		let path = path.to_string();
+		let request = tonic::Request::new(BufferRequest {
+			path: path.clone(),
 		});
-		let credentials = worskspace_client.access_buffer(request).await?.into_inner();
+		let credentials = workspace_client.get_buffer_token(request).await?.into_inner();
 
 		let (tx, rx) = mpsc::channel(256);
 		let mut req = tonic::Request::new(tokio_stream::wrappers::ReceiverStream::new(rx));
-		req.metadata_mut().insert(
-			"buffer",
-			tonic::metadata::MetadataValue::try_from(credentials.token).map_err(|e| {
-				tonic::Status::internal(format!("failed representing token to string: {e}"))
-			})?,
-		);
-		let stream = self.0.services.buf().attach(req).await?.into_inner();
+		req.metadata_mut().insert("buffer", crate::ext::token_to_metadata(credentials)?);
+		let stream = buffer_client.attach(req).await?.into_inner();
 
 		let controller =
-			buffer::Controller::spawn(self.0.current_user.id, path, tx, stream, self.0.id);
-		self.0.buffers.insert(path.to_string(), controller.clone());
+			buffer::Controller::spawn(self.0.current_user.id, &path, tx, stream, self.0.id);
+
+		self.0.buffers.insert(path.clone(), controller.clone());
+
+		let weak = Arc::downgrade(&controller.0);
+		tokio::spawn(async move {
+			let _p = path.clone();
+			let fut = async move {
+				loop {
+					// TODO either configurable token refresh time or calculate depending on token lifetime
+					tokio::time::sleep(std::time::Duration::from_secs(20)).await;
+					if weak.upgrade().is_none() { break };
+					let new_credentials = workspace_client.get_buffer_token(
+						tonic::Request::new(BufferRequest { path: path.clone() })
+					)
+						.await?
+						.into_inner();
+					let mut request = tonic::Request::new(Empty {});
+					request.metadata_mut().insert("buffer", crate::ext::token_to_metadata(new_credentials)?);
+					buffer_client.keep_alive(request).await?;
+				}
+				Ok::<(), tonic::Status>(())
+			};
+
+			if let Err(e) = fut.await {
+				tracing::error!("error in keepalive task for buffer {_p}: {e}");
+			}
+		});
 
 		Ok(controller)
 	}
@@ -351,6 +375,7 @@ impl Workspace {
 	}
 }
 
+
 struct WorkspaceWorker {
 	callback: watch::Receiver<Option<ControllerCallback<Workspace>>>,
 	pollers: Vec<oneshot::Sender<()>>,
@@ -388,12 +413,18 @@ impl WorkspaceWorker {
 						let update = crate::api::Event::from(&ev);
 						match ev {
 							// user
-							WorkspaceEventInner::Join(UserJoin { user }) => {
+							WorkspaceEventInner::WorkspaceJoin(UserJoinWorkspace { user }) => {
 								inner.users.insert(user.id.uuid(), user.into());
 							}
-							WorkspaceEventInner::Leave(UserLeave { user }) => {
+							WorkspaceEventInner::WorkspaceLeave(UserLeaveWorkspace { user }) => {
 								inner.users.remove(&user.id.uuid());
 							}
+							WorkspaceEventInner::BufferJoin(UserJoinBuffer { user, buffer }) => {
+
+							},
+							WorkspaceEventInner::BufferLeave(UserLeaveBuffer { user, buffer }) => {
+
+							},
 							// buffer
 							WorkspaceEventInner::Create(FileCreate { path, ephemeral }) => {
 								inner.filetree.insert(path.clone(), crate::api::BufferNode { path, ephemeral });
