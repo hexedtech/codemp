@@ -8,13 +8,13 @@ use crate::{
 	api::{Cursor, Selection, User, controller::ControllerCallback},
 	ext::IgnorableError,
 };
-use codemp_proto::cursor::{CursorEvent, CursorPosition};
+use codemp_proto::cursor::{CursorEvent, CursorUpdate};
 
 use super::controller::{CursorController, CursorControllerInner};
 
 struct CursorWorker {
 	workspace_id: String,
-	op: mpsc::UnboundedReceiver<CursorPosition>,
+	op: mpsc::UnboundedReceiver<CursorUpdate>,
 	map: Arc<dashmap::DashMap<Uuid, User>>,
 	stream: mpsc::Receiver<oneshot::Sender<Option<Cursor>>>,
 	poll: mpsc::UnboundedReceiver<oneshot::Sender<()>>,
@@ -32,11 +32,12 @@ impl CursorWorker {
 			if let Some(user_name) = self.map.get(&user_id).map(|u| u.name.clone()) {
 				Some(Cursor {
 					user: user_name,
+					buffer: event.position.buffer,
 					sel: event
 						.position
+						.cursors
 						.into_iter()
 						.map(|x| Selection {
-							buffer: x.buffer.path,
 							start_row: x.start.row,
 							start_col: x.start.col,
 							end_row: x.end.row,
@@ -56,7 +57,7 @@ impl CursorWorker {
 impl CursorController {
 	pub(crate) fn spawn(
 		user_map: Arc<dashmap::DashMap<Uuid, User>>,
-		tx: mpsc::Sender<CursorPosition>,
+		tx: mpsc::Sender<CursorUpdate>,
 		rx: Streaming<CursorEvent>,
 		workspace_id: Uuid,
 	) -> Self {
@@ -95,7 +96,7 @@ impl CursorController {
 	#[tracing::instrument(skip(worker, tx, rx), fields(ws = worker.workspace_id))]
 	async fn work(
 		mut worker: CursorWorker,
-		tx: mpsc::Sender<CursorPosition>,
+		tx: mpsc::Sender<CursorUpdate>,
 		mut rx: Streaming<CursorEvent>,
 	) {
 		tracing::debug!("starting cursor worker");

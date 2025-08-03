@@ -13,7 +13,7 @@ use crate::{
 	errors::ControllerResult,
 };
 use codemp_proto::{
-	cursor::{CursorPosition, RowCol},
+	cursor::{CursorPosition, CursorUpdate, RowCol},
 	files::BufferNode,
 };
 
@@ -33,7 +33,7 @@ impl CursorController {
 
 #[derive(Debug)]
 pub(crate) struct CursorControllerInner {
-	pub(crate) op: mpsc::UnboundedSender<CursorPosition>,
+	pub(crate) op: mpsc::UnboundedSender<CursorUpdate>,
 	pub(crate) stream: mpsc::Sender<oneshot::Sender<Option<Cursor>>>,
 	pub(crate) poll: mpsc::UnboundedSender<oneshot::Sender<()>>,
 	pub(crate) callback: watch::Sender<Option<ControllerCallback<CursorController>>>,

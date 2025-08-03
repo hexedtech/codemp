@@ -13,6 +13,8 @@ use pyo3::prelude::*;
 pub struct Cursor {
 	/// User who sent the cursor.
 	pub user: String,
+	/// Path of buffer this cursor is on
+	pub buffer: String,
 	/// The updated cursor selection.
 	pub sel: Vec<Selection>,
 }
@@ -32,6 +34,4 @@ pub struct Selection {
 	pub end_row: i32,
 	/// Cursor position final column in buffer.
 	pub end_col: i32,
-	/// Path of buffer this cursor is on.
-	pub buffer: String,
 }
