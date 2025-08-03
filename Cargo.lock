@@ -229,8 +229,7 @@ dependencies = [
 [[package]]
 name = "codemp-proto"
 version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5354f0456633a14e5061879875763e5e259b447a30c788b1c4aae08a96f29b4e"
+source = "git+https://github.com/hexedtech/codemp-proto?rev=23012c1ddd2c488a923d4c71f1d8a1a7a61f7412#23012c1ddd2c488a923d4c71f1d8a1a7a61f7412"
 dependencies = [
  "prost",
  "tonic",
