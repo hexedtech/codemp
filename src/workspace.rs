@@ -10,16 +10,16 @@ use crate::{
 	},
 	buffer, cursor,
 	errors::{ConnectionResult, ControllerResult, RemoteResult},
-	ext::{IgnorableError, InternallyMutable},
+	ext::IgnorableError,
 	network::Services,
 };
 
 use codemp_proto::{
-	common::{Empty, Token},
+	common::Empty,
 	files::{BufferNode, BufferRequest},
 	workspace::{
 		workspace_event::{
-			Event as WorkspaceEventInner, FileCreate, FileDelete, FileRename, UserJoin, UserJoinBuffer, UserJoinWorkspace, UserLeave, UserLeaveBuffer, UserLeaveWorkspace
+			Event as WorkspaceEventInner, FileCreate, FileDelete, FileRename, UserJoinBuffer, UserJoinWorkspace, UserLeaveBuffer, UserLeaveWorkspace
 		}, WorkspaceEvent
 	},
 };
@@ -139,8 +139,12 @@ impl Workspace {
 			worker.work(id, ws_stream, weak).await;
 		});
 
-		ws.list_users().await?;
-		ws.list_buffers("").await?;
+		ws.fetch_users().await?;
+		ws.fetch_buffers("".to_string()).await?;
+
+		for buffer_ref in ws.0.buffers.iter() {
+			ws.fetch_buffer_users(buffer_ref.key().clone()).await?;
+		}
 
 		Ok(ws)
 	}
@@ -164,7 +168,7 @@ impl Workspace {
 			}))
 			.await?;
 
-		// add to filetree
+		// add to filetree, not really necessary as we will get an event for it
 		self.0.filetree.insert(
 			path.to_string(),
 			crate::api::BufferNode {
@@ -173,18 +177,14 @@ impl Workspace {
 			},
 		);
 
-		// fetch buffers
-		self.list_buffers("").await?;
-
 		Ok(())
 	}
 
 	/// Attach to a buffer and return a handle to it.
 	#[tracing::instrument(skip(self))]
-	pub async fn attach_buffer(&self, path: &str) -> ConnectionResult<buffer::Controller> {
+	pub async fn attach_buffer(&self, path: String) -> ConnectionResult<buffer::Controller> {
 		let mut workspace_client = self.0.services.ws();
 		let mut buffer_client = self.0.services.buf();
-		let path = path.to_string();
 		let request = tonic::Request::new(BufferRequest {
 			path: path.clone(),
 		});
@@ -248,65 +248,58 @@ impl Workspace {
 	}
 
 	/// Re-fetch the list of available buffers in the workspace.
-	pub async fn list_buffers(&self, filter: impl AsRef<str>) -> RemoteResult<Vec<crate::api::BufferNode>> {
+	pub async fn fetch_buffers(&self, path: String) -> RemoteResult<()> {
 		let mut workspace_client = self.0.services.ws();
 		let resp = workspace_client
-			.list_buffers(tonic::Request::new(BufferRequest {
-				path: filter.as_ref().to_string(),
-			}))
+			.fetch_buffers(tonic::Request::new(BufferRequest { path }))
 			.await?
 			.into_inner();
 
-		let mut out = Vec::new();
-
 		self.0.filetree.clear();
 		for b in resp.buffers {
-			out.push(b.path.clone());
 			self.0
 				.filetree
 				.insert(b.path.clone(), crate::api::BufferNode::from(b));
 		}
 
-		Ok(out)
+		Ok(())
 	}
 
 	/// Re-fetch the list of all users in the workspace.
-	pub async fn list_users(&self) -> RemoteResult<Vec<User>> {
-		let mut workspace_client = self.0.services.ws();
+	pub async fn fetch_users(&self) -> RemoteResult<()> {
+		let mut workspace_client = self.services().ws();
 		let users = workspace_client
-			.list_users(tonic::Request::new(Empty {}))
+			.fetch_users(tonic::Request::new(Empty {}))
 			.await?
 			.into_inner()
 			.users
 			.into_iter()
 			.map(User::from);
 
-		let mut result = Vec::new();
-
 		self.0.users.clear();
 		for u in users {
-			self.0.users.insert(u.id, u.clone());
-			result.push(u);
+			self.0.users.insert(u.id, u);
 		}
 
-		Ok(result)
+		Ok(())
 	}
 
 	/// Fetch a list of the [User]s attached to a specific buffer.
-	pub async fn list_buffer_users(&self, path: &str) -> RemoteResult<Vec<User>> {
-		let mut workspace_client = self.0.services.ws();
-		let buffer_users = workspace_client
-			.list_buffer_users(tonic::Request::new(BufferRequest {
+	pub async fn fetch_buffer_users(&self, path: String) -> RemoteResult<()> {
+		let users = self.services().ws()
+			.fetch_buffer_users(tonic::Request::new(BufferRequest {
 				path: path.to_string(),
 			}))
 			.await?
 			.into_inner()
 			.users
 			.into_iter()
-			.map(|id| id.into())
+			.map(|x| Uuid::from(x.id))
 			.collect();
 
-		Ok(buffer_users)
+		self.0.buffer_users.insert(path, users);
+
+		Ok(())
 	}
 
 	/// Delete a buffer.
@@ -353,13 +346,26 @@ impl Workspace {
 			.collect()
 	}
 
-	/// Get all names of users currently in this workspace
+	/// Get all users currently in this workspace
 	pub fn user_list(&self) -> Vec<User> {
 		self.0
 			.users
 			.iter()
 			.map(|elem| elem.value().clone())
 			.collect()
+	}
+
+	/// Get all users currently attached to specified buffer
+	pub fn buffer_user_list(&self, path: &str) -> Vec<User> {
+		let mut out = Vec::new();
+		if let Some(buf_ref) = self.0.buffer_users.get(path) {
+			for uid in buf_ref.value() {
+				if let Some(user_ref) = self.0.users.get(uid) {
+					out.push(user_ref.value().clone());
+				}
+			}
+		}
+		out
 	}
 
 	/// Get the filetree as it is currently cached.
@@ -423,22 +429,36 @@ impl WorkspaceWorker {
 								inner.users.remove(&user.id.uuid());
 							}
 							WorkspaceEventInner::BufferJoin(UserJoinBuffer { user, buffer }) => {
-
+								match inner.buffer_users.get_mut(&buffer) {
+									Some(mut buf_users_ref) => buf_users_ref.push(Uuid::from(user.id)),
+									None => tracing::warn!("received UserJoinBuffer event for an unknown buffer"),
+								}
 							},
 							WorkspaceEventInner::BufferLeave(UserLeaveBuffer { user, buffer }) => {
-
+								match inner.buffer_users.get_mut(&buffer) {
+									Some(mut buf_users_ref) => buf_users_ref.retain(|x| *x != Uuid::from(user.id)),
+									None => tracing::warn!("received UserLeaveBuffer event for an unknown buffer"),
+								}
 							},
 							// buffer
 							WorkspaceEventInner::Create(FileCreate { path, ephemeral }) => {
+								inner.buffer_users.insert(path.clone(), Vec::new());
 								inner.filetree.insert(path.clone(), crate::api::BufferNode { path, ephemeral });
 							}
 							WorkspaceEventInner::Rename(FileRename { before, after }) => {
+								if let Some((_path, controller)) = inner.buffers.remove(&before) {
+									inner.buffers.insert(after.clone(), controller);
+								}
 								if let Some((_path, node)) = inner.filetree.remove(&before) {
-									inner.filetree.insert(after.clone(), crate::api::BufferNode { path: after, ephemeral: node.ephemeral });
+									inner.filetree.insert(after.clone(), node);
+								}
+								if let Some((_path, users)) = inner.buffer_users.remove(&before) {
+									inner.buffer_users.insert(after, users);
 								}
 							}
 							WorkspaceEventInner::Delete(FileDelete { path }) => {
 								inner.filetree.remove(&path);
+								inner.buffer_users.remove(&path);
 								let _ = inner.buffers.remove(&path);
 							}
 						}

@@ -254,10 +254,10 @@ impl
 
 		let workspace = client.attach_workspace(ws_info.id).await?;
 		workspace.create_buffer(&self.buffer, false).await?;
-		let buffer = workspace.attach_buffer(&self.buffer).await?;
+		let buffer = workspace.attach_buffer(self.buffer.clone()).await?;
 
 		let invitee_workspace = invitee_client.attach_workspace(ws_info.id).await?;
-		let invitee_buffer = invitee_workspace.attach_buffer(&self.buffer).await?;
+		let invitee_buffer = invitee_workspace.attach_buffer(self.buffer.clone()).await?;
 
 		Ok((
 			client,
