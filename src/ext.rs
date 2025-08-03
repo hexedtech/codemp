@@ -115,3 +115,9 @@ where
 		}
 	}
 }
+
+pub(crate) fn token_to_metadata(tok: codemp_proto::common::Token) -> tonic::Result<tonic::metadata::MetadataValue<tonic::metadata::Ascii>> {
+	tonic::metadata::MetadataValue::try_from(tok.token).map_err(|e| {
+		tonic::Status::internal(format!("failed representing token to string: {e}"))
+	})
+}
