@@ -7,7 +7,7 @@ authors = [
 	"alemi <me@alemi.dev>",
 	"zaaarf <me@zaaarf.foo>",
 	"frelodev <frelodev@gmail.com>",
-	"cschen <cschen@codemp.dev>"
+	"cschen <dev@cschen.cc>"
 ]
 license = "GPL-3.0-only"
 edition = "2021"
