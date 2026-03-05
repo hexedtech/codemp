@@ -17,7 +17,7 @@ use crate::ext::IgnorableError;
 /// Each buffer controller internally tracks the last acknowledged state, remaining always in sync
 /// with the server while allowing to procedurally receive changes while still sending new ones.
 #[derive(Debug, Clone)]
-#[cfg_attr(feature = "py", pyo3::pyclass)]
+#[cfg_attr(feature = "py", pyo3::pyclass(from_py_object))]
 #[cfg_attr(feature = "js", napi_derive::napi)]
 pub struct BufferController(pub(crate) Arc<BufferControllerInner>);
 

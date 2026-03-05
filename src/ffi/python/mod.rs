@@ -48,7 +48,7 @@ pub fn tokio() -> &'static tokio::runtime::Runtime {
 // 	let _ = CREATE_FUTURE.get_or_init(|| create_future);
 // }
 
-#[pyclass]
+#[pyclass(from_py_object)]
 pub struct Promise(Option<tokio::task::JoinHandle<PyResult<Py<PyAny>>>>);
 
 #[pymethods]
@@ -121,7 +121,7 @@ impl std::io::Write for LoggerProducer {
 	}
 }
 
-#[pyclass]
+#[pyclass(from_py_object)
 pub struct Driver(Option<oneshot::Sender<()>>);
 #[pymethods]
 impl Driver {

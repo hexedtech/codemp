@@ -7,7 +7,7 @@ use pyo3::prelude::*;
 /// An event that occurred about a user's cursor.
 #[derive(Clone, Debug, Default)]
 #[cfg_attr(feature = "js", napi_derive::napi(object))]
-#[cfg_attr(feature = "py", pyclass(get_all))]
+#[cfg_attr(feature = "py", pyclass(get_all, from_py_object))]
 #[cfg_attr(feature = "serialize", derive(serde::Serialize, serde::Deserialize))]
 // #[cfg_attr(feature = "py", pyo3(crate = "reexported::pyo3"))]
 pub struct CursorEvent {
@@ -17,11 +17,10 @@ pub struct CursorEvent {
 	pub cursor: Cursor,
 }
 
-
 /// An event that occurred about a user's cursor.
 #[derive(Clone, Debug, Default)]
 #[cfg_attr(feature = "js", napi_derive::napi(object))]
-#[cfg_attr(feature = "py", pyclass(get_all))]
+#[cfg_attr(feature = "py", pyclass(get_all, from_py_object))]
 #[cfg_attr(feature = "serialize", derive(serde::Serialize, serde::Deserialize))]
 // #[cfg_attr(feature = "py", pyo3(crate = "reexported::pyo3"))]
 pub struct Cursor {
@@ -34,7 +33,7 @@ pub struct Cursor {
 /// A cursor selection span.
 #[derive(Clone, Debug, Default)]
 #[cfg_attr(feature = "js", napi_derive::napi(object))]
-#[cfg_attr(feature = "py", pyclass(get_all))]
+#[cfg_attr(feature = "py", pyclass(get_all, from_py_object))]
 #[cfg_attr(feature = "serialize", derive(serde::Serialize, serde::Deserialize))]
 // #[cfg_attr(feature = "py", pyo3(crate = "reexported::pyo3"))]
 pub struct Selection {

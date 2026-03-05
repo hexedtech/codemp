@@ -6,7 +6,7 @@ use codemp_proto::workspace::workspace_event::Event as WorkspaceEventInner;
 
 /// Event in a [crate::Workspace].
 #[derive(Debug, Clone)]
-#[cfg_attr(feature = "py", pyo3::pyclass)]
+#[cfg_attr(feature = "py", pyo3::pyclass(from_py_object))]
 #[cfg_attr(feature = "serialize", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serialize", serde(tag = "type"))]
 pub enum Event {
@@ -33,6 +33,14 @@ impl From<WorkspaceEventInner> for Event {
 			WorkspaceEventInner::Rename(e) => Self::FileTreeUpdated { path: e.after },
 			WorkspaceEventInner::BufferJoin(e) => Self::UserJoinBuffer { name: e.user, buffer: e.buffer },
 			WorkspaceEventInner::BufferLeave(e) => Self::UserLeaveBuffer { name: e.user, buffer: e.buffer },
+			WorkspaceEventInner::BufferJoin(e) => Self::UserJoinBuffer {
+				name: e.user.name,
+				buffer: e.buffer,
+			},
+			WorkspaceEventInner::BufferLeave(e) => Self::UserLeaveBuffer {
+				name: e.user.name,
+				buffer: e.buffer,
+			},
 		}
 	}
 }

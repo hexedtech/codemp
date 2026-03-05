@@ -17,7 +17,7 @@ use codemp_proto::cursor::{CursorPosition, CursorUpdate, RowCol, cursor_client::
 ///
 /// An unique [CursorController] exists for each active [crate::Workspace].
 #[derive(Debug, Clone)]
-#[cfg_attr(feature = "py", pyo3::pyclass)]
+#[cfg_attr(feature = "py", pyo3::pyclass(from_py_object))]
 #[cfg_attr(feature = "js", napi_derive::napi)]
 pub struct CursorController(pub(crate) Arc<CursorControllerInner>);
 
@@ -54,7 +54,8 @@ impl AsyncSender<Cursor> for CursorController {
 
 		Ok(self.0.op.send(CursorUpdate {
 			buffer: cursor.buffer,
-			cursors: cursor.sel
+			cursors: cursor
+				.sel
 				.into_iter()
 				.map(|x| CursorPosition {
 					start: RowCol {
@@ -64,9 +65,9 @@ impl AsyncSender<Cursor> for CursorController {
 					end: RowCol {
 						row: x.end_row,
 						col: x.end_col,
-					}
+					},
 				})
-				.collect()
+				.collect(),
 		})?)
 	}
 }

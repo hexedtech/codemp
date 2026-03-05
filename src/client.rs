@@ -34,7 +34,7 @@ use pyo3::prelude::*;
 /// A new [`Client`] can be obtained with [`Client::connect`].
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "js", napi_derive::napi)]
-#[cfg_attr(feature = "py", pyclass)]
+#[cfg_attr(feature = "py", pyclass(from_py_object))]
 pub struct Client(Arc<ClientInner>);
 
 #[derive(Debug)]
@@ -267,11 +267,15 @@ impl Client {
 					// TODO either configurable token refresh time or calculate depending on token lifetime
 					tokio::time::sleep(std::time::Duration::from_secs(240)).await;
 					if weak.upgrade().is_none() { break };
-					let new_credentials = session_client.get_workspace_token(codemp_proto::session::WorkspaceIdentifier::from(_workspace.clone()))
+					let new_credentials = session_client.get_workspace_token(
+						tonic::Request::new(WorkspaceRequest { id: Identifier::from(workspace) })
+					)
 						.await?
 						.into_inner();
 					workspace_claims.set(new_credentials);
-					workspace_client.keep_alive(tonic::Request::new(Empty {})).await?;
+					workspace_client
+						.keep_alive(tonic::Request::new(Empty {}))
+						.await?;
 				}
 				Ok::<(), tonic::Status>(())
 			};
@@ -301,15 +305,12 @@ impl Client {
 	}
 
 	/// Get the names of all active [`Workspace`]s.
-	// TODO get rid of WorkspaceIdentifier
-	pub fn active_workspaces(&self) -> Vec<crate::api::WorkspaceIdentifier> {
-		let mut out = Vec::new();
-		for wss in self.0.workspaces.iter() {
-			for ws in wss.value().iter() {
-				out.push(ws.value().id().clone());
-			}
-		}
-		out
+	pub fn active_workspaces(&self) -> Vec<uuid::Uuid> {
+		self.0
+			.workspaces
+			.iter()
+			.map(|x| *x.key())
+			.collect()
 	}
 
 	/// Get the currently logged in user.

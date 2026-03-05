@@ -63,7 +63,6 @@ impl Workspace {
 	fn pycursor(&self) -> CursorController {
 		self.cursor()
 	}
-
 	#[pyo3(name = "get_buffer")]
 	fn pyget_buffer(&self, path: String) -> Option<BufferController> {
 		self.get_buffer(path.as_str())
