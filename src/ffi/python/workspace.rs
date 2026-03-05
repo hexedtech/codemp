@@ -21,7 +21,7 @@ impl Workspace {
 	#[pyo3(name = "attach_buffer")]
 	fn pyattach_buffer(&self, py: Python, path: String) -> PyResult<Promise> {
 		let this = self.clone();
-		a_sync_detach!(py, this.attach_buffer(path.as_str()).await)
+		a_sync_detach!(py, this.attach_buffer(path).await)
 	}
 
 	#[pyo3(name = "detach_buffer")]
@@ -32,20 +32,20 @@ impl Workspace {
 	#[pyo3(name = "fetch_buffers")]
 	fn pylist_buffers(&self, py: Python, filter: String) -> PyResult<Promise> {
 		let this = self.clone();
-		a_sync_detach!(py, this.list_buffers(filter.as_str()).await)
+		a_sync_detach!(py, this.fetch_buffers(filter).await)
 	}
 
 	#[pyo3(name = "fetch_users")]
 	fn pylist_users(&self, py: Python) -> PyResult<Promise> {
 		let this = self.clone();
-		a_sync_detach!(py, this.list_users().await)
+		a_sync_detach!(py, this.fetch_users().await)
 	}
 
 	#[pyo3(name = "fetch_buffer_users")]
 	fn pylist_buffer_users(&self, py: Python, path: String) -> PyResult<Promise> {
 		// crate::Result<Vec<crate::api::User>>
 		let this = self.clone();
-		a_sync_detach!(py, this.list_buffer_users(path.as_str()).await)
+		a_sync_detach!(py, this.fetch_buffer_users(path).await)
 	}
 
 	#[pyo3(name = "delete_buffer")]

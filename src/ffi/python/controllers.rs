@@ -1,6 +1,6 @@
+use crate::api::Cursor;
 use crate::api::TextChange;
 use crate::api::controller::{AsyncReceiver, AsyncSender};
-use crate::api::{Cursor, Selection};
 use crate::buffer::Controller as BufferController;
 use crate::cursor::Controller as CursorController;
 use pyo3::exceptions::PyValueError;
@@ -13,7 +13,7 @@ use super::a_sync_detach;
 #[pymethods]
 impl CursorController {
 	#[pyo3(name = "send")]
-	fn pysend(&self, _py: Python, pos: Selection) -> PyResult<()> {
+	fn pysend(&self, _py: Python, pos: Cursor) -> PyResult<()> {
 		self.send(pos)?;
 		Ok(())
 	}
@@ -142,11 +142,11 @@ impl Cursor {
 
 	#[getter(buffer)]
 	fn pybuffer(&self) -> String {
-		self.sel.iter().map(|s| s.buffer.clone()).collect()
+		self.buffer.clone()
 	}
 
-	#[getter(user)]
-	fn pyuser(&self) -> Option<String> {
-		Some(self.user.clone())
-	}
+	// #[getter(user)]
+	// fn pyuser(&self) -> Option<String> {
+	// 	Some(self.user.clone())
+	// }
 }

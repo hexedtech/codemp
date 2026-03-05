@@ -48,7 +48,7 @@ pub fn tokio() -> &'static tokio::runtime::Runtime {
 // 	let _ = CREATE_FUTURE.get_or_init(|| create_future);
 // }
 
-#[pyclass(from_py_object)]
+#[pyclass]
 pub struct Promise(Option<tokio::task::JoinHandle<PyResult<Py<PyAny>>>>);
 
 #[pymethods]
@@ -121,7 +121,7 @@ impl std::io::Write for LoggerProducer {
 	}
 }
 
-#[pyclass(from_py_object)
+#[pyclass]
 pub struct Driver(Option<oneshot::Sender<()>>);
 #[pymethods]
 impl Driver {
@@ -231,13 +231,12 @@ impl Cursor {
 #[pymethods]
 impl Selection {
 	#[new]
-	#[pyo3(signature = (*, start_row, start_col, end_row, end_col, buffer, **kwds))]
+	#[pyo3(signature = (*, start_row, start_col, end_row, end_col, **kwds))]
 	pub fn py_new(
 		start_row: i32,
 		start_col: i32,
 		end_row: i32,
 		end_col: i32,
-		buffer: String,
 		kwds: Option<&Bound<'_, PyDict>>,
 	) -> PyResult<Self> {
 		if let Some(_kwds) = kwds {
@@ -246,7 +245,6 @@ impl Selection {
 				start_col,
 				end_row,
 				end_col,
-				buffer,
 			})
 		} else {
 			Ok(Self {
@@ -254,7 +252,6 @@ impl Selection {
 				start_col,
 				end_row,
 				end_col,
-				buffer,
 			})
 		}
 	}
