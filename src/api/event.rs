@@ -17,16 +17,22 @@ pub enum Event {
 	UserJoin { name: String },
 	/// Fired when an user leaves the current workspace.
 	UserLeave { name: String },
+	/// Fired when an user joins a buffer.
+	UserJoinBuffer { name: String, buffer: String },
+	/// Fired when an user leaves a buffer.
+	UserLeaveBuffer { name: String, buffer: String },
 }
 
 impl From<WorkspaceEventInner> for Event {
 	fn from(event: WorkspaceEventInner) -> Self {
 		match event {
-			WorkspaceEventInner::Join(e) => Self::UserJoin { name: e.user.name },
-			WorkspaceEventInner::Leave(e) => Self::UserLeave { name: e.user.name },
+			WorkspaceEventInner::WorkspaceJoin(e) => Self::UserJoin { name: e.user.name },
+			WorkspaceEventInner::WorkspaceLeave(e) => Self::UserLeave { name: e.user.name },
 			WorkspaceEventInner::Create(e) => Self::FileTreeUpdated { path: e.path },
 			WorkspaceEventInner::Delete(e) => Self::FileTreeUpdated { path: e.path },
 			WorkspaceEventInner::Rename(e) => Self::FileTreeUpdated { path: e.after },
+			WorkspaceEventInner::BufferJoin(e) => Self::UserJoinBuffer { name: e.user.name, buffer: e.buffer },
+			WorkspaceEventInner::BufferLeave(e) => Self::UserLeaveBuffer { name: e.user.name, buffer: e.buffer },
 		}
 	}
 }
