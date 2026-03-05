@@ -30,17 +30,17 @@ pub fn tokio() -> &'static tokio::runtime::Runtime {
 }
 
 // #[pyfunction]
-// fn register_event_loop(event_loop: PyObject) {
-// 	static EVENT_LOOP: OnceLock<PyObject> = OnceLock::new();
+// fn register_event_loop(event_loop: Py<PyAny>) {
+// 	static EVENT_LOOP: OnceLock<Py<PyAny>> = OnceLock::new();
 // 	EVENT_LOOP.
 // }
 
 // #[pyfunction]
 // fn setup_async(
-// 	event_loop: PyObject,
-// 	call_soon_thread_safe: PyObject, // asyncio.EventLoop.call_soon_threadsafe
-// 	call_coroutine_thread_safe: PyObject, // asyncio.call_coroutine_threadsafe
-// 	create_future: PyObject,         // asyncio.EventLoop.create_future
+// 	event_loop: Py<PyAny>,
+// 	call_soon_thread_safe: Py<PyAny>, // asyncio.EventLoop.call_soon_threadsafe
+// 	call_coroutine_thread_safe: Py<PyAny>, // asyncio.call_coroutine_threadsafe
+// 	create_future: Py<PyAny>,         // asyncio.EventLoop.create_future
 // ) {
 // 	let _ = EVENT_LOOP.get_or_init(|| event_loop);
 // 	let _ = CALL_SOON.get_or_init(|| call_soon_thread_safe);
@@ -49,15 +49,15 @@ pub fn tokio() -> &'static tokio::runtime::Runtime {
 // }
 
 #[pyclass]
-pub struct Promise(Option<tokio::task::JoinHandle<PyResult<PyObject>>>);
+pub struct Promise(Option<tokio::task::JoinHandle<PyResult<Py<PyAny>>>>);
 
 #[pymethods]
 impl Promise {
 	// Can't use this in callbacks since tokio will complain about running
 	// a runtime inside another runtime.
 	#[pyo3(name = "wait")]
-	fn _await(&mut self, py: Python<'_>) -> PyResult<PyObject> {
-		py.allow_threads(move || match self.0.take() {
+	fn _await(&mut self, py: Python<'_>) -> PyResult<Py<PyAny>> {
+		py.detach(move || match self.0.take() {
 			None => Err(PyRuntimeError::new_err(
 				"promise can't be awaited multiple times!",
 			)),
@@ -71,7 +71,7 @@ impl Promise {
 	}
 
 	fn done(&self, py: Python<'_>) -> PyResult<bool> {
-		py.allow_threads(|| {
+		py.detach(|| {
 			if let Some(handle) = &self.0 {
 				Ok(handle.is_finished())
 			} else {
@@ -86,26 +86,26 @@ macro_rules! a_sync {
 		Ok($crate::ffi::python::Promise(Some(
 			$crate::ffi::python::tokio().spawn(async move {
 				let res = $x?;
-				Python::with_gil(|py| Ok(res.into_pyobject(py)?.into_any().unbind()))
+				Python::attach(|py| Ok(res.into_pyobject(py)?.into_any().unbind()))
 			}),
 		)))
 	}};
 }
 //pub(crate) use a_sync;
 
-macro_rules! a_sync_allow_threads {
+macro_rules! a_sync_detach {
 	($py:ident, $x:expr) => {{
-		$py.allow_threads(move || {
+		$py.detach(move || {
 			Ok($crate::ffi::python::Promise(Some(
 				$crate::ffi::python::tokio().spawn(async move {
 					let res = $x?;
-					Python::with_gil(|gil| Ok(res.into_pyobject(gil)?.into_any().unbind()))
+					Python::attach(|gil| Ok(res.into_pyobject(gil)?.into_any().unbind()))
 				}),
 			)))
 		})
 	}};
 }
-pub(crate) use a_sync_allow_threads;
+pub(crate) use a_sync_detach;
 
 #[derive(Debug, Clone)]
 struct LoggerProducer(mpsc::UnboundedSender<String>);
@@ -307,14 +307,14 @@ fn connect(py: Python, config: Py<Config>) -> PyResult<Promise> {
 	Ok(Promise(Some(crate::ffi::python::tokio().spawn(
 		async move {
 			let client = Client::connect(conf).await?;
-			Python::with_gil(|py| Ok(client.into_pyobject(py)?.into_any().unbind()))
+			Python::attach(|py| Ok(client.into_pyobject(py)?.into_any().unbind()))
 		},
 	))))
 	// a_sync!(Client::connect(conf).await)
 }
 
 #[pyfunction]
-fn set_logger(py: Python, logging_cb: PyObject, debug: bool) -> bool {
+fn set_logger(py: Python, logging_cb: Py<PyAny>, debug: bool) -> bool {
 	if !logging_cb.bind_borrowed(py).is_callable() {
 		return false;
 	}
@@ -347,7 +347,7 @@ fn set_logger(py: Python, logging_cb: PyObject, debug: bool) -> bool {
 	if log_subscribed {
 		tokio().spawn(async move {
 			while let Some(msg) = rx.recv().await {
-				let _ = Python::with_gil(|py| logging_cb.call1(py, (msg,)));
+				let _ = Python::attach(|py| logging_cb.call1(py, (msg,)));
 			}
 		});
 	}

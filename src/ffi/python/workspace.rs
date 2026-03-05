@@ -7,7 +7,7 @@ use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 
 use super::Promise;
-use super::a_sync_allow_threads;
+use super::a_sync_detach;
 
 #[pymethods]
 impl Workspace {
@@ -15,13 +15,13 @@ impl Workspace {
 	#[pyo3(name = "create_buffer")]
 	fn pycreate_buffer(&self, py: Python, path: String, ephemeral: bool) -> PyResult<Promise> {
 		let this = self.clone();
-		a_sync_allow_threads!(py, this.create_buffer(path.as_str(), ephemeral).await)
+		a_sync_detach!(py, this.create_buffer(path.as_str(), ephemeral).await)
 	}
 
 	#[pyo3(name = "attach_buffer")]
 	fn pyattach_buffer(&self, py: Python, path: String) -> PyResult<Promise> {
 		let this = self.clone();
-		a_sync_allow_threads!(py, this.attach_buffer(path.as_str()).await)
+		a_sync_detach!(py, this.attach_buffer(path.as_str()).await)
 	}
 
 	#[pyo3(name = "detach_buffer")]
@@ -32,26 +32,26 @@ impl Workspace {
 	#[pyo3(name = "fetch_buffers")]
 	fn pylist_buffers(&self, py: Python, filter: String) -> PyResult<Promise> {
 		let this = self.clone();
-		a_sync_allow_threads!(py, this.list_buffers(filter.as_str()).await)
+		a_sync_detach!(py, this.list_buffers(filter.as_str()).await)
 	}
 
 	#[pyo3(name = "fetch_users")]
 	fn pylist_users(&self, py: Python) -> PyResult<Promise> {
 		let this = self.clone();
-		a_sync_allow_threads!(py, this.list_users().await)
+		a_sync_detach!(py, this.list_users().await)
 	}
 
 	#[pyo3(name = "fetch_buffer_users")]
 	fn pylist_buffer_users(&self, py: Python, path: String) -> PyResult<Promise> {
 		// crate::Result<Vec<crate::api::User>>
 		let this = self.clone();
-		a_sync_allow_threads!(py, this.list_buffer_users(path.as_str()).await)
+		a_sync_detach!(py, this.list_buffer_users(path.as_str()).await)
 	}
 
 	#[pyo3(name = "delete_buffer")]
 	fn pydelete_buffer(&self, py: Python, path: String) -> PyResult<Promise> {
 		let this = self.clone();
-		a_sync_allow_threads!(py, this.delete_buffer(path.as_str()).await)
+		a_sync_detach!(py, this.delete_buffer(path.as_str()).await)
 	}
 
 	#[pyo3(name = "id")]
@@ -88,19 +88,19 @@ impl Workspace {
 	#[pyo3(name = "recv")]
 	fn pyrecv(&self, py: Python) -> PyResult<Promise> {
 		let this = self.clone();
-		a_sync_allow_threads!(py, this.recv().await)
+		a_sync_detach!(py, this.recv().await)
 	}
 
 	#[pyo3(name = "try_recv")]
 	fn pytry_recv(&self, py: Python) -> PyResult<Promise> {
 		let this = self.clone();
-		a_sync_allow_threads!(py, this.try_recv().await)
+		a_sync_detach!(py, this.try_recv().await)
 	}
 
 	#[pyo3(name = "poll")]
 	fn pypoll(&self, py: Python) -> PyResult<Promise> {
 		let this = self.clone();
-		a_sync_allow_threads!(py, this.poll().await)
+		a_sync_detach!(py, this.poll().await)
 	}
 
 	#[pyo3(name = "clear_callback")]
@@ -109,13 +109,13 @@ impl Workspace {
 	}
 
 	#[pyo3(name = "callback")]
-	fn pycallback(&self, py: Python, cb: PyObject) -> PyResult<()> {
+	fn pycallback(&self, py: Python, cb: Py<PyAny>) -> PyResult<()> {
 		if !cb.bind_borrowed(py).is_callable() {
 			return Err(PyValueError::new_err("The object passed must be callable."));
 		}
 
 		self.callback(move |ws| {
-			Python::with_gil(|py| {
+			Python::attach(|py| {
 				// TODO what to do with this error?
 				let _ = cb.call1(py, (ws,));
 			})

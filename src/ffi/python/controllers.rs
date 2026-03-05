@@ -7,7 +7,7 @@ use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 
 use super::Promise;
-use super::a_sync_allow_threads;
+use super::a_sync_detach;
 
 // need to do manually since Controller is a trait implementation
 #[pymethods]
@@ -21,29 +21,29 @@ impl CursorController {
 	#[pyo3(name = "try_recv")]
 	fn pytry_recv(&self, py: Python) -> PyResult<Promise> {
 		let this = self.clone();
-		a_sync_allow_threads!(py, this.try_recv().await)
+		a_sync_detach!(py, this.try_recv().await)
 	}
 
 	#[pyo3(name = "recv")]
 	fn pyrecv(&self, py: Python) -> PyResult<Promise> {
 		let this = self.clone();
-		a_sync_allow_threads!(py, this.recv().await)
+		a_sync_detach!(py, this.recv().await)
 	}
 
 	#[pyo3(name = "poll")]
 	fn pypoll(&self, py: Python) -> PyResult<Promise> {
 		let this = self.clone();
-		a_sync_allow_threads!(py, this.poll().await)
+		a_sync_detach!(py, this.poll().await)
 	}
 
 	#[pyo3(name = "callback")]
-	fn pycallback(&self, py: Python, cb: PyObject) -> PyResult<()> {
+	fn pycallback(&self, py: Python, cb: Py<PyAny>) -> PyResult<()> {
 		if !cb.bind_borrowed(py).is_callable() {
 			return Err(PyValueError::new_err("The object passed must be callable."));
 		}
 
 		self.callback(move |ctl| {
-			Python::with_gil(|py| {
+			Python::attach(|py| {
 				// TODO what to do with this error?
 				let _ = cb.call1(py, (ctl,));
 			})
@@ -68,7 +68,7 @@ impl BufferController {
 	#[pyo3(name = "content")]
 	fn pycontent(&self, py: Python) -> PyResult<Promise> {
 		let this = self.clone();
-		a_sync_allow_threads!(py, this.content().await)
+		a_sync_detach!(py, this.content().await)
 	}
 
 	#[pyo3(name = "ack")]
@@ -86,29 +86,29 @@ impl BufferController {
 	#[pyo3(name = "try_recv")]
 	fn pytry_recv(&self, py: Python) -> PyResult<Promise> {
 		let this = self.clone();
-		a_sync_allow_threads!(py, this.try_recv().await)
+		a_sync_detach!(py, this.try_recv().await)
 	}
 
 	#[pyo3(name = "recv")]
 	fn pyrecv(&self, py: Python) -> PyResult<Promise> {
 		let this = self.clone();
-		a_sync_allow_threads!(py, this.recv().await)
+		a_sync_detach!(py, this.recv().await)
 	}
 
 	#[pyo3(name = "poll")]
 	fn pypoll(&self, py: Python) -> PyResult<Promise> {
 		let this = self.clone();
-		a_sync_allow_threads!(py, this.poll().await)
+		a_sync_detach!(py, this.poll().await)
 	}
 
 	#[pyo3(name = "callback")]
-	fn pycallback(&self, py: Python, cb: PyObject) -> PyResult<()> {
+	fn pycallback(&self, py: Python, cb: Py<PyAny>) -> PyResult<()> {
 		if !cb.bind_borrowed(py).is_callable() {
 			return Err(PyValueError::new_err("The object passed must be callable."));
 		}
 
 		self.callback(move |ctl| {
-			Python::with_gil(|py| {
+			Python::attach(|py| {
 				// TODO what to do with this error?
 				let _ = cb.call1(py, (ctl,));
 			})
