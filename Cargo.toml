@@ -25,7 +25,7 @@ thiserror = "2.0"
 # crdt
 diamond-types = "1.0"
 # proto
-codemp-proto = { git = "https://github.com/hexedtech/codemp-proto", rev = "23012c1ddd2c488a923d4c71f1d8a1a7a61f7412", features = ["client"] }
+codemp-proto = { git = "https://github.com/hexedtech/codemp-proto", rev = "e000cda350ed277167ce494af91aa5bc5fcd339f", features = ["client"] }
 uuid = { version = "1.17", features = ["v4"] }
 tonic = { version = "0.14", features = ["tls-native-roots"] }
 # api
@@ -39,7 +39,7 @@ dashmap = "6.1"
 tracing-subscriber = { version = "0.3", optional = true }
 
 # glue (java)
-jni = { version = "0.21", features = ["invocation"], optional = true }
+jni = { version = "0.22", features = ["invocation"], optional = true }
 jni-toolbox = { version = "0.2", optional = true, features = ["uuid"] }
 
 # glue (lua)
@@ -50,7 +50,7 @@ napi = { version = "3.1", features = ["full"], optional = true }
 napi-derive = { version="3.1",  optional = true}
 
 # glue (python)
-pyo3 = { version = "0.25", features = ["extension-module", "multiple-pymethods", "uuid"], optional = true}
+pyo3 = { version = "0.28", features = ["extension-module", "multiple-pymethods", "uuid"], optional = true}
 
 # extra
 async-trait = { version = "0.1", optional = true }
@@ -60,9 +60,10 @@ serde = { version = "1.0", features = ["derive"], optional = true }
 # glue (js)
 napi-build = { version = "2.2", optional = true }
 # glue (python)
-pyo3-build-config = { version = "0.25", optional = true }
+pyo3-build-config = { version = "0.28", optional = true }
 
 [features]
+#default = ["lua-jit", "py-abi3", "lua", "java", "js", "py"]
 default = ["lua-jit", "py-abi3"]
 # extra
 async-trait = ["dep:async-trait"]
