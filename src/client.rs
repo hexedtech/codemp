@@ -10,9 +10,9 @@ use tonic::{
 };
 
 use crate::{
-	api::UserInfo,
+	api::{AsyncReceiver, UserInfo},
 	errors::{ConnectionResult, RemoteResult},
-	ext::InternallyMutable,
+	ext::{IgnorableError, InternallyMutable},
 	network,
 	workspace::Workspace,
 };
@@ -45,6 +45,9 @@ struct ClientInner {
 	auth: AuthClient<Channel>,
 	session: SessionClient<InterceptedService<Channel, network::SessionInterceptor>>,
 	claims: InternallyMutable<Token>,
+	poll_tx: tokio::sync::mpsc::UnboundedSender<tokio::sync::oneshot::Sender<()>>,
+	callback: tokio::sync::watch::Sender<Option<crate::api::controller::ControllerCallback<Client>>>,
+	events: tokio::sync::Mutex<tokio::sync::mpsc::UnboundedReceiver<codemp_proto::session::session_event::Event>>,
 }
 
 impl Client {
@@ -66,17 +69,40 @@ impl Client {
 		let claims = InternallyMutable::new(resp.token);
 
 		// TODO move this one into network.rs
-		let session =
+		let mut session =
 			SessionClient::with_interceptor(channel, network::SessionInterceptor(claims.channel()));
 
-		Ok(Client(Arc::new(ClientInner {
+		let (ev_tx, ev_rx) = tokio::sync::mpsc::unbounded_channel();
+		let (poll_tx, poll_rx) = tokio::sync::mpsc::unbounded_channel();
+		let (cb_tx, cb_rx) = tokio::sync::watch::channel(None);
+
+		let stream = session.attach(Empty {}).await?.into_inner();
+
+		let worker = ClientWorker {
+			callback: cb_rx,
+			pollers: Vec::new(),
+			poll_rx,
+			events: ev_tx,
+		};
+
+		let inner = Arc::new(ClientInner {
 			user: Arc::new(resp.user.into()),
 			workspaces: DashMap::default(),
+			poll_tx,
+			events: tokio::sync::Mutex::new(ev_rx),
 			claims,
 			auth,
 			session,
 			config,
-		})))
+			callback: cb_tx,
+		});
+
+		let weak = Arc::downgrade(&inner);
+		let _t = tokio::spawn(async move {
+			worker.work(stream, weak).await;
+		});
+
+		Ok(Client(inner))
 	}
 
 	/// Refresh session token.
@@ -269,5 +295,98 @@ impl Client {
 	/// Get the currently logged in user.
 	pub fn current_user(&self) -> &UserInfo {
 		&self.0.user
+	}
+}
+
+impl AsyncReceiver<codemp_proto::session::session_event::Event> for Client {
+	async fn try_recv(&self) -> crate::errors::ControllerResult<Option<codemp_proto::session::session_event::Event>> {
+		match self.0.events.lock().await.try_recv() {
+			Ok(x) => Ok(Some(x)),
+			Err(tokio::sync::mpsc::error::TryRecvError::Empty) => Ok(None),
+			Err(tokio::sync::mpsc::error::TryRecvError::Disconnected) => Err(crate::errors::ControllerError::Stopped),
+		}
+	}
+
+	async fn poll(&self) -> crate::errors::ControllerResult<()> {
+		let (tx, rx) = tokio::sync::oneshot::channel();
+		self.0.poll_tx.send(tx)?;
+		Ok(rx.await?)
+	}
+
+	fn clear_callback(&self) {
+		self.0.callback.send_replace(None);
+	}
+
+	fn callback(&self, cb: impl Into<crate::api::controller::ControllerCallback<Self>>) {
+		self.0.callback.send_replace(Some(cb.into()));
+	}
+}
+
+struct ClientWorker {
+	callback: tokio::sync::watch::Receiver<Option<crate::api::controller::ControllerCallback<Client>>>,
+	pollers: Vec<tokio::sync::oneshot::Sender<()>>,
+	poll_rx: tokio::sync::mpsc::UnboundedReceiver<tokio::sync::oneshot::Sender<()>>,
+	events: tokio::sync::mpsc::UnboundedSender<codemp_proto::session::session_event::Event>,
+}
+
+impl ClientWorker {
+	#[tracing::instrument(skip(self, stream, weak))]
+	pub(crate) async fn work(
+		mut self,
+		mut stream: tonic::Streaming<codemp_proto::session::SessionEvent> ,
+		weak: std::sync::Weak<ClientInner> ,
+	) {
+		tracing::debug!("client worker starting");
+		loop {
+			tokio::select! {
+				res = self.poll_rx.recv() => match res {
+				None => break tracing::debug!("pollers channel closed: client has been dropped"),
+					Some(x) => self.pollers.push(x),
+				},
+
+				res = stream.message() => match res {
+					Err(e) => break tracing::error!("client stream closed: {e}"),
+					Ok(None) => break tracing::info!("closing client"),
+					Ok(Some(codemp_proto::session::SessionEvent { event: None })) => {
+						tracing::warn!("client received empty event")
+					}
+					Ok(Some(codemp_proto::session::SessionEvent { event: Some(ev) })) => {
+						let Some(_inner) = weak.upgrade() else {
+							break tracing::debug!("client worker clean exit");
+						};
+						tracing::debug!("received client event: {ev:?}");
+						match ev.clone() {
+							codemp_proto::session::session_event::Event::Invite(invitation_event) => {
+								tracing::info!("got invited to workspace: {invitation_event:?}");
+							},
+							codemp_proto::session::session_event::Event::Leave(quit_event) => {
+								tracing::info!("user left workspace: {quit_event:?}");
+							},
+							codemp_proto::session::session_event::Event::Join(accept_event) => {
+								tracing::info!("user accepted invite: {accept_event:?}");
+							},
+							codemp_proto::session::session_event::Event::Reject(reject_event) => {
+								tracing::info!("user rejected invite: {reject_event:?}");
+							},
+						}
+
+						if self.events.send(ev).is_err() {
+							tracing::warn!("no active controller to receive workspace event");
+						}
+						self.pollers.drain(..).for_each(|x| {
+							x.send(()).unwrap_or_warn("poller dropped before completion");
+						});
+						if let Some(cb) = self.callback.borrow().as_ref() {
+							if let Some(ws) = weak.upgrade() {
+								cb.call(Client(ws));
+							} else {
+								break tracing::debug!("workspace worker clean (late) exit");
+							}
+						}
+					}
+				},
+			}
+		}
+		tracing::debug!("workspace worker stopping");
 	}
 }
