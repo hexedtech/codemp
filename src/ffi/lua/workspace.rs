@@ -3,7 +3,7 @@ use mlua::prelude::*;
 
 use super::ext::a_sync::a_sync;
 
-super::ext::impl_lua_serde! { CodempEvent CodempWorkspaceInfo }
+super::ext::impl_lua_serde! { CodempEvent CodempWorkspaceIdentifier }
 
 impl LuaUserData for CodempWorkspace {
 	fn add_methods<M: LuaUserDataMethods<Self>>(methods: &mut M) {
@@ -12,12 +12,12 @@ impl LuaUserData for CodempWorkspace {
 		});
 		methods.add_method(
 			"create_buffer",
-			|_, this, (name, ephemeral): (String, bool)| a_sync! { this => this.create_buffer(&name, ephemeral).await? },
+			|_, this, (name, ephemeral): (String, bool)| a_sync! { this => this.create_buffer(name, ephemeral).await? },
 		);
 
 		methods.add_method(
 			"attach_buffer",
-			|_, this, (name,): (String,)| a_sync! { this => this.attach_buffer(&name).await? },
+			|_, this, (name,): (String,)| a_sync! { this => this.attach_buffer(name).await? },
 		);
 
 		methods.add_method("detach_buffer", |_, this, (name,): (String,)| {
@@ -26,7 +26,7 @@ impl LuaUserData for CodempWorkspace {
 
 		methods.add_method(
 			"delete_buffer",
-			|_, this, (name,): (String,)| a_sync! { this => this.delete_buffer(&name).await? },
+			|_, this, (name,): (String,)| a_sync! { this => this.delete_buffer(name).await? },
 		);
 
 		methods.add_method("get_buffer", |_, this, (name,): (String,)| {
@@ -34,23 +34,23 @@ impl LuaUserData for CodempWorkspace {
 		});
 
 		methods.add_method(
-			"list_buffers",
-			|_, this, (filter,): (String,)| a_sync! { this => this.list_buffers(filter).await? },
+			"fetch_buffers",
+			|_, this, ()| a_sync! { this => this.fetch_buffers().await? },
 		);
 		methods.add_method(
-			"list_users",
-			|_, this, ()| a_sync! { this => this.list_users().await? },
+			"fetch_users",
+			|_, this, ()| a_sync! { this => this.fetch_users().await? },
+		);
+		methods.add_method(
+			"fetch_buffer_users",
+			|_, this, (buffer,): (String,)| a_sync! { this => this.fetch_buffer_users(buffer).await? },
 		);
 
 		methods.add_method("search_buffers", |_, this, (filter,): (Option<String>,)| {
 			Ok(this.search_buffers(filter.as_deref()))
 		});
 
-		methods.add_method("list_buffer_users", |_, this, (path,): (String,)| {
-			a_sync! {
-				this => this.list_buffer_users(&path).await?
-			}
-		});
+		methods.add_method("list_buffer_users", |_, this, (path,): (String,)| Ok(this.buffer_user_list(&path)));
 
 		methods.add_method("id", |_, this, ()| Ok(this.id().to_string()));
 		methods.add_method("cursor", |_, this, ()| Ok(this.cursor()));

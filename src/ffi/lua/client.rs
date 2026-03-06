@@ -3,7 +3,7 @@ use mlua::prelude::*;
 
 use super::ext::a_sync::a_sync;
 
-super::ext::impl_lua_serde! { CodempConfig CodempUser }
+super::ext::impl_lua_serde! { CodempConfig CodempUserInfo }
 
 impl LuaUserData for CodempClient {
 	fn add_methods<M: LuaUserDataMethods<Self>>(methods: &mut M) {
@@ -25,8 +25,8 @@ impl LuaUserData for CodempClient {
 
 		methods.add_method(
 			"attach_workspace",
-			|_, this, (ws,): (String,)| {
-				let ws_id = super::ext::lua_parse_uuid(&ws, 1, "ws")?;
+			|_, this, (user, workspace): (String,String)| {
+				let ws_id = crate::api::WorkspaceIdentifier { user, workspace };
 				a_sync! { this => this.attach_workspace(ws_id).await? }
 			},
 		);
@@ -55,14 +55,14 @@ impl LuaUserData for CodempClient {
 			|_, this, ()| a_sync! { this => this.fetch_joined_workspaces().await? },
 		);
 
-		methods.add_method("leave_workspace", |_, this, (ws,): (String,)| {
-			let ws_id = super::ext::lua_parse_uuid(&ws, 1, "ws")?;
-			Ok(this.leave_workspace(ws_id))
+		methods.add_method("leave_workspace", |_, this, (user, workspace): (String,String)| {
+			let ws_id = crate::api::WorkspaceIdentifier { user, workspace };
+			Ok(this.leave_workspace(&ws_id))
 		});
 
-		methods.add_method("get_workspace", |_, this, (ws,): (String,)| {
-			let ws_id = super::ext::lua_parse_uuid(&ws, 1, "ws")?;
-			Ok(this.get_workspace(ws_id))
+		methods.add_method("get_workspace", |_, this, (user, workspace): (String,String)| {
+			let ws_id = crate::api::WorkspaceIdentifier { user, workspace };
+			Ok(this.get_workspace(&ws_id))
 		});
 	}
 }

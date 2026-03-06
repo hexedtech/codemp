@@ -39,7 +39,7 @@ pub(crate) struct Promise(
 impl LuaUserData for Promise {
 	fn add_fields<F: LuaUserDataFields<Self>>(fields: &mut F) {
 		fields.add_field_method_get("ready", |_, this| {
-			Ok(this.0.as_ref().map_or(true, |x| x.is_finished()))
+			Ok(this.0.as_ref().is_none_or(|x| x.is_finished()))
 		});
 	}
 

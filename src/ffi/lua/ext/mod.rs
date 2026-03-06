@@ -5,6 +5,7 @@ pub mod log;
 pub(crate) use a_sync::tokio;
 pub(crate) use callback::callback;
 
+#[allow(unused)] // for now
 pub(crate) fn lua_parse_uuid(uuid: &str, pos: usize, name: &str) -> mlua::Result<uuid::Uuid> {
 	use std::str::FromStr;
 	match uuid::Uuid::from_str(uuid) {

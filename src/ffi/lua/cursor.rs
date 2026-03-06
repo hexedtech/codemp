@@ -3,7 +3,7 @@ use mlua::prelude::*;
 
 use super::ext::a_sync::a_sync;
 
-super::ext::impl_lua_serde! { CodempCursor CodempSelection }
+super::ext::impl_lua_serde! { CodempSelection CodempCursor CodempCursorEvent }
 
 impl LuaUserData for CodempCursorController {
 	fn add_methods<M: LuaUserDataMethods<Self>>(methods: &mut M) {
@@ -11,7 +11,7 @@ impl LuaUserData for CodempCursorController {
 			Ok(format!("{:?}", this))
 		});
 
-		methods.add_method("send", |_, this, (cursor,): (CodempSelection,)| {
+		methods.add_method("send", |_, this, (cursor,): (CodempCursor,)| {
 			Ok(this.send(cursor)?)
 		});
 		methods.add_method(
