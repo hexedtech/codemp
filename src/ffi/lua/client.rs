@@ -11,12 +11,8 @@ impl LuaUserData for CodempClient {
 			Ok(format!("{:?}", this))
 		});
 
-		methods.add_method("current_user", |_, this, ()| {
-			Ok(this.current_user().clone())
-		});
-		methods.add_method("active_workspaces", |_, this, ()| {
-			Ok(this.active_workspaces().into_iter().map(|x| x.to_string()).collect::<Vec<String>>())
-		});
+		methods.add_method("current_user", |_, this, ()| Ok(this.current_user().clone()));
+		methods.add_method("active_workspaces", |_, this, ()| Ok(this.active_workspaces()));
 
 		methods.add_method(
 			"refresh",
@@ -41,6 +37,27 @@ impl LuaUserData for CodempClient {
 			|_, this, (ws,): (String,)| a_sync! { this => this.delete_workspace(ws).await? },
 		);
 
+		methods.add_method(
+			"quit_workspace",
+			|_, this, (user, workspace):(String,String)| a_sync! {
+				this => this.quit_workspace(user, workspace).await?
+			},
+		);
+
+		methods.add_method(
+			"accept_invite",
+			|_, this, (user, workspace):(String,String)| a_sync! {
+				this => this.accept_invite(user, workspace).await?
+			},
+		);
+
+		methods.add_method(
+			"reject_invite",
+			|_, this, (user, workspace):(String,String)| a_sync! {
+				this => this.reject_invite(user, workspace).await?
+			},
+		);
+
 		methods.add_method("invite_to_workspace", |_, this, (ws,user):(String,String)|
 			a_sync! { this => this.invite_to_workspace(ws, user).await? }
 		);
@@ -63,6 +80,10 @@ impl LuaUserData for CodempClient {
 		methods.add_method("get_workspace", |_, this, (user, workspace): (String,String)| {
 			let ws_id = crate::api::WorkspaceIdentifier { user, workspace };
 			Ok(this.get_workspace(&ws_id))
+		});
+
+		methods.add_method("get_user_info", |_, this, (user,):(String,)| a_sync! {
+			this => crate::api::UserInfo::from(this.get_user_info(user).await?)
 		});
 	}
 }

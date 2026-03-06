@@ -16,6 +16,20 @@ impl LuaUserData for CodempWorkspace {
 		);
 
 		methods.add_method(
+			"pin_buffer",
+			|_, this, (path,):(String,)| a_sync! {
+				this => this.pin_buffer(path).await?
+			},
+		);
+
+		methods.add_method(
+			"un_pin_buffer",
+			|_, this, (path,):(String,)| a_sync! {
+				this => this.un_pin_buffer(path).await?
+			},
+		);
+
+		methods.add_method(
 			"attach_buffer",
 			|_, this, (name,): (String,)| a_sync! { this => this.attach_buffer(name).await? },
 		);

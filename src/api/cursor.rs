@@ -47,3 +47,25 @@ pub struct Selection {
 	/// Cursor position final column in buffer.
 	pub end_col: i32,
 }
+
+// TODO this re-wrapping of our API is not elegant at all
+impl From<codemp_proto::cursor::CursorEvent> for CursorEvent {
+	fn from(value: codemp_proto::cursor::CursorEvent) -> Self {
+		Self {
+			user: value.user,
+			cursor: Cursor {
+				buffer: value.position.buffer,
+				sel: value.position.cursors
+					.into_iter()
+					.map(|c| Selection {
+						start_row: c.start.row,
+						end_row: c.end.row,
+						start_col: c.start.col,
+						end_col: c.end.col,
+					})
+					.collect(),
+			},
+		}
+	}
+}
+

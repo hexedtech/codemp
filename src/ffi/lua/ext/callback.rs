@@ -118,6 +118,7 @@ macro_rules! callback_args {
 callback_args! {
 	Str: String,
 	VecStr: Vec<String>,
+	UserInfo: CodempUserInfo,
 	VecUserInfo: Vec<CodempUserInfo>,
 	Client: CodempClient,
 	CursorController: CodempCursorController,
@@ -130,6 +131,7 @@ callback_args! {
 	Cursor: CodempCursor,
 	MaybeCursor: Option<CodempCursor>,
 	CursorEvent: CodempCursorEvent,
+	VecCursorEvent: Vec<CodempCursorEvent>,
 	MaybeCursorEvent: Option<CodempCursorEvent>,
 	Selection: CodempSelection,
 	VecSelection: Vec<CodempSelection>,
