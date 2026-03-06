@@ -7,11 +7,11 @@ use tokio::sync::{mpsc, oneshot, watch};
 
 use crate::{
 	api::{
-		controller::{AsyncReceiver, AsyncSender, ControllerCallback}, cursor::CursorEvent, Controller, Cursor
+		Controller, Cursor, controller::{AsyncReceiver, AsyncSender, ControllerCallback}, cursor::CursorEvent
 	},
-	errors::ControllerResult,
+	errors::ControllerResult, network::AuthedService,
 };
-use codemp_proto::cursor::{CursorPosition, CursorUpdate, RowCol};
+use codemp_proto::cursor::{CursorPosition, CursorUpdate, RowCol, cursor_client::CursorClient};
 
 /// A [Controller] for asynchronously sending and receiving [Cursor] event.
 ///
@@ -34,6 +34,7 @@ pub(crate) struct CursorControllerInner {
 	pub(crate) poll: mpsc::UnboundedSender<oneshot::Sender<()>>,
 	pub(crate) callback: watch::Sender<Option<ControllerCallback<CursorController>>>,
 	pub(crate) workspace_id: crate::api::WorkspaceIdentifier,
+	pub(crate) service: CursorClient<AuthedService>,
 }
 
 #[cfg_attr(feature = "async-trait", async_trait::async_trait)]

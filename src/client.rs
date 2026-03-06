@@ -20,7 +20,7 @@ use codemp_proto::{
 	auth::{LoginRequest, auth_client::AuthClient},
 	common::{Empty, Token},
 	session::{
-		InviteRequest, OwnedWorkspaceIdentifier, session_client::SessionClient,
+		InviteRequest, OwnedWorkspaceIdentifier, UserId, WorkspaceIdentifier, session_client::SessionClient
 	},
 };
 
@@ -113,6 +113,36 @@ impl Client {
 		Ok(())
 	}
 
+	/// Quit a joined workspace. Cannot quit owned workspaces: must delete them
+	pub async fn quit_workspace(&self, user: String, workspace: String) -> RemoteResult<()> {
+		self.0
+			.session
+			.clone()
+			.quit_workspace(WorkspaceIdentifier { user, workspace })
+			.await?;
+		Ok(())
+	}
+
+	/// Accept an invitation to a workspace, making it accessible
+	pub async fn accept_invite(&self, user: String, workspace: String) -> RemoteResult<()> {
+		self.0
+			.session
+			.clone()
+			.accept_invite(WorkspaceIdentifier { user, workspace })
+			.await?;
+		Ok(())
+	}
+
+	/// Reject an invitation to a workspace
+	pub async fn reject_invite(&self, user: String, workspace: String) -> RemoteResult<()> {
+		self.0
+			.session
+			.clone()
+			.reject_invite(WorkspaceIdentifier { user, workspace })
+			.await?;
+		Ok(())
+	}
+
 	/// Invite user with given username to the given workspace, if possible.
 	pub async fn invite_to_workspace(&self, workspace_name: String, user_name: String) -> RemoteResult<()> {
 		self.0
@@ -154,6 +184,17 @@ impl Client {
 			.into_iter()
 			.map(crate::api::WorkspaceIdentifier::from)
 			.collect())
+	}
+
+	pub async fn get_user_info(&self, user: String) -> RemoteResult<codemp_proto::common::UserInfo> {
+		Ok(
+			self.0
+				.session
+				.clone()
+				.get_user_info(UserId { user })
+				.await?
+				.into_inner()
+		)
 	}
 
 	/// Join and return a [`Workspace`].

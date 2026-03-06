@@ -16,6 +16,7 @@ exclude = ["dist/*"]
 
 [lints]
 rust.unsafe_code = "warn"
+rust.missing_docs = "warn"
 clippy.unwrap_used = "warn"
 clippy.collapsible_if = "allow"
 

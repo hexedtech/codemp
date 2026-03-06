@@ -4,10 +4,9 @@ use tokio::sync::{mpsc, oneshot, watch};
 use tonic::Streaming;
 
 use crate::{
-	api::{Cursor, Selection, UserInfo, controller::ControllerCallback},
-	ext::IgnorableError,
+	api::{Cursor, Selection, UserInfo, controller::ControllerCallback}, errors::RemoteResult, ext::IgnorableError, network::AuthedService
 };
-use codemp_proto::cursor::{CursorEvent, CursorUpdate};
+use codemp_proto::{common::Empty, cursor::{CursorEvent, CursorUpdate, cursor_client::CursorClient}};
 
 use super::controller::{CursorController, CursorControllerInner};
 
@@ -60,6 +59,7 @@ impl CursorController {
 		tx: mpsc::Sender<CursorUpdate>,
 		rx: Streaming<CursorEvent>,
 		workspace_id: crate::api::WorkspaceIdentifier,
+		cursor_service: CursorClient<AuthedService>, // TODO ughh passing these around
 	) -> Self {
 		// TODO we should tweak the channel buffer size to better propagate backpressure
 		let (op_tx, op_rx) = mpsc::unbounded_channel();
@@ -72,6 +72,7 @@ impl CursorController {
 			callback: cb_tx,
 			poll: poll_tx,
 			workspace_id: workspace_id.clone(),
+			service: cursor_service,
 		});
 
 		let weak = Arc::downgrade(&controller);
@@ -91,6 +92,17 @@ impl CursorController {
 		tokio::spawn(async move { CursorController::work(worker, tx, rx).await });
 
 		CursorController(controller)
+	}
+
+	pub async fn list(&self) -> RemoteResult<Vec<CursorEvent>> {
+		Ok(self.0
+			.service
+			.clone()
+			.list(Empty {})
+			.await?
+			.into_inner()
+			.cursors
+		)
 	}
 
 	#[tracing::instrument(skip(worker, tx, rx), fields(ws = %worker.workspace_id))]

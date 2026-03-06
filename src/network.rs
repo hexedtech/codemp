@@ -9,7 +9,7 @@ use tonic::{
 
 use crate::errors::ConnectionResult;
 
-type AuthedService = InterceptedService<Channel, WorkspaceInterceptor>;
+pub(crate) type AuthedService = InterceptedService<Channel, WorkspaceInterceptor>;
 
 #[derive(Debug, Clone)]
 pub struct SessionInterceptor(pub tokio::sync::watch::Receiver<codemp_proto::common::Token>);

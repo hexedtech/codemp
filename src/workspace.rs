@@ -109,7 +109,7 @@ impl Workspace {
 			.into_inner();
 
 		let users = Arc::new(DashMap::default());
-		let controller = cursor::Controller::spawn(users.clone(), tx, cur_stream, id.clone());
+		let controller = cursor::Controller::spawn(users.clone(), tx, cur_stream, id.clone(), services.cur().clone());
 
 		let ws = Self(Arc::new(WorkspaceInner {
 			id: id.clone(),
@@ -173,6 +173,22 @@ impl Workspace {
 			crate::api::BufferNode { path, ephemeral },
 		);
 
+		Ok(())
+	}
+
+	pub async fn pin_buffer(&self, path: String) -> RemoteResult<()> {
+		self.0.services.ws()
+			.clone()
+			.pin_buffer(BufferPath::from(path))
+			.await?;
+		Ok(())
+	}
+
+	pub async fn un_pin_buffer(&self, path: String) -> RemoteResult<()> {
+		self.0.services.ws()
+			.clone()
+			.un_pin_buffer(BufferPath::from(path))
+			.await?;
 		Ok(())
 	}
 
