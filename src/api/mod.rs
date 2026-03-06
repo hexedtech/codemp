@@ -29,7 +29,7 @@ pub use buffer::BufferNode;
 pub use change::{BufferUpdate, TextChange};
 pub use config::Config;
 pub use controller::{AsyncReceiver, AsyncSender, Controller};
-pub use cursor::{Cursor, Selection};
+pub use cursor::{Cursor, Selection, CursorEvent};
 pub use event::Event;
 pub use user::UserInfo;
 pub use workspace::WorkspaceIdentifier;
