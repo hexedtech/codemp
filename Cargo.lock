@@ -229,13 +229,12 @@ dependencies = [
 [[package]]
 name = "codemp-proto"
 version = "0.8.0"
-source = "git+https://github.com/hexedtech/codemp-proto?rev=e000cda350ed277167ce494af91aa5bc5fcd339f#e000cda350ed277167ce494af91aa5bc5fcd339f"
+source = "git+https://github.com/hexedtech/codemp-proto?rev=c38c582174b1c8845c5e008a07a3d4730070873c#c38c582174b1c8845c5e008a07a3d4730070873c"
 dependencies = [
  "prost",
  "tonic",
  "tonic-prost",
  "tonic-prost-build",
- "uuid",
 ]
 
 [[package]]

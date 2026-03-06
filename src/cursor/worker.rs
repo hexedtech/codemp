@@ -2,10 +2,9 @@ use std::sync::Arc;
 
 use tokio::sync::{mpsc, oneshot, watch};
 use tonic::Streaming;
-use uuid::Uuid;
 
 use crate::{
-	api::{Cursor, Selection, User, controller::ControllerCallback},
+	api::{Cursor, Selection, UserInfo, controller::ControllerCallback},
 	ext::IgnorableError,
 };
 use codemp_proto::cursor::{CursorEvent, CursorUpdate};
@@ -13,9 +12,9 @@ use codemp_proto::cursor::{CursorEvent, CursorUpdate};
 use super::controller::{CursorController, CursorControllerInner};
 
 struct CursorWorker {
-	workspace_id: String,
+	workspace_id: crate::api::WorkspaceIdentifier,
 	op: mpsc::UnboundedReceiver<CursorUpdate>,
-	map: Arc<dashmap::DashMap<Uuid, User>>,
+	map: Arc<dashmap::DashMap<String, UserInfo>>,
 	stream: mpsc::Receiver<oneshot::Sender<Option<crate::api::cursor::CursorEvent>>>,
 	poll: mpsc::UnboundedReceiver<oneshot::Sender<()>>,
 	pollers: Vec<oneshot::Sender<()>>,
@@ -28,8 +27,7 @@ impl CursorWorker {
 	#[tracing::instrument(skip(self, tx))]
 	fn handle_recv(&mut self, tx: oneshot::Sender<Option<crate::api::cursor::CursorEvent>>) {
 		tx.send(self.store.pop_front().and_then(|event| {
-			let user_id = Uuid::from(event.user);
-			if let Some(user_name) = self.map.get(&user_id).map(|u| u.name.clone()) {
+			if let Some(user_name) = self.map.get(&event.user).map(|u| u.name.clone()) {
 				Some(crate::api::cursor::CursorEvent {
 					user: user_name,
 					cursor: Cursor {
@@ -48,7 +46,7 @@ impl CursorWorker {
 					}
 				})
 			} else {
-				tracing::warn!("received cursor for unknown user {user_id}");
+				tracing::warn!("received cursor for unknown user {}", event.user);
 				None
 			}
 		}))
@@ -58,10 +56,10 @@ impl CursorWorker {
 
 impl CursorController {
 	pub(crate) fn spawn(
-		user_map: Arc<dashmap::DashMap<Uuid, User>>,
+		user_map: Arc<dashmap::DashMap<String, UserInfo>>,
 		tx: mpsc::Sender<CursorUpdate>,
 		rx: Streaming<CursorEvent>,
-		workspace_id: Uuid,
+		workspace_id: crate::api::WorkspaceIdentifier,
 	) -> Self {
 		// TODO we should tweak the channel buffer size to better propagate backpressure
 		let (op_tx, op_rx) = mpsc::unbounded_channel();
@@ -73,13 +71,13 @@ impl CursorController {
 			stream: stream_tx,
 			callback: cb_tx,
 			poll: poll_tx,
-			workspace_id: workspace_id.to_string(),
+			workspace_id: workspace_id.clone(),
 		});
 
 		let weak = Arc::downgrade(&controller);
 
 		let worker = CursorWorker {
-			workspace_id: workspace_id.to_string(),
+			workspace_id,
 			op: op_rx,
 			map: user_map,
 			stream: stream_rx,
@@ -95,7 +93,7 @@ impl CursorController {
 		CursorController(controller)
 	}
 
-	#[tracing::instrument(skip(worker, tx, rx), fields(ws = worker.workspace_id))]
+	#[tracing::instrument(skip(worker, tx, rx), fields(ws = %worker.workspace_id))]
 	async fn work(
 		mut worker: CursorWorker,
 		tx: mpsc::Sender<CursorUpdate>,

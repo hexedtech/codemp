@@ -5,7 +5,6 @@ use diamond_types::list::encoding::ENCODE_PATCH;
 use diamond_types::list::{Branch, OpLog};
 use tokio::sync::{mpsc, oneshot, watch};
 use tonic::Streaming;
-use uuid::Uuid;
 
 use crate::api::BufferUpdate;
 use crate::api::TextChange;
@@ -19,7 +18,7 @@ use super::controller::{BufferController, BufferControllerInner};
 struct BufferWorker {
 	agent_id: u32,
 	path: String,
-	workspace_id: String,
+	workspace_id: crate::api::WorkspaceIdentifier,
 	latest_version: watch::Sender<diamond_types::LocalVersion>,
 	local_version: watch::Sender<diamond_types::LocalVersion>,
 	ack_rx: mpsc::UnboundedReceiver<LocalVersion>,
@@ -37,11 +36,11 @@ struct BufferWorker {
 
 impl BufferController {
 	pub(crate) fn spawn(
-		user_id: Uuid,
-		path: &str,
+		user_name: String,
+		path: String,
 		tx: mpsc::Sender<Operation>,
 		rx: Streaming<BufferEvent>,
-		workspace_id: Uuid,
+		workspace_id: crate::api::WorkspaceIdentifier,
 	) -> Self {
 		let init = diamond_types::LocalVersion::default();
 
@@ -56,10 +55,10 @@ impl BufferController {
 
 		let (poller_tx, poller_rx) = mpsc::unbounded_channel();
 		let mut oplog = OpLog::new();
-		let agent_id = oplog.get_or_create_agent_id(&user_id.to_string());
+		let agent_id = oplog.get_or_create_agent_id(&user_name);
 
 		let controller = Arc::new(BufferControllerInner {
-			path: path.to_string(),
+			path: path.clone(),
 			latest_version: latest_version_rx,
 			local_version: my_version_rx,
 			ops_in: opin_tx,
@@ -68,15 +67,15 @@ impl BufferController {
 			delta_request: recv_tx,
 			callback: cb_tx,
 			ack_tx,
-			workspace_id: workspace_id.to_string(),
+			workspace_id: workspace_id.clone(),
 		});
 
 		let weak = Arc::downgrade(&controller);
 
 		let worker = BufferWorker {
 			agent_id,
-			path: path.to_string(),
-			workspace_id: workspace_id.to_string(),
+			path,
+			workspace_id,
 			latest_version: latest_version_tx,
 			local_version: my_version_tx,
 			ack_rx,
@@ -97,7 +96,7 @@ impl BufferController {
 		BufferController(controller)
 	}
 
-	#[tracing::instrument(skip(worker, tx, rx), fields(ws = worker.workspace_id, path = worker.path))]
+	#[tracing::instrument(skip(worker, tx, rx), fields(ws = %worker.workspace_id, path = worker.path))]
 	async fn work(
 		mut worker: BufferWorker,
 		tx: mpsc::Sender<Operation>,

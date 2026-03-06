@@ -26,13 +26,13 @@ pub enum Event {
 impl From<WorkspaceEventInner> for Event {
 	fn from(event: WorkspaceEventInner) -> Self {
 		match event {
-			WorkspaceEventInner::WorkspaceJoin(e) => Self::UserJoin { name: e.user.name },
-			WorkspaceEventInner::WorkspaceLeave(e) => Self::UserLeave { name: e.user.name },
+			WorkspaceEventInner::WorkspaceJoin(e) => Self::UserJoin { name: e.user },
+			WorkspaceEventInner::WorkspaceLeave(e) => Self::UserLeave { name: e.user },
 			WorkspaceEventInner::Create(e) => Self::FileTreeUpdated { path: e.path },
 			WorkspaceEventInner::Delete(e) => Self::FileTreeUpdated { path: e.path },
 			WorkspaceEventInner::Rename(e) => Self::FileTreeUpdated { path: e.after },
-			WorkspaceEventInner::BufferJoin(e) => Self::UserJoinBuffer { name: e.user.name, buffer: e.buffer },
-			WorkspaceEventInner::BufferLeave(e) => Self::UserLeaveBuffer { name: e.user.name, buffer: e.buffer },
+			WorkspaceEventInner::BufferJoin(e) => Self::UserJoinBuffer { name: e.user, buffer: e.buffer },
+			WorkspaceEventInner::BufferLeave(e) => Self::UserLeaveBuffer { name: e.user, buffer: e.buffer },
 		}
 	}
 }

@@ -5,27 +5,37 @@
 //! users, meaning two workspaces with the same name can exist, but one user can own only one
 //! workspace with a given name.
 
-use uuid::Uuid;
-
 /// Represents a service workspace
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "py", pyo3::pyclass)]
 #[cfg_attr(feature = "serialize", derive(serde::Serialize, serde::Deserialize))]
-pub struct WorkspaceInfo {
-	/// Workspace unique identifier, should never change.
-	pub id: Uuid,
+pub struct WorkspaceIdentifier {
 	/// Workspace name, cannot change and is unique per owner.
-	pub name: String,
+	pub workspace: String,
 	/// Workspace owning user
-	pub owner: super::User,
+	pub user: String,
 }
 
-impl From<codemp_proto::common::WorkspaceInfo> for WorkspaceInfo {
-	fn from(value: codemp_proto::common::WorkspaceInfo) -> Self {
+impl From<codemp_proto::session::WorkspaceIdentifier> for WorkspaceIdentifier {
+	fn from(value: codemp_proto::session::WorkspaceIdentifier) -> Self {
 		Self {
-			id: Uuid::from(value.id),
-			name: value.name,
-			owner: super::User::from(value.owner),
+			workspace: value.workspace,
+			user: value.user,
 		}
+	}
+}
+
+impl From<WorkspaceIdentifier> for codemp_proto::session::WorkspaceIdentifier {
+	fn from(value: WorkspaceIdentifier) -> Self {
+		Self {
+			workspace: value.workspace,
+			user: value.user,
+		}
+	}
+}
+
+impl std::fmt::Display for WorkspaceIdentifier {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(f, "[{}:{}]", self.user, self.workspace)
 	}
 }

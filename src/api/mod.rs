@@ -31,5 +31,5 @@ pub use config::Config;
 pub use controller::{AsyncReceiver, AsyncSender, Controller};
 pub use cursor::{Cursor, Selection};
 pub use event::Event;
-pub use user::User;
-pub use workspace::WorkspaceInfo;
+pub use user::UserInfo;
+pub use workspace::WorkspaceIdentifier;

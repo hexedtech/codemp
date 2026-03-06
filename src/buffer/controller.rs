@@ -23,7 +23,7 @@ pub struct BufferController(pub(crate) Arc<BufferControllerInner>);
 
 impl BufferController {
 	/// Get id of workspace containing this controller
-	pub fn workspace_id(&self) -> &str {
+	pub fn workspace_id(&self) -> &crate::api::WorkspaceIdentifier {
 		&self.0.workspace_id
 	}
 
@@ -64,7 +64,7 @@ pub(crate) struct BufferControllerInner {
 	pub(crate) delta_request: mpsc::Sender<oneshot::Sender<Option<BufferUpdate>>>,
 	pub(crate) callback: watch::Sender<Option<ControllerCallback<BufferController>>>,
 	pub(crate) ack_tx: mpsc::UnboundedSender<LocalVersion>,
-	pub(crate) workspace_id: String,
+	pub(crate) workspace_id: crate::api::WorkspaceIdentifier,
 }
 
 #[cfg_attr(feature = "async-trait", async_trait::async_trait)]

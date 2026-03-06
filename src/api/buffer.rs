@@ -15,7 +15,7 @@ pub struct BufferNode {
 impl From<codemp_proto::files::BufferNode> for BufferNode {
 	fn from(value: codemp_proto::files::BufferNode) -> Self {
 		Self {
-			path: value.path,
+			path: value.path.into(),
 			ephemeral: value.ephemeral,
 		}
 	}

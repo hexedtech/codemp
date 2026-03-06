@@ -10,19 +10,21 @@ async fn test_workspace_creation_and_deletion() {
 		ClientFixture::of("alice") => |client| {
 			let workspace_name = uuid::Uuid::new_v4().to_string();
 
-			client.create_workspace(&workspace_name).await?;
+			client.create_workspace(workspace_name.clone()).await?;
+
+			let wsid = crate::api::WorkspaceIdentifier { user: client.current_user().name.clone(), workspace: workspace_name.clone() };
 
 			// we can't error, so we return empty vec which will be interpreted as err
 			let workspace_list_before = client.fetch_owned_workspaces().await.unwrap_or_default();
 
-			let res = client.delete_workspace(&workspace_name).await;
+			let res = client.delete_workspace(workspace_name.clone()).await;
 
 			// we can and should err here, because empty vec will be counted as success!
 			let workspace_list_after = client.fetch_owned_workspaces().await?;
 
-			assert_or_err!(workspace_list_before.contains(&workspace_name));
+			assert_or_err!(workspace_list_before.contains(&wsid));
 			res?;
-			assert_or_err!(workspace_list_after.contains(&workspace_name) == false);
+			assert_or_err!(workspace_list_after.contains(&wsid) == false);
 
 			Ok(())
 		}
@@ -35,12 +37,13 @@ async fn test_attach_and_leave_workspace() {
 		ClientFixture::of("alice") => |client| {
 			let workspace_name = uuid::Uuid::new_v4().to_string();
 
-			client.create_workspace(&workspace_name).await?;
+			client.create_workspace(workspace_name.clone()).await?;
+			let wsid = crate::api::WorkspaceIdentifier { user: client.current_user().name.clone(), workspace: workspace_name.clone() };
 
 			// leaving a workspace you are not attached to, returns true
-			let leave_workspace_before = client.leave_workspace(&workspace_name);
+			let leave_workspace_before = client.leave_workspace(&wsid);
 
-			let attach_workspace_that_exists = match client.attach_workspace(&workspace_name).await {
+			let attach_workspace_that_exists = match client.attach_workspace(wsid.clone()).await {
 				Ok(_) => true,
 				Err(e) => {
 					eprintln!("error attaching to workspace: {e}");
@@ -50,9 +53,9 @@ async fn test_attach_and_leave_workspace() {
 
 			// leaving a workspace you are attached to, returns true
 			// when there is only one reference to it.
-			let leave_workspace_after = client.leave_workspace(&workspace_name);
+			let leave_workspace_after = client.leave_workspace(&wsid);
 
-			let _ = client.delete_workspace(&workspace_name).await;
+			let _ = client.delete_workspace(workspace_name).await;
 
 			assert_or_err!(leave_workspace_before, "leaving a workspace you are not attached to returned false, should return true.");
 			assert_or_err!(attach_workspace_that_exists, "attaching a workspace that exists failed with error");
@@ -75,31 +78,36 @@ async fn test_invite_user_to_workspace() {
 		.expect("failed setting up bob's client");
 	let ws_name = uuid::Uuid::new_v4().to_string();
 
+	let wsid = crate::api::WorkspaceIdentifier { user: client_alice.current_user().name.clone(), workspace: ws_name.clone() };
+
 	// after this we can't just fail anymore: we need to cleanup, so store errs
 	client_alice
-		.create_workspace(&ws_name)
+		.create_workspace(ws_name.clone())
 		.await
 		.expect("failed creating workspace");
 	let could_invite = client_alice
-		.invite_to_workspace(&ws_name, &client_bob.current_user().name)
+		.invite_to_workspace(ws_name.clone(), client_bob.current_user().name.clone())
 		.await;
 	let ws_list = client_bob
 		.fetch_joined_workspaces()
 		.await
 		.unwrap_or_default(); // can't fail, empty is err
-	let could_delete = client_alice.delete_workspace(&ws_name).await;
+	let could_delete = client_alice.delete_workspace(ws_name.clone()).await;
 
 	could_invite.expect("could not invite bob");
-	assert!(ws_list.contains(&ws_name));
+	assert!(ws_list.contains(&wsid));
 	could_delete.expect("could not delete workspace");
 }
 
 #[tokio::test]
 async fn test_workspace_lookup() {
 	super::fixture! {
-		WorkspaceFixture::one("alice", "test-lookup") => |client, workspace| {
-			assert_or_err!(client.get_workspace(&workspace.id()).is_some());
-			assert_or_err!(client.get_workspace(&uuid::Uuid::new_v4().to_string()).is_none());
+		WorkspaceFixture::one("alice") => |client, workspace| {
+			assert_or_err!(client.get_workspace(workspace.id()).is_some());
+			assert_or_err!(client.get_workspace(&crate::api::WorkspaceIdentifier {
+				user: uuid::Uuid::new_v4().to_string(),
+				workspace: uuid::Uuid::new_v4().to_string(),
+			}).is_none());
 			Ok(())
 		}
 	}
@@ -108,8 +116,8 @@ async fn test_workspace_lookup() {
 #[tokio::test]
 async fn test_leave_workspace_with_dangling_ref() {
 	super::fixture! {
-		WorkspaceFixture::one("alice", "test-dangling-ref") => |client, workspace| {
-			assert_or_err!(client.leave_workspace(&workspace.id()) == false);
+		WorkspaceFixture::one("alice") => |client, workspace| {
+			assert_or_err!(client.leave_workspace(workspace.id()) == false);
 			Ok(())
 		}
 	}
@@ -118,9 +126,9 @@ async fn test_leave_workspace_with_dangling_ref() {
 #[tokio::test]
 async fn test_lookup_after_leave() {
 	super::fixture! {
-		WorkspaceFixture::one("alice", "test-lookup-after-leave") => |client, workspace| {
-			client.leave_workspace(&workspace.id());
-			assert_or_err!(client.get_workspace(&workspace.id()).is_none());
+		WorkspaceFixture::one("alice") => |client, workspace| {
+			client.leave_workspace(workspace.id());
+			assert_or_err!(client.get_workspace(workspace.id()).is_none());
 			Ok(())
 		}
 	}
@@ -131,15 +139,16 @@ async fn test_attach_after_leave() {
 	super::fixture! {
 		ClientFixture::of("alice") => |client| {
 			let ws_name = uuid::Uuid::new_v4().to_string();
-			client.create_workspace(&ws_name).await?;
+			client.create_workspace(ws_name.clone()).await?;
+			let wsid = crate::api::WorkspaceIdentifier { user: client.current_user().name.clone(), workspace: ws_name.clone() };
 
-			let could_attach = client.attach_workspace(&ws_name).await.is_ok();
-			let clean_leave = client.leave_workspace(&ws_name);
+			let could_attach = client.attach_workspace(wsid.clone()).await.is_ok();
+			let clean_leave = client.leave_workspace(&wsid);
 			// TODO this is very server specific! disconnect may be instant or caught with next
 			// keepalive, let's arbitrarily say that after 20 seconds we should have been disconnected
 			tokio::time::sleep(std::time::Duration::from_secs(20)).await;
-			let could_attach_again = client.attach_workspace(&ws_name).await;
-			let could_delete = client.delete_workspace(&ws_name).await;
+			let could_attach_again = client.attach_workspace(wsid.clone()).await;
+			let could_delete = client.delete_workspace(ws_name).await;
 
 			assert_or_err!(could_attach);
 			assert_or_err!(clean_leave);
@@ -154,8 +163,8 @@ async fn test_attach_after_leave() {
 #[tokio::test]
 async fn test_active_workspaces() {
 	super::fixture! {
-		WorkspaceFixture::one("alice", "test-active-workspaces") => |client, workspace| {
-			assert_or_err!(client.active_workspaces().contains(&workspace.id()));
+		WorkspaceFixture::one("alice") => |client, workspace| {
+			assert_or_err!(client.active_workspaces().contains(workspace.id()));
 			Ok(())
 		}
 	}
@@ -164,8 +173,8 @@ async fn test_active_workspaces() {
 #[tokio::test]
 async fn test_cant_create_same_workspace_more_than_once() {
 	super::fixture! {
-		WorkspaceFixture::one("alice", "test-create-multiple-times") => |client, workspace| {
-			assert_or_err!(client.create_workspace(workspace.id()).await.is_err(), "created same workspace twice");
+		WorkspaceFixture::one("alice") => |client, workspace| {
+			assert_or_err!(client.create_workspace(workspace.id().workspace.clone()).await.is_err(), "created same workspace twice");
 			Ok(())
 		}
 	}
@@ -176,10 +185,10 @@ async fn test_attaching_to_non_existing_is_error() {
 	super::fixture! {
 		ClientFixture::of("alice") => |client| {
 			let workspace_name = uuid::Uuid::new_v4().to_string();
+			let wsid = crate::api::WorkspaceIdentifier { user: client.current_user().name.clone(), workspace: workspace_name };
 
 			// we don't create any workspace.
-			// client.create_workspace(workspace_name).await?;
-			assert_or_err!(client.attach_workspace(&workspace_name).await.is_err());
+			assert_or_err!(client.attach_workspace(wsid).await.is_err());
 			Ok(())
 		}
 	}
@@ -188,11 +197,11 @@ async fn test_attaching_to_non_existing_is_error() {
 #[tokio::test]
 async fn test_deleting_workspace_twice_is_an_error() {
 	super::fixture! {
-		WorkspaceFixture::one("alice", "test-delete-twice") => |client, workspace| {
-			let workspace_name = workspace.id();
+		WorkspaceFixture::one("alice") => |client, workspace| {
+			let ws = workspace.id();
 
-			client.delete_workspace(&workspace_name).await?;
-			assert_or_err!(client.delete_workspace(&workspace_name).await.is_err());
+			client.delete_workspace(ws.workspace.clone()).await?;
+			assert_or_err!(client.delete_workspace(ws.workspace.clone()).await.is_err());
 			Ok(())
 		}
 	}
@@ -201,8 +210,8 @@ async fn test_deleting_workspace_twice_is_an_error() {
 #[tokio::test]
 async fn test_cannot_invite_self() {
 	super::fixture! {
-		WorkspaceFixture::one("alice", "test-invite-self") => |client, workspace| {
-			assert_or_err!(client.invite_to_workspace(workspace.id(), &client.current_user().name).await.is_err());
+		WorkspaceFixture::one("alice") => |client, workspace| {
+			assert_or_err!(client.invite_to_workspace(workspace.id().workspace.clone(), client.current_user().name.clone()).await.is_err());
 			Ok(())
 		}
 	}
@@ -211,8 +220,8 @@ async fn test_cannot_invite_self() {
 #[tokio::test]
 async fn test_cannot_invite_to_nonexisting() {
 	super::fixture! {
-		WorkspaceFixture::two("alice", "bob", "test-invite-self") => |client, _ws, client_bob, _workspace_bob| {
-			assert_or_err!(client.invite_to_workspace(uuid::Uuid::new_v4().to_string(), &client_bob.current_user().name).await.is_err());
+		WorkspaceFixture::two("alice", "bob") => |client, _ws, client_bob, _workspace_bob| {
+			assert_or_err!(client.invite_to_workspace(uuid::Uuid::new_v4().to_string(), client_bob.current_user().name.clone()).await.is_err());
 			Ok(())
 		}
 	}
@@ -220,13 +229,13 @@ async fn test_cannot_invite_to_nonexisting() {
 
 #[tokio::test]
 async fn cannot_delete_others_workspaces() {
-	WorkspaceFixture::two("alice", "bob", "test-cannot-delete-others-workspaces")
+	WorkspaceFixture::two("alice", "bob")
 		.with(|(_, ws_alice, client_bob, _)| {
 			let ws_alice = ws_alice.clone();
 			let client_bob = client_bob.clone();
 			async move {
 				assert_or_err!(
-					client_bob.delete_workspace(&ws_alice.id()).await.is_err(),
+					client_bob.delete_workspace(ws_alice.id().workspace.clone()).await.is_err(),
 					"bob was allowed to delete a workspace he didn't own!"
 				);
 				Ok(())
@@ -237,20 +246,20 @@ async fn cannot_delete_others_workspaces() {
 
 #[tokio::test]
 async fn test_buffer_search() {
-	WorkspaceFixture::one("alice", "test-buffer-search")
+	WorkspaceFixture::one("alice")
 		.with(|(_, workspace_alice)| {
 			let buffer_name = uuid::Uuid::new_v4().to_string();
 			let workspace_alice = workspace_alice.clone();
 
 			async move {
-				workspace_alice.create_buffer(&buffer_name).await?;
+				workspace_alice.create_buffer(buffer_name.clone(), false).await?;
 				assert_or_err!(
 					!workspace_alice
 						.search_buffers(Some(&buffer_name[0..4]))
 						.is_empty()
 				);
 				assert_or_err!(workspace_alice.search_buffers(Some("_")).is_empty());
-				workspace_alice.delete_buffer(&buffer_name).await?;
+				workspace_alice.delete_buffer(buffer_name).await?;
 				Ok(())
 			}
 		})
@@ -259,16 +268,16 @@ async fn test_buffer_search() {
 
 #[tokio::test]
 async fn test_send_operation() {
-	WorkspaceFixture::two("alice", "bob", "test-send-operation")
+	WorkspaceFixture::two("alice", "bob")
 		.with(|(_, workspace_alice, _, workspace_bob)| {
 			let buffer_name = uuid::Uuid::new_v4().to_string();
 			let workspace_alice = workspace_alice.clone();
 			let workspace_bob = workspace_bob.clone();
 
 			async move {
-				workspace_alice.create_buffer(&buffer_name).await?;
-				let alice = workspace_alice.attach_buffer(&buffer_name).await?;
-				let bob = workspace_bob.attach_buffer(&buffer_name).await?;
+				workspace_alice.create_buffer(buffer_name.clone(), false).await?;
+				let alice = workspace_alice.attach_buffer(buffer_name.clone()).await?;
+				let bob = workspace_bob.attach_buffer(buffer_name.clone()).await?;
 
 				alice.send(crate::api::TextChange {
 					start_idx: 0,
@@ -289,16 +298,16 @@ async fn test_send_operation() {
 
 #[tokio::test]
 async fn test_content_converges() {
-	WorkspaceFixture::two("alice", "bob", "test-content-converges")
+	WorkspaceFixture::two("alice", "bob")
 		.with(|(_, workspace_alice, _, workspace_bob)| {
 			let buffer_name = uuid::Uuid::new_v4().to_string();
 			let workspace_alice = workspace_alice.clone();
 			let workspace_bob = workspace_bob.clone();
 
 			async move {
-				workspace_alice.create_buffer(&buffer_name).await?;
-				let alice = workspace_alice.attach_buffer(&buffer_name).await?;
-				let bob = workspace_bob.attach_buffer(&buffer_name).await?;
+				workspace_alice.create_buffer(buffer_name.clone(), false).await?;
+				let alice = workspace_alice.attach_buffer(buffer_name.clone()).await?;
+				let bob = workspace_bob.attach_buffer(buffer_name.clone()).await?;
 
 				let mut join_set = tokio::task::JoinSet::new();
 

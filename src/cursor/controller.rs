@@ -22,7 +22,7 @@ use codemp_proto::cursor::{CursorPosition, CursorUpdate, RowCol};
 pub struct CursorController(pub(crate) Arc<CursorControllerInner>);
 
 impl CursorController {
-	pub fn workspace_id(&self) -> &str {
+	pub fn workspace_id(&self) -> &crate::api::WorkspaceIdentifier {
 		&self.0.workspace_id
 	}
 }
@@ -33,7 +33,7 @@ pub(crate) struct CursorControllerInner {
 	pub(crate) stream: mpsc::Sender<oneshot::Sender<Option<CursorEvent>>>,
 	pub(crate) poll: mpsc::UnboundedSender<oneshot::Sender<()>>,
 	pub(crate) callback: watch::Sender<Option<ControllerCallback<CursorController>>>,
-	pub(crate) workspace_id: String,
+	pub(crate) workspace_id: crate::api::WorkspaceIdentifier,
 }
 
 #[cfg_attr(feature = "async-trait", async_trait::async_trait)]

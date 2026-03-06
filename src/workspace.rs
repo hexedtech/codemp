@@ -5,7 +5,7 @@
 
 use crate::{
 	api::{
-		Event, User,
+		Event, UserInfo,
 		controller::{AsyncReceiver, ControllerCallback},
 	},
 	buffer, cursor,
@@ -15,8 +15,8 @@ use crate::{
 };
 
 use codemp_proto::{
-	common::{Empty, Identifier},
-	files::{BufferNode, BufferRequest},
+	common::Empty,
+	files::{BufferNode, BufferPath},
 	workspace::{
 		WorkspaceEvent, workspace_event::{
 			Event as WorkspaceEventInner, FileCreate, FileDelete, FileRename, UserJoinBuffer, UserJoinWorkspace, UserLeaveBuffer, UserLeaveWorkspace
@@ -31,7 +31,6 @@ use tokio::sync::{
 	oneshot, watch,
 };
 use tonic::Streaming;
-use uuid::Uuid;
 
 #[cfg(feature = "js")]
 use napi_derive::napi;
@@ -49,14 +48,14 @@ pub struct Workspace(pub(crate) Arc<WorkspaceInner>);
 
 #[derive(Debug)]
 pub(crate) struct WorkspaceInner {
-	id: Uuid,
-	current_user: Arc<User>,
+	id: crate::api::WorkspaceIdentifier,
+	current_user: Arc<UserInfo>,
 	cursor: cursor::Controller,
 	buffers: DashMap<String, buffer::Controller>,
 	services: Services,
 	filetree: DashMap<String, crate::api::BufferNode>,
-	buffer_users: DashMap<String, Vec<Uuid>>,
-	users: Arc<DashMap<Uuid, User>>,
+	buffer_users: DashMap<String, Vec<String>>,
+	users: Arc<DashMap<String, UserInfo>>,
 	events: tokio::sync::Mutex<mpsc::UnboundedReceiver<crate::api::Event>>,
 	callback: watch::Sender<Option<ControllerCallback<Workspace>>>,
 	poll_tx: mpsc::UnboundedSender<oneshot::Sender<()>>,
@@ -89,8 +88,8 @@ impl AsyncReceiver<Event> for Workspace {
 impl Workspace {
 	#[tracing::instrument(skip(id, user, workspace_claim, user_claim), fields(ws = %id))]
 	pub(crate) async fn connect(
-		id: Uuid,
-		user: Arc<User>,
+		id: crate::api::WorkspaceIdentifier,
+		user: Arc<UserInfo>,
 		config: crate::api::Config,
 		workspace_claim: tokio::sync::watch::Receiver<codemp_proto::common::Token>,
 		user_claim: tokio::sync::watch::Receiver<codemp_proto::common::Token>,
@@ -110,10 +109,10 @@ impl Workspace {
 			.into_inner();
 
 		let users = Arc::new(DashMap::default());
-		let controller = cursor::Controller::spawn(users.clone(), tx, cur_stream, id);
+		let controller = cursor::Controller::spawn(users.clone(), tx, cur_stream, id.clone());
 
 		let ws = Self(Arc::new(WorkspaceInner {
-			id,
+			id: id.clone(),
 			current_user: user,
 			cursor: controller,
 			buffers: DashMap::default(),
@@ -159,22 +158,19 @@ impl Workspace {
 	}
 
 	/// Create a new buffer in the current workspace.
-	pub async fn create_buffer(&self, path: &str, ephemeral: bool) -> RemoteResult<()> {
+	pub async fn create_buffer(&self, path: String, ephemeral: bool) -> RemoteResult<()> {
 		let mut workspace_client = self.0.services.ws();
 		workspace_client
 			.create_buffer(tonic::Request::new(BufferNode {
-				path: path.to_string(),
+				path: path.clone().into(),
 				ephemeral,
 			}))
 			.await?;
 
 		// add to filetree, not really necessary as we will get an event for it
 		self.0.filetree.insert(
-			path.to_string(),
-			crate::api::BufferNode {
-				path: path.to_string(),
-				ephemeral,
-			},
+			path.clone(),
+			crate::api::BufferNode { path, ephemeral },
 		);
 
 		Ok(())
@@ -182,10 +178,10 @@ impl Workspace {
 
 	/// Attach to a buffer and return a handle to it.
 	#[tracing::instrument(skip(self))]
-	pub async fn attach_buffer(&self, id: uuid::Uuid, path: &str) -> ConnectionResult<buffer::Controller> {
+	pub async fn attach_buffer(&self, path: String) -> ConnectionResult<buffer::Controller> {
 		let mut workspace_client = self.0.services.ws();
 		let mut buffer_client = self.0.services.buf();
-		let credentials = workspace_client.get_buffer_token(Identifier::from(id)).await?.into_inner();
+		let credentials = workspace_client.get_buffer_token(BufferPath::from(&path)).await?.into_inner();
 
 		let (tx, rx) = mpsc::channel(256);
 		let mut req = tonic::Request::new(tokio_stream::wrappers::ReceiverStream::new(rx));
@@ -193,11 +189,11 @@ impl Workspace {
 		let stream = buffer_client.attach(req).await?.into_inner();
 
 		let controller =
-			buffer::Controller::spawn(self.0.current_user.id, path, tx, stream, self.0.id);
+			buffer::Controller::spawn(self.0.current_user.name.clone(), path.clone(), tx, stream, self.0.id.clone());
 
-		self.0.buffers.insert(path.to_string(), controller.clone());
+		self.0.buffers.insert(path.clone(), controller.clone());
 
-		let path = path.to_string();
+		let _path = path.clone();
 		let weak = Arc::downgrade(&controller.0);
 		tokio::spawn(async move {
 			let fut = async move {
@@ -205,7 +201,7 @@ impl Workspace {
 					// TODO either configurable token refresh time or calculate depending on token lifetime
 					tokio::time::sleep(std::time::Duration::from_secs(20)).await;
 					if weak.upgrade().is_none() { break };
-					let new_credentials = workspace_client.get_buffer_token(Identifier::from(id))
+					let new_credentials = workspace_client.get_buffer_token(BufferPath::from(&_path))
 						.await?
 						.into_inner();
 					let mut request = tonic::Request::new(Empty {});
@@ -254,7 +250,7 @@ impl Workspace {
 		for b in resp.buffers {
 			self.0
 				.filetree
-				.insert(b.path.clone(), crate::api::BufferNode::from(b));
+				.insert(b.path.clone().into(), crate::api::BufferNode::from(b));
 		}
 
 		Ok(())
@@ -263,17 +259,15 @@ impl Workspace {
 	/// Re-fetch the list of all users in the workspace.
 	pub async fn fetch_users(&self) -> RemoteResult<()> {
 		let mut workspace_client = self.services().ws();
-		let users = workspace_client
-			.fetch_users(tonic::Request::new(Empty {}))
+		let resp = workspace_client
+			.fetch_users(Empty {})
 			.await?
-			.into_inner()
-			.users
-			.into_iter()
-			.map(User::from);
+			.into_inner();
 
 		self.0.users.clear();
-		for u in users {
-			self.0.users.insert(u.id, u);
+		for user_name in resp.users {
+			// TODO need to fetch whole user profiles here maybe?
+			self.0.users.insert(user_name.clone(), UserInfo::default_for(user_name));
 		}
 
 		Ok(())
@@ -281,40 +275,35 @@ impl Workspace {
 
 	/// Fetch a list of the [User]s attached to a specific buffer.
 	pub async fn fetch_buffer_users(&self, path: String) -> RemoteResult<()> {
-		let users = self.services().ws()
-			.fetch_buffer_users(tonic::Request::new(BufferRequest {
-				path: path.to_string(),
-			}))
+		let resp = self.services().ws()
+			.fetch_buffer_users(BufferPath::from(&path))
 			.await?
-			.into_inner()
-			.users
-			.into_iter()
-			.map(|x| Uuid::from(x.id))
-			.collect();
+			.into_inner();
 
-		self.0.buffer_users.insert(path, users);
+		self.0.buffer_users.insert(path, resp.users);
 
 		Ok(())
 	}
 
 	/// Delete a buffer.
-	pub async fn delete_buffer(&self, id: uuid::Uuid, path: &str) -> RemoteResult<()> {
-		self.detach_buffer(path); // just in case
+	pub async fn delete_buffer(&self, path: String) -> RemoteResult<()> {
+		self.detach_buffer(&path); // just in case
 
 		let mut workspace_client = self.0.services.ws();
 		workspace_client
-			.delete_buffer(Identifier::from(id))
+			.delete_buffer(BufferPath::from(&path))
 			.await?;
 
-		self.0.filetree.remove(path);
+		// TODO may deadlock! how fun....
+		self.0.filetree.remove(&path);
 
 		Ok(())
 	}
 
 	/// Get the workspace unique id.
 	// #[cfg_attr(feature = "js", napi)] // https://github.com/napi-rs/napi-rs/issues/1120
-	pub fn id(&self) -> Uuid {
-		self.0.id
+	pub fn id(&self) -> &crate::api::WorkspaceIdentifier {
+		&self.0.id
 	}
 
 	/// Return a handle to the [`cursor::Controller`].
@@ -340,7 +329,7 @@ impl Workspace {
 	}
 
 	/// Get all users currently in this workspace
-	pub fn user_list(&self) -> Vec<User> {
+	pub fn user_list(&self) -> Vec<UserInfo> {
 		self.0
 			.users
 			.iter()
@@ -349,7 +338,7 @@ impl Workspace {
 	}
 
 	/// Get all users currently attached to specified buffer
-	pub fn buffer_user_list(&self, path: &str) -> Vec<User> {
+	pub fn buffer_user_list(&self, path: &str) -> Vec<UserInfo> {
 		let mut out = Vec::new();
 		if let Some(buf_ref) = self.0.buffer_users.get(path) {
 			for uid in buf_ref.value() {
@@ -389,7 +378,7 @@ impl WorkspaceWorker {
 	#[tracing::instrument(skip(self, stream, weak))]
 	pub(crate) async fn work(
 		mut self,
-		ws: Uuid,
+		ws: crate::api::WorkspaceIdentifier,
 		mut stream: Streaming<WorkspaceEvent>,
 		weak: Weak<WorkspaceInner>,
 	) {
@@ -416,20 +405,20 @@ impl WorkspaceWorker {
 						match ev {
 							// user
 							WorkspaceEventInner::WorkspaceJoin(UserJoinWorkspace { user }) => {
-								inner.users.insert(user.id.uuid(), user.into());
+								inner.users.insert(user.clone(), UserInfo::default_for(user));
 							}
 							WorkspaceEventInner::WorkspaceLeave(UserLeaveWorkspace { user }) => {
-								inner.users.remove(&user.id.uuid());
+								inner.users.remove(&user);
 							}
 							WorkspaceEventInner::BufferJoin(UserJoinBuffer { user, buffer }) => {
 								match inner.buffer_users.get_mut(&buffer) {
-									Some(mut buf_users_ref) => buf_users_ref.push(Uuid::from(user.id)),
+									Some(mut buf_users_ref) => buf_users_ref.push(user),
 									None => tracing::warn!("received UserJoinBuffer event for an unknown buffer"),
 								}
 							},
 							WorkspaceEventInner::BufferLeave(UserLeaveBuffer { user, buffer }) => {
 								match inner.buffer_users.get_mut(&buffer) {
-									Some(mut buf_users_ref) => buf_users_ref.retain(|x| *x != Uuid::from(user.id)),
+									Some(mut buf_users_ref) => buf_users_ref.retain(|x| *x != user),
 									None => tracing::warn!("received UserLeaveBuffer event for an unknown buffer"),
 								}
 							},
