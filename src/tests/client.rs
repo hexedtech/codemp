@@ -38,12 +38,11 @@ async fn test_attach_and_leave_workspace() {
 			let workspace_name = uuid::Uuid::new_v4().to_string();
 
 			client.create_workspace(workspace_name.clone()).await?;
-			let wsid = crate::api::WorkspaceIdentifier { user: client.current_user().name.clone(), workspace: workspace_name.clone() };
 
 			// leaving a workspace you are not attached to, returns true
-			let leave_workspace_before = client.leave_workspace(&wsid);
+			let leave_workspace_before = client.leave_workspace(&client.current_user().name, &workspace_name);
 
-			let attach_workspace_that_exists = match client.attach_workspace(wsid.clone()).await {
+			let attach_workspace_that_exists = match client.attach_workspace(&client.current_user().name, &workspace_name).await {
 				Ok(_) => true,
 				Err(e) => {
 					eprintln!("error attaching to workspace: {e}");
@@ -53,7 +52,7 @@ async fn test_attach_and_leave_workspace() {
 
 			// leaving a workspace you are attached to, returns true
 			// when there is only one reference to it.
-			let leave_workspace_after = client.leave_workspace(&wsid);
+			let leave_workspace_after = client.leave_workspace(&client.current_user().name, &workspace_name);
 
 			let _ = client.delete_workspace(workspace_name).await;
 
@@ -103,11 +102,8 @@ async fn test_invite_user_to_workspace() {
 async fn test_workspace_lookup() {
 	super::fixture! {
 		WorkspaceFixture::one("alice") => |client, workspace| {
-			assert_or_err!(client.get_workspace(workspace.id()).is_some());
-			assert_or_err!(client.get_workspace(&crate::api::WorkspaceIdentifier {
-				user: uuid::Uuid::new_v4().to_string(),
-				workspace: uuid::Uuid::new_v4().to_string(),
-			}).is_none());
+			assert_or_err!(client.get_workspace(&workspace.id().user, &workspace.id().workspace).is_some());
+			assert_or_err!(client.get_workspace("asd", "dsa").is_none());
 			Ok(())
 		}
 	}
@@ -117,7 +113,7 @@ async fn test_workspace_lookup() {
 async fn test_leave_workspace_with_dangling_ref() {
 	super::fixture! {
 		WorkspaceFixture::one("alice") => |client, workspace| {
-			assert_or_err!(client.leave_workspace(workspace.id()) == false);
+			assert_or_err!(client.leave_workspace(&workspace.id().user, &workspace.id().workspace) == false);
 			Ok(())
 		}
 	}
@@ -127,8 +123,8 @@ async fn test_leave_workspace_with_dangling_ref() {
 async fn test_lookup_after_leave() {
 	super::fixture! {
 		WorkspaceFixture::one("alice") => |client, workspace| {
-			client.leave_workspace(workspace.id());
-			assert_or_err!(client.get_workspace(workspace.id()).is_none());
+			client.leave_workspace(&workspace.id().user, &workspace.id().workspace);
+			assert_or_err!(client.get_workspace(&workspace.id().user, &workspace.id().workspace).is_none());
 			Ok(())
 		}
 	}
@@ -140,14 +136,13 @@ async fn test_attach_after_leave() {
 		ClientFixture::of("alice") => |client| {
 			let ws_name = uuid::Uuid::new_v4().to_string();
 			client.create_workspace(ws_name.clone()).await?;
-			let wsid = crate::api::WorkspaceIdentifier { user: client.current_user().name.clone(), workspace: ws_name.clone() };
 
-			let could_attach = client.attach_workspace(wsid.clone()).await.is_ok();
-			let clean_leave = client.leave_workspace(&wsid);
+			let could_attach = client.attach_workspace(&client.current_user().name, &ws_name).await.is_ok();
+			let clean_leave = client.leave_workspace(&client.current_user().name, &ws_name);
 			// TODO this is very server specific! disconnect may be instant or caught with next
 			// keepalive, let's arbitrarily say that after 20 seconds we should have been disconnected
 			tokio::time::sleep(std::time::Duration::from_secs(20)).await;
-			let could_attach_again = client.attach_workspace(wsid.clone()).await;
+			let could_attach_again = client.attach_workspace(&client.current_user().name, &ws_name).await;
 			let could_delete = client.delete_workspace(ws_name).await;
 
 			assert_or_err!(could_attach);
@@ -185,10 +180,9 @@ async fn test_attaching_to_non_existing_is_error() {
 	super::fixture! {
 		ClientFixture::of("alice") => |client| {
 			let workspace_name = uuid::Uuid::new_v4().to_string();
-			let wsid = crate::api::WorkspaceIdentifier { user: client.current_user().name.clone(), workspace: workspace_name };
 
 			// we don't create any workspace.
-			assert_or_err!(client.attach_workspace(wsid).await.is_err());
+			assert_or_err!(client.attach_workspace(&client.current_user().name, workspace_name).await.is_err());
 			Ok(())
 		}
 	}

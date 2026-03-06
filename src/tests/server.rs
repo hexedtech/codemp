@@ -68,13 +68,13 @@ async fn test_workspace_interactions() {
 		client_alice.create_workspace(workspace_name.clone()).await?;
 		let owned_workspaces = client_alice.fetch_owned_workspaces().await?;
 		assert_or_err!(owned_workspaces.contains(&wsid));
-		client_alice.attach_workspace(wsid.clone()).await?;
+		client_alice.attach_workspace(&client_alice.current_user().name, &workspace_name).await?;
 		assert_or_err!(vec![wsid.clone()] == client_alice.active_workspaces());
 
 		client_alice
 			.invite_to_workspace(workspace_name.clone(), client_bob.current_user().name.clone())
 			.await?;
-		client_bob.attach_workspace(wsid.clone()).await?;
+		client_bob.attach_workspace(&client_alice.current_user().name, &workspace_name).await?;
 		assert_or_err!(
 			client_bob
 				.fetch_joined_workspaces()
@@ -82,8 +82,8 @@ async fn test_workspace_interactions() {
 				.contains(&wsid)
 		);
 
-		assert_or_err!(client_bob.leave_workspace(&wsid));
-		assert_or_err!(client_alice.leave_workspace(&wsid));
+		assert_or_err!(client_bob.leave_workspace(&client_alice.current_user().name, &workspace_name));
+		assert_or_err!(client_alice.leave_workspace(&client_alice.current_user().name, &workspace_name));
 
 		client_alice.delete_workspace(workspace_name.clone()).await?;
 
