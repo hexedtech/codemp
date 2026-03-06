@@ -7,6 +7,7 @@
 .venv
 wheels/
 dist/py/build.sh
+dist/py/src/codemp/ffi-unit-test.py
 
 # lua
 dist/lua/*.so

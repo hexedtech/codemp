@@ -1,42 +1,42 @@
 {
-  "name": "@codemp/native",
-  "version": "0.8.5",
-  "description": "code multiplexer -- javascript bindings",
-  "keywords": [
-    "codemp",
-    "collaborative",
-    "ffi",
-    "rust",
-    "editors"
-  ],
-  "license": "GPL-3.0",
-  "author": {
-    "url": "https://hexed.technology"
-  },
-  "contributors": [
-    { "name": "alemi", "email": "me@alemi.dev" },
-    { "name": "frelodev", "email": "frelodev@gmail.com" },
-    { "name": "zaaarf", "email": "me@zaaarf.foo" },
-    { "name": "cschen", "email": "cschen@codemp.dev" }
-  ],
-  "repository": "https://github.com/hexedtech/codemp",
-  "devDependencies": {
-    "@napi-rs/cli": "^2.18.4"
-  },
-  "napi": {
-    "name": "codemp",
-    "triples": {
-      "defaults": false,
-      "additional": [
-        "x86_64-unknown-linux-gnu",
-        "x86_64-pc-windows-msvc",
-        "aarch64-apple-darwin"
-      ]
+	"name": "@codemp/native",
+	"version": "0.8.5",
+	"description": "code multiplexer -- javascript bindings",
+	"keywords": [
+		"codemp",
+		"collaborative",
+		"ffi",
+		"rust",
+		"editors"
+	],
+	"license": "GPL-3.0",
+	"author": {
+		"url": "https://hexed.technology"
+	},
+	"contributors": [
+		{ "name": "alemi", "email": "me@alemi.dev" },
+		{ "name": "frelodev", "email": "frelodev@gmail.com" },
+		{ "name": "zaaarf", "email": "me@zaaarf.foo" },
+		{ "name": "cschen", "email": "dev@cschen.cc" }
+	],
+	"repository": "https://github.com/hexedtech/codemp",
+	"devDependencies": {
+		"@napi-rs/cli": "^2.18.4"
+	},
+	"napi": {
+		"name": "codemp",
+		"triples": {
+			"defaults": false,
+			"additional": [
+				"x86_64-unknown-linux-gnu",
+				"x86_64-pc-windows-msvc",
+				"aarch64-apple-darwin"
+			]
 	}
-  },
-  "optionalDependencies": {
-    "@codemp/native-win32-x64-msvc": "0.8.5",
-    "@codemp/native-darwin-arm64": "0.8.5",
-    "@codemp/native-linux-x64-gnu": "0.8.5"
-  }
+	},
+	"optionalDependencies": {
+		"@codemp/native-win32-x64-msvc": "0.8.5",
+		"@codemp/native-darwin-arm64": "0.8.5",
+		"@codemp/native-linux-x64-gnu": "0.8.5"
+	}
 }
