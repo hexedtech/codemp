@@ -15,12 +15,12 @@ use crate::{
 };
 
 use codemp_proto::{
-	common::Empty,
+	common::{Empty, Identifier},
 	files::{BufferNode, BufferRequest},
 	workspace::{
-		workspace_event::{
+		WorkspaceEvent, workspace_event::{
 			Event as WorkspaceEventInner, FileCreate, FileDelete, FileRename, UserJoinBuffer, UserJoinWorkspace, UserLeaveBuffer, UserLeaveWorkspace
-		}, WorkspaceEvent
+		}
 	},
 };
 
@@ -48,7 +48,7 @@ use napi_derive::napi;
 pub struct Workspace(pub(crate) Arc<WorkspaceInner>);
 
 #[derive(Debug)]
-struct WorkspaceInner {
+pub(crate) struct WorkspaceInner {
 	id: Uuid,
 	current_user: Arc<User>,
 	cursor: cursor::Controller,
@@ -140,7 +140,7 @@ impl Workspace {
 		});
 
 		ws.fetch_users().await?;
-		ws.fetch_buffers("".to_string()).await?;
+		ws.fetch_buffers().await?;
 
 		for buffer_ref in ws.0.buffers.iter() {
 			ws.fetch_buffer_users(buffer_ref.key().clone()).await?;
@@ -182,13 +182,10 @@ impl Workspace {
 
 	/// Attach to a buffer and return a handle to it.
 	#[tracing::instrument(skip(self))]
-	pub async fn attach_buffer(&self, path: String) -> ConnectionResult<buffer::Controller> {
+	pub async fn attach_buffer(&self, id: uuid::Uuid, path: &str) -> ConnectionResult<buffer::Controller> {
 		let mut workspace_client = self.0.services.ws();
 		let mut buffer_client = self.0.services.buf();
-		let request = tonic::Request::new(BufferRequest {
-			path: path.clone(),
-		});
-		let credentials = workspace_client.get_buffer_token(request).await?.into_inner();
+		let credentials = workspace_client.get_buffer_token(Identifier::from(id)).await?.into_inner();
 
 		let (tx, rx) = mpsc::channel(256);
 		let mut req = tonic::Request::new(tokio_stream::wrappers::ReceiverStream::new(rx));
@@ -196,21 +193,19 @@ impl Workspace {
 		let stream = buffer_client.attach(req).await?.into_inner();
 
 		let controller =
-			buffer::Controller::spawn(self.0.current_user.id, &path, tx, stream, self.0.id);
+			buffer::Controller::spawn(self.0.current_user.id, path, tx, stream, self.0.id);
 
-		self.0.buffers.insert(path.clone(), controller.clone());
+		self.0.buffers.insert(path.to_string(), controller.clone());
 
+		let path = path.to_string();
 		let weak = Arc::downgrade(&controller.0);
 		tokio::spawn(async move {
-			let _p = path.clone();
 			let fut = async move {
 				loop {
 					// TODO either configurable token refresh time or calculate depending on token lifetime
 					tokio::time::sleep(std::time::Duration::from_secs(20)).await;
 					if weak.upgrade().is_none() { break };
-					let new_credentials = workspace_client.get_buffer_token(
-						tonic::Request::new(BufferRequest { path: path.clone() })
-					)
+					let new_credentials = workspace_client.get_buffer_token(Identifier::from(id))
 						.await?
 						.into_inner();
 					let mut request = tonic::Request::new(Empty {});
@@ -221,7 +216,7 @@ impl Workspace {
 			};
 
 			if let Err(e) = fut.await {
-				tracing::error!("error in keepalive task for buffer {_p}: {e}");
+				tracing::error!("error in keepalive task for buffer {path}: {e}");
 			}
 		});
 
@@ -248,10 +243,10 @@ impl Workspace {
 	}
 
 	/// Re-fetch the list of available buffers in the workspace.
-	pub async fn fetch_buffers(&self, path: String) -> RemoteResult<()> {
+	pub async fn fetch_buffers(&self) -> RemoteResult<()> {
 		let mut workspace_client = self.0.services.ws();
 		let resp = workspace_client
-			.fetch_buffers(tonic::Request::new(BufferRequest { path }))
+			.fetch_buffers(Empty {})
 			.await?
 			.into_inner();
 
@@ -303,14 +298,12 @@ impl Workspace {
 	}
 
 	/// Delete a buffer.
-	pub async fn delete_buffer(&self, path: &str) -> RemoteResult<()> {
+	pub async fn delete_buffer(&self, id: uuid::Uuid, path: &str) -> RemoteResult<()> {
 		self.detach_buffer(path); // just in case
 
 		let mut workspace_client = self.0.services.ws();
 		workspace_client
-			.delete_buffer(tonic::Request::new(BufferRequest {
-				path: path.to_string(),
-			}))
+			.delete_buffer(Identifier::from(id))
 			.await?;
 
 		self.0.filetree.remove(path);
@@ -369,7 +362,7 @@ impl Workspace {
 	}
 
 	/// Get the filetree as it is currently cached.
-	/// A filter may be applied, and it may be strict (equality check) or not (starts_with check).
+	/// A filter may be applied, and it works as a "starts_with" check.
 	// #[cfg_attr(feature = "js", napi)] // https://github.com/napi-rs/napi-rs/issues/1120
 	pub fn search_buffers(&self, filter: Option<&str>) -> Vec<String> {
 		let mut tree = self

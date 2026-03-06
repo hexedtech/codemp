@@ -20,7 +20,7 @@ use codemp_proto::{
 	auth::{LoginRequest, auth_client::AuthClient},
 	common::{Empty, Identifier, Token},
 	session::{
-		InviteRequest, OwnedWorkspaceRequest, WorkspaceRequest, session_client::SessionClient,
+		InviteRequest, OwnedWorkspaceRequest, session_client::SessionClient,
 	},
 };
 
@@ -110,13 +110,11 @@ impl Client {
 	}
 
 	/// Delete an existing workspace if possible.
-	pub async fn delete_workspace(&self, name: impl AsRef<str>) -> RemoteResult<()> {
+	pub async fn delete_workspace(&self, id: uuid::Uuid) -> RemoteResult<()> {
 		self.0
 			.session
 			.clone()
-			.delete_workspace(OwnedWorkspaceRequest {
-				name: name.as_ref().to_string(),
-			})
+			.delete_workspace(Identifier::from(id))
 			.await?;
 		Ok(())
 	}
@@ -124,14 +122,14 @@ impl Client {
 	/// Invite user with given username to the given workspace, if possible.
 	pub async fn invite_to_workspace(
 		&self,
-		workspace_name: impl AsRef<str>,
+		workspace_id: uuid::Uuid,
 		user_name: impl AsRef<str>,
 	) -> RemoteResult<()> {
 		self.0
 			.session
 			.clone()
 			.invite_to_workspace(InviteRequest {
-				workspace: workspace_name.as_ref().to_string(),
+				workspace: Identifier::from(workspace_id),
 				user: user_name.as_ref().to_string(),
 			})
 			.await?;
@@ -149,7 +147,7 @@ impl Client {
 			.into_inner()
 			.owned
 			.into_iter()
-			.map(|x| crate::api::WorkspaceInfo::from(x))
+			.map(crate::api::WorkspaceInfo::from)
 			.collect())
 	}
 
@@ -164,7 +162,7 @@ impl Client {
 			.into_inner()
 			.invited
 			.into_iter()
-			.map(|x| crate::api::WorkspaceInfo::from(x))
+			.map(crate::api::WorkspaceInfo::from)
 			.collect())
 	}
 
@@ -173,9 +171,7 @@ impl Client {
 	pub async fn attach_workspace(&self, workspace: uuid::Uuid) -> ConnectionResult<Workspace> {
 		let mut session_client = self.0.session.clone();
 		let token = session_client
-			.get_workspace_token(WorkspaceRequest {
-				id: Identifier::from(workspace),
-			})
+			.get_workspace_token(Identifier::from(workspace))
 			.await?
 			.into_inner();
 
@@ -200,7 +196,7 @@ impl Client {
 					tokio::time::sleep(std::time::Duration::from_secs(240)).await;
 					if weak.upgrade().is_none() { break };
 					let new_credentials = session_client.get_workspace_token(
-						tonic::Request::new(WorkspaceRequest { id: Identifier::from(workspace) })
+						tonic::Request::new(Identifier::from(workspace))
 					)
 						.await?
 						.into_inner();
