@@ -22,8 +22,7 @@ impl LuaUserData for CodempClient {
 		methods.add_method(
 			"attach_workspace",
 			|_, this, (user, workspace): (String,String)| {
-				let ws_id = crate::api::WorkspaceIdentifier { user, workspace };
-				a_sync! { this => this.attach_workspace(ws_id).await? }
+				a_sync! { this => this.attach_workspace(user, workspace).await? }
 			},
 		);
 
@@ -73,17 +72,44 @@ impl LuaUserData for CodempClient {
 		);
 
 		methods.add_method("leave_workspace", |_, this, (user, workspace): (String,String)| {
-			let ws_id = crate::api::WorkspaceIdentifier { user, workspace };
-			Ok(this.leave_workspace(&ws_id))
+			Ok(this.leave_workspace(user, workspace))
 		});
 
 		methods.add_method("get_workspace", |_, this, (user, workspace): (String,String)| {
-			let ws_id = crate::api::WorkspaceIdentifier { user, workspace };
-			Ok(this.get_workspace(&ws_id))
+			Ok(this.get_workspace(user, workspace))
 		});
 
 		methods.add_method("get_user_info", |_, this, (user,):(String,)| a_sync! {
 			this => crate::api::UserInfo::from(this.get_user_info(user).await?)
 		});
+
+		// TODO need to derive ser/de on Event, but this is in protobuf...
+		// methods.add_method("recv", |_, this, ()| a_sync! { this => this.recv().await? });
+
+		// methods.add_method(
+		// 	"try_recv",
+		// 	|_, this, ()| a_sync! { this => this.try_recv().await? },
+		// );
+
+		methods.add_method("poll", |_, this, ()| a_sync! { this => this.poll().await? });
+
+		methods.add_method("callback", |lua, this, (cb,): (LuaFunction,)| {
+			let key = this.lua_callback_id();
+			lua.set_named_registry_value(&key, cb)?;
+			Ok(this.callback(move |controller: CodempClient| {
+				super::ext::callback().invoke(key.clone(), controller, false)
+			}))
+		});
+
+		methods.add_method("clear_callback", |lua, this, ()| {
+			this.clear_callback();
+			lua.unset_named_registry_value(&this.lua_callback_id())
+		});
+	}
+}
+
+impl CodempClient {
+	fn lua_callback_id(&self) -> String {
+		format!("codemp-client({})-callback-registry", self.current_user().name)
 	}
 }

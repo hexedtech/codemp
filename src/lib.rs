@@ -125,6 +125,7 @@ pub mod ext;
 /// language-specific ffi "glue"
 pub mod ffi;
 
+/// end-to-end tests, useful to assert server compliance
 #[cfg(any(feature = "test-e2e", test))]
 pub mod tests;
 

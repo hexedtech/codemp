@@ -158,43 +158,44 @@ impl Workspace {
 	}
 
 	/// Create a new buffer in the current workspace.
-	pub async fn create_buffer(&self, path: String, ephemeral: bool) -> RemoteResult<()> {
+	pub async fn create_buffer(&self, path: impl ToString, ephemeral: bool) -> RemoteResult<()> {
 		let mut workspace_client = self.0.services.ws();
 		workspace_client
 			.create_buffer(tonic::Request::new(BufferNode {
-				path: path.clone().into(),
+				path: path.to_string().into(),
 				ephemeral,
 			}))
 			.await?;
 
 		// add to filetree, not really necessary as we will get an event for it
 		self.0.filetree.insert(
-			path.clone(),
-			crate::api::BufferNode { path, ephemeral },
+			path.to_string(),
+			crate::api::BufferNode { path: path.to_string(), ephemeral },
 		);
 
 		Ok(())
 	}
 
-	pub async fn pin_buffer(&self, path: String) -> RemoteResult<()> {
+	pub async fn pin_buffer(&self, path: impl AsRef<str>) -> RemoteResult<()> {
 		self.0.services.ws()
 			.clone()
-			.pin_buffer(BufferPath::from(path))
+			.pin_buffer(BufferPath::from(path.as_ref()))
 			.await?;
 		Ok(())
 	}
 
-	pub async fn un_pin_buffer(&self, path: String) -> RemoteResult<()> {
+	pub async fn un_pin_buffer(&self, path: impl AsRef<str>) -> RemoteResult<()> {
 		self.0.services.ws()
 			.clone()
-			.un_pin_buffer(BufferPath::from(path))
+			.un_pin_buffer(BufferPath::from(path.as_ref()))
 			.await?;
 		Ok(())
 	}
 
 	/// Attach to a buffer and return a handle to it.
-	#[tracing::instrument(skip(self))]
-	pub async fn attach_buffer(&self, path: String) -> ConnectionResult<buffer::Controller> {
+	#[tracing::instrument(skip(self, path), fields(path = path.to_string()))]
+	pub async fn attach_buffer(&self, path: impl ToString) -> ConnectionResult<buffer::Controller> {
+		let path = path.to_string();
 		let mut workspace_client = self.0.services.ws();
 		let mut buffer_client = self.0.services.buf();
 		let credentials = workspace_client.get_buffer_token(BufferPath::from(&path)).await?.into_inner();
@@ -244,8 +245,8 @@ impl Workspace {
 	/// a dangling reference somewhere. It may just be waiting for garbage collection, but as long
 	/// as it exists, it will prevent the controller from being completely dropped.
 	#[allow(clippy::redundant_pattern_matching)] // all cases are clearer this way
-	pub fn detach_buffer(&self, path: &str) -> bool {
-		match self.0.buffers.remove(path) {
+	pub fn detach_buffer(&self, path: impl AsRef<str>) -> bool {
+		match self.0.buffers.remove(path.as_ref()) {
 			None => true, // noop: we werent attached in the first place
 			Some((_name, controller)) => match Arc::into_inner(controller.0) {
 				None => false,   // dangling ref! we can't drop this
@@ -290,7 +291,8 @@ impl Workspace {
 	}
 
 	/// Fetch a list of the [User]s attached to a specific buffer.
-	pub async fn fetch_buffer_users(&self, path: String) -> RemoteResult<()> {
+	pub async fn fetch_buffer_users(&self, path: impl ToString) -> RemoteResult<()> {
+		let path = path.to_string();
 		let resp = self.services().ws()
 			.fetch_buffer_users(BufferPath::from(&path))
 			.await?
@@ -302,16 +304,15 @@ impl Workspace {
 	}
 
 	/// Delete a buffer.
-	pub async fn delete_buffer(&self, path: String) -> RemoteResult<()> {
-		self.detach_buffer(&path); // just in case
+	pub async fn delete_buffer(&self, path: impl AsRef<str>) -> RemoteResult<()> {
+		self.detach_buffer(path.as_ref()); // just in case
 
 		let mut workspace_client = self.0.services.ws();
 		workspace_client
-			.delete_buffer(BufferPath::from(&path))
+			.delete_buffer(BufferPath::from(path.as_ref()))
 			.await?;
 
-		// TODO may deadlock! how fun....
-		self.0.filetree.remove(&path);
+		self.0.filetree.remove(path.as_ref());
 
 		Ok(())
 	}
@@ -330,8 +331,8 @@ impl Workspace {
 
 	/// Return a handle to the [buffer::Controller] with the given path, if present.
 	// #[cfg_attr(feature = "js", napi)] // https://github.com/napi-rs/napi-rs/issues/1120
-	pub fn get_buffer(&self, path: &str) -> Option<buffer::Controller> {
-		self.0.buffers.get(path).map(|x| x.clone())
+	pub fn get_buffer(&self, path: impl AsRef<str>) -> Option<buffer::Controller> {
+		self.0.buffers.get(path.as_ref()).map(|x| x.clone())
 	}
 
 	/// Get a list of all the currently attached buffers.
@@ -354,9 +355,9 @@ impl Workspace {
 	}
 
 	/// Get all users currently attached to specified buffer
-	pub fn buffer_user_list(&self, path: &str) -> Vec<UserInfo> {
+	pub fn buffer_user_list(&self, path: impl AsRef<str>) -> Vec<UserInfo> {
 		let mut out = Vec::new();
-		if let Some(buf_ref) = self.0.buffer_users.get(path) {
+		if let Some(buf_ref) = self.0.buffer_users.get(path.as_ref()) {
 			for uid in buf_ref.value() {
 				if let Some(user_ref) = self.0.users.get(uid) {
 					out.push(user_ref.value().clone());

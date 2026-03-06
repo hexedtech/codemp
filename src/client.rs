@@ -41,7 +41,7 @@ pub struct Client(Arc<ClientInner>);
 struct ClientInner {
 	user: Arc<UserInfo>,
 	config: crate::api::Config,
-	workspaces: DashMap<crate::api::WorkspaceIdentifier, Workspace>,
+	workspaces: DashMap<String, DashMap<String, Workspace>>,
 	auth: AuthClient<Channel>,
 	session: SessionClient<InterceptedService<Channel, network::SessionInterceptor>>,
 	claims: InternallyMutable<Token>,
@@ -119,64 +119,64 @@ impl Client {
 	}
 
 	/// Attempt to create a new workspace with given name.
-	pub async fn create_workspace(&self, name: String) -> RemoteResult<()> {
+	pub async fn create_workspace(&self, name: impl ToString) -> RemoteResult<()> {
 		self.0
 			.session
 			.clone()
-			.create_workspace(OwnedWorkspaceIdentifier { workspace: name })
+			.create_workspace(OwnedWorkspaceIdentifier { workspace: name.to_string() })
 			.await?
 			.into_inner();
 		Ok(())
 	}
 
 	/// Delete an existing workspace if possible.
-	pub async fn delete_workspace(&self, name: String) -> RemoteResult<()> {
+	pub async fn delete_workspace(&self, name: impl ToString) -> RemoteResult<()> {
 		self.0
 			.session
 			.clone()
-			.delete_workspace(OwnedWorkspaceIdentifier { workspace: name })
+			.delete_workspace(OwnedWorkspaceIdentifier { workspace: name.to_string() })
 			.await?;
 		Ok(())
 	}
 
 	/// Quit a joined workspace. Cannot quit owned workspaces: must delete them
-	pub async fn quit_workspace(&self, user: String, workspace: String) -> RemoteResult<()> {
+	pub async fn quit_workspace(&self, user: impl ToString, workspace: impl ToString) -> RemoteResult<()> {
 		self.0
 			.session
 			.clone()
-			.quit_workspace(WorkspaceIdentifier { user, workspace })
+			.quit_workspace(WorkspaceIdentifier { user: user.to_string(), workspace: workspace.to_string() })
 			.await?;
 		Ok(())
 	}
 
 	/// Accept an invitation to a workspace, making it accessible
-	pub async fn accept_invite(&self, user: String, workspace: String) -> RemoteResult<()> {
+	pub async fn accept_invite(&self, user: impl ToString, workspace: impl ToString) -> RemoteResult<()> {
 		self.0
 			.session
 			.clone()
-			.accept_invite(WorkspaceIdentifier { user, workspace })
+			.accept_invite(WorkspaceIdentifier { user: user.to_string(), workspace: workspace.to_string() })
 			.await?;
 		Ok(())
 	}
 
 	/// Reject an invitation to a workspace
-	pub async fn reject_invite(&self, user: String, workspace: String) -> RemoteResult<()> {
+	pub async fn reject_invite(&self, user: impl ToString, workspace: impl ToString) -> RemoteResult<()> {
 		self.0
 			.session
 			.clone()
-			.reject_invite(WorkspaceIdentifier { user, workspace })
+			.reject_invite(WorkspaceIdentifier { user: user.to_string(), workspace: workspace.to_string() })
 			.await?;
 		Ok(())
 	}
 
 	/// Invite user with given username to the given workspace, if possible.
-	pub async fn invite_to_workspace(&self, workspace_name: String, user_name: String) -> RemoteResult<()> {
+	pub async fn invite_to_workspace(&self, workspace_name: impl ToString, user_name: impl ToString) -> RemoteResult<()> {
 		self.0
 			.session
 			.clone()
 			.invite_to_workspace(InviteRequest {
-				workspace: workspace_name,
-				user: user_name,
+				workspace: workspace_name.to_string(),
+				user: user_name.to_string(),
 			})
 			.await?;
 		Ok(())
@@ -212,42 +212,56 @@ impl Client {
 			.collect())
 	}
 
-	pub async fn get_user_info(&self, user: String) -> RemoteResult<codemp_proto::common::UserInfo> {
+	pub async fn get_user_info(&self, user: impl ToString) -> RemoteResult<codemp_proto::common::UserInfo> {
 		Ok(
 			self.0
 				.session
 				.clone()
-				.get_user_info(UserId { user })
+				.get_user_info(UserId { user: user.to_string() })
 				.await?
 				.into_inner()
 		)
 	}
 
 	/// Join and return a [`Workspace`].
-	#[tracing::instrument(skip(self, workspace), fields(ws = %workspace))]
-	pub async fn attach_workspace(&self, workspace: crate::api::WorkspaceIdentifier) -> ConnectionResult<Workspace> {
+	#[tracing::instrument(skip(self, user, workspace), fields(owner = user.to_string(), ws = workspace.to_string()))]
+	pub async fn attach_workspace(&self, user: impl ToString, workspace: impl ToString) -> ConnectionResult<Workspace> {
+		let workspace_id = crate::api::WorkspaceIdentifier { user: user.to_string(), workspace: workspace.to_string() };
+		let user = user.to_string();
+		let workspace = workspace.to_string();
 		let mut session_client = self.0.session.clone();
 		let token = session_client
-			.get_workspace_token(codemp_proto::session::WorkspaceIdentifier::from(workspace.clone()))
+			.get_workspace_token(codemp_proto::session::WorkspaceIdentifier::from(workspace_id.clone()))
 			.await?
 			.into_inner();
 
 		let workspace_claims = InternallyMutable::new(token);
 
 		let ws = Workspace::connect(
-			workspace.clone(),
+			workspace_id.clone(),
 			self.0.user.clone(),
 			self.0.config.clone(),
 			workspace_claims.channel(),
 			self.0.claims.channel(),
 		)
 		.await?;
-		self.0.workspaces.insert(workspace.clone(), ws.clone());
+
+		match self.0.workspaces.get_mut(&user) {
+			Some(mutref) => {
+				mutref.insert(workspace.clone(), ws.clone());
+			},
+			None => {
+				let map = DashMap::default();
+				map.insert(workspace.clone(), ws.clone());
+				self.0.workspaces.insert(user.clone(), map);
+			},
+		};
+
 		let mut workspace_client = ws.services().ws();
 
 		let weak = Arc::downgrade(&ws.0);
 		tokio::spawn(async move {
-			let _workspace = workspace.clone();
+			let _workspace = workspace_id.clone();
 			let fut = async move {
 				loop {
 					// TODO either configurable token refresh time or calculate depending on token lifetime
@@ -271,25 +285,31 @@ impl Client {
 	}
 
 	/// Leave the [`Workspace`] with the given name.
-	pub fn leave_workspace(&self, id: &crate::api::WorkspaceIdentifier) -> bool {
-		match self.0.workspaces.remove(id) {
-			None => true,
-			Some(x) => x.1.consume(),
+	pub fn leave_workspace(&self, user: impl AsRef<str>, workspace: impl AsRef<str>) -> bool {
+		if let Some(wss) = self.0.workspaces.get_mut(user.as_ref()) {
+			if wss.remove(workspace.as_ref()).is_some() {
+				return true;
+			}
 		}
+
+		false
 	}
 
 	/// Gets a [`Workspace`] handle by name.
-	pub fn get_workspace(&self, id: &crate::api::WorkspaceIdentifier) -> Option<Workspace> {
-		self.0.workspaces.get(id).map(|x| x.clone())
+	pub fn get_workspace(&self, user: impl AsRef<str>, workspace: impl AsRef<str>) -> Option<Workspace> {
+		self.0.workspaces.get(user.as_ref())?.get(workspace.as_ref()).map(|x| x.clone())
 	}
 
 	/// Get the names of all active [`Workspace`]s.
+	// TODO get rid of WorkspaceIdentifier
 	pub fn active_workspaces(&self) -> Vec<crate::api::WorkspaceIdentifier> {
-		self.0
-			.workspaces
-			.iter()
-			.map(|x| x.value().id().clone())
-			.collect()
+		let mut out = Vec::new();
+		for wss in self.0.workspaces.iter() {
+			for ws in wss.value().iter() {
+				out.push(ws.value().id().clone());
+			}
+		}
+		out
 	}
 
 	/// Get the currently logged in user.
