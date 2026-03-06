@@ -158,49 +158,38 @@ function MaybeBufferUpdatePromise:cancel() end
 ---invoke callback asynchronously as soon as promise is ready
 function MaybeBufferUpdatePromise:and_then(cb) end
 
----@class (exact) UserListPromise : Promise
-local UserListPromise = {}
+---@class (exact) UserInfoListPromise : Promise
+local UserInfoListPromise = {}
 --- block until promise is ready and return value
---- @return User[]
-function UserListPromise:await() end
+--- @return UserInfo[]
+function UserInfoListPromise:await() end
 --- cancel promise execution
-function UserListPromise:cancel() end
----@param cb fun(x: User[]) callback to invoke
+function UserInfoListPromise:cancel() end
+---@param cb fun(x: UserInfo[]) callback to invoke
 ---invoke callback asynchronously as soon as promise is ready
-function UserListPromise:and_then(cb) end
+function UserInfoListPromise:and_then(cb) end
 
----@class (exact) WorkspaceInfoPromise : Promise
-local WorkspaceInfoPromise = {}
+---@class (exact) UserInfoPromise : Promise
+local UserInfoPromise = {}
 --- block until promise is ready and return value
---- @return WorkspaceInfo
-function WorkspaceInfoPromise:await() end
+--- @return UserInfo
+function UserInfoPromise:await() end
 --- cancel promise execution
-function WorkspaceInfoPromise:cancel() end
----@param cb fun(x: WorkspaceInfo) callback to invoke
+function UserInfoPromise:cancel() end
+---@param cb fun(x: UserInfo) callback to invoke
 ---invoke callback asynchronously as soon as promise is ready
-function WorkspaceInfoPromise:and_then(cb) end
+function UserInfoPromise:and_then(cb) end
 
----@class (exact) WorkspaceInfoListPromise : Promise
-local WorkspaceInfoListPromise = {}
+---@class (exact) WorkspaceIdentifierListPromise : Promise
+local WorkspaceIdentifierListPromise = {}
 --- block until promise is ready and return value
---- @return WorkspaceInfo[]
-function WorkspaceInfoListPromise:await() end
+--- @return WorkspaceIdentifier[]
+function WorkspaceIdentifierListPromise:await() end
 --- cancel promise execution
-function WorkspaceInfoListPromise:cancel() end
----@param cb fun(x: WorkspaceInfo[]) callback to invoke
+function WorkspaceIdentifierListPromise:cancel() end
+---@param cb fun(x: WorkspaceIdentifier[]) callback to invoke
 ---invoke callback asynchronously as soon as promise is ready
-function WorkspaceInfoListPromise:and_then(cb) end
-
----@class (exact) BufferNodeListPromise : Promise
-local BufferNodeListPromise = {}
---- block until promise is ready and return value
---- @return BufferNode[]
-function BufferNodeListPromise:await() end
---- cancel promise execution
-function BufferNodeListPromise:cancel() end
----@param cb fun(x: BufferNode[]) callback to invoke
----invoke callback asynchronously as soon as promise is ready
-function BufferNodeListPromise:and_then(cb) end
+function WorkspaceIdentifierListPromise:and_then(cb) end
 
 -- [[ END ASYNC STUFF ]]
 
@@ -209,7 +198,7 @@ function BufferNodeListPromise:and_then(cb) end
 ---the effective local client, handling connecting to codemp server
 local Client = {}
 
----@return User
+---@return UserInfo
 ---current logged in user for this client
 function Client:current_user() end
 
@@ -231,7 +220,7 @@ function Client:refresh() end
 function Client:attach_workspace(ws) end
 
 ---@param ws string workspace id to create
----@return WorkspaceInfoPromise
+---@return NilPromise
 ---@async
 ---@nodiscard
 ---create a new workspace with given id
@@ -248,6 +237,30 @@ function Client:leave_workspace(ws) end
 ---delete workspace with given id
 function Client:delete_workspace(ws) end
 
+---@param user string user owning the workspace to quit
+---@param workspace string workspace to quit
+---@return NilPromise
+---@async
+---@nodiscard
+---quit a joined workspace, by user + workspace name
+function Client:quit_workspace(user, workspace) end
+
+---@param user string user inviting us
+---@param workspace string workspace being invited to
+---@return NilPromise
+---@async
+---@nodiscard
+---accept an invite to a new workspace
+function Client:accept_invite(user, workspace) end
+
+---@param user string user inviting us
+---@param workspace string workspace being invited to
+---@return NilPromise
+---@async
+---@nodiscard
+---reject an invite to a new workspace
+function Client:reject_invite(user, workspace) end
+
 ---@param ws string workspace id to delete
 ---@param user string user name to invite to given workspace
 ---@return NilPromise
@@ -256,13 +269,13 @@ function Client:delete_workspace(ws) end
 ---grant user acccess to workspace
 function Client:invite_to_workspace(ws, user) end
 
----@return WorkspaceInfoListPromise
+---@return WorkspaceIdentifierListPromise
 ---@async
 ---@nodiscard
 ---fetch and list owned workspaces
 function Client:fetch_owned_workspaces() end
 
----@return WorkspaceInfoListPromise
+---@return WorkspaceIdentifierListPromise
 ---@async
 ---@nodiscard
 ---fetch and list joined workspaces
@@ -273,19 +286,27 @@ function Client:fetch_joined_workspaces() end
 ---get an active workspace by name
 function Client:get_workspace(ws) end
 
+---@param user string username to lookup
+---@return UserInfoPromise
+---@async
+---@nodiscard
+---get full user info for given username from server
+function Client:get_user_info(user) end
 
 
----@class User
+
+---@class UserInfo
 ---represents a service user and contains all its relevant info
----@field id string user uuid
----@field name string user display name
+---@field name string user unique, immutable name
+---@field display_name string|nil user display name, mutable and not guaranteed to be unique
+---@field description string|nil user description, maybe containing contact info
+---@field avatar any|nil user avatar image, as bytes 
 
+---@class WorkspaceIdentifier
+---uniquely identifies a workspace, by its owner and workspace name
+---@field user string username of workspace owner
+---@field workspace string workspace name
 
----@class WorkspaceInfo
----represents informations about a workspace, without having an handle to it
----@field id string
----@field name string
----@field owner User
 
 
 
@@ -320,6 +341,20 @@ function Workspace:create_buffer(path, ephemeral) end
 ---delete buffer from workspace
 function Workspace:delete_buffer(path) end
 
+---@param path string relative path ("name") of buffer to pin
+---@return NilPromise
+---@async
+---@nodiscard
+---pin a buffer, meaning it will persist even if no users are attached
+function Workspace:pin_buffer(path) end
+
+---@param path string relative path ("name") of buffer to un-pin
+---@return NilPromise
+---@async
+---@nodiscard
+---un-pin a buffer, meaning it will get deleted once all users leave
+function Workspace:un_pin_buffer(path) end
+
 ---@param path string relative path ("name") of buffer to get
 ---@return BufferController?
 ---get an active buffer controller by name
@@ -342,16 +377,20 @@ function Workspace:detach_buffer(path) end
 ---return the list of available buffers in this workspace, as relative paths from workspace root
 function Workspace:search_buffers(filter) end
 
----@return User[]
+---@return UserInfo[]
 ---return all names of users currently in this workspace
 function Workspace:user_list() end
 
----@param filter string filter buffers we want to fetch relative to this path
----@return BufferNodeListPromise
+---@param path string path of buffer queried for attached users
+---@return UserInfo[]
+---return all names of users currently attached to given buffer (by path)
+function Workspace:buffer_user_list(path) end
+
+---@return NilPromise
 ---@async
 ---@nodiscard
 ---force refresh buffer list from workspace
-function Workspace:list_buffers(filter) end
+function Workspace:fetch_buffers() end
 
 ---@return NilPromise
 ---@async
@@ -360,7 +399,7 @@ function Workspace:list_buffers(filter) end
 function Workspace:fetch_users(path) end
 
 ---@param path string the buffer to look in
----@return UserListPromise
+---@return NilPromise
 ---@async
 ---@nodiscard
 ---fetch the list of users in the given buffer
@@ -397,12 +436,6 @@ function Workspace:clear_callback() end
 function Workspace:callback(cb) end
 
 
-
-
----@class BufferNode
----@field id string
----@field name string
----@field owner User
 
 
 
@@ -567,3 +600,4 @@ function Codemp.setup_driver(block) end
 ---@return boolean success if logger was setup correctly, false otherwise
 ---setup a global logger for codemp, note that can only be done once
 function Codemp.setup_tracing(printer, debug) end
+
