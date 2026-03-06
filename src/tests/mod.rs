@@ -1,3 +1,5 @@
+#![allow(missing_docs)] // TODO need a better solution
+
 #[cfg(all(test, feature = "test-e2e"))]
 mod client;
 

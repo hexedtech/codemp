@@ -38,7 +38,7 @@
 //! # async {
 //! #  let client = codemp::Client::connect(codemp::api::Config::new("", "")).await.unwrap();
 //! client.create_workspace("my-workspace").await.expect("failed to create workspace!");
-//! let workspace = client.attach_workspace("my-workspace").await.expect("failed to attach!");
+//! let workspace = client.attach_workspace("my-user", "my-workspace").await.expect("failed to attach!");
 //! # };
 //! ```
 //!
@@ -49,11 +49,11 @@
 //! # async {
 //! #  let client = codemp::Client::connect(codemp::api::Config::new("", "")).await.unwrap();
 //! # client.create_workspace("").await.unwrap();
-//! # let workspace = client.attach_workspace("").await.unwrap();
+//! # let workspace = client.attach_workspace("", "").await.unwrap();
 //! use codemp::api::controller::{AsyncSender, AsyncReceiver}; // needed to access trait methods
 //! let cursor = workspace.cursor();
 //! let event = cursor.recv().await.expect("disconnected while waiting for event!");
-//! println!("user {} moved on buffer {}", event.user, event.sel.buffer);
+//! println!("user {} moved on buffer {}", event.user, event.cursor.buffer);
 //! # };
 //! ```
 //!
@@ -65,7 +65,7 @@
 //! # async {
 //! #  let client = codemp::Client::connect(codemp::api::Config::new("", "")).await.unwrap();
 //! # client.create_workspace("").await.unwrap();
-//! # let workspace = client.attach_workspace("").await.unwrap();
+//! # let workspace = client.attach_workspace("", "").await.unwrap();
 //! # use codemp::api::controller::{AsyncSender, AsyncReceiver};
 //! let buffer = workspace.attach_buffer("/some/file.txt").await.expect("failed to attach");
 //! buffer.content(); // force-sync
