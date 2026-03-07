@@ -15,19 +15,17 @@ impl LuaUserData for CodempWorkspace {
 			|_, this, (name, ephemeral): (String, bool)| a_sync! { this => this.create_buffer(name, ephemeral).await? },
 		);
 
-		methods.add_method(
-			"pin_buffer",
-			|_, this, (path,):(String,)| a_sync! {
+		methods.add_method("pin_buffer", |_, this, (path,): (String,)| {
+			a_sync! {
 				this => this.pin_buffer(path).await?
-			},
-		);
+			}
+		});
 
-		methods.add_method(
-			"un_pin_buffer",
-			|_, this, (path,):(String,)| a_sync! {
+		methods.add_method("un_pin_buffer", |_, this, (path,): (String,)| {
+			a_sync! {
 				this => this.un_pin_buffer(path).await?
-			},
-		);
+			}
+		});
 
 		methods.add_method(
 			"attach_buffer",
@@ -64,7 +62,9 @@ impl LuaUserData for CodempWorkspace {
 			Ok(this.search_buffers(filter.as_deref()))
 		});
 
-		methods.add_method("list_buffer_users", |_, this, (path,): (String,)| Ok(this.buffer_user_list(&path)));
+		methods.add_method("list_buffer_users", |_, this, (path,): (String,)| {
+			Ok(this.buffer_user_list(&path))
+		});
 
 		methods.add_method("id", |_, this, ()| Ok(this.id().to_string()));
 		methods.add_method("cursor", |_, this, ()| Ok(this.cursor()));

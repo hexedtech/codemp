@@ -1,9 +1,7 @@
 use crate::api::controller::{AsyncReceiver, AsyncSender};
 use crate::api::{BufferUpdate, TextChange};
 use crate::buffer::controller::BufferController;
-use napi::threadsafe_function::{
-	ThreadsafeFunction, ThreadsafeFunctionCallMode,
-};
+use napi::threadsafe_function::{ThreadsafeFunction, ThreadsafeFunctionCallMode};
 use napi_derive::napi;
 
 #[napi]
@@ -14,7 +12,10 @@ impl BufferController {
 		js_name = "callback",
 		ts_args_type = "fun: (event: BufferController) => void"
 	)]
-	pub fn js_callback(&self, fun: ThreadsafeFunction<crate::buffer::controller::BufferController>) -> napi::Result<()> {
+	pub fn js_callback(
+		&self,
+		fun: ThreadsafeFunction<crate::buffer::controller::BufferController>,
+	) -> napi::Result<()> {
 		self.callback(move |controller: BufferController| {
 			fun.call(Ok(controller.clone()), ThreadsafeFunctionCallMode::Blocking);
 			//check this with tracing also we could use Ok(event) to get the error

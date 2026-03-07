@@ -54,7 +54,9 @@ impl From<codemp_proto::cursor::CursorEvent> for CursorEvent {
 			user: value.user,
 			cursor: Cursor {
 				buffer: value.position.buffer,
-				sel: value.position.cursors
+				sel: value
+					.position
+					.cursors
 					.into_iter()
 					.map(|c| Selection {
 						start_row: c.start.row,
@@ -67,4 +69,3 @@ impl From<codemp_proto::cursor::CursorEvent> for CursorEvent {
 		}
 	}
 }
-

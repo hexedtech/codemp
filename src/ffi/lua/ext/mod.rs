@@ -42,4 +42,3 @@ macro_rules! impl_lua_serde {
 }
 
 pub(crate) use impl_lua_serde;
-

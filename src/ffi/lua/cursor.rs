@@ -11,7 +11,9 @@ impl LuaUserData for CodempCursorController {
 			Ok(format!("{:?}", this))
 		});
 
-		methods.add_method("workspace_id", |_, this, ()| Ok(this.workspace_id().clone()));
+		methods.add_method("workspace_id", |_, this, ()| {
+			Ok(this.workspace_id().clone())
+		});
 
 		methods.add_method("list", |_, this, ()| a_sync! {
 			this => this.list().await?.into_iter().map(CodempCursorEvent::from).collect::<Vec<CodempCursorEvent>>()

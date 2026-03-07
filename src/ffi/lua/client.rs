@@ -11,8 +11,12 @@ impl LuaUserData for CodempClient {
 			Ok(format!("{:?}", this))
 		});
 
-		methods.add_method("current_user", |_, this, ()| Ok(this.current_user().clone()));
-		methods.add_method("active_workspaces", |_, this, ()| Ok(this.active_workspaces()));
+		methods.add_method("current_user", |_, this, ()| {
+			Ok(this.current_user().clone())
+		});
+		methods.add_method("active_workspaces", |_, this, ()| {
+			Ok(this.active_workspaces())
+		});
 
 		methods.add_method(
 			"refresh",
@@ -21,7 +25,7 @@ impl LuaUserData for CodempClient {
 
 		methods.add_method(
 			"attach_workspace",
-			|_, this, (user, workspace): (String,String)| {
+			|_, this, (user, workspace): (String, String)| {
 				a_sync! { this => this.attach_workspace(user, workspace).await? }
 			},
 		);
@@ -38,22 +42,28 @@ impl LuaUserData for CodempClient {
 
 		methods.add_method(
 			"quit_workspace",
-			|_, this, (user, workspace):(String,String)| a_sync! {
-				this => this.quit_workspace(user, workspace).await?
+			|_, this, (user, workspace): (String, String)| {
+				a_sync! {
+					this => this.quit_workspace(user, workspace).await?
+				}
 			},
 		);
 
 		methods.add_method(
 			"accept_invite",
-			|_, this, (user, workspace):(String,String)| a_sync! {
-				this => this.accept_invite(user, workspace).await?
+			|_, this, (user, workspace): (String, String)| {
+				a_sync! {
+					this => this.accept_invite(user, workspace).await?
+				}
 			},
 		);
 
 		methods.add_method(
 			"reject_invite",
-			|_, this, (user, workspace):(String,String)| a_sync! {
-				this => this.reject_invite(user, workspace).await?
+			|_, this, (user, workspace): (String, String)| {
+				a_sync! {
+					this => this.reject_invite(user, workspace).await?
+				}
 			},
 		);
 
@@ -71,16 +81,20 @@ impl LuaUserData for CodempClient {
 			|_, this, ()| a_sync! { this => this.fetch_joined_workspaces().await? },
 		);
 
-		methods.add_method("leave_workspace", |_, this, (user, workspace): (String,String)| {
-			Ok(this.leave_workspace(user, workspace))
-		});
+		methods.add_method(
+			"leave_workspace",
+			|_, this, (user, workspace): (String, String)| Ok(this.leave_workspace(user, workspace)),
+		);
 
-		methods.add_method("get_workspace", |_, this, (user, workspace): (String,String)| {
-			Ok(this.get_workspace(user, workspace))
-		});
+		methods.add_method(
+			"get_workspace",
+			|_, this, (user, workspace): (String, String)| Ok(this.get_workspace(user, workspace)),
+		);
 
-		methods.add_method("get_user_info", |_, this, (user,):(String,)| a_sync! {
-			this => crate::api::UserInfo::from(this.get_user_info(user).await?)
+		methods.add_method("get_user_info", |_, this, (user,): (String,)| {
+			a_sync! {
+				this => crate::api::UserInfo::from(this.get_user_info(user).await?)
+			}
 		});
 
 		// TODO need to derive ser/de on Event, but this is in protobuf...
@@ -110,6 +124,9 @@ impl LuaUserData for CodempClient {
 
 impl CodempClient {
 	fn lua_callback_id(&self) -> String {
-		format!("codemp-client({})-callback-registry", self.current_user().name)
+		format!(
+			"codemp-client({})-callback-registry",
+			self.current_user().name
+		)
 	}
 }

@@ -11,7 +11,9 @@ impl LuaUserData for CodempBufferController {
 			Ok(format!("{:?}", this))
 		});
 
-		methods.add_method("workspace_id", |_, this, ()| Ok(this.workspace_id().clone()));
+		methods.add_method("workspace_id", |_, this, ()| {
+			Ok(this.workspace_id().clone())
+		});
 		methods.add_method("path", |_, this, ()| Ok(this.path().to_string()));
 
 		methods.add_method("send", |_, this, (change,): (CodempTextChange,)| {

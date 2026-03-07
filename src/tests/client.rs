@@ -77,7 +77,10 @@ async fn test_invite_user_to_workspace() {
 		.expect("failed setting up bob's client");
 	let ws_name = uuid::Uuid::new_v4().to_string();
 
-	let wsid = crate::api::WorkspaceIdentifier { user: client_alice.current_user().name.clone(), workspace: ws_name.clone() };
+	let wsid = crate::api::WorkspaceIdentifier {
+		user: client_alice.current_user().name.clone(),
+		workspace: ws_name.clone(),
+	};
 
 	// after this we can't just fail anymore: we need to cleanup, so store errs
 	client_alice
@@ -229,7 +232,10 @@ async fn cannot_delete_others_workspaces() {
 			let client_bob = client_bob.clone();
 			async move {
 				assert_or_err!(
-					client_bob.delete_workspace(ws_alice.id().workspace.clone()).await.is_err(),
+					client_bob
+						.delete_workspace(ws_alice.id().workspace.clone())
+						.await
+						.is_err(),
 					"bob was allowed to delete a workspace he didn't own!"
 				);
 				Ok(())
@@ -246,7 +252,9 @@ async fn test_buffer_search() {
 			let workspace_alice = workspace_alice.clone();
 
 			async move {
-				workspace_alice.create_buffer(buffer_name.clone(), false).await?;
+				workspace_alice
+					.create_buffer(buffer_name.clone(), false)
+					.await?;
 				assert_or_err!(
 					!workspace_alice
 						.search_buffers(Some(&buffer_name[0..4]))
@@ -269,7 +277,9 @@ async fn test_send_operation() {
 			let workspace_bob = workspace_bob.clone();
 
 			async move {
-				workspace_alice.create_buffer(buffer_name.clone(), false).await?;
+				workspace_alice
+					.create_buffer(buffer_name.clone(), false)
+					.await?;
 				let alice = workspace_alice.attach_buffer(buffer_name.clone()).await?;
 				let bob = workspace_bob.attach_buffer(buffer_name.clone()).await?;
 
@@ -299,7 +309,9 @@ async fn test_content_converges() {
 			let workspace_bob = workspace_bob.clone();
 
 			async move {
-				workspace_alice.create_buffer(buffer_name.clone(), false).await?;
+				workspace_alice
+					.create_buffer(buffer_name.clone(), false)
+					.await?;
 				let alice = workspace_alice.attach_buffer(buffer_name.clone()).await?;
 				let bob = workspace_bob.attach_buffer(buffer_name.clone()).await?;
 

@@ -31,8 +31,14 @@ impl From<WorkspaceEventInner> for Event {
 			WorkspaceEventInner::Create(e) => Self::FileTreeUpdated { path: e.path },
 			WorkspaceEventInner::Delete(e) => Self::FileTreeUpdated { path: e.path },
 			WorkspaceEventInner::Rename(e) => Self::FileTreeUpdated { path: e.after },
-			WorkspaceEventInner::BufferJoin(e) => Self::UserJoinBuffer { name: e.user, buffer: e.buffer },
-			WorkspaceEventInner::BufferLeave(e) => Self::UserLeaveBuffer { name: e.user, buffer: e.buffer },
+			WorkspaceEventInner::BufferJoin(e) => Self::UserJoinBuffer {
+				name: e.user,
+				buffer: e.buffer,
+			},
+			WorkspaceEventInner::BufferLeave(e) => Self::UserLeaveBuffer {
+				name: e.user,
+				buffer: e.buffer,
+			},
 			WorkspaceEventInner::BufferJoin(e) => Self::UserJoinBuffer {
 				name: e.user,
 				buffer: e.buffer,

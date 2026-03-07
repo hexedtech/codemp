@@ -7,9 +7,12 @@ use tokio::sync::{mpsc, oneshot, watch};
 
 use crate::{
 	api::{
-		Controller, Cursor, controller::{AsyncReceiver, AsyncSender, ControllerCallback}, cursor::CursorEvent
+		Controller, Cursor,
+		controller::{AsyncReceiver, AsyncSender, ControllerCallback},
+		cursor::CursorEvent,
 	},
-	errors::ControllerResult, network::AuthedService,
+	errors::ControllerResult,
+	network::AuthedService,
 };
 use codemp_proto::cursor::{CursorPosition, CursorUpdate, RowCol, cursor_client::CursorClient};
 

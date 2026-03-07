@@ -158,10 +158,15 @@ impl
 		.await?;
 		client.create_workspace(self.workspace.to_string()).await?;
 		client
-			.invite_to_workspace(self.workspace.clone(), invitee_client.current_user().name.clone())
+			.invite_to_workspace(
+				self.workspace.clone(),
+				invitee_client.current_user().name.clone(),
+			)
 			.await?;
 		let workspace = client.attach_workspace(&self.user, &self.workspace).await?;
-		let invitee_workspace = invitee_client.attach_workspace(&self.user, &self.workspace).await?;
+		let invitee_workspace = invitee_client
+			.attach_workspace(&self.user, &self.workspace)
+			.await?;
 		Ok((client, workspace, invitee_client, invitee_workspace))
 	}
 
@@ -253,14 +258,21 @@ impl
 		.await?;
 		client.create_workspace(self.workspace.to_string()).await?;
 		client
-			.invite_to_workspace(self.workspace.clone(), invitee_client.current_user().name.clone())
+			.invite_to_workspace(
+				self.workspace.clone(),
+				invitee_client.current_user().name.clone(),
+			)
 			.await?;
 
 		let workspace = client.attach_workspace(&self.user, &self.workspace).await?;
-		workspace.create_buffer(self.buffer.to_string(), false).await?;
+		workspace
+			.create_buffer(self.buffer.to_string(), false)
+			.await?;
 		let buffer = workspace.attach_buffer(self.buffer.clone()).await?;
 
-		let invitee_workspace = invitee_client.attach_workspace(&self.user, &self.workspace).await?;
+		let invitee_workspace = invitee_client
+			.attach_workspace(&self.user, &self.workspace)
+			.await?;
 		let invitee_buffer = invitee_workspace.attach_buffer(self.buffer.clone()).await?;
 
 		Ok((

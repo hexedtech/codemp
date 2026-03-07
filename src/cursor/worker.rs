@@ -4,9 +4,15 @@ use tokio::sync::{mpsc, oneshot, watch};
 use tonic::Streaming;
 
 use crate::{
-	api::{Cursor, Selection, UserInfo, controller::ControllerCallback}, errors::RemoteResult, ext::IgnorableError, network::AuthedService
+	api::{Cursor, Selection, UserInfo, controller::ControllerCallback},
+	errors::RemoteResult,
+	ext::IgnorableError,
+	network::AuthedService,
 };
-use codemp_proto::{common::Empty, cursor::{CursorEvent, CursorUpdate, cursor_client::CursorClient}};
+use codemp_proto::{
+	common::Empty,
+	cursor::{CursorEvent, CursorUpdate, cursor_client::CursorClient},
+};
 
 use super::controller::{CursorController, CursorControllerInner};
 
@@ -42,7 +48,7 @@ impl CursorWorker {
 								end_col: x.end.col,
 							})
 							.collect(),
-					}
+					},
 				})
 			} else {
 				tracing::warn!("received cursor for unknown user {}", event.user);
@@ -95,14 +101,14 @@ impl CursorController {
 	}
 
 	pub async fn list(&self) -> RemoteResult<Vec<CursorEvent>> {
-		Ok(self.0
+		Ok(self
+			.0
 			.service
 			.clone()
 			.list(Empty {})
 			.await?
 			.into_inner()
-			.cursors
-		)
+			.cursors)
 	}
 
 	#[tracing::instrument(skip(worker, tx, rx), fields(ws = %worker.workspace_id))]
