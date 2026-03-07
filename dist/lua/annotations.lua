@@ -111,28 +111,28 @@ function BufferControllerPromise:cancel() end
 function BufferControllerPromise:and_then(cb) end
 
 
----@class (exact) CursorPromise : Promise
-local CursorPromise = {}
+---@class (exact) CursorEventPromise : Promise
+local CursorEventPromise = {}
 --- block until promise is ready and return value
---- @return Cursor
-function CursorPromise:await() end
+--- @return CursorEvent
+function CursorEventPromise:await() end
 --- cancel promise execution
-function CursorPromise:cancel() end
----@param cb fun(x: Cursor) callback to invoke
+function CursorEventPromise:cancel() end
+---@param cb fun(x: CursorEvent) callback to invoke
 ---invoke callback asynchronously as soon as promise is ready
-function CursorPromise:and_then(cb) end
+function CursorEventPromise:and_then(cb) end
 
 
----@class (exact) MaybeCursorPromise : Promise
-local MaybeCursorPromise = {}
+---@class (exact) MaybeCursorEventPromise : Promise
+local MaybeCursorEventPromise = {}
 --- block until promise is ready and return value
---- @return Cursor | nil
-function MaybeCursorPromise:await() end
+--- @return CursorEvent | nil
+function MaybeCursorEventPromise:await() end
 --- cancel promise execution
-function MaybeCursorPromise:cancel() end
----@param cb fun(x: Cursor | nil) callback to invoke
+function MaybeCursorEventPromise:cancel() end
+---@param cb fun(x: CursorEvent | nil) callback to invoke
 ---invoke callback asynchronously as soon as promise is ready
-function MaybeCursorPromise:and_then(cb) end
+function MaybeCursorEventPromise:and_then(cb) end
 
 
 ---@class (exact) BufferUpdatePromise : Promise
@@ -212,12 +212,13 @@ function Client:active_workspaces() end
 ---refresh current user token if possible
 function Client:refresh() end
 
+---@param user string workspace owning user
 ---@param ws string workspace id to connect to
 ---@return WorkspacePromise
 ---@async
 ---@nodiscard
 ---join requested workspace if possible and subscribe to event bus
-function Client:attach_workspace(ws) end
+function Client:attach_workspace(user, ws) end
 
 ---@param ws string workspace id to create
 ---@return NilPromise
@@ -226,9 +227,10 @@ function Client:attach_workspace(ws) end
 ---create a new workspace with given id
 function Client:create_workspace(ws) end
 
+---@param user string workspace owning user
 ---@param ws string workspace id to leave
 ---leave workspace with given id, detaching and disconnecting
-function Client:leave_workspace(ws) end
+function Client:leave_workspace(user, ws) end
 
 ---@param ws string workspace id to delete
 ---@return NilPromise
@@ -505,30 +507,35 @@ function BufferController:ack(version) end
 ---handle to a workspace's cursor channel, allowing send/recv operations
 local CursorController = {}
 
+---a cursor selection span
 ---@class Selection
----@field buffer string relative path ("name") of buffer on which this cursor is
----@field start_row integer
----@field start_col integer
----@field end_row integer
----@field end_col integer
----a cursor selected region, as row-col indices
+---@field start_row integer cursor position starting row in buffer
+---@field start_col integer cursor position starting column in buffer
+---@field end_row integer cursor position final row in buffer
+---@field end_col integer cursor position final column in buffer
 
+---a cursor instantaneous state
 ---@class Cursor
----@field user string id of user owning this cursor
----@field sel Selection selected region for this user
+---@field buffer string path of buffer this cursor is on
+---@field sel Selection[] the updated cursor selection(s)
 
----@param cursor Selection cursor position to broadcast
+---an event that occurred about a user's cursor
+---@class CursorEvent
+---@field user string user who sent this cursor
+---@field cursor Cursor cursor position data
+
+---@param cursor Cursor cursor position to broadcast
 ---update cursor position by sending a cursor event to server
 function CursorController:send(cursor) end
 
 
----@return MaybeCursorPromise
+---@return MaybeCursorEventPromise
 ---@async
 ---@nodiscard
 ---try to receive cursor events, returning nil if none is available
 function CursorController:try_recv() end
 
----@return CursorPromise
+---@return CursorEventPromise
 ---@async
 ---@nodiscard
 ---block until next cursor event and return it

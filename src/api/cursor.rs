@@ -17,7 +17,7 @@ pub struct CursorEvent {
 	pub cursor: Cursor,
 }
 
-/// An event that occurred about a user's cursor.
+/// A cursor instantaneous state
 #[derive(Clone, Debug, Default)]
 #[cfg_attr(feature = "js", napi_derive::napi(object))]
 #[cfg_attr(feature = "py", pyclass(get_all, from_py_object))]
