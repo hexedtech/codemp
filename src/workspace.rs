@@ -18,11 +18,9 @@ use codemp_proto::{
 	common::Empty,
 	files::{BufferNode, BufferPath},
 	workspace::{
-		WorkspaceEvent,
-		workspace_event::{
-			Event as WorkspaceEventInner, FileCreate, FileDelete, FileRename, UserJoinBuffer,
-			UserJoinWorkspace, UserLeaveBuffer, UserLeaveWorkspace,
-		},
+		WorkspaceEvent, workspace_event::{
+			Event as WorkspaceEventInner, FileCreate, FileDelete, FileRename, UserJoinBuffer, UserJoinWorkspace, UserLeaveBuffer, UserLeaveWorkspace
+		}
 	},
 };
 
@@ -96,7 +94,8 @@ impl Workspace {
 		workspace_claim: tokio::sync::watch::Receiver<codemp_proto::common::Token>,
 		user_claim: tokio::sync::watch::Receiver<codemp_proto::common::Token>,
 	) -> ConnectionResult<Self> {
-		let services = Services::try_new(&config.endpoint(), user_claim, workspace_claim).await?;
+		let services =
+			Services::try_new(&config.endpoint(), user_claim, workspace_claim).await?;
 		let ws_stream = services.ws().attach(Empty {}).await?.into_inner();
 
 		let (tx, rx) = mpsc::channel(128);
@@ -199,16 +198,11 @@ impl Workspace {
 		let path = path.to_string();
 		let mut workspace_client = self.0.services.ws();
 		let mut buffer_client = self.0.services.buf();
-		let request = tonic::Request::new(BufferRequest { path: path.clone() });
-		let credentials = workspace_client
-			.get_buffer_token(request)
-			.await?
-			.into_inner();
+		let credentials = workspace_client.get_buffer_token(BufferPath::from(&path)).await?.into_inner();
 
 		let (tx, rx) = mpsc::channel(256);
 		let mut req = tonic::Request::new(tokio_stream::wrappers::ReceiverStream::new(rx));
-		req.metadata_mut()
-			.insert("buffer", crate::ext::token_to_metadata(credentials)?);
+		req.metadata_mut().insert("buffer", crate::ext::token_to_metadata(credentials)?);
 		let stream = buffer_client.attach(req).await?.into_inner();
 
 		let controller =
@@ -223,17 +217,12 @@ impl Workspace {
 				loop {
 					// TODO either configurable token refresh time or calculate depending on token lifetime
 					tokio::time::sleep(std::time::Duration::from_secs(20)).await;
-					if weak.upgrade().is_none() {
-						break;
-					};
-					let new_credentials = workspace_client
-						.get_buffer_token(tonic::Request::new(BufferRequest { path: path.clone() }))
+					if weak.upgrade().is_none() { break };
+					let new_credentials = workspace_client.get_buffer_token(BufferPath::from(&_path))
 						.await?
 						.into_inner();
 					let mut request = tonic::Request::new(Empty {});
-					request
-						.metadata_mut()
-						.insert("buffer", crate::ext::token_to_metadata(new_credentials)?);
+					request.metadata_mut().insert("buffer", crate::ext::token_to_metadata(new_credentials)?);
 					buffer_client.keep_alive(request).await?;
 				}
 				Ok::<(), tonic::Status>(())
@@ -302,13 +291,10 @@ impl Workspace {
 	}
 
 	/// Fetch a list of the [User]s attached to a specific buffer.
-	pub async fn fetch_buffer_users(&self, path: String) -> RemoteResult<()> {
-		let users = self
-			.services()
-			.ws()
-			.fetch_buffer_users(tonic::Request::new(BufferRequest {
-				path: path.to_string(),
-			}))
+	pub async fn fetch_buffer_users(&self, path: impl ToString) -> RemoteResult<()> {
+		let path = path.to_string();
+		let resp = self.services().ws()
+			.fetch_buffer_users(BufferPath::from(&path))
 			.await?
 			.into_inner();
 
@@ -396,6 +382,7 @@ impl Workspace {
 		tree
 	}
 }
+
 
 struct WorkspaceWorker {
 	callback: watch::Receiver<Option<ControllerCallback<Workspace>>>,

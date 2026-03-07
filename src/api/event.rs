@@ -34,7 +34,7 @@ impl From<WorkspaceEventInner> for Event {
 			WorkspaceEventInner::BufferJoin(e) => Self::UserJoinBuffer { name: e.user, buffer: e.buffer },
 			WorkspaceEventInner::BufferLeave(e) => Self::UserLeaveBuffer { name: e.user, buffer: e.buffer },
 			WorkspaceEventInner::BufferJoin(e) => Self::UserJoinBuffer {
-				name: e.user.name,
+				name: e.user,
 				buffer: e.buffer,
 			},
 			WorkspaceEventInner::BufferLeave(e) => Self::UserLeaveBuffer {
