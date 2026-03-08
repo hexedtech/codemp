@@ -6,6 +6,8 @@ mod client;
 #[cfg(all(test, feature = "test-e2e"))]
 mod server;
 
+mod ffi_coverage;
+
 pub mod fixtures;
 use crate::errors::{ConnectionError, RemoteError};
 
