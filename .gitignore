@@ -2,6 +2,7 @@
 .vscode/
 *.sublime-*
 !.github
+Cargo.lock
 
 # python
 .venv
