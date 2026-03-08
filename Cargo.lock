@@ -78,6 +78,7 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.98",
+ "syn 2.0.117",
 ]
 
 [[package]]
@@ -247,6 +248,8 @@ dependencies = [
  "pyo3-build-config",
  "serde",
  "thiserror 2.0.11",
+ "syn 2.0.117",
+ "thiserror 2.0.12",
  "tokio",
  "tokio-stream",
  "tonic",
@@ -760,10 +763,61 @@ dependencies = [
 ]
 
 [[package]]
+name = "jni"
+version = "0.22.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "295dc9997acda1562fdf8d299f56063c936443b60f078e63a5d8d3c34ef2642b"
+dependencies = [
+ "cfg-if",
+ "combine",
+ "java-locator",
+ "jni-macros",
+ "jni-sys 0.4.1",
+ "libloading",
+ "log",
+ "simd_cesu8",
+ "thiserror 2.0.12",
+ "walkdir",
+ "windows-link 0.2.1",
+]
+
+[[package]]
+name = "jni-macros"
+version = "0.22.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1c3d1da60c95c98847b26b9d45f4360fee718b31de746df016d9cd6de916a7ef"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "rustc_version",
+ "simd_cesu8",
+ "syn 2.0.117",
+]
+
+[[package]]
 name = "jni-sys"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8eaf4bc02d17cbdd7ff4c7438cafcdf7fb9a4613313ad11b4f8fefe7d3fa0130"
+
+[[package]]
+name = "jni-sys"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c6377a88cb3910bee9b0fa88d4f42e1d2da8e79915598f65fb0c7ee14c878af2"
+dependencies = [
+ "jni-sys-macros",
+]
+
+[[package]]
+name = "jni-sys-macros"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "38c0b942f458fe50cdac086d2f946512305e5631e720728f2a61aabcd47a6264"
+dependencies = [
+ "quote",
+ "syn 2.0.117",
+]
 
 [[package]]
 name = "jni-toolbox"
@@ -785,6 +839,7 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.98",
+ "syn 2.0.117",
 ]
 
 [[package]]
@@ -955,6 +1010,7 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.98",
+ "syn 2.0.117",
 ]
 
 [[package]]
@@ -999,6 +1055,7 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.98",
+ "syn 2.0.117",
 ]
 
 [[package]]
@@ -1014,6 +1071,7 @@ dependencies = [
  "regex",
  "semver",
  "syn 2.0.98",
+ "syn 2.0.117",
 ]
 
 [[package]]
@@ -1158,6 +1216,7 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.98",
+ "syn 2.0.117",
 ]
 
 [[package]]
@@ -1201,6 +1260,7 @@ checksum = "6924ced06e1f7dfe3fa48d57b9f74f55d8915f5036121bef647ef4b204895fac"
 dependencies = [
  "proc-macro2",
  "syn 2.0.98",
+ "syn 2.0.117",
 ]
 
 [[package]]
@@ -1249,6 +1309,7 @@ dependencies = [
  "prost-types",
  "regex",
  "syn 2.0.98",
+ "syn 2.0.117",
  "tempfile",
 ]
 
@@ -1263,6 +1324,7 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.98",
+ "syn 2.0.117",
 ]
 
 [[package]]
@@ -1323,6 +1385,7 @@ dependencies = [
  "pyo3-macros-backend",
  "quote",
  "syn 2.0.98",
+ "syn 2.0.117",
 ]
 
 [[package]]
@@ -1336,6 +1399,7 @@ dependencies = [
  "pyo3-build-config",
  "quote",
  "syn 2.0.98",
+ "syn 2.0.117",
 ]
 
 [[package]]
@@ -1609,6 +1673,7 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.98",
+ "syn 2.0.117",
 ]
 
 [[package]]
@@ -1712,8 +1777,10 @@ dependencies = [
 [[package]]
 name = "syn"
 version = "2.0.98"
+version = "2.0.117"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "36147f1a48ae0ec2b5b3bc5b537d267457555a10dc06f3dbc8cb11ba3006d3b1"
+checksum = "e665b8803e7b1d2a727f4023456bbbbe74da67099c585258af0ad9c5013b9b99"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1773,6 +1840,7 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.98",
+ "syn 2.0.117",
 ]
 
 [[package]]
@@ -1784,6 +1852,7 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.98",
+ "syn 2.0.117",
 ]
 
 [[package]]
@@ -1821,6 +1890,7 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.98",
+ "syn 2.0.117",
 ]
 
 [[package]]
@@ -1912,6 +1982,32 @@ name = "tonic-build"
 version = "0.12.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9557ce109ea773b399c9b9e5dca39294110b74f1f342cb347a80d1fce8c26a11"
+version = "0.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "18262cdd13dec66e8e3f2e3fe535e4b2cc706fab444a7d3678d75d8ac2557329"
+dependencies = [
+ "prettyplease",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.117",
+]
+
+[[package]]
+name = "tonic-prost"
+version = "0.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2d8b5b7a44512c59f5ad45e0c40e53263cbbf4426d74fe6b569e04f1d4206e9c"
+dependencies = [
+ "bytes",
+ "prost",
+ "tonic",
+]
+
+[[package]]
+name = "tonic-prost-build"
+version = "0.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "114cca66d757d72422ef8cccf8be3065321860ac9fa4be73aab37a8a20a9a805"
 dependencies = [
  "prettyplease",
  "proc-macro2",
@@ -1939,6 +2035,9 @@ dependencies = [
  "tower-layer",
  "tower-service",
  "tracing",
+ "syn 2.0.117",
+ "tempfile",
+ "tonic-build",
 ]
 
 [[package]]
@@ -1987,6 +2086,7 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.98",
+ "syn 2.0.117",
 ]
 
 [[package]]
@@ -2149,6 +2249,7 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.98",
+ "syn 2.0.117",
  "wasm-bindgen-shared",
 ]
 
@@ -2171,6 +2272,7 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.98",
+ "syn 2.0.117",
  "wasm-bindgen-backend",
  "wasm-bindgen-shared",
 ]
@@ -2222,6 +2324,67 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "33ab640c8d7e35bf8ba19b884ba838ceb4fba93a4e8c65a9059d08afcfc683d9"
 dependencies = [
  "windows-targets 0.52.6",
+version = "0.61.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c0fdd3ddb90610c7638aa2b3a3ab2904fb9e5cdbecc643ddb3647212781c4ae3"
+dependencies = [
+ "windows-implement",
+ "windows-interface",
+ "windows-link 0.1.3",
+ "windows-result",
+ "windows-strings",
+]
+
+[[package]]
+name = "windows-implement"
+version = "0.60.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a47fddd13af08290e67f4acabf4b459f647552718f683a7b415d290ac744a836"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.117",
+]
+
+[[package]]
+name = "windows-interface"
+version = "0.59.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bd9211b69f8dcdfa817bfd14bf1c97c9188afa36f4750130fcdf3f400eca9fa8"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.117",
+]
+
+[[package]]
+name = "windows-link"
+version = "0.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5e6ad25900d524eaabdbbb96d20b4311e1e7ae1699af4fb28c17ae66c80d798a"
+
+[[package]]
+name = "windows-link"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f0805222e57f7521d6a62e36fa9163bc891acd422f971defe97d64e70d0a4fe5"
+
+[[package]]
+name = "windows-result"
+version = "0.3.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "56f42bd332cc6c8eac5af113fc0c1fd6a8fd2aa08a0119358686e5160d0586c6"
+dependencies = [
+ "windows-link 0.1.3",
+]
+
+[[package]]
+name = "windows-strings"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "56e6c93f3a0c3b36176cb1327a4958a0353d5d166c2a35cb268ace15e91d3b57"
+dependencies = [
+ "windows-link 0.1.3",
 ]
 
 [[package]]
@@ -2415,6 +2578,7 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.98",
+ "syn 2.0.117",
 ]
 
 [[package]]
