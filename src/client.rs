@@ -249,10 +249,8 @@ impl Client {
 			.collect())
 	}
 
-	pub async fn get_user_info(
-		&self,
-		user: impl ToString,
-	) -> RemoteResult<codemp_proto::common::UserInfo> {
+	/// Get the meta information for a user
+	pub async fn get_user_info(&self, user: impl ToString) -> RemoteResult<crate::api::UserInfo> {
 		Ok(self
 			.0
 			.session
@@ -261,7 +259,8 @@ impl Client {
 				user: user.to_string(),
 			})
 			.await?
-			.into_inner())
+			.into_inner()
+			.into())
 	}
 
 	/// Join and return a [`Workspace`].
