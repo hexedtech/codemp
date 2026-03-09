@@ -160,6 +160,7 @@ fn missing_lang_coverage(
 }
 
 #[test]
+#[cfg(all(test, feature = "py"))]
 fn python_ffi_should_cover_rust_api_surface() {
 	let targets = &[
 		"Client",
@@ -197,6 +198,7 @@ fn python_ffi_should_cover_rust_api_surface() {
 }
 
 #[test]
+#[cfg(all(test, feature = "js"))]
 fn javascript_ffi_should_cover_rust_api_surface() {
 	let targets = &[
 		"Client",
@@ -235,6 +237,7 @@ fn javascript_ffi_should_cover_rust_api_surface() {
 }
 
 #[test]
+#[cfg(all(test, feature = "lua"))]
 fn lua_ffi_should_cover_rust_api_surface() {
 	let targets = &[
 		"Client",
@@ -273,6 +276,7 @@ fn lua_ffi_should_cover_rust_api_surface() {
 }
 
 #[test]
+#[cfg(all(test, feature = "java"))]
 fn java_ffi_should_cover_rust_api_surface() {
 	let targets = &[
 		"Client",

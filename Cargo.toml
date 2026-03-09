@@ -70,6 +70,7 @@ async-trait = ["dep:async-trait"]
 serialize = ["dep:serde", "uuid/serde"]
 # special tests which require more setup
 test-e2e = []
+test-coverage = []
 # ffi
 java = ["dep:jni", "dep:tracing-subscriber", "dep:jni-toolbox"]
 js = ["dep:napi-build", "dep:tracing-subscriber", "dep:napi", "dep:napi-derive"]
