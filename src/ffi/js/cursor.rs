@@ -32,19 +32,22 @@ impl CursorController {
 
 	/// Send a new cursor event to remote
 	#[napi(js_name = "send")]
-	pub fn js_send(&self, sel: crate::api::Selection) -> napi::Result<()> {
-		Ok(self.send(sel)?)
-	}
+	pub fn js_send(&self, buffer: String, sel: crate::api::Selection) -> napi::Result<()> {
+    Ok(self.send(crate::api::Cursor {
+        buffer,
+        sel: vec![sel],
+    })?)
+}
 
 	/// Get next cursor event if available without blocking
 	#[napi(js_name = "tryRecv")]
-	pub async fn js_try_recv(&self) -> napi::Result<Option<crate::api::Cursor>> {
-		Ok(self.try_recv().await?.map(crate::api::Cursor::from))
+	pub async fn js_try_recv(&self) -> napi::Result<Option<crate::api::CursorEvent>> {
+		Ok(self.try_recv().await?.map(crate::api::CursorEvent::from))
 	}
 
 	/// Block until next
 	#[napi(js_name = "recv")]
-	pub async fn js_recv(&self) -> napi::Result<crate::api::Cursor> {
+	pub async fn js_recv(&self) -> napi::Result<crate::api::CursorEvent> {
 		Ok(self.recv().await?)
 	}
 }

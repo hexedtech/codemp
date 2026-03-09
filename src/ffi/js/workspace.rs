@@ -11,6 +11,7 @@ use super::client::JsUser;
 pub struct JsEvent {
 	pub r#type: String,
 	pub value: String,
+	pub buffer: Option<String>,
 }
 
 impl From<crate::api::Event> for JsEvent {
@@ -19,14 +20,27 @@ impl From<crate::api::Event> for JsEvent {
 			crate::api::Event::FileTreeUpdated { path: value } => Self {
 				r#type: "filetree".into(),
 				value,
+				buffer: None,
 			},
 			crate::api::Event::UserJoin { name: value } => Self {
 				r#type: "join".into(),
 				value,
+				buffer: None,
 			},
 			crate::api::Event::UserLeave { name: value } => Self {
 				r#type: "leave".into(),
 				value,
+				buffer: None,
+			},
+			crate::api::Event::UserJoinBuffer { name: value, buffer} => Self {
+				r#type: "joinBuffer".into(),
+				value,
+				buffer: Some(buffer),
+			},
+			crate::api::Event::UserLeaveBuffer { name: value, buffer} => Self {
+				r#type: "leaveBuffer".into(),
+				value,
+				buffer: Some(buffer),
 			},
 		}
 	}
@@ -37,7 +51,7 @@ impl Workspace {
 	/// Get the unique workspace id
 	#[napi(js_name = "id")]
 	pub fn js_id(&self) -> String {
-		self.id()
+		self.id().to_string()
 	}
 
 	/// List all available buffers in this workspace
@@ -72,8 +86,8 @@ impl Workspace {
 
 	/// Create a new buffer in the current workspace
 	#[napi(js_name = "createBuffer")]
-	pub async fn js_create_buffer(&self, path: String) -> napi::Result<()> {
-		Ok(self.create_buffer(&path).await?)
+	pub async fn js_create_buffer(&self, path: String, ephemeral: bool) -> napi::Result<()> {
+		Ok(self.create_buffer(&path, ephemeral).await?)
 	}
 
 	/// Attach to a workspace buffer, starting a BufferController
@@ -131,18 +145,13 @@ impl Workspace {
 
 	/// Re-fetch remote buffer list
 	#[napi(js_name = "fetchBuffers")]
-	pub async fn js_fetch_buffers(&self) -> napi::Result<Vec<String>> {
+	pub async fn js_fetch_buffers(&self) -> napi::Result<()> {
 		Ok(self.fetch_buffers().await?)
 	}
 	/// Re-fetch the list of all users in the workspace.
 	#[napi(js_name = "fetchUsers")]
-	pub async fn js_fetch_users(&self) -> napi::Result<Vec<JsUser>> {
-		Ok(self
-			.fetch_users()
-			.await?
-			.into_iter()
-			.map(JsUser::from)
-			.collect())
+	pub async fn js_fetch_users(&self) -> napi::Result<()> {
+		Ok(self.fetch_users().await?)
 	}
 
 	/// List users attached to a specific buffer
@@ -150,12 +159,7 @@ impl Workspace {
 	pub async fn js_fetch_buffer_users(
 		&self,
 		path: String,
-	) -> napi::Result<Vec<crate::ffi::js::client::JsUser>> {
-		Ok(self
-			.fetch_buffer_users(&path)
-			.await?
-			.into_iter()
-			.map(super::client::JsUser::from)
-			.collect())
+	) -> napi::Result<()> {
+		Ok(self.fetch_buffer_users(&path).await?)
 	}
 }

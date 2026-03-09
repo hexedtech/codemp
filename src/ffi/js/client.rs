@@ -5,23 +5,33 @@ use napi_derive::napi;
 pub struct JsUser {
 	pub uuid: String,
 	pub name: String,
+	pub display_name: Option<String>,
+	pub description: Option<String>,
+	pub avatar: Option<Vec<u8>>,
 }
 
-impl TryFrom<JsUser> for crate::api::User {
+
+impl TryFrom<JsUser> for crate::api::UserInfo {
 	type Error = <uuid::Uuid as std::str::FromStr>::Err;
 	fn try_from(value: JsUser) -> Result<Self, Self::Error> {
 		Ok(Self {
-			id: value.uuid.parse()?,
 			name: value.name,
+			display_name: value.display_name,
+			description: value.description,
+			avatar: value.avatar,
 		})
 	}
 }
 
-impl From<crate::api::User> for JsUser {
-	fn from(value: crate::api::User) -> Self {
+
+impl From<crate::api::UserInfo> for JsUser {
+	fn from(value: crate::api::UserInfo) -> Self {
 		Self {
-			uuid: value.id.to_string(),
+			uuid: String::new(),
 			name: value.name,
+			display_name: value.display_name,
+			description: value.description,
+			avatar: value.avatar,
 		}
 	}
 }
@@ -49,13 +59,19 @@ impl Client {
 	#[napi(js_name = "fetchOwnedWorkspaces")]
 	/// fetch owned workspaces
 	pub async fn js_fetch_owned_workspaces(&self) -> napi::Result<Vec<String>> {
-		Ok(self.fetch_owned_workspaces().await?)
+		Ok(self.fetch_owned_workspaces().await?
+		.into_iter()
+		.map(|w| w.to_string())
+		.collect())
 	}
 
 	#[napi(js_name = "fetchJoinedWorkspaces")]
 	/// fetch joined workspaces
 	pub async fn js_fetch_joined_workspaces(&self) -> napi::Result<Vec<String>> {
-		Ok(self.fetch_joined_workspaces().await?)
+		Ok(self.fetch_joined_workspaces().await?
+		.into_iter()
+		.map(|w| w.to_string())
+		.collect())
 	}
 
 	#[napi(js_name = "inviteToWorkspace")]
@@ -70,20 +86,20 @@ impl Client {
 
 	#[napi(js_name = "attachWorkspace")]
 	/// join workspace with given id (will start its cursor controller)
-	pub async fn js_attach_workspace(&self, workspace: String) -> napi::Result<Workspace> {
-		Ok(self.attach_workspace(workspace).await?)
+	pub async fn js_attach_workspace(&self, user: String, workspace: String) -> napi::Result<Workspace> {
+		Ok(self.attach_workspace(&user, &workspace).await?.into())
 	}
 
 	#[napi(js_name = "leaveWorkspace")]
 	/// leave workspace and disconnect, returns true if workspace was active
-	pub async fn js_leave_workspace(&self, workspace: String) -> bool {
-		self.leave_workspace(&workspace)
+	pub async fn js_leave_workspace(&self, user: String, workspace: String) -> bool {
+		self.leave_workspace(&user, workspace)
 	}
 
 	#[napi(js_name = "getWorkspace")]
 	/// get workspace with given id, if it exists
-	pub fn js_get_workspace(&self, workspace: String) -> Option<Workspace> {
-		self.get_workspace(&workspace)
+	pub fn js_get_workspace(&self, user: String, workspace: String) -> Option<Workspace> {
+		self.get_workspace(&user, &workspace)
 	}
 
 	#[napi(js_name = "currentUser")]
@@ -96,6 +112,9 @@ impl Client {
 	/// get list of all active workspaces
 	pub fn js_active_workspaces(&self) -> Vec<String> {
 		self.active_workspaces()
+		.into_iter()
+		.map(|w| w.to_string())
+		.collect()
 	}
 
 	#[napi(js_name = "refresh")]
