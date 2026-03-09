@@ -1,4 +1,4 @@
-use crate::api::User;
+use crate::api::UserInfo;
 use crate::api::controller::AsyncReceiver;
 use crate::buffer::Controller as BufferController;
 use crate::cursor::Controller as CursorController;
@@ -18,6 +18,18 @@ impl Workspace {
 		a_sync_detach!(py, this.create_buffer(path.as_str(), ephemeral).await)
 	}
 
+	#[pyo3(name = "pin_buffer")]
+	fn pypin_buffer(&self, py: Python, path: String) -> PyResult<Promise> {
+		let this = self.clone();
+		a_sync_detach!(py, this.pin_buffer(path.as_str()).await)
+	}
+
+	#[pyo3(name = "un_pin_buffer")]
+	fn pyun_pin_buffer(&self, py: Python, path: String) -> PyResult<Promise> {
+		let this = self.clone();
+		a_sync_detach!(py, this.un_pin_buffer(path.as_str()).await)
+	}
+
 	#[pyo3(name = "attach_buffer")]
 	fn pyattach_buffer(&self, py: Python, path: String) -> PyResult<Promise> {
 		let this = self.clone();
@@ -30,19 +42,19 @@ impl Workspace {
 	}
 
 	#[pyo3(name = "fetch_buffers")]
-	fn pylist_buffers(&self, py: Python, filter: String) -> PyResult<Promise> {
+	fn pyfetch_buffers(&self, py: Python) -> PyResult<Promise> {
 		let this = self.clone();
-		a_sync_detach!(py, this.fetch_buffers(filter).await)
+		a_sync_detach!(py, this.fetch_buffers().await)
 	}
 
 	#[pyo3(name = "fetch_users")]
-	fn pylist_users(&self, py: Python) -> PyResult<Promise> {
+	fn pyfetch_users(&self, py: Python) -> PyResult<Promise> {
 		let this = self.clone();
 		a_sync_detach!(py, this.fetch_users().await)
 	}
 
 	#[pyo3(name = "fetch_buffer_users")]
-	fn pylist_buffer_users(&self, py: Python, path: String) -> PyResult<Promise> {
+	fn pyfetch_buffer_users(&self, py: Python, path: String) -> PyResult<Promise> {
 		// crate::Result<Vec<crate::api::User>>
 		let this = self.clone();
 		a_sync_detach!(py, this.fetch_buffer_users(path).await)
@@ -55,8 +67,8 @@ impl Workspace {
 	}
 
 	#[pyo3(name = "id")]
-	fn pyid(&self) -> uuid::Uuid {
-		self.id()
+	fn pyid(&self) -> crate::api::WorkspaceIdentifier {
+		self.id().clone()
 	}
 
 	#[pyo3(name = "cursor")]
@@ -80,7 +92,7 @@ impl Workspace {
 	}
 
 	#[pyo3(name = "user_list")]
-	fn pyuser_list(&self) -> Vec<User> {
+	fn pyuser_list(&self) -> Vec<UserInfo> {
 		self.user_list()
 	}
 

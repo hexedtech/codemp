@@ -4,7 +4,7 @@ pub mod workspace;
 
 use crate::{
 	Client, Workspace,
-	api::{BufferUpdate, Config, Cursor, Event, Selection, TextChange, User},
+	api::{BufferUpdate, Config, Cursor, Event, Selection, TextChange, UserInfo},
 	buffer::Controller as BufferController,
 	cursor::Controller as CursorController,
 };
@@ -18,14 +18,14 @@ use pyo3::{
 use std::sync::OnceLock;
 use tokio::sync::{mpsc, oneshot};
 
-// global reference to a current_thread tokio runtime
+/// global reference to a current_thread tokio runtime
 pub fn tokio() -> &'static tokio::runtime::Runtime {
 	static RT: OnceLock<tokio::runtime::Runtime> = OnceLock::new();
 	RT.get_or_init(|| {
 		tokio::runtime::Builder::new_current_thread()
 			.enable_all()
 			.build()
-			.unwrap()
+			.expect("Failed to start the tokio runtime!")
 	})
 }
 
@@ -48,6 +48,8 @@ pub fn tokio() -> &'static tokio::runtime::Runtime {
 // 	let _ = CREATE_FUTURE.get_or_init(|| create_future);
 // }
 
+/// Implements a simple future like object between python and rust to allow for async operations
+/// between the two runtimes.
 #[pyclass]
 pub struct Promise(Option<tokio::task::JoinHandle<PyResult<Py<PyAny>>>>);
 
@@ -81,18 +83,20 @@ impl Promise {
 	}
 }
 
-macro_rules! a_sync {
-	($x:expr) => {{
-		Ok($crate::ffi::python::Promise(Some(
-			$crate::ffi::python::tokio().spawn(async move {
-				let res = $x?;
-				Python::attach(|py| Ok(res.into_pyobject(py)?.into_any().unbind()))
-			}),
-		)))
-	}};
-}
+// macro_rules! a_sync {
+// 	($x:expr) => {{
+// 		Ok($crate::ffi::python::Promise(Some(
+// 			$crate::ffi::python::tokio().spawn(async move {
+// 				let res = $x?;
+// 				Python::attach(|py| Ok(res.into_pyobject(py)?.into_any().unbind()))
+// 			}),
+// 		)))
+// 	}};
+// }
 //pub(crate) use a_sync;
 
+/// creates a future that will run detached from the gil, up until when it will need to resolve itself.
+/// at which point it will wait for the gil to become available, attach itself and populate the promise
 macro_rules! a_sync_detach {
 	($py:ident, $x:expr) => {{
 		$py.detach(move || {
@@ -121,6 +125,7 @@ impl std::io::Write for LoggerProducer {
 	}
 }
 
+/// This is a helper struct that allows for managing (i.e. stop the rust tokio runtime) from python directly.
 #[pyclass]
 pub struct Driver(Option<oneshot::Sender<()>>);
 #[pymethods]
@@ -158,30 +163,35 @@ fn init() -> PyResult<Driver> {
 }
 
 #[pymethods]
-impl User {
-	#[getter]
-	fn get_id(&self) -> pyo3::PyResult<String> {
-		Ok(self.id.to_string())
-	}
-
-	#[setter]
-	fn set_id(&mut self, value: String) -> pyo3::PyResult<()> {
-		self.id = value
-			.parse()
-			.map_err(|x: <uuid::Uuid as std::str::FromStr>::Err| {
-				pyo3::exceptions::PyRuntimeError::new_err(x.to_string())
-			})?;
-		Ok(())
-	}
-
+impl UserInfo {
 	#[getter]
 	fn get_name(&self) -> pyo3::PyResult<String> {
 		Ok(self.name.clone())
 	}
 
+	#[getter]
+	fn get_display_name(&self) -> pyo3::PyResult<String> {
+		Ok(self.display_name.clone().unwrap_or(self.name.clone()))
+	}
+
 	#[setter]
-	fn set_name(&mut self, value: String) -> pyo3::PyResult<()> {
-		self.name = value;
+	fn set_display_name(&mut self, value: String) -> pyo3::PyResult<()> {
+		self.display_name.replace(value);
+
+		Ok(())
+	}
+
+	#[getter]
+	fn get_description(&self) -> pyo3::PyResult<String> {
+		Ok(self
+			.description
+			.clone()
+			.unwrap_or("No description.".to_string()))
+	}
+
+	#[setter]
+	fn set_description(&mut self, value: String) -> pyo3::PyResult<()> {
+		self.description.replace(value);
 		Ok(())
 	}
 
@@ -385,7 +395,7 @@ fn codemp(m: &Bound<'_, PyModule>) -> PyResult<()> {
 	m.add_class::<Selection>()?;
 	m.add_class::<CursorController>()?;
 
-	m.add_class::<User>()?;
+	m.add_class::<UserInfo>()?;
 
 	m.add_class::<Workspace>()?;
 	m.add_class::<Event>()?;

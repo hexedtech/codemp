@@ -1,9 +1,9 @@
 use super::Client;
 use super::a_sync_detach;
-use crate::api::User;
+use crate::api::UserInfo;
+use crate::api::WorkspaceIdentifier;
 use crate::workspace::Workspace;
 use pyo3::prelude::*;
-use uuid::Uuid;
 
 #[pymethods]
 impl Client {
@@ -16,18 +16,11 @@ impl Client {
 	// 	super::tokio().block_on(Client::connect(host, username, password))
 	// }
 
-	#[pyo3(name = "attach_workspace")]
-	fn pyattach_workspace(&self, py: Python<'_>, workspace: Uuid) -> PyResult<super::Promise> {
-		tracing::info!("attempting to join the workspace {}", workspace);
+	#[pyo3(name = "refresh")]
+	fn pyrefresh(&self, py: Python<'_>) -> PyResult<super::Promise> {
+		tracing::info!("attempting to refresh token");
 		let this = self.clone();
-		a_sync_detach!(py, this.attach_workspace(workspace).await)
-		// let this = self.clone();
-		// Ok(super::Promise(Some(tokio().spawn(async move {
-		// 	Ok(this
-		// 		.join_workspace(workspace)
-		// 		.await
-		// 		.map(|f| Python::attach(|py| f.into_py(py)))?)
-		// }))))
+		a_sync_detach!(py, this.refresh().await)
 	}
 
 	#[pyo3(name = "create_workspace")]
@@ -44,6 +37,18 @@ impl Client {
 		a_sync_detach!(py, this.delete_workspace(workspace).await)
 	}
 
+	#[pyo3(name = "quit_workspace")]
+	fn pyquit_workspace(
+		&self,
+		py: Python<'_>,
+		user: String,
+		workspace: String,
+	) -> PyResult<super::Promise> {
+		tracing::info!("quitting workspace {}", workspace);
+		let this = self.clone();
+		a_sync_detach!(py, this.quit_workspace(user, workspace).await)
+	}
+
 	#[pyo3(name = "invite_to_workspace")]
 	fn pyinvite_to_workspace(
 		&self,
@@ -54,6 +59,30 @@ impl Client {
 		tracing::info!("inviting {user} to workspace {workspace}");
 		let this = self.clone();
 		a_sync_detach!(py, this.invite_to_workspace(workspace, user).await)
+	}
+
+	#[pyo3(name = "accept_invite")]
+	fn pyaccept_invite(
+		&self,
+		py: Python<'_>,
+		user: String,
+		workspace: String,
+	) -> PyResult<super::Promise> {
+		tracing::info!("Invite to workspace {user}::{workspace} accepted.");
+		let this = self.clone();
+		a_sync_detach!(py, this.accept_invite(user, workspace).await)
+	}
+
+	#[pyo3(name = "reject_invite")]
+	fn pyreject_invite(
+		&self,
+		py: Python<'_>,
+		user: String,
+		workspace: String,
+	) -> PyResult<super::Promise> {
+		tracing::info!("Invite to workspace {user}::{workspace} rejected.");
+		let this = self.clone();
+		a_sync_detach!(py, this.reject_invite(user, workspace).await)
 	}
 
 	#[pyo3(name = "fetch_owned_workspaces")]
@@ -70,31 +99,50 @@ impl Client {
 		a_sync_detach!(py, this.fetch_joined_workspaces().await)
 	}
 
-	#[pyo3(name = "leave_workspace")]
-	fn pyleave_workspace(&self, id: Uuid) -> bool {
-		self.leave_workspace(id)
-	}
-
 	// join a workspace
 	#[pyo3(name = "get_workspace")]
-	fn pyget_workspace(&self, id: Uuid) -> Option<Workspace> {
-		self.get_workspace(id)
+	fn pyget_workspace(&self, user: String, workspace: String) -> Option<Workspace> {
+		self.get_workspace(user, workspace)
 	}
 
 	#[pyo3(name = "active_workspaces")]
-	fn pyactive_workspaces(&self) -> Vec<Uuid> {
+	fn pyactive_workspaces(&self) -> Vec<WorkspaceIdentifier> {
 		self.active_workspaces()
 	}
 
+	#[pyo3(name = "get_user_info")]
+	fn pyget_user_info(&self, py: Python<'_>, user: String) -> PyResult<super::Promise> {
+		tracing::info!("fetching joined workspaces");
+		let this = self.clone();
+		a_sync_detach!(py, this.get_user_info(user).await)
+	}
+
 	#[pyo3(name = "current_user")]
-	fn pycurrent_user(&self) -> User {
+	fn pycurrent_user(&self) -> UserInfo {
 		self.current_user().clone()
 	}
 
-	#[pyo3(name = "refresh")]
-	fn pyrefresh(&self, py: Python<'_>) -> PyResult<super::Promise> {
-		tracing::info!("attempting to refresh token");
+	#[pyo3(name = "attach_workspace")]
+	fn pyattach_workspace(
+		&self,
+		py: Python<'_>,
+		user: String,
+		workspace: String,
+	) -> PyResult<super::Promise> {
+		tracing::info!("attempting to join the workspace {}", workspace);
 		let this = self.clone();
-		a_sync_detach!(py, this.refresh().await)
+		a_sync_detach!(py, this.attach_workspace(user, workspace).await)
+		// let this = self.clone();
+		// Ok(super::Promise(Some(tokio().spawn(async move {
+		// 	Ok(this
+		// 		.join_workspace(workspace)
+		// 		.await
+		// 		.map(|f| Python::attach(|py| f.into_py(py)))?)
+		// }))))
+	}
+
+	#[pyo3(name = "leave_workspace")]
+	fn pyleave_workspace(&self, user: String, workspace: String) -> bool {
+		self.leave_workspace(user, workspace)
 	}
 }
