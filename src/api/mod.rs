@@ -19,6 +19,9 @@ pub mod event;
 /// data structure for remote users
 pub mod user;
 
+/// file system
+pub mod file;
+
 pub use change::{BufferUpdate, TextChange};
 pub use config::Config;
 pub use controller::{AsyncReceiver, AsyncSender, Controller};
