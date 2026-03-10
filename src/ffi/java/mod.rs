@@ -97,3 +97,56 @@ impl jni_toolbox::IntoException for crate::errors::ControllerError {
 	}
 }
 
+
+macro_rules! from_java_ptr {
+	($type: ty) => {
+		impl<'j> jni_toolbox::FromJava<'j> for &mut $type {
+			type From = jni::sys::jobject;
+			fn from_java(
+				_env: &mut jni::Env<'j>,
+				value: Self::From,
+			) -> Result<Self, jni::errors::Error> {
+				Ok(unsafe { Box::leak(Box::from_raw(value as *mut $type)) })
+			}
+
+			fn from_jvalue(
+				env: &mut jni::Env<'j>,
+				value: jni::JValueOwned,
+			) -> Result<Self, jni::errors::Error> {
+				Self::from_java(env, value.l()?.into_raw())
+			}
+		}
+	};
+}
+
+from_java_ptr!(crate::Client);
+from_java_ptr!(crate::Workspace);
+from_java_ptr!(crate::cursor::Controller);
+from_java_ptr!(crate::buffer::Controller);
+
+/// Generates a [JObjectify] implementation for a class that is just a holder for a pointer.
+macro_rules! into_java_ptr_class {
+	($type: ty, $jclass: literal) => {
+		impl<'j> jni_toolbox::IntoJavaObject<'j> for $type {
+			const CLASS: &'static str = $jclass;
+			fn into_java_object(
+				self,
+				env: &mut jni::Env<'j>,
+			) -> Result<jni::objects::JObject<'j>, jni::errors::Error> {
+				let class = env.find_class(jni::strings::JNIString::new(Self::CLASS))?;
+				env.new_object(
+					class,
+					jni::jni_sig!((ptr: i64) -> ()),
+					&[jni::objects::JValue::Long(
+						Box::into_raw(Box::new(self)) as jni::sys::jlong
+					)],
+				)
+			}
+		}
+	};
+}
+
+into_java_ptr_class!(crate::Client, "mp/code/Client");
+into_java_ptr_class!(crate::Workspace, "mp/code/Workspace");
+into_java_ptr_class!(crate::cursor::Controller, "mp/code/CursorController");
+into_java_ptr_class!(crate::buffer::Controller, "mp/code/BufferController");
