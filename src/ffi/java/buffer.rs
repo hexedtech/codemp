@@ -55,7 +55,7 @@ fn callback<'local>(
 	let cb_ref = env.new_global_ref(cb)?;
 
 	controller.callback(move |controller: crate::buffer::Controller| {
-		if let Err(e) = super::jvm().attach_current_thread(|mut env| {
+		let result: Result<(), jni::errors::Error> = super::jvm().attach_current_thread(|env| {
 			env.with_local_frame(5, |env| {
 				use jni_toolbox::IntoJavaObject;
 				let jcontroller = controller.into_java_object(env)?;
@@ -65,11 +65,13 @@ fn callback<'local>(
 					jni::jni_sig!((buf: java.lang.Object) -> ()),
 					&[jni::objects::JValue::Object(&jcontroller)],
 				)?;
-				Ok(())
+				Ok::<(), jni::errors::Error>(())
 			})?;
 
 			Ok(())
-		}) {
+		});
+
+		if let Err(e) = result {
 			tracing::error!("error invoking buffer callback: {e}");
 		}
 	});

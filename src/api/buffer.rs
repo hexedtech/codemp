@@ -5,6 +5,7 @@
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "py", pyo3::pyclass(from_py_object))]
 #[cfg_attr(feature = "serialize", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "java", jni_toolbox::jclass(class = "mp/code/BufferNode"))]
 pub struct BufferNode {
 	/// Buffer path, sort of like a UNIX path.
 	pub path: String,

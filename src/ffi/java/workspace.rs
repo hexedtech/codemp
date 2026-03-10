@@ -128,7 +128,7 @@ fn callback<'local>(
 	let cb_ref = env.new_global_ref(cb)?;
 
 	controller.callback(move |workspace: crate::Workspace| {
-		let out = super::jvm().attach_current_thread(|mut env| {
+		let out: Result<(), jni::errors::Error> = super::jvm().attach_current_thread(|env| {
 			env.with_local_frame(5, |env| {
 				use jni_toolbox::IntoJavaObject;
 				let jworkspace = workspace.into_java_object(env)?;
@@ -138,7 +138,7 @@ fn callback<'local>(
 					jni::jni_sig!((ws: java.lang.Object) -> ()),
 					&[jni::objects::JValue::Object(&jworkspace)],
 				)?;
-				Ok(())
+				Ok::<(), jni::errors::Error>(())
 			})?;
 			Ok(())
 		});
