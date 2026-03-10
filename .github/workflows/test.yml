@@ -105,5 +105,5 @@ jobs:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - run: cargo test --verbose --features=test-coverage,${{ matrix.features }} tests::coverage
+      - run: cargo test --no-default-features --features=${{ matrix.features }},test-coverage,py-abi3 tests::coverage
 
