@@ -797,7 +797,7 @@ dependencies = [
 [[package]]
 name = "jni-toolbox"
 version = "0.2.2"
-source = "git+https://github.com/hexedtech/jni-toolbox?rev=f153192a71c8c031a68bdf30aeef8acdddf15788#f153192a71c8c031a68bdf30aeef8acdddf15788"
+source = "git+https://github.com/hexedtech/jni-toolbox?rev=bbc84322d9c7d93b2af62f595187f5c04754f1cf#bbc84322d9c7d93b2af62f595187f5c04754f1cf"
 dependencies = [
  "jni",
  "jni-toolbox-macro",
@@ -808,7 +808,7 @@ dependencies = [
 [[package]]
 name = "jni-toolbox-macro"
 version = "0.2.2"
-source = "git+https://github.com/hexedtech/jni-toolbox?rev=f153192a71c8c031a68bdf30aeef8acdddf15788#f153192a71c8c031a68bdf30aeef8acdddf15788"
+source = "git+https://github.com/hexedtech/jni-toolbox?rev=bbc84322d9c7d93b2af62f595187f5c04754f1cf#bbc84322d9c7d93b2af62f595187f5c04754f1cf"
 dependencies = [
  "proc-macro2",
  "quote",

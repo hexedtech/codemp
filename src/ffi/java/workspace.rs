@@ -1,16 +1,15 @@
 use crate::{
 	Workspace,
-	api::{User, controller::AsyncReceiver},
+	api::{UserInfo, WorkspaceIdentifier, controller::AsyncReceiver},
 	errors::{ConnectionError, ControllerError, RemoteError},
-	ffi::java::null_check,
 };
-use jni::{JNIEnv, objects::JObject};
+use jni::{Env, objects::JObject};
 use jni_toolbox::jni;
 
 /// Get the workspace id.
 #[jni(package = "mp.code", class = "Workspace")]
-fn id(workspace: &mut Workspace) -> String {
-	workspace.id()
+fn id(workspace: &mut Workspace) -> WorkspaceIdentifier {
+	workspace.id().clone()
 }
 
 /// Get a cursor controller by name and returns a pointer to it.
@@ -39,14 +38,14 @@ fn active_buffers(workspace: &mut Workspace) -> Vec<String> {
 
 /// Gets a list of the active buffers.
 #[jni(package = "mp.code", class = "Workspace")]
-fn user_list(workspace: &mut Workspace) -> Vec<User> {
+fn user_list(workspace: &mut Workspace) -> Vec<UserInfo> {
 	workspace.user_list()
 }
 
 /// Create a new buffer.
 #[jni(package = "mp.code", class = "Workspace")]
-fn create_buffer(workspace: &mut Workspace, path: String) -> Result<(), RemoteError> {
-	super::tokio().block_on(workspace.create_buffer(&path))
+fn create_buffer(workspace: &mut Workspace, path: String, ephemeral: bool) -> Result<(), RemoteError> {
+	super::tokio().block_on(workspace.create_buffer(path, ephemeral))
 }
 
 /// Attach to a buffer and return a pointer to its [`crate::buffer::Controller`].
@@ -66,13 +65,13 @@ fn detach_buffer(workspace: &mut Workspace, path: String) -> bool {
 
 /// Update the local buffer list.
 #[jni(package = "mp.code", class = "Workspace")]
-fn fetch_buffers(workspace: &mut Workspace) -> Result<Vec<String>, RemoteError> {
+fn fetch_buffers(workspace: &mut Workspace) -> Result<(), RemoteError> {
 	super::tokio().block_on(workspace.fetch_buffers())
 }
 
 /// Update the local user list.
 #[jni(package = "mp.code", class = "Workspace")]
-fn fetch_users(workspace: &mut Workspace) -> Result<Vec<User>, RemoteError> {
+fn fetch_users(workspace: &mut Workspace) -> Result<(), RemoteError> {
 	super::tokio().block_on(workspace.fetch_users())
 }
 
@@ -81,7 +80,7 @@ fn fetch_users(workspace: &mut Workspace) -> Result<Vec<User>, RemoteError> {
 fn fetch_buffer_users(
 	workspace: &mut Workspace,
 	path: String,
-) -> Result<Vec<crate::api::User>, RemoteError> {
+) -> Result<(), RemoteError> {
 	super::tokio().block_on(workspace.fetch_buffer_users(&path))
 }
 
@@ -118,42 +117,38 @@ fn clear_callback(workspace: &mut Workspace) {
 /// Register a callback for workspace events.
 #[jni(package = "mp.code", class = "Workspace")]
 fn callback<'local>(
-	env: &mut JNIEnv<'local>,
+	env: &mut Env<'local>,
 	controller: &mut crate::Workspace,
 	cb: JObject<'local>,
-) {
-	null_check!(env, cb, {});
-	let Ok(cb_ref) = env.new_global_ref(cb) else {
-		env.throw_new(
-			"mp/code/exceptions/JNIException",
-			"Failed to pin callback reference!",
-		)
-		.expect("Failed to throw exception!");
-		return;
-	};
+) -> Result<(), jni::errors::Error> {
+	if cb.is_null() {
+		return Err(jni::errors::Error::NullPtr("null pointer to workspace callback"));
+	}
+
+	let cb_ref = env.new_global_ref(cb)?;
 
 	controller.callback(move |workspace: crate::Workspace| {
-		let jvm = super::jvm();
-		let mut env = jvm
-			.attach_current_thread_permanently()
-			.expect("failed attaching to main JVM thread");
-		if let Err(e) = env.with_local_frame(5, |env| {
-			use jni_toolbox::IntoJavaObject;
-			let jworkspace = workspace.into_java_object(env)?;
-			if let Err(e) = env.call_method(
-				&cb_ref,
-				"accept",
-				"(Ljava/lang/Object;)V",
-				&[jni::objects::JValueGen::Object(&jworkspace)],
-			) {
-				tracing::error!("error invoking callback: {e:?}");
-			};
-			Ok::<(), jni::errors::Error>(())
-		}) {
-			tracing::error!("error invoking callback: {e}");
-			let _ = env.exception_describe();
+		let out = super::jvm().attach_current_thread(|mut env| {
+			env.with_local_frame(5, |env| {
+				use jni_toolbox::IntoJavaObject;
+				let jworkspace = workspace.into_java_object(env)?;
+				env.call_method(
+					&cb_ref,
+					jni::jni_str!("accept"),
+					jni::jni_sig!((ws: java.lang.Object) -> ()),
+					&[jni::objects::JValue::Object(&jworkspace)],
+				)?;
+				Ok(())
+			})?;
+			Ok(())
+		});
+
+		if let Err(e) = out {
+			tracing::error!("error invoking workspace callback: {e}");
 		}
 	});
+
+	Ok(())
 }
 
 /// Called by the Java GC to drop a [Workspace].

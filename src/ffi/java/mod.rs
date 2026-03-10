@@ -69,43 +69,38 @@ pub(crate) fn setup_logger(debug: bool, path: Option<String>) {
 /// if it is null. Finally, it returns with the given default value.
 macro_rules! null_check {
 	// TODO replace
-	($env: ident, $var: ident, $return: expr) => {
+	($var: ident) => {
 		if $var.is_null() {
-			let mut message = stringify!($var).to_string();
-			message.push_str(" cannot be null!");
-			$env.throw_new("java/lang/NullPointerException", message)
-				.expect("Failed to throw exception!");
-			return $return;
+			return Err(jni::errors::Error::NullPtr(stringify!($var)));
 		}
 	};
 }
 
 pub(crate) use null_check;
 
-impl From<crate::errors::ConnectionError> for jni_toolbox::Error {
-	fn from(value: crate::errors::ConnectionError) -> Self {
-		let clazz = match self {
+use jni_toolbox::IntoException;
+
+impl IntoException for crate::errors::ConnectionError {
+	fn jclass(&self) -> &'static str {
+		match self {
 			crate::errors::ConnectionError::Transport(_) => {
 				"mp/code/exceptions/ConnectionTransportException"
 			}
 			crate::errors::ConnectionError::Remote(_) => {
 				"mp/code/exceptions/ConnectionRemoteException"
 			}
-		};
-		let message = Some(format!("{value} -- {value:?}"));
-
-		Self { message, clazz }
+		}
 	}
 }
 
-impl jni_toolbox::JniToolboxError for crate::errors::RemoteError {
-	fn jclass(&self) -> String {
-		"mp/code/exceptions/ConnectionRemoteException".to_string()
+impl IntoException for crate::errors::RemoteError {
+	fn jclass(&self) -> &'static str {
+		"mp/code/exceptions/ConnectionRemoteException"
 	}
 }
 
-impl jni_toolbox::JniToolboxError for crate::errors::ControllerError {
-	fn jclass(&self) -> String {
+impl IntoException for crate::errors::ControllerError {
+	fn jclass(&self) -> &'static str {
 		match self {
 			crate::errors::ControllerError::Stopped => {
 				"mp/code/exceptions/ControllerStoppedException"
@@ -114,7 +109,6 @@ impl jni_toolbox::JniToolboxError for crate::errors::ControllerError {
 				"mp/code/exceptions/ControllerUnfulfilledException"
 			}
 		}
-		.to_string()
 	}
 }
 
@@ -125,13 +119,13 @@ macro_rules! into_java_ptr_class {
 			const CLASS: &'static str = $jclass;
 			fn into_java_object(
 				self,
-				env: &mut jni::JNIEnv<'j>,
+				env: &mut jni::Env<'j>,
 			) -> Result<jni::objects::JObject<'j>, jni::errors::Error> {
-				let class = env.find_class(Self::CLASS)?;
+				let class = env.find_class(jni::strings::JNIString::new(Self::CLASS))?;
 				env.new_object(
 					class,
-					"(J)V",
-					&[jni::objects::JValueGen::Long(
+					jni::jni_sig!((ptr: i64) -> ()),
+					&[jni::objects::JValue::Long(
 						Box::into_raw(Box::new(self)) as jni::sys::jlong
 					)],
 				)
@@ -145,21 +139,20 @@ into_java_ptr_class!(crate::Workspace, "mp/code/Workspace");
 into_java_ptr_class!(crate::cursor::Controller, "mp/code/CursorController");
 into_java_ptr_class!(crate::buffer::Controller, "mp/code/BufferController");
 
-impl<'j> jni_toolbox::IntoJavaObject<'j> for crate::api::User {
+impl<'j> jni_toolbox::IntoJavaObject<'j> for crate::api::UserInfo {
 	const CLASS: &'static str = "mp/code/data/User";
 	fn into_java_object(
 		self,
-		env: &mut jni::JNIEnv<'j>,
+		env: &mut jni::Env<'j>,
 	) -> Result<jni::objects::JObject<'j>, jni::errors::Error> {
-		let id_field = self.id.into_java_object(env)?;
 		let name_field = env.new_string(self.name)?;
-		let class = env.find_class(Self::CLASS)?;
+		let class = env.find_class(jni::strings::JNIString::new(Self::CLASS))?;
 		env.new_object(
 			&class,
-			"(Ljava/util/UUID;Ljava/lang/String;)V",
+			jni::jni_sig!((id: java.util.UUID, name: java.lang.String) -> ()),
 			&[
-				jni::objects::JValueGen::Object(&id_field),
-				jni::objects::JValueGen::Object(&name_field),
+				// jni::objects::JValue::Object(&id_field),
+				jni::objects::JValue::Object(&name_field),
 			],
 		)
 	}
@@ -169,7 +162,7 @@ impl<'j> jni_toolbox::IntoJavaObject<'j> for crate::api::Event {
 	const CLASS: &'static str = "mp/code/Workspace$Event";
 	fn into_java_object(
 		self,
-		env: &mut jni::JNIEnv<'j>,
+		env: &mut jni::Env<'j>,
 	) -> Result<jni::objects::JObject<'j>, jni::errors::Error> {
 		let (ordinal, arg) = match self {
 			crate::api::Event::UserJoin { name: arg } => (0, env.new_string(arg)?),
@@ -301,7 +294,7 @@ macro_rules! from_java_ptr {
 		impl<'j> jni_toolbox::FromJava<'j> for &mut $type {
 			type From = jni::sys::jobject;
 			fn from_java(
-				_env: &mut jni::JNIEnv<'j>,
+				_env: &mut jni::Env<'j>,
 				value: Self::From,
 			) -> Result<Self, jni::errors::Error> {
 				Ok(unsafe { Box::leak(Box::from_raw(value as *mut $type)) })

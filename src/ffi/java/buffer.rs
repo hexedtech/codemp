@@ -6,8 +6,6 @@ use crate::{
 	errors::ControllerError,
 };
 
-use super::null_check;
-
 /// Get the name of the buffer.
 #[jni(package = "mp.code", class = "BufferController")]
 fn get_name(controller: &mut crate::buffer::Controller) -> String {
@@ -49,39 +47,34 @@ fn callback<'local>(
 	env: &mut Env<'local>,
 	controller: &mut crate::buffer::Controller,
 	cb: JObject<'local>,
-) {
-	null_check!(env, cb, {});
-	let Ok(cb_ref) = env.new_global_ref(cb) else {
-		env.throw_new(
-			"mp/code/exceptions/JNIException",
-			"Failed to pin callback reference!",
-		)
-		.expect("Failed to throw exception!");
-		return;
-	};
+) -> Result<(), jni::errors::Error> {
+	if cb.is_null() {
+		return Err(jni::errors::Error::NullPtr("null pointer to buffer callback"));
+	}
+
+	let cb_ref = env.new_global_ref(cb)?;
 
 	controller.callback(move |controller: crate::buffer::Controller| {
-		let jvm = super::jvm();
-		let mut env = jvm
-			.attach_current_thread_permanently()
-			.expect("failed attaching to main JVM thread");
-		if let Err(e) = env.with_local_frame(5, |env| {
-			use jni_toolbox::IntoJavaObject;
-			let jcontroller = controller.into_java_object(env)?;
-			if let Err(e) = env.call_method(
-				&cb_ref,
-				"accept",
-				"(Ljava/lang/Object;)V",
-				&[jni::objects::JValueGen::Object(&jcontroller)],
-			) {
-				tracing::error!("error invoking callback: {e:?}");
-			};
-			Ok::<(), jni::errors::Error>(())
+		if let Err(e) = super::jvm().attach_current_thread(|mut env| {
+			env.with_local_frame(5, |env| {
+				use jni_toolbox::IntoJavaObject;
+				let jcontroller = controller.into_java_object(env)?;
+				env.call_method(
+					&cb_ref,
+					jni::jni_str!("accept"),
+					jni::jni_sig!((buf: java.lang.Object) -> ()),
+					&[jni::objects::JValue::Object(&jcontroller)],
+				)?;
+				Ok(())
+			})?;
+
+			Ok(())
 		}) {
-			tracing::error!("error invoking callback: {e}");
-			let _ = env.exception_describe();
+			tracing::error!("error invoking buffer callback: {e}");
 		}
 	});
+
+	Ok(())
 }
 
 /// Clear the callback for buffer changes.
