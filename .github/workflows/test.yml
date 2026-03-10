@@ -19,7 +19,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - run: cargo test --format json --report-time | tee result.json
-      - uses: innoq/action-cargo-test-report
+      - uses: innoq/action-cargo-test-report@v1
         id: cargo_reporter 
         with:
           cargo-test-report-json: 'results.json'
@@ -59,7 +59,7 @@ jobs:
         with:
           toolchain: ${{ matrix.toolchain }}
       - run: cargo test --format json --report-time | tee result.json
-      - uses: innoq/action-cargo-test-report
+      - uses: innoq/action-cargo-test-report@v1
         id: cargo_reporter 
         with:
           cargo-test-report-json: 'result.json'
@@ -109,7 +109,7 @@ jobs:
           CODEMP_TEST_PASSWORD_ALICE: ${{ secrets.CODEMP_TEST_PASSWORD_ALICE }}
           CODEMP_TEST_USERNAME_BOB: ${{ secrets.CODEMP_TEST_USERNAME_BOB }}
           CODEMP_TEST_PASSWORD_BOB: ${{ secrets.CODEMP_TEST_PASSWORD_BOB }}
-      - uses: innoq/action-cargo-test-report
+      - uses: innoq/action-cargo-test-report@v1
         id: cargo_reporter 
         with:
           cargo-test-report-json: 'result.json'
@@ -139,7 +139,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - run: cargo test --format json --report-time --no-default-features --features=${{ matrix.features }},test-coverage,py-abi3,lua-jit tests::coverage | tee result.json
-      - uses: innoq/action-cargo-test-report
+      - uses: innoq/action-cargo-test-report@v1
         id: cargo_reporter 
         with:
           cargo-test-report-json: 'result.json'
