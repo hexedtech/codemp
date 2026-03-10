@@ -18,18 +18,7 @@ jobs:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - run: cargo test --format json --report-time | tee result.json
-      - uses: innoq/action-cargo-test-report@v1
-        id: cargo_reporter 
-        with:
-          cargo-test-report-json: 'result.json'
-      - uses: mikepenz/action-junit-report@main
-        if: always()
-        with:
-          check_name: Unit+Doc tests report
-          fail_on_failure: true
-          require_tests: true
-          summary: ${{ steps.cargo_reporter.outputs.summary }}
+      - run: cargo test --verbose
 
   test-doc:
     runs-on: ubuntu-latest
@@ -58,18 +47,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ matrix.toolchain }}
-      - run: cargo test --format json --report-time | tee result.json
-      - uses: innoq/action-cargo-test-report@v1
-        id: cargo_reporter 
-        with:
-          cargo-test-report-json: 'result.json'
-      - uses: mikepenz/action-junit-report@main
-        if: always()
-        with:
-          check_name: Beta+Nightly tests report
-          fail_on_failure: true
-          require_tests: true
-          summary: ${{ steps.cargo_reporter.outputs.summary }}
+      - run: cargo test --verbose
 
   test-build:
     needs: [test-unit]
@@ -103,23 +81,12 @@ jobs:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - run: cargo test --format json --report-time --features=test-e2e tests::e2e | tee result.json
+      - run: cargo test --verbose --features=test-e2e tests::e2e
         env:
           CODEMP_TEST_USERNAME_ALICE: ${{ secrets.CODEMP_TEST_USERNAME_ALICE }}
           CODEMP_TEST_PASSWORD_ALICE: ${{ secrets.CODEMP_TEST_PASSWORD_ALICE }}
           CODEMP_TEST_USERNAME_BOB: ${{ secrets.CODEMP_TEST_USERNAME_BOB }}
           CODEMP_TEST_PASSWORD_BOB: ${{ secrets.CODEMP_TEST_PASSWORD_BOB }}
-      - uses: innoq/action-cargo-test-report@v1
-        id: cargo_reporter 
-        with:
-          cargo-test-report-json: 'result.json'
-      - uses: mikepenz/action-junit-report@main
-        if: always()
-        with:
-          check_name: Functional tests report
-          fail_on_failure: true
-          require_tests: true
-          summary: ${{ steps.cargo_reporter.outputs.summary }}
 
   test-coverage:
     needs: [test-build]
@@ -138,16 +105,5 @@ jobs:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - run: cargo test --format json --report-time --no-default-features --features=${{ matrix.features }},test-coverage,py-abi3,lua-jit tests::coverage | tee result.json
-      - uses: innoq/action-cargo-test-report@v1
-        id: cargo_reporter 
-        with:
-          cargo-test-report-json: 'result.json'
-      - uses: mikepenz/action-junit-report@main
-        if: always()
-        with:
-          check_name: FFI Coverage tests report
-          fail_on_failure: true
-          require_tests: true
-          summary: ${{ steps.cargo_reporter.outputs.summary }}
+      - run: cargo test --no-default-features --features=${{ matrix.features }},test-coverage,py-abi3,lua-jit tests::coverage
 
