@@ -81,6 +81,8 @@ lua-jit = ["mlua?/luajit"]
 lua-54 = ["mlua?/lua54"]
 py-abi3 = ["pyo3?/abi3-py38"]
 py-extmod = ["pyo3?/extension-module"]
+# enables ci-specific stuff
+ci = []
 
 
 [package.metadata.docs.rs] # enabled features when building on docs.rs

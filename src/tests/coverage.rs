@@ -190,6 +190,11 @@ fn python_ffi_should_cover_rust_api_surface() {
 
 	let missings = missing_lang_coverage("python", python_src, required, &python_ignore);
 
+	#[cfg(feature = "ci")]
+	if !missing.is_empty() {
+		println!("::error title=Coverage::python is missing ffi coverage: {}", missings.join(" "));
+	}
+
 	assert!(
 		missings.is_empty(),
 		"missing ffi coverage:\n{}",
@@ -228,6 +233,11 @@ fn javascript_ffi_should_cover_rust_api_surface() {
 	let js_ignore = [];
 
 	let missings = missing_lang_coverage("javascript", js_src, required, &js_ignore);
+
+	#[cfg(feature = "ci")]
+	if !missing.is_empty() {
+		println!("::error title=Coverage::javascript is missing ffi coverage: {}", missings.join(" "));
+	}
 
 	assert!(
 		missings.is_empty(),
@@ -268,6 +278,11 @@ fn lua_ffi_should_cover_rust_api_surface() {
 
 	let missings = missing_lang_coverage("lua", lua_src, required, &lua_ignore);
 
+	#[cfg(feature = "ci")]
+	if !missing.is_empty() {
+		println!("::error title=Coverage::lua is missing ffi coverage: {}", missings.join(" "));
+	}
+
 	assert!(
 		missings.is_empty(),
 		"missing ffi coverage:\n{}",
@@ -306,6 +321,11 @@ fn java_ffi_should_cover_rust_api_surface() {
 	let java_ignore = [];
 
 	let missings = missing_lang_coverage("java", java_src, required, &java_ignore);
+
+	#[cfg(feature = "ci")]
+	if !missing.is_empty() {
+		println!("::error title=Coverage::java is missing ffi coverage: {}", missings.join(" "));
+	}
 
 	assert!(
 		missings.is_empty(),
