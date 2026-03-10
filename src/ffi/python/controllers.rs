@@ -1,5 +1,6 @@
 use crate::api::Cursor;
 use crate::api::TextChange;
+use crate::api::WorkspaceIdentifier;
 use crate::api::controller::{AsyncReceiver, AsyncSender};
 use crate::buffer::Controller as BufferController;
 use crate::cursor::Controller as CursorController;
@@ -12,6 +13,11 @@ use super::a_sync_detach;
 // need to do manually since Controller is a trait implementation
 #[pymethods]
 impl CursorController {
+	#[pyo3(name = "workspace_id")]
+	fn pyworkspace_id(&self) -> WorkspaceIdentifier {
+		self.workspace_id().clone()
+	}
+
 	#[pyo3(name = "send")]
 	fn pysend(&self, _py: Python, pos: Cursor) -> PyResult<()> {
 		self.send(pos)?;
@@ -63,6 +69,11 @@ impl BufferController {
 	#[pyo3(name = "path")]
 	fn pypath(&self) -> String {
 		self.path().to_string()
+	}
+
+	#[pyo3(name = "workspace_id")]
+	fn pyworkspace_id(&self) -> WorkspaceIdentifier {
+		self.workspace_id().clone()
 	}
 
 	#[pyo3(name = "content")]

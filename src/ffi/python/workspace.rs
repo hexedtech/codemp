@@ -96,6 +96,11 @@ impl Workspace {
 		self.user_list()
 	}
 
+	#[pyo3(name = "buffer_user_list")]
+	fn pybuffer_user_list(&self, path: String) -> Vec<UserInfo> {
+		self.buffer_user_list(path)
+	}
+
 	#[pyo3(name = "recv")]
 	fn pyrecv(&self, py: Python) -> PyResult<Promise> {
 		let this = self.clone();
