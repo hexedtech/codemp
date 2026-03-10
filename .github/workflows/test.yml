@@ -22,7 +22,7 @@ jobs:
       - uses: innoq/action-cargo-test-report@v1
         id: cargo_reporter 
         with:
-          cargo-test-report-json: 'results.json'
+          cargo-test-report-json: 'result.json'
       - uses: mikepenz/action-junit-report@main
         if: always()
         with:
