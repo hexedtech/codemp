@@ -82,17 +82,19 @@ macro_rules! null_check {
 
 pub(crate) use null_check;
 
-impl jni_toolbox::JniToolboxError for crate::errors::ConnectionError {
-	fn jclass(&self) -> String {
-		match self {
+impl From<crate::errors::ConnectionError> for jni_toolbox::Error {
+	fn from(value: crate::errors::ConnectionError) -> Self {
+		let clazz = match self {
 			crate::errors::ConnectionError::Transport(_) => {
 				"mp/code/exceptions/ConnectionTransportException"
 			}
 			crate::errors::ConnectionError::Remote(_) => {
 				"mp/code/exceptions/ConnectionRemoteException"
 			}
-		}
-		.to_string()
+		};
+		let message = Some(format!("{value} -- {value:?}"));
+
+		Self { message, clazz }
 	}
 }
 

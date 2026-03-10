@@ -1,6 +1,6 @@
 use crate::{
 	Workspace,
-	api::Config,
+	api::{Config, WorkspaceIdentifier},
 	client::Client,
 	errors::{ConnectionError, RemoteError},
 };
@@ -14,14 +14,14 @@ fn connect(config: Config) -> Result<Client, ConnectionError> {
 
 /// Gets the current [crate::api::User].
 #[jni(package = "mp.code", class = "Client")]
-fn current_user(client: &mut Client) -> crate::api::User {
+fn current_user(client: &mut Client) -> crate::api::UserInfo {
 	client.current_user().clone()
 }
 
 /// Join a [Workspace] and return a pointer to it.
 #[jni(package = "mp.code", class = "Client")]
-fn attach_workspace(client: &mut Client, workspace: String) -> Result<Workspace, ConnectionError> {
-	super::tokio().block_on(client.attach_workspace(workspace))
+fn attach_workspace(client: &mut Client, user: String, workspace: String) -> Result<Workspace, ConnectionError> {
+	super::tokio().block_on(client.attach_workspace(user, workspace))
 }
 
 /// Create a workspace on server, if allowed to.
@@ -48,32 +48,32 @@ fn invite_to_workspace(
 
 /// List owned workspaces.
 #[jni(package = "mp.code", class = "Client")]
-fn fetch_owned_workspaces(client: &mut Client) -> Result<Vec<String>, RemoteError> {
+fn fetch_owned_workspaces(client: &mut Client) -> Result<Vec<WorkspaceIdentifier>, RemoteError> {
 	super::tokio().block_on(client.fetch_owned_workspaces())
 }
 
 /// List joined workspaces.
 #[jni(package = "mp.code", class = "Client")]
-fn fetch_joined_workspaces(client: &mut Client) -> Result<Vec<String>, RemoteError> {
+fn fetch_joined_workspaces(client: &mut Client) -> Result<Vec<WorkspaceIdentifier>, RemoteError> {
 	super::tokio().block_on(client.fetch_joined_workspaces())
 }
 
 /// List available workspaces.
 #[jni(package = "mp.code", class = "Client")]
-fn active_workspaces(client: &mut Client) -> Vec<String> {
+fn active_workspaces(client: &mut Client) -> Vec<WorkspaceIdentifier> {
 	client.active_workspaces()
 }
 
 /// Leave a [Workspace] and return whether or not the client was in such workspace.
 #[jni(package = "mp.code", class = "Client")]
-fn leave_workspace(client: &mut Client, workspace: String) -> bool {
-	client.leave_workspace(&workspace)
+fn leave_workspace(client: &mut Client, user: String, workspace: String) -> bool {
+	client.leave_workspace(user, workspace)
 }
 
 /// Get a [Workspace] by name and returns a pointer to it.
 #[jni(package = "mp.code", class = "Client")]
-fn get_workspace(client: &mut Client, workspace: String) -> Option<Workspace> {
-	client.get_workspace(&workspace)
+fn get_workspace(client: &mut Client, user: String, workspace: String) -> Option<Workspace> {
+	client.get_workspace(user, workspace)
 }
 
 /// Refresh the client's session token.

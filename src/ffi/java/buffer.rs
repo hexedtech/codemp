@@ -1,4 +1,4 @@
-use jni::{JNIEnv, objects::JObject};
+use jni::{Env, objects::JObject};
 use jni_toolbox::jni;
 
 use crate::{
@@ -46,7 +46,7 @@ fn send(
 /// Register a callback for buffer changes.
 #[jni(package = "mp.code", class = "BufferController")]
 fn callback<'local>(
-	env: &mut JNIEnv<'local>,
+	env: &mut Env<'local>,
 	controller: &mut crate::buffer::Controller,
 	cb: JObject<'local>,
 ) {
