@@ -5,8 +5,6 @@ use crate::{
 use jni::{Env, objects::JObject};
 use jni_toolbox::jni;
 
-use super::null_check;
-
 /// Try to fetch a [Cursor], or returns null if there's nothing.
 #[jni(package = "mp.code", class = "CursorController")]
 fn try_recv(controller: &mut crate::cursor::Controller) -> Result<Option<CursorEvent>, ControllerError> {
@@ -32,11 +30,14 @@ fn callback<'local>(
 	controller: &mut crate::cursor::Controller,
 	cb: JObject<'local>,
 ) -> Result<(), jni::errors::Error> {
-	null_check!(cb);
+	if cb.is_null() {
+		return Err(jni::errors::Error::NullPtr("cursor callback is null"));
+	}
+
 	let cb_ref = env.new_global_ref(cb)?;
 
 	controller.callback(move |controller: crate::cursor::Controller| {
-		let res = super::jvm().attach_current_thread(|mut env| {
+		let res: Result<(), jni::errors::Error> = super::jvm().attach_current_thread(|env| {
 			env.with_local_frame(5, |env| {
 				use jni_toolbox::IntoJavaObject;
 				let jcontroller = controller.into_java_object(env)?;
@@ -46,7 +47,7 @@ fn callback<'local>(
 					jni::jni_sig!((arg1: java.lang.Object) -> ()),
 					&[jni::objects::JValue::Object(&jcontroller)],
 				)?;
-				Ok(())
+				Ok::<(), jni::errors::Error>(())
 			})?;
 
 			Ok(())
