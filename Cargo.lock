@@ -171,6 +171,7 @@ dependencies = [
  "napi-derive",
  "pyo3",
  "pyo3-build-config",
+ "regex",
  "serde",
  "syn 2.0.117",
  "thiserror",
