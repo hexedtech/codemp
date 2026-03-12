@@ -238,11 +238,13 @@ public final class Workspace {
 	public static final class Event {
 		/** The type of the event. */
 		public final @Getter Type type;
-		private final String argument;
+		private final String user;
+		private final String buffer;
 
-		Event(Type type, String argument) {
+		Event(Type type, String user, String buffer) {
 			this.type = type;
-			this.argument = argument;
+			this.user = user;
+			this.buffer = buffer;
 		}
 
 		/**
@@ -250,8 +252,8 @@ public final class Workspace {
 		 * @return the user who joined, if any did
 		 */
 		public Optional<String> getUserJoined() {
-			if(this.type == Type.USER_JOIN) {
-				return Optional.of(this.argument);
+			if(this.type == Type.USER_JOIN || this.type == Type.USER_JOIN_BUFFER) {
+				return Optional.of(this.user);
 			} else return Optional.empty();
 		}
 
@@ -260,8 +262,8 @@ public final class Workspace {
 		 * @return the user who left, if any did
 		 */
 		public Optional<String> getUserLeft() {
-			if(this.type == Type.USER_LEAVE) {
-				return Optional.of(this.argument);
+			if(this.type == Type.USER_LEAVE || this.type == Type.USER_LEAVE_BUFFER) {
+				return Optional.of(this.user);
 			} else return Optional.empty();
 		}
 
@@ -269,9 +271,9 @@ public final class Workspace {
 		 * Gets the path of buffer that changed, if any did.
 		 * @return the path of buffer that changed, if any did
 		 */
-		public Optional<String> getChangedBuffer() {
-			if(this.type == Type.FILE_TREE_UPDATED) {
-				return Optional.of(this.argument);
+		public Optional<String> getAffectedBuffer() {
+			if(this.type == Type.FILE_TREE_UPDATED || this.type == Type.USER_JOIN_BUFFER || this.type == Type.USER_LEAVE_BUFFER) {
+				return Optional.of(this.buffer);
 			} else return Optional.empty();
 		}
 
@@ -285,15 +287,27 @@ public final class Workspace {
 			 */
 			USER_JOIN,
 			/**
-			 * Somebody left a workspace
+			 * Somebody left a workspace.
 			 * @see #getUserLeft() to get the name
 			 */
 			USER_LEAVE,
 			/**
 			 * The filetree was updated.
-			 * @see #getChangedBuffer() to see the buffer that changed
+			 * @see #getAffectedBuffer() to see the buffer that changed
 			 */
-			FILE_TREE_UPDATED
+			FILE_TREE_UPDATED,
+			/**
+			 * Somebody joined a buffer.
+			 * @see #getUserJoined() to get the name of the user that joined
+			 * @see #getAffectedBuffer() to see the buffer that they joined
+			 */
+			USER_JOIN_BUFFER,
+			/**
+			 * Somebody left a buffer.
+			 * @see #getUserLeft() to get the name of the user that left
+			 * @see #getAffectedBuffer() to see the buffer that they left
+			 */
+			USER_LEAVE_BUFFER
 		}
 	}
 }

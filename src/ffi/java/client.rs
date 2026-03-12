@@ -83,6 +83,7 @@ fn refresh(client: &mut Client) -> Result<(), RemoteError> {
 }
 
 /// Called by the Java GC to drop a [Client].
+#[allow(unsafe_code)]
 #[jni(package = "mp.code", class = "Client")]
 fn free(input: jni::sys::jlong) {
 	let _ = unsafe { Box::from_raw(input as *mut Client) };

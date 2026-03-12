@@ -53,9 +53,10 @@ fn callback<'local>(
 	}
 
 	let cb_ref = env.new_global_ref(cb)?;
+	let jvm =	env.get_java_vm()?;
 
 	controller.callback(move |controller: crate::buffer::Controller| {
-		let result: Result<(), jni::errors::Error> = super::jvm().attach_current_thread(|env| {
+		let result: Result<(), jni::errors::Error> = jvm.attach_current_thread(|env| {
 			env.with_local_frame(5, |env| {
 				use jni_toolbox::IntoJavaObject;
 				let jcontroller = controller.into_java_object(env)?;
@@ -98,6 +99,7 @@ fn ack(controller: &mut crate::buffer::Controller, version: Vec<i64>) {
 }
 
 /// Called by the Java GC to drop a [crate::buffer::Controller].
+#[allow(unsafe_code)]
 #[jni(package = "mp.code", class = "BufferController")]
 fn free(input: jni::sys::jlong) {
 	let _ = unsafe { Box::from_raw(input as *mut crate::buffer::Controller) };

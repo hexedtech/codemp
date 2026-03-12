@@ -1,7 +1,16 @@
+/// FFI methods relating to buffers.
 pub mod buffer;
+
+/// FFI methods relating to clients.
 pub mod client;
+
+/// FFI methods relating to cursors.
 pub mod cursor;
+
+/// FFI methods to access extra functions.
 pub mod ext;
+
+/// FFI methods relating to the workspace.
 pub mod workspace;
 
 /// Gets or creates the relevant [tokio::runtime::Runtime].
@@ -14,22 +23,6 @@ fn tokio() -> &'static tokio::runtime::Runtime {
 			.build()
 			.expect("could not create tokio runtime")
 	})
-}
-
-/// A static reference to [jni::JavaVM] that is set on JNI load.
-static mut JVM: Option<std::sync::Arc<jni::JavaVM>> = None;
-
-/// Safe accessor for the [jni::JavaVM] static.
-pub(crate) fn jvm() -> std::sync::Arc<jni::JavaVM> {
-	unsafe { JVM.clone() }.unwrap()
-}
-
-/// Called upon initialisation of the JVM.
-#[allow(non_snake_case)]
-#[unsafe(no_mangle)]
-pub extern "system" fn JNI_OnLoad(vm: jni::JavaVM, _: *mut std::ffi::c_void) -> jni::sys::jint {
-	unsafe { JVM = Some(std::sync::Arc::new(vm)) };
-	jni::sys::JNI_VERSION_1_1
 }
 
 /// Set up logging. Useful for debugging.
@@ -102,6 +95,7 @@ macro_rules! from_java_ptr {
 	($type: ty) => {
 		impl<'j> jni_toolbox::FromJava<'j> for &mut $type {
 			type From = jni::sys::jobject;
+			#[allow(unsafe_code)]
 			fn from_java(
 				_env: &mut jni::Env<'j>,
 				value: Self::From,
@@ -150,3 +144,44 @@ into_java_ptr_class!(crate::Client, "mp/code/Client");
 into_java_ptr_class!(crate::Workspace, "mp/code/Workspace");
 into_java_ptr_class!(crate::cursor::Controller, "mp/code/CursorController");
 into_java_ptr_class!(crate::buffer::Controller, "mp/code/BufferController");
+
+// #[allow(unsafe_code)]
+impl<'j> jni_toolbox::IntoJavaObject<'j> for crate::api::Event {
+	const CLASS: &'static str = "mp/code/Workspace$Event";
+	fn into_java_object(
+		self,
+		env: &mut jni::Env<'j>,
+	) -> Result<jni::objects::JObject<'j>, jni::errors::Error> {
+		let (ordinal, user, buffer) = match self {
+			crate::api::Event::UserJoin { name } => (0, Some(name), None),
+			crate::api::Event::UserLeave { name } => (1, Some(name), None),
+			crate::api::Event::FileTreeUpdated { path } => (2, None, Some(path)),
+			crate::api::Event::UserJoinBuffer { name, buffer } => (3, Some(name), Some(buffer)),
+			crate::api::Event::UserLeaveBuffer { name, buffer } => (4, Some(name), Some(buffer)),
+		};
+
+		let type_class = env.find_class(jni::jni_str!("mp/code/Workspace$Event$Type"))?;
+		let variants = env
+			.call_method(type_class, jni::jni_str!("getEnumConstants"), jni::jni_sig!("()[Ljava/lang/Object;"), &[])?
+			.l()?;
+		let variants_array = jni::objects::JObjectArray::<jni::objects::JObject>::cast_local(env, variants)?;
+		let event_type = variants_array.get_element(env, ordinal)?;
+
+		let class_name = jni::strings::JNIString::new(Self::CLASS);
+		let event_class = env.find_class(class_name)?;
+
+		let j_event_type = event_type.into_java_object(env)?;
+		let j_user = user.into_java_object(env)?;
+		let j_buffer = buffer.into_java_object(env)?;
+
+		env.new_object(
+			event_class,
+			jni::jni_sig!("(Lmp/code/Workspace$Event$Type;Ljava/lang/String;)V"),
+			&[
+				jni::JValue::Object(&j_event_type),
+				jni::JValue::Object(&j_user),
+				jni::JValue::Object(&j_buffer)
+			]
+		)
+	}
+}
