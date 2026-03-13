@@ -125,7 +125,8 @@ fn discover_core_surface(files: &[&str], targets: &[&str]) -> BTreeMap<String, B
 fn missing_methods(ffi_src: &str, required: BTreeSet<String>) -> Vec<String> {
 	required
 		.iter()
-		.filter(|method| !ffi_src.contains(&format!(".{}(", method)))
+		// TODO: way to tighten it down, maybe by only checking :: for statics and vice versa
+		.filter(|method| !ffi_src.contains(&format!(".{}(", method)) && !ffi_src.contains(&format!("::{}(", method)))
 		.map(|method| (*method).to_string())
 		.collect()
 }
