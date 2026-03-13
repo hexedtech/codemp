@@ -11,7 +11,7 @@ fn lua_annotations_should_cover_ffi_api_surface() {
 		("Codemp", include_str!("../../ffi/lua/mod.rs"), true),
 	];
 
-	let re = regex::Regex::new("add_method\\(\\s+\"(\\w+)\",|exports\\.set\\(\\s+\"(\\w+)\",").expect("failed building regex");
+	let re = regex::Regex::new("add_method\\(\\s*\"(\\w+)\",|exports\\.set\\(\\s+\"(\\w+)\",").expect("failed building regex");
 
 	let mut missing = Vec::new();
 	for (clazz, source, is_static) in source_maps {
@@ -58,7 +58,7 @@ fn java_annotations_should_cover_ffi_api_surface() {
 		include_str!("../../ffi/java/ext.rs"),
 	);
 
-	let re = regex::Regex::new("#\\[jni\\(.*class = \"(\\w+)\"\\)\\]\\nfn (\\w+)\\(").expect("failed building regex");
+	let re = regex::Regex::new("#\\[jni\\(.*class = \"(\\w+)\".*\\)\\]\\nfn (\\w+)\\(").expect("failed building regex");
 
 	let mut missing = Vec::new();
 	for (_, [clazz, fn_name]) in re.captures_iter(source).map(|c| c.extract()) {
