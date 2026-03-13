@@ -25,6 +25,7 @@ use codemp_proto::cursor::{CursorPosition, CursorUpdate, RowCol, cursor_client::
 pub struct CursorController(pub(crate) Arc<CursorControllerInner>);
 
 impl CursorController {
+	/// Get id of workspace containing this controller.
 	pub fn workspace_id(&self) -> &crate::api::WorkspaceIdentifier {
 		&self.0.workspace_id
 	}

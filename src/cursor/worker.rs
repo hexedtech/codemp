@@ -100,6 +100,7 @@ impl CursorController {
 		CursorController(controller)
 	}
 
+	/// Retrieves all current cursor positions.
 	pub async fn list(&self) -> RemoteResult<Vec<CursorEvent>> {
 		Ok(self
 			.0

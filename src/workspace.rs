@@ -186,6 +186,7 @@ impl Workspace {
 		Ok(())
 	}
 
+	/// Pin an ephemeral buffer, making it permanent.
 	pub async fn pin_buffer(&self, path: impl AsRef<str>) -> RemoteResult<()> {
 		self.0
 			.services
@@ -196,6 +197,7 @@ impl Workspace {
 		Ok(())
 	}
 
+	/// Unpins a permanen buffer, making it ephemeral.
 	pub async fn un_pin_buffer(&self, path: impl AsRef<str>) -> RemoteResult<()> {
 		self.0
 			.services

@@ -22,7 +22,7 @@ use crate::ext::IgnorableError;
 pub struct BufferController(pub(crate) Arc<BufferControllerInner>);
 
 impl BufferController {
-	/// Get id of workspace containing this controller
+	/// Get id of workspace containing this controller.
 	pub fn workspace_id(&self) -> &crate::api::WorkspaceIdentifier {
 		&self.0.workspace_id
 	}

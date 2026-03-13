@@ -19,6 +19,8 @@ pub struct UserInfo {
 }
 
 impl UserInfo {
+	/// Creates a default [UserInfo] for the given username
+	/// with all the optional fields set to [None].
 	pub fn default_for(username: String) -> Self {
 		Self {
 			name: username,

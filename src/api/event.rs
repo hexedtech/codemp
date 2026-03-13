@@ -10,17 +10,35 @@ use codemp_proto::workspace::workspace_event::Event as WorkspaceEventInner;
 #[cfg_attr(feature = "serialize", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serialize", serde(tag = "type"))]
 pub enum Event {
-	/// Fired when the file tree changes.
-	/// Contains the modified buffer path (deleted, created or renamed).
-	FileTreeUpdated { path: String },
+	/// Fired when the file tree changes (buffer created, deleted or renamed).
+	FileTreeUpdated {
+		/// The modifier buffer's path.
+		path: String
+	},
 	/// Fired when an user joins the current workspace.
-	UserJoin { name: String },
+	UserJoin {
+		/// The name of the joining user.
+		name: String
+	},
 	/// Fired when an user leaves the current workspace.
-	UserLeave { name: String },
+	UserLeave {
+		/// The name of the leaving user.
+		name: String
+	},
 	/// Fired when an user joins a buffer.
-	UserJoinBuffer { name: String, buffer: String },
+	UserJoinBuffer {
+		/// The name of the joining user.
+		name: String,
+		/// The name of the buffer the user is joining.
+		buffer: String
+	},
 	/// Fired when an user leaves a buffer.
-	UserLeaveBuffer { name: String, buffer: String },
+	UserLeaveBuffer {
+		/// The name of the leaving user.
+		name: String,
+		/// The name of the buffer the user is leaving.
+		buffer: String
+	},
 }
 
 impl From<WorkspaceEventInner> for Event {
