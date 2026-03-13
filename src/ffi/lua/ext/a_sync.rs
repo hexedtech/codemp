@@ -83,7 +83,7 @@ impl LuaUserData for Promise {
 pub(crate) fn setup_driver(_: &Lua, (block,): (Option<bool>,)) -> LuaResult<Option<Driver>> {
 	let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
 	let future = async move {
-		tracing::info!(" :: driving runtime...");
+		tracing::debug!(" :: driving runtime...");
 		tokio::select! {
 			() = std::future::pending::<()>() => {},
 			_ = rx.recv() => {},
