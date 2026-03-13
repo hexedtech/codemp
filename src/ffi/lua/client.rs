@@ -98,7 +98,10 @@ impl LuaUserData for CodempClient {
 		});
 
 		// TODO need to derive ser/de on Event, but this is in protobuf...
-		// methods.add_method("recv", |_, this, ()| a_sync! { this => this.recv().await? });
+		// methods.add_method(
+		//	"recv",
+		//	|_, this, ()| a_sync! { this => this.recv().await? }
+		// );
 
 		// methods.add_method(
 		// 	"try_recv",

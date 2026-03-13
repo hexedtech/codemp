@@ -295,6 +295,19 @@ function Client:get_workspace(ws) end
 ---get full user info for given username from server
 function Client:get_user_info(user) end
 
+---@return NilPromise
+---@async
+---@nodiscard
+---block until next session event without returning it
+function Client:poll() end
+
+---clears any previously registered session callback
+function Client:clear_callback() end
+
+---@param cb fun(w: Client) callback to invoke on each workspace event received
+---register a new callback to be called on session events (replaces any previously registered one)
+function Client:callback(cb) end
+
 
 
 ---@class UserInfo
@@ -316,7 +329,7 @@ function Client:get_user_info(user) end
 ---a joined codemp workspace
 local Workspace = {}
 
----@return string
+---@return WorkspaceIdentifier
 ---workspace id
 function Workspace:id() end
 
@@ -461,6 +474,14 @@ local BufferUpdate = {}
 ---apply this text change to a string, returning the result
 function TextChange:apply(other) end
 
+---@return WorkspaceIdentifier
+---returns the workspace id this buffer belongs to
+function BufferController:workspace_id() end
+
+---@return string
+---returns the path this buffer belongs to
+function BufferController:path() end
+
 ---@param change TextChange text change to broadcast
 ---update buffer with a text change; note that to delete content should be empty but not span, while to insert span should be empty but not content (can insert and delete at the same time)
 function BufferController:send(change) end
@@ -524,10 +545,19 @@ local CursorController = {}
 ---@field user string user who sent this cursor
 ---@field cursor Cursor cursor position data
 
+---@return WorkspaceIdentifier
+---returns the workspace id this cursor controller belongs to
+function CursorController:workspace_id() end
+
+---@return CursorEvent[]
+---@async
+---@nodiscard
+---gets the current state of all user cursors
+function CursorController:list() end
+
 ---@param cursor Cursor cursor position to broadcast
 ---update cursor position by sending a cursor event to server
 function CursorController:send(cursor) end
-
 
 ---@return MaybeCursorEventPromise
 ---@async

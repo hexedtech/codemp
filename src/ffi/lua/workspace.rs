@@ -62,7 +62,7 @@ impl LuaUserData for CodempWorkspace {
 			Ok(this.search_buffers(filter.as_deref()))
 		});
 
-		methods.add_method("list_buffer_users", |_, this, (path,): (String,)| {
+		methods.add_method("buffer_user_list", |_, this, (path,): (String,)| {
 			Ok(this.buffer_user_list(&path))
 		});
 
