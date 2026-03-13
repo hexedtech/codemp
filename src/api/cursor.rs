@@ -6,7 +6,7 @@ use pyo3::prelude::*;
 
 /// An event that occurred about a user's cursor.
 #[derive(Clone, Debug, Default)]
-#[cfg_attr(feature = "java", jni_toolbox::jclass(class = "mp/code/CursorEvent"))]
+#[cfg_attr(feature = "java", jni_toolbox::jclass(class = "mp/code/data/CursorEvent"))]
 #[cfg_attr(feature = "js", napi_derive::napi(object))]
 #[cfg_attr(feature = "py", pyclass(get_all, from_py_object))]
 #[cfg_attr(feature = "serialize", derive(serde::Serialize, serde::Deserialize))]
@@ -20,7 +20,7 @@ pub struct CursorEvent {
 
 /// A cursor instantaneous state
 #[derive(Clone, Debug, Default)]
-#[cfg_attr(feature = "java", jni_toolbox::jclass(class = "mp/code/Cursor"))]
+#[cfg_attr(feature = "java", jni_toolbox::jclass(class = "mp/code/data/Cursor"))]
 #[cfg_attr(feature = "js", napi_derive::napi(object))]
 #[cfg_attr(feature = "py", pyclass(get_all, from_py_object))]
 #[cfg_attr(feature = "serialize", derive(serde::Serialize, serde::Deserialize))]
@@ -34,7 +34,7 @@ pub struct Cursor {
 
 /// A cursor selection span.
 #[derive(Clone, Debug, Default)]
-#[cfg_attr(feature = "java", jni_toolbox::jclass(class = "mp/code/Selection"))]
+#[cfg_attr(feature = "java", jni_toolbox::jclass(class = "mp/code/data/Selection"))]
 #[cfg_attr(feature = "js", napi_derive::napi(object))]
 #[cfg_attr(feature = "py", pyclass(get_all, from_py_object))]
 #[cfg_attr(feature = "serialize", derive(serde::Serialize, serde::Deserialize))]

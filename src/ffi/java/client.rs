@@ -1,6 +1,6 @@
 use crate::{
 	Workspace,
-	api::{Config, WorkspaceIdentifier},
+	api::{Config, UserInfo, WorkspaceIdentifier},
 	client::Client,
 	errors::{ConnectionError, RemoteError},
 };
@@ -24,6 +24,24 @@ fn attach_workspace(client: &mut Client, user: String, workspace: String) -> Res
 	super::tokio().block_on(client.attach_workspace(user, workspace))
 }
 
+/// Accepts an invitation to a workspace.
+#[jni(package = "mp.code", class = "Client")]
+fn accept_invite(client: &mut Client, user: String, workspace: String) -> Result<(), RemoteError> {
+	super::tokio().block_on(client.accept_invite(user, workspace))
+}
+
+/// Rejects an invitation to a workspace.
+#[jni(package = "mp.code", class = "Client")]
+fn reject_invite(client: &mut Client, user: String, workspace: String) -> Result<(), RemoteError> {
+	super::tokio().block_on(client.reject_invite(user, workspace))
+}
+
+/// Quit a joined [Workspace].
+#[jni(package = "mp.code", class = "Client")]
+fn quit_workspace(client: &mut Client, user: String, workspace: String) -> Result<(), RemoteError> {
+	super::tokio().block_on(client.quit_workspace(user, workspace))
+}
+
 /// Create a workspace on server, if allowed to.
 #[jni(package = "mp.code", class = "Client")]
 fn create_workspace(client: &mut Client, workspace: String) -> Result<(), RemoteError> {
@@ -38,11 +56,7 @@ fn delete_workspace(client: &mut Client, workspace: String) -> Result<(), Remote
 
 /// Invite another user to an owned workspace.
 #[jni(package = "mp.code", class = "Client")]
-fn invite_to_workspace(
-	client: &mut Client,
-	workspace: String,
-	user: String,
-) -> Result<(), RemoteError> {
+fn invite_to_workspace(client: &mut Client, workspace: String, user: String) -> Result<(), RemoteError> {
 	super::tokio().block_on(client.invite_to_workspace(workspace, user))
 }
 
@@ -74,6 +88,12 @@ fn leave_workspace(client: &mut Client, user: String, workspace: String) -> bool
 #[jni(package = "mp.code", class = "Client")]
 fn get_workspace(client: &mut Client, user: String, workspace: String) -> Option<Workspace> {
 	client.get_workspace(user, workspace)
+}
+
+/// Fetches information about a user.
+#[jni(package = "mp.code", class = "Client")]
+fn get_user_info(client: &mut Client, user: String) -> Result<UserInfo, RemoteError> {
+	super::tokio().block_on(client.get_user_info(user))
 }
 
 /// Refresh the client's session token.

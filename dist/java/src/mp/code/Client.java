@@ -2,11 +2,10 @@ package mp.code;
 
 import lombok.Getter;
 import mp.code.data.Config;
-import mp.code.data.User;
+import mp.code.data.UserInfo;
+import mp.code.data.WorkspaceIdentifier;
 import mp.code.exceptions.ConnectionException;
 import mp.code.exceptions.ConnectionRemoteException;
-
-import java.util.Optional;
 
 /**
  * The main entrypoint of the library.
@@ -34,116 +33,167 @@ public final class Client {
 	 */
 	public static native Client connect(Config config) throws ConnectionException;
 
-	private static native User current_user(long self);
+	private static native UserInfo current_user(long self);
 
 	/**
 	 * Gets information about the current user.
-	 * @return a {@link User} object representing the user
+	 * @return a {@link UserInfo} object representing the user
 	 */
-	public User currentUser() {
+	public UserInfo currentUser() {
 		return current_user(this.ptr);
 	}
 
-	private static native Workspace attach_workspace(long self, String workspaceId) throws ConnectionException;
+	private static native Workspace attach_workspace(long self, String user, String workspace) throws ConnectionException;
 
 	/**
 	 * Joins a {@link Workspace} and returns it.
-	 * @param workspaceId the id of the workspace to connect to
+	 * @param user the owner of the workspace
+	 * @param workspace the identifier of the workspace
 	 * @return the relevant {@link Workspace}
 	 * @throws ConnectionException if an error occurs in communicating with the server
 	 */
-	public Workspace attachWorkspace(String workspaceId) throws ConnectionException {
-		return attach_workspace(this.ptr, workspaceId);
+	public Workspace attachWorkspace(String user, String workspace) throws ConnectionException {
+		return attach_workspace(this.ptr, user, workspace);
 	}
 
-	private static native void create_workspace(long self, String workspaceId) throws ConnectionRemoteException;
+	private static native void accept_invite(long self, String user, String workspace) throws ConnectionRemoteException;
 
 	/**
-	 * Creates a workspace. You need to call {@link #attachWorkspace(String)} to actually join
-	 * and interact with it.
-	 * @param workspaceId the id of the new workspace
+	 * Accept an invitation to a workspace.
+	 * @param user the owner of the workspace
+	 * @param workspace the identifier of the workspace
 	 * @throws ConnectionRemoteException if an error occurs in communicating with the server
 	 */
-	public void createWorkspace(String workspaceId) throws ConnectionRemoteException {
-		create_workspace(this.ptr, workspaceId);
+	public void acceptInvite(String user, String workspace) throws ConnectionRemoteException {
+		accept_invite(this.ptr, user, workspace);
 	}
 
-	private static native void delete_workspace(long self, String workspaceId) throws ConnectionRemoteException;
+	private static native void reject_invite(long self, String user, String workspace) throws ConnectionRemoteException;
+
+	/**
+	 * Rejects an invitation to a workspace
+	 * @param user the owner of the workspace
+	 * @param workspace the identifier of the workspace
+	 * @throws ConnectionRemoteException if an error occurs in communicating with the server
+	 */
+	public void rejectInvite(String user, String workspace) throws ConnectionRemoteException {
+		reject_invite(this.ptr, user, workspace);
+	}
+
+	private static native void quit_workspace(long self, String user, String workspace) throws ConnectionRemoteException;
+
+	/**
+	 * Quits a workspace.
+	 * @param user the owner of the workspace
+	 * @param workspace the identifier of the workspace
+	 * @throws ConnectionRemoteException if an error occurs in communicating with the server
+	 */
+	public void quitWorkspace(String user, String workspace) throws ConnectionRemoteException {
+		quit_workspace(this.ptr, user, workspace);
+	}
+
+	private static native void create_workspace(long self, String workspace) throws ConnectionRemoteException;
+
+	/**
+	 * Creates a workspace. You need to call {@link #attachWorkspace(String, String)} to actually join
+	 * and interact with it.
+	 * @param workspace the id of the new workspace
+	 * @throws ConnectionRemoteException if an error occurs in communicating with the server
+	 */
+	public void createWorkspace(String workspace) throws ConnectionRemoteException {
+		create_workspace(this.ptr, workspace);
+	}
+
+	private static native void delete_workspace(long self, String workspace) throws ConnectionRemoteException;
 
 	/**
 	 * Deletes a workspace.
-	 * @param workspaceId the id of the workspace to delete
+	 * @param workspace the id of the workspace to delete
 	 * @throws ConnectionRemoteException if an error occurs in communicating with the server
 	 */
-	public void deleteWorkspace(String workspaceId) throws ConnectionRemoteException {
-		delete_workspace(this.ptr, workspaceId);
+	public void deleteWorkspace(String workspace) throws ConnectionRemoteException {
+		delete_workspace(this.ptr, workspace);
 	}
 
 	private static native void invite_to_workspace(long self, String workspaceId, String user) throws ConnectionRemoteException;
 
 	/**
 	 * Invites a user to a workspace.
-	 * @param workspaceId the id of the new workspace
+	 * @param workspace the id of the new workspace
 	 * @param user the name of the user to invite
 	 * @throws ConnectionRemoteException if an error occurs in communicating with the server
 	 */
-	public void inviteToWorkspace(String workspaceId, String user) throws ConnectionRemoteException {
-		invite_to_workspace(this.ptr, workspaceId, user);
+	public void inviteToWorkspace(String workspace, String user) throws ConnectionRemoteException {
+		invite_to_workspace(this.ptr, workspace, user);
 	}
 
-	private static native String[] fetch_owned_workspaces(long self) throws ConnectionRemoteException;
+	private static native WorkspaceIdentifier[] fetch_owned_workspaces(long self) throws ConnectionRemoteException;
 
 	/**
 	 * Lists workspaces owned by the current user.
-	 * @return an array of workspace IDs
+	 * @return an array of {@link WorkspaceIdentifier}s
 	 * @throws ConnectionRemoteException if an error occurs in communicating with the server
 	 */
-	public String[] fetchOwnedWorkspaces() throws ConnectionRemoteException {
+	public WorkspaceIdentifier[] fetchOwnedWorkspaces() throws ConnectionRemoteException {
 		return fetch_owned_workspaces(this.ptr);
 	}
 
-	private static native String[] fetch_joined_workspaces(long self) throws ConnectionRemoteException;
+	private static native WorkspaceIdentifier[] fetch_joined_workspaces(long self) throws ConnectionRemoteException;
 
 	/**
 	 * Lists workspaces the current user has joined.
-	 * @return an array of workspace IDs
+	 * @return an array of {@link WorkspaceIdentifier}s
 	 * @throws ConnectionRemoteException if an error occurs in communicating with the server
 	 */
-	public String[] fetchJoinedWorkspaces() throws ConnectionRemoteException {
+	public WorkspaceIdentifier[] fetchJoinedWorkspaces() throws ConnectionRemoteException {
 		return fetch_joined_workspaces(this.ptr);
 	}
 
-	private static native String[] active_workspaces(long self);
+	private static native WorkspaceIdentifier[] active_workspaces(long self);
 
 	/**
 	 * Lists the currently active workspaces (the ones the user has currently joined).
-	 * @return an array of workspace IDs
+	 * @return an array of {@link WorkspaceIdentifier}s
 	 */
-	public String[] activeWorkspaces() {
+	public WorkspaceIdentifier[] activeWorkspaces() {
 		return active_workspaces(this.ptr);
 	}
 
-	private static native boolean leave_workspace(long self, String workspaceId);
+	private static native boolean leave_workspace(long self, String user, String workspace);
 
 	/**
 	 * Leaves a workspace.
-	 * @param workspaceId the id of the workspaces to leave
+	 * @param user the owner of the workspace
+	 * @param workspace the identifier of the workspace
 	 * @return true if it succeeded or wasn't in the workspace; false if there are still
 	 *         leftover references around
 	 */
-	public boolean leaveWorkspace(String workspaceId) {
-		return leave_workspace(this.ptr, workspaceId);
+	public boolean leaveWorkspace(String user, String workspace) {
+		return leave_workspace(this.ptr, user, workspace);
 	}
 
-	private static native Workspace get_workspace(long self, String workspace);
+	private static native Workspace get_workspace(long self, String user, String workspace);
 
 	/**
 	 * Gets an active workspace.
-	 * @param workspaceId the id of the workspaces to get
-	 * @return a {@link Workspace} with that name, if it was present and active
+	 * @param user the owner of the workspace
+	 * @param workspace the identifier of the workspace
+	 * @return a {@link Workspace} with that name, if it was present and active, null otherwise
 	 */
-	public Optional<Workspace> getWorkspace(String workspaceId) {
-		return Optional.ofNullable(get_workspace(this.ptr, workspaceId));
+	public Workspace getWorkspace(String user, String workspace) {
+		return get_workspace(this.ptr, user, workspace);
+	}
+
+	private static native UserInfo get_user_info(long self, String user) throws ConnectionRemoteException;
+
+	/**
+	 * Fetches information about a user by name.
+	 * @param user the name of the user
+	 * @return the {@link UserInfo} for the user
+	 * @throws ConnectionRemoteException if an error occurs in communicating with the server
+	 */
+	public UserInfo getUserInfo(String user) throws ConnectionRemoteException {
+		return get_user_info(this.ptr, user);
 	}
 
 	private static native void refresh(long self) throws ConnectionRemoteException;

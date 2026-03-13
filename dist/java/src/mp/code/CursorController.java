@@ -2,9 +2,9 @@ package mp.code;
 
 import mp.code.data.Cursor;
 import mp.code.data.Selection;
+import mp.code.data.WorkspaceIdentifier;
 import mp.code.exceptions.ControllerException;
 
-import java.util.Optional;
 import java.util.function.Consumer;
 
 /**
@@ -20,16 +20,25 @@ public final class CursorController {
 		Extensions.CLEANER.register(this, () -> free(ptr));
 	}
 
+	private static native WorkspaceIdentifier workspace_id(long self);
+
+	/**
+	 * Gets the identifier for the one that contains this cursor.
+	 * @return a {@link WorkspaceIdentifier} for the owner
+	 */
+	public WorkspaceIdentifier workspaceId() {
+		return workspace_id(this.ptr);
+	}
+
 	private static native Cursor try_recv(long self) throws ControllerException;
 
 	/**
-	 * Tries to get a {@link Cursor} update from the queue if any were present, and returns
-	 * an empty optional otherwise.
+	 * Tries to get a {@link Cursor} update from the queue if any were present, null otherwise.
 	 * @return the first cursor event in queue, if any are present
 	 * @throws ControllerException if the controller was stopped
 	 */
-	public Optional<Cursor> tryRecv() throws ControllerException {
-		return Optional.ofNullable(try_recv(this.ptr));
+	public Cursor tryRecv() throws ControllerException {
+		return try_recv(this.ptr);
 	}
 
 	private static native Cursor recv(long self) throws ControllerException;

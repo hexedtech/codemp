@@ -34,9 +34,4 @@ public class Selection {
 	 * If negative, it is clamped to 0.
 	 */
 	public final int endCol;
-
-	/**
-	 * The buffer the cursor is located on.
-	 */
-	public final String buffer;
 }

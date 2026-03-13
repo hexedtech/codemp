@@ -12,12 +12,12 @@ import lombok.ToString;
 @RequiredArgsConstructor
 public class Cursor {
 	/**
-	 * The user who controls the cursor.
+	 * The buffer the cursor is on.
 	 */
-	public final String user;
+	public final String buffer;
 
 	/**
-	 * The associated selection update.
+	 * The associated selection updates.
 	 */
-	public final Selection selection;
+	public final Selection[] selection;
 }

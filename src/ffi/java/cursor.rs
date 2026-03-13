@@ -1,9 +1,15 @@
 use crate::{
-	api::{AsyncReceiver, AsyncSender, Cursor, CursorEvent},
+	api::{AsyncReceiver, AsyncSender, Cursor, CursorEvent, WorkspaceIdentifier},
 	errors::ControllerError,
 };
 use jni::{Env, objects::JObject};
 use jni_toolbox::jni;
+
+/// Get the [WorkspaceIdentifier] of the workspace that contains this buffer.
+#[jni(package = "mp.code", class = "CursorController")]
+fn workspace_id(controller: &mut crate::cursor::Controller) -> WorkspaceIdentifier {
+	controller.workspace_id().clone()
+}
 
 /// Try to fetch a [Cursor], or returns null if there's nothing.
 #[jni(package = "mp.code", class = "CursorController")]

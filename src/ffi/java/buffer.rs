@@ -2,19 +2,25 @@ use jni::{Env, objects::JObject};
 use jni_toolbox::jni;
 
 use crate::{
-	api::{AsyncReceiver, AsyncSender, BufferUpdate, TextChange},
+	api::{AsyncReceiver, AsyncSender, BufferUpdate, TextChange, WorkspaceIdentifier},
 	errors::ControllerError,
 };
 
 /// Get the name of the buffer.
 #[jni(package = "mp.code", class = "BufferController")]
-fn get_name(controller: &mut crate::buffer::Controller) -> String {
-	controller.path().to_string() //TODO: &str is built into the newer version
+fn path(controller: &mut crate::buffer::Controller) -> String {
+	controller.path().to_string()
+}
+
+/// Get the [WorkspaceIdentifier] of the workspace that contains this buffer.
+#[jni(package = "mp.code", class = "BufferController")]
+fn workspace_id(controller: &mut crate::buffer::Controller) -> WorkspaceIdentifier {
+	controller.workspace_id().clone()
 }
 
 /// Get the contents of the buffers.
 #[jni(package = "mp.code", class = "BufferController")]
-fn get_content(controller: &mut crate::buffer::Controller) -> Result<String, ControllerError> {
+fn content(controller: &mut crate::buffer::Controller) -> Result<String, ControllerError> {
 	super::tokio().block_on(controller.content())
 }
 

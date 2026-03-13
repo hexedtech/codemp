@@ -4,7 +4,7 @@
 
 /// Represents a service user
 #[derive(Debug, Clone)]
-#[cfg_attr(feature = "java", jni_toolbox::jclass(class = "mp/code/UserInfo"))]
+#[cfg_attr(feature = "java", jni_toolbox::jclass(class = "mp/code/data/UserInfo"))]
 #[cfg_attr(feature = "py", pyo3::pyclass(from_py_object))]
 #[cfg_attr(feature = "serialize", derive(serde::Serialize, serde::Deserialize))]
 pub struct UserInfo {

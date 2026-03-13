@@ -4,7 +4,7 @@ import java.util.Optional;
 import java.util.function.Consumer;
 
 import lombok.Getter;
-import mp.code.data.User;
+import mp.code.data.UserInfo;
 import mp.code.exceptions.ConnectionException;
 import mp.code.exceptions.ConnectionRemoteException;
 import mp.code.exceptions.ControllerException;
@@ -15,7 +15,7 @@ import mp.code.exceptions.ControllerException;
  * Generally, it is safer to avoid storing this directly. Instead,
  * users should let the native library manage as much as possible for
  * them. They should store the workspace ID and retrieve the object
- * whenever needed with {@link Client#getWorkspace(String)}.
+ * whenever needed with {@link Client#getWorkspace(String, String)}.
  */
 public final class Workspace {
 	private final long ptr;
@@ -61,12 +61,11 @@ public final class Workspace {
 
 	/**
 	 * Searches for buffers matching the filter in this workspace.
-	 * @param filter the filter to apply
+	 * @param filter the filter to apply (may be null)
 	 * @return an array containing file tree as flat paths
 	 */
-	@SuppressWarnings("OptionalUsedAsFieldOrParameterType")
-	public String[] searchBuffers(Optional<String> filter) {
-		return search_buffers(this.ptr, filter.orElse(null));
+	public String[] searchBuffers(String filter) {
+		return search_buffers(this.ptr, filter);
 	}
 
 	private static native String[] active_buffers(long self);
@@ -80,25 +79,48 @@ public final class Workspace {
 		return active_buffers(this.ptr);
 	}
 
-	private static native User[] user_list(long self);
+	private static native UserInfo[] user_list(long self);
 
 	/**
 	 * Returns the users currently in the workspace.
 	 * @return an array containing the users in the workspace
 	 */
-	public User[] userList() {
+	public UserInfo[] userList() {
 		return user_list(this.ptr);
 	}
 
-	private static native void create_buffer(long self, String path) throws ConnectionRemoteException;
+	private static native void create_buffer(long self, String path, boolean ephemeral) throws ConnectionRemoteException;
 
 	/**
 	 * Creates a buffer with the given path.
 	 * @param path the new buffer's path
+	 * @param ephemeral whether the buffer should be ephemeral
 	 * @throws ConnectionRemoteException if an error occurs in communicating with the server
 	 */
-	public void createBuffer(String path) throws ConnectionRemoteException {
-		create_buffer(this.ptr, path);
+	public void createBuffer(String path, boolean ephemeral) throws ConnectionRemoteException {
+		create_buffer(this.ptr, path, ephemeral);
+	}
+
+	private static native void pin_buffer(long self, String path) throws ConnectionRemoteException;
+
+	/**
+	 * Pins an ephemeral buffer, making it non-ephemeral.
+	 * @param path the buffer's path
+	 * @throws ConnectionRemoteException if an error occurs in communicating with the server
+	 */
+	public void pinBuffer(String path) throws ConnectionRemoteException {
+		pin_buffer(this.ptr, path);
+	}
+
+	private static native void un_pin_buffer(long self, String path) throws ConnectionRemoteException;
+
+	/**
+	 * Unpins a buffer, making it ephemeral.
+	 * @param path the buffer's path
+	 * @throws ConnectionRemoteException if an error occurs in communicating with the server
+	 */
+	public void unpinBuffer(String path) throws ConnectionRemoteException {
+		un_pin_buffer(this.ptr, path);
 	}
 
 	private static native BufferController attach_buffer(long self, String path) throws ConnectionException;
@@ -135,28 +157,38 @@ public final class Workspace {
 		return fetch_buffers(this.ptr);
 	}
 
-	private static native User[] fetch_users(long self) throws ConnectionRemoteException;
+	private static native void fetch_users(long self) throws ConnectionRemoteException;
 
 	/**
-	 * Updates and fetches the local list of users.
-	 * @return the updated list
+	 * Updates the local list of users.
 	 * @throws ConnectionRemoteException if an error occurs in communicating with the server
 	 */
-	public User[] fetchUsers() throws ConnectionRemoteException {
-		return fetch_users(this.ptr);
+	public void fetchUsers() throws ConnectionRemoteException {
+		fetch_users(this.ptr);
 	}
 
-	private static native User[] fetch_buffer_users(long self, String path) throws ConnectionRemoteException;
+	private static native void fetch_buffer_users(long self, String path) throws ConnectionRemoteException;
 
 	/**
-	 * Fetches the users attached to a certain buffer.
+	 * Updates the local list of users attached to a certain buffer.
 	 * The user must be attached to the buffer to perform this operation.
 	 * @param path the path of the buffer to search
-	 * @return an array of {@link User}s 
 	 * @throws ConnectionRemoteException if an error occurs in communicating with the server, or the user wasn't attached
 	 */
-	public User[] fetchBufferUsers(String path) throws ConnectionRemoteException {
-		return fetch_buffer_users(this.ptr, path);
+	public void fetchBufferUsers(String path) throws ConnectionRemoteException {
+		fetch_buffer_users(this.ptr, path);
+	}
+
+	private static native UserInfo[] buffer_user_list(long self, String path);
+
+	/**
+	 * Gets the local list of users attached to a certain buffer.
+	 * The user must be attached to the buffer to perform this operation.
+	 * You can force-update the list with {@link #fetchBufferUsers(String)}.
+	 * @param path the path of the buffer to search
+	 */
+	public UserInfo[] bufferUserList(String path) {
+		return buffer_user_list(this.ptr, path);
 	}
 
 	private static native void delete_buffer(long self, String path) throws ConnectionRemoteException;
@@ -173,13 +205,12 @@ public final class Workspace {
 	private static native Event try_recv(long self) throws ControllerException;
 
 	/**
-	 * Tries to get a {@link Event} from the queue if any were present, and returns
-	 * an empty optional otherwise.
+	 * Tries to get a {@link Event} from the queue if any were present, null otherwise
 	 * @return the first workspace event in queue, if any are present
 	 * @throws ControllerException if the controller was stopped
 	 */
-	public Optional<Event> tryRecv() throws ControllerException {
-		return Optional.ofNullable(try_recv(this.ptr));
+	public Event tryRecv() throws ControllerException {
+		return try_recv(this.ptr);
 	}
 
 	private static native Event recv(long self) throws ControllerException;

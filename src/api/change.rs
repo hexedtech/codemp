@@ -11,7 +11,7 @@
 #[cfg_attr(feature = "js", napi_derive::napi(object))]
 #[cfg_attr(feature = "py", pyo3::pyclass(get_all, from_py_object))]
 #[cfg_attr(feature = "serialize", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "java", jni_toolbox::jclass(class = "mp/code/BufferUpdate"))]
+#[cfg_attr(feature = "java", jni_toolbox::jclass(class = "mp/code/data/BufferUpdate"))]
 pub struct BufferUpdate {
 	/// Optional content hash after applying this change.
 	#[cfg_attr(feature = "serialize", serde(skip_serializing_if = "Option::is_none"))]
@@ -55,7 +55,7 @@ pub struct BufferUpdate {
 #[cfg_attr(feature = "js", napi_derive::napi(object))]
 #[cfg_attr(feature = "py", pyo3::pyclass(get_all, from_py_object))]
 #[cfg_attr(feature = "serialize", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "java", jni_toolbox::jclass(class = "mp/code/TextChange"))]
+#[cfg_attr(feature = "java", jni_toolbox::jclass(class = "mp/code/data/TextChange"))]
 pub struct TextChange {
 	/// Range start of text change, as char indexes in buffer previous state.
 	pub start_idx: u32,

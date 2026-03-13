@@ -48,12 +48,21 @@ fn create_buffer(workspace: &mut Workspace, path: String, ephemeral: bool) -> Re
 	super::tokio().block_on(workspace.create_buffer(path, ephemeral))
 }
 
+/// Pins an ephemeral buffer.
+#[jni(package = "mp.code", class = "Workspace")]
+fn pin_buffer(workspace: &mut Workspace, path: String) -> Result<(), RemoteError> {
+	super::tokio().block_on(workspace.pin_buffer(path))
+}
+
+/// Un-pins an ephemeral buffer.
+#[jni(package = "mp.code", class = "Workspace")]
+fn un_pin_buffer(workspace: &mut Workspace, path: String) -> Result<(), RemoteError> {
+	super::tokio().block_on(workspace.un_pin_buffer(path))
+}
+
 /// Attach to a buffer and return a pointer to its [`crate::buffer::Controller`].
 #[jni(package = "mp.code", class = "Workspace")]
-fn attach_buffer(
-	workspace: &mut Workspace,
-	path: String,
-) -> Result<crate::buffer::Controller, ConnectionError> {
+fn attach_buffer(workspace: &mut Workspace, path: String) -> Result<crate::buffer::Controller, ConnectionError> {
 	super::tokio().block_on(workspace.attach_buffer(&path))
 }
 
@@ -77,11 +86,14 @@ fn fetch_users(workspace: &mut Workspace) -> Result<(), RemoteError> {
 
 /// Fetch users attached to a buffer.
 #[jni(package = "mp.code", class = "Workspace")]
-fn fetch_buffer_users(
-	workspace: &mut Workspace,
-	path: String,
-) -> Result<(), RemoteError> {
+fn fetch_buffer_users(workspace: &mut Workspace, path: String) -> Result<(), RemoteError> {
 	super::tokio().block_on(workspace.fetch_buffer_users(&path))
+}
+
+/// Fetch users attached to a buffer.
+#[jni(package = "mp.code", class = "Workspace")]
+fn buffer_user_list(workspace: &mut Workspace, path: String) -> Vec<UserInfo> {
+	workspace.buffer_user_list(&path)
 }
 
 /// Delete a buffer.
