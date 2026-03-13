@@ -1,3 +1,6 @@
+//! Buildscript, required by some glue modules for initialisation.
+//! Will do nothing if no glue modules are enabled.
+
 #[cfg(feature = "js")]
 extern crate napi_build;
 
