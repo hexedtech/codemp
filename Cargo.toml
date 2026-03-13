@@ -72,7 +72,7 @@ napi-build = { version = "2.2", optional = true }
 pyo3-build-config = { version = "0.28", optional = true }
 
 [features]
-default = ["lua-jit", "py-abi3", "py-extmod", "java"]
+default = ["lua-jit", "py-abi3", "py-extmod"]
 # extra
 async-trait = ["dep:async-trait"]
 serialize = ["dep:serde", "uuid/serde"]
