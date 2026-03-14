@@ -1,4 +1,5 @@
 use crate::api::controller::{AsyncReceiver, AsyncSender};
+use crate::api::WorkspaceIdentifier;
 use crate::cursor::controller::CursorController;
 use napi::threadsafe_function::{ThreadsafeFunction, ThreadsafeFunctionCallMode};
 use napi_derive::napi;
@@ -49,5 +50,11 @@ impl CursorController {
 	#[napi(js_name = "recv")]
 	pub async fn js_recv(&self) -> napi::Result<crate::api::CursorEvent> {
 		Ok(self.recv().await?)
+	}
+
+	/// Get id of workspace containing this controller.
+	#[napi(js_name = "workspaceId")]
+	pub fn js_workspace_id(&self) -> WorkspaceIdentifier {
+		self.workspace_id().clone().into()
 	}
 }

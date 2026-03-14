@@ -1,5 +1,6 @@
 use crate::api::controller::{AsyncReceiver, AsyncSender};
 use crate::api::{BufferUpdate, TextChange};
+use crate::api::WorkspaceIdentifier;
 use crate::buffer::controller::BufferController;
 use napi::threadsafe_function::{ThreadsafeFunction, ThreadsafeFunctionCallMode};
 use napi_derive::napi;
@@ -71,5 +72,11 @@ impl BufferController {
 	#[napi(js_name = "content")]
 	pub async fn js_content(&self) -> napi::Result<String> {
 		Ok(self.content().await?)
+	}
+
+	/// Get id of workspace containing this controller.
+	#[napi(js_name = "workspaceId")]
+	pub fn js_workspace_id(&self) -> WorkspaceIdentifier {
+		self.workspace_id().clone().into()
 	}
 }

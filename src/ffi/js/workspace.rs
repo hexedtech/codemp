@@ -162,4 +162,25 @@ impl Workspace {
 	) -> napi::Result<()> {
 		Ok(self.fetch_buffer_users(&path).await?)
 	}
+
+	/// Get all users currently attached to specified buffer
+	#[napi(js_name = "bufferUserList")]
+	pub fn js_buffer_user_list(&self, path: String) -> Vec<JsUser> {
+		self.buffer_user_list(&path)
+			.into_iter()
+			.map(JsUser::from)
+			.collect()
+	}
+
+	/// Pin an ephemeral buffer, making it permanent.
+	#[napi(js_name = "pinBuffer")]
+	pub async fn js_pin_buffer(&self, path: String) -> napi::Result<()> {
+		Ok(self.pin_buffer(&path).await?)
+	}
+
+	/// Unpins a permanent buffer, making it ephemeral.
+	#[napi(js_name = "unpinBuffer")]
+	pub async fn js_un_pin_buffer(&self, path: String) -> napi::Result<()> {
+		Ok(self.un_pin_buffer(&path).await?)
+	}
 }

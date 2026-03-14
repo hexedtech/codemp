@@ -122,4 +122,30 @@ impl Client {
 	pub async fn js_refresh(&self) -> napi::Result<()> {
 		Ok(self.refresh().await?)
 	}
+
+	/// Accept an invitation to a workspace, making it accessible
+	#[napi(js_name = "acceptInvite")]
+	pub async fn js_accept_invite(&self, user: String, workspace: String) -> napi::Result<()> {
+		Ok(self.accept_invite(&user, &workspace).await?)
+	}
+
+	/// Get the meta information for a user
+	#[napi(js_name = "getUserInfo")]
+	pub async fn js_get_user_info(&self, user: String) -> napi::Result<JsUser> {
+		Ok(self.get_user_info(&user).await?.into())
+	}
+
+	/// Quit a joined workspace. Cannot quit owned workspaces: must delete them
+	#[napi(js_name = "quitWorkspace")]
+	pub async fn js_quit_workspace(&self, user: String, workspace: String) -> napi::Result<()> {
+		Ok(self.quit_workspace(&user, &workspace).await?)
+	}
+
+	/// Reject an invitation to a workspace
+	#[napi(js_name = "rejectInvite")]
+	pub async fn js_reject_invite(&self, user: String, workspace: String) -> napi::Result<()> {
+		Ok(self.reject_invite(&user, &workspace).await?)
+	}
+
+
 }

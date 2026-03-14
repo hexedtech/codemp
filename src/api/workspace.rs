@@ -10,6 +10,7 @@
 #[cfg_attr(feature = "java", jni_toolbox::jclass(class = "mp/code/data/WorkspaceIdentifier"))]
 #[cfg_attr(feature = "py", pyo3::pyclass(from_py_object))]
 #[cfg_attr(feature = "serialize", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "js", napi_derive::napi(object))]
 pub struct WorkspaceIdentifier {
 	/// Workspace name, cannot change and is unique per owner.
 	pub workspace: String,
