@@ -2,8 +2,9 @@ use jni::{Env, objects::JObject};
 use jni_toolbox::jni;
 
 use crate::{
-	api::{AsyncReceiver, AsyncSender, BufferUpdate, TextChange, WorkspaceIdentifier},
+	api::{AsyncReceiver, AsyncSender, BufferUpdate, TextChange},
 	errors::ControllerError,
+	proto::session::WorkspaceIdentifier
 };
 
 /// Get the name of the buffer.

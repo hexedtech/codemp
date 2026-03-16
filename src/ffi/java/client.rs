@@ -1,8 +1,9 @@
 use crate::{
 	Workspace,
-	api::{Config, UserInfo, WorkspaceIdentifier},
+	api::Config,
 	client::Client,
 	errors::{ConnectionError, RemoteError},
+	proto::{common::UserInfo, session::WorkspaceIdentifier}
 };
 use jni_toolbox::jni;
 
@@ -12,9 +13,9 @@ fn connect(config: Config) -> Result<Client, ConnectionError> {
 	super::tokio().block_on(Client::connect(config))
 }
 
-/// Gets the current [crate::api::User].
+/// Gets the [UserInfo] for the current user.
 #[jni(package = "mp.code", class = "Client")]
-fn current_user(client: &mut Client) -> crate::api::UserInfo {
+fn current_user(client: &mut Client) -> UserInfo {
 	client.current_user().clone()
 }
 

@@ -1,7 +1,8 @@
 use crate::{
 	Workspace,
-	api::{UserInfo, WorkspaceIdentifier, controller::AsyncReceiver},
+	api::controller::AsyncReceiver,
 	errors::{ConnectionError, ControllerError, RemoteError},
+	proto::{common::UserInfo, session::WorkspaceIdentifier, workspace::WorkspaceEvent}
 };
 use jni::{Env, objects::JObject};
 use jni_toolbox::jni;
@@ -104,13 +105,13 @@ fn delete_buffer(workspace: &mut Workspace, path: String) -> Result<(), RemoteEr
 
 /// Block and receive a workspace event.
 #[jni(package = "mp.code", class = "Workspace")]
-fn recv(workspace: &mut Workspace) -> Result<crate::api::Event, ControllerError> {
+fn recv(workspace: &mut Workspace) -> Result<WorkspaceEvent, ControllerError> {
 	super::tokio().block_on(workspace.recv())
 }
 
 /// Receive a workspace event if present.
 #[jni(package = "mp.code", class = "Workspace")]
-fn try_recv(workspace: &mut Workspace) -> Result<Option<crate::api::Event>, ControllerError> {
+fn try_recv(workspace: &mut Workspace) -> Result<Option<WorkspaceEvent>, ControllerError> {
 	super::tokio().block_on(workspace.try_recv())
 }
 

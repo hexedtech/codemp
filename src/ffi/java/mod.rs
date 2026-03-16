@@ -146,7 +146,7 @@ into_java_ptr_class!(crate::cursor::Controller, "mp/code/CursorController");
 into_java_ptr_class!(crate::buffer::Controller, "mp/code/BufferController");
 
 // #[allow(unsafe_code)]
-impl<'j> jni_toolbox::IntoJavaObject<'j> for crate::api::Event {
+impl<'j> jni_toolbox::IntoJavaObject<'j> for crate::proto::workspace::WorkspaceEventKind { // TODO
 	const CLASS: &'static str = "mp/code/Workspace$Event";
 	fn into_java_object(
 		self,

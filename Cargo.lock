@@ -164,7 +164,7 @@ dependencies = [
  "dashmap",
  "diamond-types",
  "jni",
- "jni-toolbox 0.2.2 (git+https://github.com/hexedtech/jni-toolbox?rev=11897b11153dccd82044e980947c090ef12d08ae)",
+ "jni-toolbox",
  "mlua",
  "napi",
  "napi-build",
@@ -187,10 +187,10 @@ dependencies = [
 [[package]]
 name = "codemp-proto"
 version = "0.8.0"
-source = "git+https://github.com/hexedtech/codemp-proto?rev=c0e2589cb0007412db1c005abbfd8fcf7b6b9151#c0e2589cb0007412db1c005abbfd8fcf7b6b9151"
+source = "git+https://github.com/hexedtech/codemp-proto?rev=a36cc56bd6aa675baa2f1ca26e0e00074bc6a389#a36cc56bd6aa675baa2f1ca26e0e00074bc6a389"
 dependencies = [
  "jni",
- "jni-toolbox 0.2.2 (git+https://github.com/hexedtech/jni-toolbox?rev=c40e925510fd563763db5dec4df300615453054b)",
+ "jni-toolbox",
  "mlua",
  "mlua-serde-derive",
  "napi",
@@ -806,33 +806,12 @@ dependencies = [
 [[package]]
 name = "jni-toolbox"
 version = "0.2.2"
-source = "git+https://github.com/hexedtech/jni-toolbox?rev=11897b11153dccd82044e980947c090ef12d08ae#11897b11153dccd82044e980947c090ef12d08ae"
-dependencies = [
- "jni",
- "jni-toolbox-macro 0.2.2 (git+https://github.com/hexedtech/jni-toolbox?rev=11897b11153dccd82044e980947c090ef12d08ae)",
- "thiserror",
- "uuid",
-]
-
-[[package]]
-name = "jni-toolbox"
-version = "0.2.2"
 source = "git+https://github.com/hexedtech/jni-toolbox?rev=c40e925510fd563763db5dec4df300615453054b#c40e925510fd563763db5dec4df300615453054b"
 dependencies = [
  "jni",
- "jni-toolbox-macro 0.2.2 (git+https://github.com/hexedtech/jni-toolbox?rev=c40e925510fd563763db5dec4df300615453054b)",
+ "jni-toolbox-macro",
  "thiserror",
  "uuid",
-]
-
-[[package]]
-name = "jni-toolbox-macro"
-version = "0.2.2"
-source = "git+https://github.com/hexedtech/jni-toolbox?rev=11897b11153dccd82044e980947c090ef12d08ae#11897b11153dccd82044e980947c090ef12d08ae"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.117",
 ]
 
 [[package]]

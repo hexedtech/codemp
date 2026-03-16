@@ -3,11 +3,11 @@ package mp.code;
 import java.util.Optional;
 import java.util.function.Consumer;
 
-import lombok.Getter;
 import mp.code.proto.UserInfo;
 import mp.code.exceptions.ConnectionException;
 import mp.code.exceptions.ConnectionRemoteException;
 import mp.code.exceptions.ControllerException;
+import mp.code.proto.WorkspaceEvent;
 
 /**
  * Represents a CodeMP workspace, which broadly speaking is a collection
@@ -202,33 +202,33 @@ public final class Workspace {
 		delete_buffer(this.ptr, path);
 	}
 
-	private static native Event try_recv(long self) throws ControllerException;
+	private static native WorkspaceEvent try_recv(long self) throws ControllerException;
 
 	/**
-	 * Tries to get a {@link Event} from the queue if any were present, null otherwise
-	 * @return the first workspace event in queue, if any are present
+	 * Tries to get a {@link WorkspaceEvent} from the queue if any were present, null otherwise
+	 * @return the first workspace WorkspaceEvent in queue, if any are present
 	 * @throws ControllerException if the controller was stopped
 	 */
-	public Event tryRecv() throws ControllerException {
+	public WorkspaceEvent tryRecv() throws ControllerException {
 		return try_recv(this.ptr);
 	}
 
-	private static native Event recv(long self) throws ControllerException;
+	private static native WorkspaceEvent recv(long self) throws ControllerException;
 
 	/**
-	 * Blocks until a {@link Event} is available and returns it.
-	 * @return the workspace event that occurred
+	 * Blocks until a {@link WorkspaceEvent} is available and returns it.
+	 * @return the workspace WorkspaceEvent that occurred
 	 * @throws ControllerException if the controller was stopped
 	 */
-	public Event recv() throws ControllerException {
+	public WorkspaceEvent recv() throws ControllerException {
 		return recv(this.ptr);
 	}
 
 	private static native void callback(long self, Consumer<Workspace> cb);
 
 	/**
-	 * Registers a callback to be invoked whenever a new {@link Event} is ready to be received.
-	 * This will not work unless a Java thread has been dedicated to the event loop.
+	 * Registers a callback to be invoked whenever a new {@link WorkspaceEvent} is ready to be received.
+	 * This will not work unless a Java thread has been dedicated to the WorkspaceEvent loop.
 	 * @param cb a {@link Consumer} that receives the controller when the change occurs;
 	 *           you should probably spawn a new thread in here, to avoid deadlocking
 	 * @see Extensions#drive(boolean)
@@ -250,7 +250,7 @@ public final class Workspace {
 	private static native void poll(long self) throws ControllerException;
 
 	/**
-	 * Blocks until a {@link Event} is available.
+	 * Blocks until a {@link WorkspaceEvent} is available.
 	 * @throws ControllerException if the controller was stopped
 	 */
 	public void poll() throws ControllerException {
@@ -261,84 +261,5 @@ public final class Workspace {
 
 	static {
 		NativeUtils.loadLibraryIfNeeded();
-	}
-
-	/**
-	 * Represents a workspace-wide event.
-	 */
-	public static final class Event {
-		/** The type of the event. */
-		public final @Getter Type type;
-		private final String user;
-		private final String buffer;
-
-		Event(Type type, String user, String buffer) {
-			this.type = type;
-			this.user = user;
-			this.buffer = buffer;
-		}
-
-		/**
-		 * Gets the user who joined, if any did.
-		 * @return the user who joined, if any did
-		 */
-		public Optional<String> getUserJoined() {
-			if(this.type == Type.USER_JOIN || this.type == Type.USER_JOIN_BUFFER) {
-				return Optional.of(this.user);
-			} else return Optional.empty();
-		}
-
-		/**
-		 * Gets the user who left, if any did.
-		 * @return the user who left, if any did
-		 */
-		public Optional<String> getUserLeft() {
-			if(this.type == Type.USER_LEAVE || this.type == Type.USER_LEAVE_BUFFER) {
-				return Optional.of(this.user);
-			} else return Optional.empty();
-		}
-
-		/**
-		 * Gets the path of buffer that changed, if any did.
-		 * @return the path of buffer that changed, if any did
-		 */
-		public Optional<String> getAffectedBuffer() {
-			if(this.type == Type.FILE_TREE_UPDATED || this.type == Type.USER_JOIN_BUFFER || this.type == Type.USER_LEAVE_BUFFER) {
-				return Optional.of(this.buffer);
-			} else return Optional.empty();
-		}
-
-		/**
-		 * The type of workspace event.
-		 */
-		public enum Type {
-			/**
-			 * Somebody joined a workspace.
-			 * @see #getUserJoined() to get the name
-			 */
-			USER_JOIN,
-			/**
-			 * Somebody left a workspace.
-			 * @see #getUserLeft() to get the name
-			 */
-			USER_LEAVE,
-			/**
-			 * The filetree was updated.
-			 * @see #getAffectedBuffer() to see the buffer that changed
-			 */
-			FILE_TREE_UPDATED,
-			/**
-			 * Somebody joined a buffer.
-			 * @see #getUserJoined() to get the name of the user that joined
-			 * @see #getAffectedBuffer() to see the buffer that they joined
-			 */
-			USER_JOIN_BUFFER,
-			/**
-			 * Somebody left a buffer.
-			 * @see #getUserLeft() to get the name of the user that left
-			 * @see #getAffectedBuffer() to see the buffer that they left
-			 */
-			USER_LEAVE_BUFFER
-		}
 	}
 }

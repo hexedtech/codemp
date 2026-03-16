@@ -1,6 +1,7 @@
 use crate::{
-	api::{AsyncReceiver, AsyncSender, Cursor, CursorEvent, WorkspaceIdentifier},
+	api::{AsyncReceiver, AsyncSender},
 	errors::ControllerError,
+	proto::{cursor::{CursorEvent, CursorUpdate}, session::WorkspaceIdentifier}
 };
 use jni::{Env, objects::JObject};
 use jni_toolbox::jni;
@@ -25,7 +26,7 @@ fn recv(controller: &mut crate::cursor::Controller) -> Result<CursorEvent, Contr
 
 /// Receive from Java, converts and sends a [Cursor].
 #[jni(package = "mp.code", class = "CursorController")]
-fn send(controller: &mut crate::cursor::Controller, sel: Cursor) -> Result<(), ControllerError> {
+fn send(controller: &mut crate::cursor::Controller, sel: CursorUpdate) -> Result<(), ControllerError> {
 	controller.send(sel)
 }
 
