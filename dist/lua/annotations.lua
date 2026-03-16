@@ -99,6 +99,28 @@ function MaybeWorkspaceEventPromise:await() end
 function MaybeWorkspaceEventPromise:and_then(cb) end
 
 
+---@class (exact) SessionEventPromise : Promise
+local SessionEventPromise = {}
+--- block until promise is ready and return value
+--- @return SessionEvent
+function SessionEventPromise:await() end
+--- cancel promise execution
+function SessionEventPromise:cancel() end
+---@param cb fun(x: SessionEvent) callback to invoke
+---invoke callback asynchronously as soon as promise is ready
+function SessionEventPromise:and_then(cb) end
+
+
+---@class (exact) MaybeSessionEventPromise : Promise
+local MaybeSessionEventPromise = {}
+--- block until promise is ready and return value
+--- @return SessionEvent | nil
+function MaybeSessionEventPromise:await() end
+---@param cb fun(x: SessionEvent | nil) callback to invoke
+---invoke callback asynchronously as soon as promise is ready
+function MaybeSessionEventPromise:and_then(cb) end
+
+
 ---@class (exact) BufferControllerPromise : Promise
 local BufferControllerPromise = {}
 --- block until promise is ready and return value
@@ -296,6 +318,31 @@ function Client:get_workspace(user, ws) end
 ---get full user info for given username from server
 function Client:get_user_info(user) end
 
+---all enum types for session events
+SessionEventKind = {
+	InvitationEvent = 1,
+	QuitEvent = 2,
+	AcceptEvent = 3,
+	RejectEvent = 4,
+}
+
+---@class (exact) SessionEvent
+---@field kind integer (SessionEventKind) event kind
+---@field user string the user that created this event (sent invitation, rejected invite...)
+---@field workspace WorkspaceIdentifier the workspace this event is related to
+
+---@return MaybeSessionEventPromise
+---@async
+---@nodiscard
+---try to receive session events, returning nil if none is available
+function Client:try_recv() end
+
+---@return SessionEventPromise
+---@async
+---@nodiscard
+---block until next client event and return it
+function Client:recv() end
+
 ---@return NilPromise
 ---@async
 ---@nodiscard
@@ -421,10 +468,23 @@ function Workspace:fetch_users(path) end
 ---fetch the list of users in the given buffer
 function Workspace:fetch_buffer_users(path) end
 
+---all enum types for workspace events
+WorkspaceEventKind = {
+	UserJoinWorkspace = 1,
+	UserLeaveWorkspace = 2,
+	FileCreate = 3,
+	FileRename = 4,
+	FileDelete = 5,
+	UserJoinBuffer = 6,
+	UserLeaveBuffer = 7,
+}
+
 ---@class (exact) WorkspaceEvent
----@field type string can be "UserJoin", "UserLeave" or "FileTreeUpdated"
----@field name? string present for "UserJoin" and "UserLeave"
----@field path? string present for "FileTreeUpdated"
+---@field kind integer (WorkspaceEventKind) event kind
+---@field user string? the user that joined/left (possibly a buffer)
+---@field path string? path to relevant buffer (deleted/created/left by user...)
+---@field ephemeral boolean? wheter relevant buffer is ephemeral
+---@field after string? if this is a FileRename, new path will be here
 
 ---@return MaybeWorkspaceEventPromise
 ---@async
