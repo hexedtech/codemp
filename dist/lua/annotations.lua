@@ -529,22 +529,25 @@ function BufferController:ack(version) end
 ---handle to a workspace's cursor channel, allowing send/recv operations
 local CursorController = {}
 
----a cursor selection span
----@class Selection
----@field start_row integer cursor position starting row in buffer
----@field start_col integer cursor position starting column in buffer
----@field end_row integer cursor position final row in buffer
----@field end_col integer cursor position final column in buffer
+---a row+col tuple
+---@class RowCol
+---@field row integer current row
+---@field col integer current column
+
+---an instant cursor position span
+---@class CursorPosition
+---@field start RowCol cursor position start in buffer
+---@field finish RowCol cursor position end in buffer
 
 ---a cursor instantaneous state
----@class Cursor
+---@class CursorUpdate
 ---@field buffer string path of buffer this cursor is on
----@field sel Selection[] the updated cursor selection(s)
+---@field cursors CursorPosition[] the updated cursor position(s)
 
 ---an event that occurred about a user's cursor
 ---@class CursorEvent
 ---@field user string user who sent this cursor
----@field cursor Cursor cursor position data
+---@field position CursorUpdate cursor position data
 
 ---@return WorkspaceIdentifier
 ---returns the workspace id this cursor controller belongs to
@@ -556,7 +559,7 @@ function CursorController:workspace_id() end
 ---gets the current state of all user cursors
 function CursorController:list() end
 
----@param cursor Cursor cursor position to broadcast
+---@param cursor CursorUpdate cursor position to broadcast
 ---update cursor position by sending a cursor event to server
 function CursorController:send(cursor) end
 
