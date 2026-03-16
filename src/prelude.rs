@@ -5,6 +5,7 @@ pub use crate::api::{
 	TextChange as CodempTextChange, Config as CodempConfig,
 	AsyncReceiver as CodempAsyncReceiver, AsyncSender as CodempAsyncSender,
 	Controller as CodempController,
+	BufferUpdate as CodempBufferUpdate,
 };
 
 pub use crate::proto::{

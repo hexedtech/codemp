@@ -1,8 +1,4 @@
-use crate::api::UserInfo;
-use crate::api::controller::AsyncReceiver;
-use crate::buffer::Controller as BufferController;
-use crate::cursor::Controller as CursorController;
-use crate::workspace::Workspace;
+use crate::prelude::*;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 
@@ -10,7 +6,7 @@ use super::Promise;
 use super::a_sync_detach;
 
 #[pymethods]
-impl Workspace {
+impl CodempWorkspace {
 	// join a workspace
 	#[pyo3(name = "create_buffer")]
 	fn pycreate_buffer(&self, py: Python, path: String, ephemeral: bool) -> PyResult<Promise> {
@@ -67,16 +63,16 @@ impl Workspace {
 	}
 
 	#[pyo3(name = "id")]
-	fn pyid(&self) -> crate::api::WorkspaceIdentifier {
+	fn pyid(&self) -> CodempWorkspaceIdentifier {
 		self.id().clone()
 	}
 
 	#[pyo3(name = "cursor")]
-	fn pycursor(&self) -> CursorController {
+	fn pycursor(&self) -> CodempCursorController {
 		self.cursor()
 	}
 	#[pyo3(name = "get_buffer")]
-	fn pyget_buffer(&self, path: String) -> Option<BufferController> {
+	fn pyget_buffer(&self, path: String) -> Option<CodempBufferController> {
 		self.get_buffer(path.as_str())
 	}
 
@@ -92,12 +88,12 @@ impl Workspace {
 	}
 
 	#[pyo3(name = "user_list")]
-	fn pyuser_list(&self) -> Vec<UserInfo> {
+	fn pyuser_list(&self) -> Vec<CodempUserInfo> {
 		self.user_list()
 	}
 
 	#[pyo3(name = "buffer_user_list")]
-	fn pybuffer_user_list(&self, path: String) -> Vec<UserInfo> {
+	fn pybuffer_user_list(&self, path: String) -> Vec<CodempUserInfo> {
 		self.buffer_user_list(path)
 	}
 

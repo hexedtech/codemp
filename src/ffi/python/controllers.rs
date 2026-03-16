@@ -1,25 +1,20 @@
-use crate::api::Cursor;
-use crate::api::TextChange;
-use crate::api::WorkspaceIdentifier;
-use crate::api::controller::{AsyncReceiver, AsyncSender};
-use crate::buffer::Controller as BufferController;
-use crate::cursor::Controller as CursorController;
-use pyo3::exceptions::PyValueError;
+use crate::prelude::*;
 use pyo3::prelude::*;
+use pyo3::exceptions::PyValueError;
 
 use super::Promise;
 use super::a_sync_detach;
 
 // need to do manually since Controller is a trait implementation
 #[pymethods]
-impl CursorController {
+impl CodempCursorController {
 	#[pyo3(name = "workspace_id")]
-	fn pyworkspace_id(&self) -> WorkspaceIdentifier {
+	fn pyworkspace_id(&self) -> CodempWorkspaceIdentifier {
 		self.workspace_id().clone()
 	}
 
 	#[pyo3(name = "send")]
-	fn pysend(&self, _py: Python, pos: Cursor) -> PyResult<()> {
+	fn pysend(&self, _py: Python, pos: CodempCursorUpdate) -> PyResult<()> {
 		self.send(pos)?;
 		Ok(())
 	}
@@ -65,14 +60,14 @@ impl CursorController {
 
 // need to do manually since Controller is a trait implementation
 #[pymethods]
-impl BufferController {
+impl CodempBufferController {
 	#[pyo3(name = "path")]
 	fn pypath(&self) -> String {
 		self.path().to_string()
 	}
 
 	#[pyo3(name = "workspace_id")]
-	fn pyworkspace_id(&self) -> WorkspaceIdentifier {
+	fn pyworkspace_id(&self) -> CodempWorkspaceIdentifier {
 		self.workspace_id().clone()
 	}
 
@@ -88,7 +83,7 @@ impl BufferController {
 	}
 
 	#[pyo3(name = "send")]
-	fn pysend(&self, op: TextChange) -> PyResult<()> {
+	fn pysend(&self, op: CodempTextChange) -> PyResult<()> {
 		let this = self.clone();
 		this.send(op)?;
 		Ok(())
@@ -133,31 +128,31 @@ impl BufferController {
 	}
 }
 
-// We have to write this manually since
-// cursor.user has type Option which cannot be translated
-// automatically
-#[pymethods]
-impl Cursor {
-	#[getter(start)]
-	fn pystart(&self) -> Vec<(i32, i32)> {
-		self.sel
-			.iter()
-			.map(|s| (s.start_row, s.start_col))
-			.collect()
-	}
-
-	#[getter(end)]
-	fn pyend(&self) -> Vec<(i32, i32)> {
-		self.sel.iter().map(|s| (s.end_row, s.end_col)).collect()
-	}
-
-	#[getter(buffer)]
-	fn pybuffer(&self) -> String {
-		self.buffer.clone()
-	}
-
-	// #[getter(user)]
-	// fn pyuser(&self) -> Option<String> {
-	// 	Some(self.user.clone())
-	// }
-}
+// // We have to write this manually since
+// // cursor.user has type Option which cannot be translated
+// // automatically
+// #[pymethods]
+// impl CodempCursorUpdate {
+// 	#[getter(start)]
+// 	fn pystart(&self) -> Vec<(i32, i32)> {
+// 		self.cursor
+// 			.iter()
+// 			.map(|s| (s.start_row, s.start_col))
+// 			.collect()
+// 	}
+// 
+// 	#[getter(end)]
+// 	fn pyend(&self) -> Vec<(i32, i32)> {
+// 		self.sel.iter().map(|s| (s.end_row, s.end_col)).collect()
+// 	}
+// 
+// 	#[getter(buffer)]
+// 	fn pybuffer(&self) -> String {
+// 		self.buffer.clone()
+// 	}
+// 
+// 	// #[getter(user)]
+// 	// fn pyuser(&self) -> Option<String> {
+// 	// 	Some(self.user.clone())
+// 	// }
+// }

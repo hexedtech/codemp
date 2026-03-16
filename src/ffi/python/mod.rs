@@ -2,12 +2,7 @@ pub mod client;
 pub mod controllers;
 pub mod workspace;
 
-use crate::{
-	Client, Workspace,
-	api::{BufferUpdate, Config, Cursor, Event, Selection, TextChange, UserInfo},
-	buffer::Controller as BufferController,
-	cursor::Controller as CursorController,
-};
+use crate::prelude::*;
 
 use pyo3::{
 	exceptions::{PyConnectionError, PyRuntimeError, PySystemError},
@@ -162,46 +157,46 @@ fn init() -> PyResult<Driver> {
 	Ok(Driver(Some(rt_stop_tx)))
 }
 
+// #[pymethods]
+// impl CodempUserInfo {
+// 	#[getter]
+// 	fn get_name(&self) -> pyo3::PyResult<String> {
+// 		Ok(self.name.clone())
+// 	}
+// 
+// 	#[getter]
+// 	fn get_display_name(&self) -> pyo3::PyResult<String> {
+// 		Ok(self.display_name.clone().unwrap_or(self.name.clone()))
+// 	}
+// 
+// 	#[setter]
+// 	fn set_display_name(&mut self, value: String) -> pyo3::PyResult<()> {
+// 		self.display_name.replace(value);
+// 
+// 		Ok(())
+// 	}
+// 
+// 	#[getter]
+// 	fn get_description(&self) -> pyo3::PyResult<String> {
+// 		Ok(self
+// 			.description
+// 			.clone()
+// 			.unwrap_or("No description.".to_string()))
+// 	}
+// 
+// 	#[setter]
+// 	fn set_description(&mut self, value: String) -> pyo3::PyResult<()> {
+// 		self.description.replace(value);
+// 		Ok(())
+// 	}
+// 
+// 	fn __str__(&self) -> String {
+// 		format!("{self:?}")
+// 	}
+// }
+
 #[pymethods]
-impl UserInfo {
-	#[getter]
-	fn get_name(&self) -> pyo3::PyResult<String> {
-		Ok(self.name.clone())
-	}
-
-	#[getter]
-	fn get_display_name(&self) -> pyo3::PyResult<String> {
-		Ok(self.display_name.clone().unwrap_or(self.name.clone()))
-	}
-
-	#[setter]
-	fn set_display_name(&mut self, value: String) -> pyo3::PyResult<()> {
-		self.display_name.replace(value);
-
-		Ok(())
-	}
-
-	#[getter]
-	fn get_description(&self) -> pyo3::PyResult<String> {
-		Ok(self
-			.description
-			.clone()
-			.unwrap_or("No description.".to_string()))
-	}
-
-	#[setter]
-	fn set_description(&mut self, value: String) -> pyo3::PyResult<()> {
-		self.description.replace(value);
-		Ok(())
-	}
-
-	fn __str__(&self) -> String {
-		format!("{self:?}")
-	}
-}
-
-#[pymethods]
-impl Config {
+impl CodempConfig {
 	#[new]
 	#[pyo3(signature = (*, username, password, **kwds))]
 	pub fn pynew(
@@ -231,89 +226,89 @@ impl Config {
 	}
 }
 
-#[pymethods]
-impl Cursor {
-	fn __str__(&self) -> String {
-		format!("{self:?}")
-	}
-}
+// #[pymethods]
+// impl CodempCursor {
+// 	fn __str__(&self) -> String {
+// 		format!("{self:?}")
+// 	}
+// }
 
-#[pymethods]
-impl Selection {
-	#[new]
-	#[pyo3(signature = (*, start_row, start_col, end_row, end_col, **kwds))]
-	pub fn py_new(
-		start_row: i32,
-		start_col: i32,
-		end_row: i32,
-		end_col: i32,
-		kwds: Option<&Bound<'_, PyDict>>,
-	) -> PyResult<Self> {
-		if let Some(_kwds) = kwds {
-			Ok(Self {
-				start_row,
-				start_col,
-				end_row,
-				end_col,
-			})
-		} else {
-			Ok(Self {
-				start_row,
-				start_col,
-				end_row,
-				end_col,
-			})
-		}
-	}
+// #[pymethods]
+// impl CodempCursorPosition {
+// 	#[new]
+// 	#[pyo3(signature = (*, start_row, start_col, end_row, end_col, **kwds))]
+// 	pub fn py_new(
+// 		start_row: i32,
+// 		start_col: i32,
+// 		end_row: i32,
+// 		end_col: i32,
+// 		kwds: Option<&Bound<'_, PyDict>>,
+// 	) -> PyResult<Self> {
+// 		if let Some(_kwds) = kwds {
+// 			Ok(Self {
+// 				start_row,
+// 				start_col,
+// 				end_row,
+// 				end_col,
+// 			})
+// 		} else {
+// 			Ok(Self {
+// 				start_row,
+// 				start_col,
+// 				end_row,
+// 				end_col,
+// 			})
+// 		}
+// 	}
+// 
+// 	fn __str__(&self) -> String {
+// 		format!("{self:?}")
+// 	}
+// }
 
-	fn __str__(&self) -> String {
-		format!("{self:?}")
-	}
-}
+// #[pymethods]
+// impl CodempBufferUpdate {
+// 	fn __str__(&self) -> String {
+// 		format!("{self:?}")
+// 	}
+// }
 
-#[pymethods]
-impl BufferUpdate {
-	fn __str__(&self) -> String {
-		format!("{self:?}")
-	}
-}
-
-#[pymethods]
-impl TextChange {
-	#[new]
-	#[pyo3(signature = (*, start, end, content, **kwds))]
-	pub fn py_new(
-		start: u32,
-		end: u32,
-		content: String,
-		kwds: Option<&Bound<'_, PyDict>>,
-	) -> PyResult<Self> {
-		if let Some(_kwds) = kwds {
-			Ok(Self {
-				start_idx: start,
-				end_idx: end,
-				content,
-			})
-		} else {
-			Ok(Self {
-				start_idx: start,
-				end_idx: end,
-				content,
-			})
-		}
-	}
-
-	fn __str__(&self) -> String {
-		format!("{self:?}")
-	}
-}
+// #[pymethods]
+// impl CodempTextChange {
+// 	#[new]
+// 	#[pyo3(signature = (*, start, end, content, **kwds))]
+// 	pub fn py_new(
+// 		start: u32,
+// 		end: u32,
+// 		content: String,
+// 		kwds: Option<&Bound<'_, PyDict>>,
+// 	) -> PyResult<Self> {
+// 		if let Some(_kwds) = kwds {
+// 			Ok(Self {
+// 				start_idx: start,
+// 				end_idx: end,
+// 				content,
+// 			})
+// 		} else {
+// 			Ok(Self {
+// 				start_idx: start,
+// 				end_idx: end,
+// 				content,
+// 			})
+// 		}
+// 	}
+// 
+// 	fn __str__(&self) -> String {
+// 		format!("{self:?}")
+// 	}
+// }
 
 #[pyfunction]
-fn connect(py: Python, config: Py<Config>) -> PyResult<Promise> {
-	let conf: Config = config.extract(py)?;
+fn connect(py: Python, config: Py<CodempConfig>) -> PyResult<Promise> {
+	let conf: CodempConfig = config.extract(py)?;
 	Ok(Promise(Some(crate::ffi::python::tokio().spawn(
 		async move {
-			let client = Client::connect(conf).await?;
+			let client = CodempClient::connect(conf).await?;
 			Python::attach(|py| Ok(client.into_pyobject(py)?.into_any().unbind()))
 		},
 	))))
@@ -387,20 +382,21 @@ fn codemp(m: &Bound<'_, PyModule>) -> PyResult<()> {
 	m.add_function(wrap_pyfunction!(set_logger, m)?)?;
 	m.add_class::<Driver>()?;
 
-	m.add_class::<BufferUpdate>()?;
-	m.add_class::<TextChange>()?;
-	m.add_class::<BufferController>()?;
+	m.add_class::<CodempBufferUpdate>()?;
+	m.add_class::<CodempTextChange>()?;
+	m.add_class::<CodempBufferController>()?;
 
-	m.add_class::<Cursor>()?;
-	m.add_class::<Selection>()?;
-	m.add_class::<CursorController>()?;
+	m.add_class::<CodempCursorUpdate>()?;
+	m.add_class::<CodempCursorPosition>()?;
+	m.add_class::<CodempCursorController>()?;
 
-	m.add_class::<UserInfo>()?;
+	m.add_class::<CodempUserInfo>()?;
 
-	m.add_class::<Workspace>()?;
-	m.add_class::<Event>()?;
-	m.add_class::<Client>()?;
-	m.add_class::<Config>()?;
+	m.add_class::<CodempWorkspace>()?;
+	m.add_class::<CodempWorkspaceEvent>()?;
+	m.add_class::<CodempSessionEvent>()?;
+	m.add_class::<CodempClient>()?;
+	m.add_class::<CodempConfig>()?;
 
 	Ok(())
 }

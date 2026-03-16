@@ -1,12 +1,10 @@
 use crate::api::controller::{AsyncReceiver, AsyncSender};
-use crate::api::{BufferUpdate, TextChange};
-use crate::api::WorkspaceIdentifier;
-use crate::buffer::controller::BufferController;
+use crate::prelude::*;
 use napi::threadsafe_function::{ThreadsafeFunction, ThreadsafeFunctionCallMode};
 use napi_derive::napi;
 
 #[napi]
-impl BufferController {
+impl CodempBufferController {
 	/// Register a callback to be invoked every time a new event is available to consume
 	/// There can only be one callback registered at any given time.
 	#[napi(
@@ -15,9 +13,9 @@ impl BufferController {
 	)]
 	pub fn js_callback(
 		&self,
-		fun: ThreadsafeFunction<crate::buffer::controller::BufferController>,
+		fun: ThreadsafeFunction<CodempBufferController>,
 	) -> napi::Result<()> {
-		self.callback(move |controller: BufferController| {
+		self.callback(move |controller: CodempBufferController| {
 			fun.call(Ok(controller.clone()), ThreadsafeFunctionCallMode::Blocking);
 			//check this with tracing also we could use Ok(event) to get the error
 			// If it blocks the main thread too many time we have to change this
@@ -52,19 +50,19 @@ impl BufferController {
 
 	/// Return next buffer event if present
 	#[napi(js_name = "tryRecv")]
-	pub async fn js_try_recv(&self) -> napi::Result<Option<BufferUpdate>> {
+	pub async fn js_try_recv(&self) -> napi::Result<Option<crate::api::BufferUpdate>> {
 		Ok(self.try_recv().await?)
 	}
 
 	/// Wait for next buffer event and return it
 	#[napi(js_name = "recv")]
-	pub async fn js_recv(&self) -> napi::Result<BufferUpdate> {
+	pub async fn js_recv(&self) -> napi::Result<crate::api::BufferUpdate> {
 		Ok(self.recv().await?)
 	}
 
 	/// Send a buffer update to workspace
 	#[napi(js_name = "send")]
-	pub fn js_send(&self, op: TextChange) -> napi::Result<()> {
+	pub fn js_send(&self, op: CodempTextChange) -> napi::Result<()> {
 		Ok(self.send(op)?)
 	}
 
@@ -76,7 +74,7 @@ impl BufferController {
 
 	/// Get id of workspace containing this controller.
 	#[napi(js_name = "workspaceId")]
-	pub fn js_workspace_id(&self) -> WorkspaceIdentifier {
+	pub fn js_workspace_id(&self) -> CodempWorkspaceIdentifier {
 		self.workspace_id().clone().into()
 	}
 }

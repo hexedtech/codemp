@@ -1,12 +1,9 @@
-use super::Client;
 use super::a_sync_detach;
-use crate::api::UserInfo;
-use crate::api::WorkspaceIdentifier;
-use crate::workspace::Workspace;
+use crate::prelude::*;
 use pyo3::prelude::*;
 
 #[pymethods]
-impl Client {
+impl CodempClient {
 	// #[new]
 	// fn __new__(
 	// 	host: String,
@@ -101,12 +98,12 @@ impl Client {
 
 	// join a workspace
 	#[pyo3(name = "get_workspace")]
-	fn pyget_workspace(&self, user: String, workspace: String) -> Option<Workspace> {
+	fn pyget_workspace(&self, user: String, workspace: String) -> Option<CodempWorkspace> {
 		self.get_workspace(user, workspace)
 	}
 
 	#[pyo3(name = "active_workspaces")]
-	fn pyactive_workspaces(&self) -> Vec<WorkspaceIdentifier> {
+	fn pyactive_workspaces(&self) -> Vec<CodempWorkspaceIdentifier> {
 		self.active_workspaces()
 	}
 
@@ -118,7 +115,7 @@ impl Client {
 	}
 
 	#[pyo3(name = "current_user")]
-	fn pycurrent_user(&self) -> UserInfo {
+	fn pycurrent_user(&self) -> CodempUserInfo {
 		self.current_user().clone()
 	}
 

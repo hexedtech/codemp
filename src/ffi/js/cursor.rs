@@ -1,11 +1,9 @@
-use crate::api::controller::{AsyncReceiver, AsyncSender};
-use crate::api::WorkspaceIdentifier;
-use crate::cursor::controller::CursorController;
+use crate::prelude::*;
 use napi::threadsafe_function::{ThreadsafeFunction, ThreadsafeFunctionCallMode};
 use napi_derive::napi;
 
 #[napi]
-impl CursorController {
+impl CodempCursorController {
 	/// Register a callback to be called on receive.
 	/// There can only be one callback registered at any given time.
 	#[napi(
@@ -14,9 +12,9 @@ impl CursorController {
 	)]
 	pub fn js_callback(
 		&self,
-		fun: ThreadsafeFunction<crate::cursor::controller::CursorController>,
+		fun: ThreadsafeFunction<CodempCursorController>,
 	) -> napi::Result<()> {
-		self.callback(move |controller: CursorController| {
+		self.callback(move |controller: CodempCursorController| {
 			fun.call(Ok(controller.clone()), ThreadsafeFunctionCallMode::Blocking);
 			//check this with tracing also we could use Ok(event) to get the error
 			// If it blocks the main thread too many time we have to change this
@@ -33,28 +31,25 @@ impl CursorController {
 
 	/// Send a new cursor event to remote
 	#[napi(js_name = "send")]
-	pub fn js_send(&self, buffer: String, sel: crate::api::Selection) -> napi::Result<()> {
-    Ok(self.send(crate::api::Cursor {
-        buffer,
-        sel: vec![sel],
-    })?)
+	pub fn js_send(&self, sel: CodempCursorUpdate) -> napi::Result<()> {
+    Ok(self.send(sel)?)
 }
 
 	/// Get next cursor event if available without blocking
 	#[napi(js_name = "tryRecv")]
-	pub async fn js_try_recv(&self) -> napi::Result<Option<crate::api::CursorEvent>> {
-		Ok(self.try_recv().await?.map(crate::api::CursorEvent::from))
+	pub async fn js_try_recv(&self) -> napi::Result<Option<CodempCursorEvent>> {
+		Ok(self.try_recv().await?)
 	}
 
 	/// Block until next
 	#[napi(js_name = "recv")]
-	pub async fn js_recv(&self) -> napi::Result<crate::api::CursorEvent> {
+	pub async fn js_recv(&self) -> napi::Result<CodempCursorEvent> {
 		Ok(self.recv().await?)
 	}
 
 	/// Get id of workspace containing this controller.
 	#[napi(js_name = "workspaceId")]
-	pub fn js_workspace_id(&self) -> WorkspaceIdentifier {
-		self.workspace_id().clone().into()
+	pub fn js_workspace_id(&self) -> CodempWorkspaceIdentifier {
+		self.workspace_id().clone()
 	}
 }
