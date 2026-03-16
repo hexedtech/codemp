@@ -19,7 +19,6 @@ use super::controller::{CursorController, CursorControllerInner};
 struct CursorWorker {
 	workspace_id: crate::proto::session::WorkspaceIdentifier,
 	op: mpsc::UnboundedReceiver<CursorUpdate>,
-	map: Arc<dashmap::DashMap<String, crate::proto::common::UserInfo>>,
 	stream: mpsc::Receiver<oneshot::Sender<Option<crate::proto::cursor::CursorEvent>>>,
 	poll: mpsc::UnboundedReceiver<oneshot::Sender<()>>,
 	pollers: Vec<oneshot::Sender<()>>,
@@ -37,7 +36,6 @@ impl CursorWorker {
 
 impl CursorController {
 	pub(crate) fn spawn(
-		user_map: Arc<dashmap::DashMap<String, codemp_proto::common::UserInfo>>,
 		tx: mpsc::Sender<CursorUpdate>,
 		rx: Streaming<CursorEvent>,
 		workspace_id: crate::proto::session::WorkspaceIdentifier,
@@ -62,7 +60,6 @@ impl CursorController {
 		let worker = CursorWorker {
 			workspace_id,
 			op: op_rx,
-			map: user_map,
 			stream: stream_rx,
 			store: std::collections::VecDeque::default(),
 			controller: weak,

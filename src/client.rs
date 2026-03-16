@@ -89,7 +89,7 @@ impl Client {
 		};
 
 		let inner = Arc::new(ClientInner {
-			user: Arc::new(resp.user.into()),
+			user: Arc::new(resp.user),
 			workspaces: DashMap::default(),
 			poll_tx,
 			events: tokio::sync::Mutex::new(ev_rx),
@@ -255,7 +255,7 @@ impl Client {
 			})
 			.await?
 			.into_inner()
-			.into())
+		)
 	}
 
 	/// Join and return a [`Workspace`].
@@ -273,9 +273,7 @@ impl Client {
 		let workspace = workspace.to_string();
 		let mut session_client = self.0.session.clone();
 		let token = session_client
-			.get_workspace_token(codemp_proto::session::WorkspaceIdentifier::from(
-				workspace_id.clone(),
-			))
+			.get_workspace_token(workspace_id.clone())
 			.await?
 			.into_inner();
 
@@ -314,9 +312,7 @@ impl Client {
 						break;
 					};
 					let new_credentials = session_client
-						.get_workspace_token(codemp_proto::session::WorkspaceIdentifier::from(
-							_workspace.clone(),
-						))
+						.get_workspace_token(_workspace.clone())
 						.await?
 						.into_inner();
 					workspace_claims.set(new_credentials);

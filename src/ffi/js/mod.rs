@@ -1,8 +1,8 @@
-pub mod buffer;
-pub mod client;
-pub mod cursor;
-pub mod ext;
-pub mod workspace;
+mod buffer;
+mod client;
+mod cursor;
+mod ext;
+mod workspace;
 
 impl From<crate::errors::ConnectionError> for napi::Error {
 	fn from(value: crate::errors::ConnectionError) -> Self {

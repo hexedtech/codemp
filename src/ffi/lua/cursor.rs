@@ -14,7 +14,7 @@ impl LuaUserData for CodempCursorController {
 		});
 
 		methods.add_method("list", |_, this, ()| a_sync! {
-			this => this.list().await?.into_iter().map(CodempCursorEvent::from).collect::<Vec<CodempCursorEvent>>()
+			this => this.list().await?
 		});
 
 		methods.add_method("send", |_, this, (cursor,): (CodempCursorUpdate,)| {

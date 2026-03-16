@@ -104,7 +104,6 @@ impl Workspace {
 
 		let users = Arc::new(DashMap::default());
 		let controller = cursor::Controller::spawn(
-			users.clone(),
 			tx,
 			cur_stream,
 			id.clone(),
@@ -153,6 +152,7 @@ impl Workspace {
 	}
 
 	/// drop arc, return true if was last
+	#[allow(unused)] // for now, until we solve the drop-behavior issue
 	pub(crate) fn consume(self) -> bool {
 		Arc::into_inner(self.0).is_some()
 	}
@@ -170,7 +170,7 @@ impl Workspace {
 
 		// add to filetree, not really necessary as we will get an event for it
 		self.0.filetree.insert(
-			path,
+			path.clone(),
 			crate::proto::files::BufferNode {
 				path: crate::proto::files::BufferPath::from(&path),
 				ephemeral,
@@ -436,6 +436,7 @@ impl WorkspaceWorker {
 							break tracing::debug!("workspace worker clean exit");
 						};
 						tracing::debug!("received workspace event: {event:?}");
+						let _event = event.clone();
 						match event.kind() {
 							// TODO we should never get wrong optionals set but should we log if we do?
 							WorkspaceEventKind::UserJoinWorkspace => {
@@ -496,7 +497,7 @@ impl WorkspaceWorker {
 							}
 						}
 
-						if self.events.send(event).is_err() {
+						if self.events.send(_event).is_err() {
 							tracing::warn!("no active controller to receive workspace event");
 						}
 						self.pollers.drain(..).for_each(|x| {

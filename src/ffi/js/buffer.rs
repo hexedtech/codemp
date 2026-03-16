@@ -75,6 +75,6 @@ impl CodempBufferController {
 	/// Get id of workspace containing this controller.
 	#[napi(js_name = "workspaceId")]
 	pub fn js_workspace_id(&self) -> CodempWorkspaceIdentifier {
-		self.workspace_id().clone().into()
+		self.workspace_id().clone()
 	}
 }

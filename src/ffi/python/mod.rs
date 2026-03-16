@@ -1,6 +1,6 @@
-pub mod client;
-pub mod controllers;
-pub mod workspace;
+mod client;
+mod controllers;
+mod workspace;
 
 use crate::prelude::*;
 
