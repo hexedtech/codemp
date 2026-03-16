@@ -12,7 +12,7 @@
 #[cfg_attr(feature = "js", napi_derive::napi(object))]
 #[cfg_attr(feature = "py", pyo3::pyclass(get_all, set_all, from_py_object))]
 #[cfg_attr(feature = "serialize", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "java", jni_toolbox::jclass(class = "mp/code/data/Config"))]
+#[cfg_attr(feature = "java", jni_toolbox::jclass(package = "mp.code.data"))]
 pub struct Config {
 	/// User identifier used to register, possibly your email.
 	pub username: String,
