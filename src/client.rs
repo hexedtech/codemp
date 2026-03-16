@@ -303,7 +303,6 @@ impl Client {
 
 		let weak = Arc::downgrade(&ws.0);
 		tokio::spawn(async move {
-			let _workspace = workspace_id.clone();
 			let fut = async move {
 				loop {
 					// TODO either configurable token refresh time or calculate depending on token lifetime
@@ -312,7 +311,7 @@ impl Client {
 						break;
 					};
 					let new_credentials = session_client
-						.get_workspace_token(_workspace.clone())
+						.get_workspace_token(workspace_id.clone())
 						.await?
 						.into_inner();
 					workspace_claims.set(new_credentials);
