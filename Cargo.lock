@@ -188,7 +188,7 @@ dependencies = [
 [[package]]
 name = "codemp-proto"
 version = "0.8.0"
-source = "git+https://github.com/hexedtech/codemp-proto?rev=eda0969e86d0c592688c692a052b5659099277ae#eda0969e86d0c592688c692a052b5659099277ae"
+source = "git+https://github.com/hexedtech/codemp-proto?rev=c25c94bc71a3f32be203c40ca4c9dc03d2c0b9d7#c25c94bc71a3f32be203c40ca4c9dc03d2c0b9d7"
 dependencies = [
  "jni",
  "jni-toolbox",
@@ -807,7 +807,7 @@ dependencies = [
 [[package]]
 name = "jni-toolbox"
 version = "0.2.2"
-source = "git+https://github.com/hexedtech/jni-toolbox?rev=c40e925510fd563763db5dec4df300615453054b#c40e925510fd563763db5dec4df300615453054b"
+source = "git+https://github.com/hexedtech/jni-toolbox?rev=9b54289d562f3ba0dfc59ab38342e7502aeb529c#9b54289d562f3ba0dfc59ab38342e7502aeb529c"
 dependencies = [
  "jni",
  "jni-toolbox-macro",
@@ -818,8 +818,9 @@ dependencies = [
 [[package]]
 name = "jni-toolbox-macro"
 version = "0.2.2"
-source = "git+https://github.com/hexedtech/jni-toolbox?rev=c40e925510fd563763db5dec4df300615453054b#c40e925510fd563763db5dec4df300615453054b"
+source = "git+https://github.com/hexedtech/jni-toolbox?rev=9b54289d562f3ba0dfc59ab38342e7502aeb529c#9b54289d562f3ba0dfc59ab38342e7502aeb529c"
 dependencies = [
+ "convert_case",
  "proc-macro2",
  "quote",
  "syn 2.0.117",
@@ -964,9 +965,9 @@ dependencies = [
 
 [[package]]
 name = "mlua-serde-derive"
-version = "0.1.0"
+version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8c68d667cdb8a4106f37e339746d046d670f846ce18cc69e9d3319a8e509241f"
+checksum = "c84dc28a39ade336b9c7e078121ba5cb95b2ebb55b3e77ac432f1bc5eacfb68a"
 dependencies = [
  "proc-macro2",
  "quote",

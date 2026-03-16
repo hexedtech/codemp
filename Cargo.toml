@@ -31,7 +31,7 @@ thiserror = "2.0"
 # crdt
 diamond-types = "1.0"
 # proto
-codemp-proto = { git = "https://github.com/hexedtech/codemp-proto", rev = "fb7acdb88364bd8932d5c975983ad9595fc85c4b", features = ["client"] }
+codemp-proto = { git = "https://github.com/hexedtech/codemp-proto", rev = "c25c94bc71a3f32be203c40ca4c9dc03d2c0b9d7", features = ["client"] }
 uuid = { version = "1.17", features = ["v4"] }
 tonic = { version = "0.14", features = ["tls-native-roots"] }
 # api
@@ -47,11 +47,11 @@ tracing-subscriber = { version = "0.3", optional = true }
 # glue (java)
 jni = { version = "0.22", features = ["invocation"], optional = true }
 #jni-toolbox = { version = "0.2", optional = true, features = ["uuid"] }
-jni-toolbox = { git = "https://github.com/hexedtech/jni-toolbox", rev = "c40e925510fd563763db5dec4df300615453054b", optional = true, features = ["uuid", "unsigned"] }
+jni-toolbox = { git = "https://github.com/hexedtech/jni-toolbox", rev = "9b54289d562f3ba0dfc59ab38342e7502aeb529c", optional = true, features = ["uuid", "unsigned"] }
 
 # glue (lua)
 mlua = { version = "0.11", features = ["module", "serialize", "error-send"], optional = true }
-mlua-serde-derive = { version = "0.1", optional = true }
+mlua-serde-derive = { version = "0.1.1", optional = true }
 
 # glue (js)
 napi = { version = "3.1", features = ["full"], optional = true } 
