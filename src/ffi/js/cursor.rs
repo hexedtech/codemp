@@ -10,7 +10,7 @@ impl CursorController {
 	/// There can only be one callback registered at any given time.
 	#[napi(
 		js_name = "callback",
-		ts_args_type = "fun: (event: CursorController) => void"
+		ts_args_type = "fun: (err: Error|null, event: CursorController) => void"
 	)]
 	pub fn js_callback(
 		&self,

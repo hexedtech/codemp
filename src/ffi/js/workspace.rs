@@ -83,7 +83,7 @@ impl Workspace {
 		Ok(())
 	}
 
-	#[napi(js_name = "callback", ts_args_type = "fun: (event: Workspace) => void")]
+	#[napi(js_name = "callback", ts_args_type = "fun: (err: Error|null, event: Workspace) => void")]
 	pub fn js_callback(&self, fun: ThreadsafeFunction<Workspace>) -> napi::Result<()> {
 		let tsfn: ThreadsafeFunction<Workspace> = fun;
 		self.callback(move |controller: Workspace| {

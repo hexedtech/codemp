@@ -11,7 +11,7 @@ impl BufferController {
 	/// There can only be one callback registered at any given time.
 	#[napi(
 		js_name = "callback",
-		ts_args_type = "fun: (event: BufferController) => void"
+		ts_args_type = "fun: (err: Error|null, event: BufferController) => void"
 	)]
 	pub fn js_callback(
 		&self,
