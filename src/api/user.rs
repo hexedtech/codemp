@@ -11,10 +11,13 @@ pub struct UserInfo {
 	/// User name, unique and immutable
 	pub name: String,
 	/// User display name, can change and be duplicated
+	#[cfg_attr(feature = "serialize", serde(skip_serializing_if = "Option::is_none"))]
 	pub display_name: Option<String>,
 	/// User description ("bio"), may contain contacts
+	#[cfg_attr(feature = "serialize", serde(skip_serializing_if = "Option::is_none"))]
 	pub description: Option<String>,
 	/// User avatar: a small image some editors can display
+	#[cfg_attr(feature = "serialize", serde(skip_serializing_if = "Option::is_none"))]
 	pub avatar: Option<Vec<u8>>,
 }
 

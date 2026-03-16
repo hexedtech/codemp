@@ -66,7 +66,7 @@ impl LuaUserData for CodempWorkspace {
 			Ok(this.buffer_user_list(&path))
 		});
 
-		methods.add_method("id", |_, this, ()| Ok(this.id().to_string()));
+		methods.add_method("id", |_, this, ()| Ok(this.id().clone()));
 		methods.add_method("cursor", |_, this, ()| Ok(this.cursor()));
 		methods.add_method("active_buffers", |_, this, ()| Ok(this.active_buffers()));
 		methods.add_method("user_list", |_, this, ()| Ok(this.user_list()));

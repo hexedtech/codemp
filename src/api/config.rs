@@ -19,10 +19,13 @@ pub struct Config {
 	/// User password chosen upon registration.
 	pub password: String, // must not leak this!
 	/// Address of server to connect to, default api.code.mp.
+	#[cfg_attr(feature = "serialize", serde(skip_serializing_if = "Option::is_none"))]
 	pub host: Option<String>,
 	/// Port to connect to, default 50053.
+	#[cfg_attr(feature = "serialize", serde(skip_serializing_if = "Option::is_none"))]
 	pub port: Option<u16>,
 	/// Enable or disable tls, default true.
+	#[cfg_attr(feature = "serialize", serde(skip_serializing_if = "Option::is_none"))]
 	pub tls: Option<bool>,
 }
 

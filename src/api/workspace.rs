@@ -38,6 +38,6 @@ impl From<WorkspaceIdentifier> for codemp_proto::session::WorkspaceIdentifier {
 
 impl std::fmt::Display for WorkspaceIdentifier {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		write!(f, "#{}:{}", self.user, self.workspace)
+		write!(f, "{}/{}", self.user, self.workspace)
 	}
 }
