@@ -53,7 +53,7 @@
 //! use codemp::api::controller::{AsyncSender, AsyncReceiver}; // needed to access trait methods
 //! let cursor = workspace.cursor();
 //! let event = cursor.recv().await.expect("disconnected while waiting for event!");
-//! println!("user {} moved on buffer {}", event.user, event.cursor.buffer);
+//! println!("user {} moved on buffer {}", event.user, event.position.buffer);
 //! # };
 //! ```
 //!

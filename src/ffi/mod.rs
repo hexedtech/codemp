@@ -29,7 +29,7 @@
 //! // wait for cursor movements
 //! loop {
 //!   let event = workspace.cursor().recv().await?;
-//!   println!("user {} moved on buffer {}", event.user, event.cursor.buffer);
+//!   println!("user {} moved on buffer {}", event.user, event.position.buffer);
 //! }
 //! # Ok::<(),Box<dyn std::error::Error>>(())
 //! # };
