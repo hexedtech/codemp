@@ -187,7 +187,7 @@ dependencies = [
 [[package]]
 name = "codemp-proto"
 version = "0.8.0"
-source = "git+https://github.com/hexedtech/codemp-proto?rev=c38c582174b1c8845c5e008a07a3d4730070873c#c38c582174b1c8845c5e008a07a3d4730070873c"
+source = "git+https://github.com/hexedtech/codemp-proto?rev=cba61da3ad6a852e368039e02281deb5a8d1b017#cba61da3ad6a852e368039e02281deb5a8d1b017"
 dependencies = [
  "prost",
  "tonic",
