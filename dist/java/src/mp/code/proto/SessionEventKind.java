@@ -11,20 +11,20 @@ public class SessionEventKind {
 	/**
 	 * Event that occurs when you get invited to a workspace.
 	 */
-	public static final int INVITATION_EVENT = 0;
+	public static final int INVITATION_EVENT = 1;
 
 	/**
 	 * Event that occurs when a user quits a workspace.
 	 */
-	public static final int QUIT_EVENT = 1;
+	public static final int QUIT_EVENT = 2;
 
 	/**
 	 * Event that occurs when a user accepts an invitation to a workspace you are in.
 	 */
-	public static final int ACCEPT_EVENT = 2;
+	public static final int ACCEPT_EVENT = 3;
 
 	/**
 	 * Event that occurs when a user reject an invite.
 	 */
-	public static final int REJECT_EVENT = 3;
+	public static final int REJECT_EVENT = 4;
 }
