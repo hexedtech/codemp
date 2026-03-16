@@ -460,7 +460,7 @@ impl ClientWorker {
 						}
 
 						if self.events.send(ev).is_err() {
-							tracing::warn!("no active controller to receive workspace event");
+							tracing::warn!("no active controller to receive client event");
 						}
 						self.pollers.drain(..).for_each(|x| {
 							x.send(()).unwrap_or_warn("poller dropped before completion");
@@ -469,7 +469,7 @@ impl ClientWorker {
 							if let Some(ws) = weak.upgrade() {
 								cb.call(Client(ws));
 							} else {
-								break tracing::debug!("workspace worker clean (late) exit");
+								break tracing::debug!("client worker clean (late) exit");
 							}
 						}
 					}
