@@ -1,9 +1,9 @@
 package mp.code;
 
 import lombok.Getter;
-import mp.code.data.Config;
-import mp.code.data.UserInfo;
-import mp.code.data.WorkspaceIdentifier;
+import mp.code.proto.Config;
+import mp.code.proto.UserInfo;
+import mp.code.proto.WorkspaceIdentifier;
 import mp.code.exceptions.ConnectionException;
 import mp.code.exceptions.ConnectionRemoteException;
 

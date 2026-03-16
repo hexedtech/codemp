@@ -1,8 +1,8 @@
 package mp.code;
 
-import mp.code.data.Cursor;
-import mp.code.data.Selection;
-import mp.code.data.WorkspaceIdentifier;
+import mp.code.proto.Cursor;
+import mp.code.proto.Selection;
+import mp.code.proto.WorkspaceIdentifier;
 import mp.code.exceptions.ControllerException;
 
 import java.util.function.Consumer;

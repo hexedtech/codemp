@@ -1,4 +1,4 @@
-package mp.code.data;
+package mp.code.proto;
 
 import lombok.AccessLevel;
 import lombok.EqualsAndHashCode;

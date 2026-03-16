@@ -1,8 +1,8 @@
 package mp.code;
 
-import mp.code.data.BufferUpdate;
-import mp.code.data.TextChange;
-import mp.code.data.WorkspaceIdentifier;
+import mp.code.proto.BufferUpdate;
+import mp.code.proto.TextChange;
+import mp.code.proto.WorkspaceIdentifier;
 import mp.code.exceptions.ControllerException;
 
 import java.util.function.Consumer;
