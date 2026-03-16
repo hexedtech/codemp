@@ -318,14 +318,6 @@ function Client:get_workspace(user, ws) end
 ---get full user info for given username from server
 function Client:get_user_info(user) end
 
----all enum types for session events
-SessionEventKind = {
-	InvitationEvent = 1,
-	QuitEvent = 2,
-	AcceptEvent = 3,
-	RejectEvent = 4,
-}
-
 ---@class (exact) SessionEvent
 ---@field kind integer (SessionEventKind) event kind
 ---@field user string the user that created this event (sent invitation, rejected invite...)
@@ -467,17 +459,6 @@ function Workspace:fetch_users(path) end
 ---@nodiscard
 ---fetch the list of users in the given buffer
 function Workspace:fetch_buffer_users(path) end
-
----all enum types for workspace events
-WorkspaceEventKind = {
-	UserJoinWorkspace = 1,
-	UserLeaveWorkspace = 2,
-	FileCreate = 3,
-	FileRename = 4,
-	FileDelete = 5,
-	UserJoinBuffer = 6,
-	UserLeaveBuffer = 7,
-}
 
 ---@class (exact) WorkspaceEvent
 ---@field kind integer (WorkspaceEventKind) event kind
