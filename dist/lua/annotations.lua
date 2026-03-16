@@ -283,10 +283,11 @@ function Client:fetch_owned_workspaces() end
 ---fetch and list joined workspaces
 function Client:fetch_joined_workspaces() end
 
+---@param user string user owning this workspace
 ---@param ws string workspace id to get
 ---@return Workspace?
 ---get an active workspace by name
-function Client:get_workspace(ws) end
+function Client:get_workspace(user, ws) end
 
 ---@param user string username to lookup
 ---@return UserInfoPromise
@@ -313,9 +314,9 @@ function Client:callback(cb) end
 ---@class UserInfo
 ---represents a service user and contains all its relevant info
 ---@field name string user unique, immutable name
----@field display_name string|nil user display name, mutable and not guaranteed to be unique
----@field description string|nil user description, maybe containing contact info
----@field avatar any|nil user avatar image, as bytes 
+---@field display_name string? display name, mutable and not guaranteed to be unique
+---@field description string? user description, maybe containing contact info
+---@field avatar data? user avatar image, as bytes 
 
 ---@class WorkspaceIdentifier
 ---uniquely identifies a workspace, by its owner and workspace name
