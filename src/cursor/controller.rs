@@ -6,15 +6,11 @@ use std::sync::Arc;
 use tokio::sync::{mpsc, oneshot, watch};
 
 use crate::{
-	api::{
-		Controller, Cursor,
-		controller::{AsyncReceiver, AsyncSender, ControllerCallback},
-		cursor::CursorEvent,
-	},
+	api::{Controller, controller::{AsyncReceiver, AsyncSender, ControllerCallback}},
 	errors::ControllerResult,
 	network::AuthedService,
 };
-use codemp_proto::cursor::{CursorPosition, CursorUpdate, RowCol, cursor_client::CursorClient};
+use codemp_proto::cursor::{CursorEvent, CursorUpdate, cursor_client::CursorClient};
 
 /// A [Controller] for asynchronously sending and receiving [Cursor] event.
 ///
@@ -26,7 +22,7 @@ pub struct CursorController(pub(crate) Arc<CursorControllerInner>);
 
 impl CursorController {
 	/// Get id of workspace containing this controller.
-	pub fn workspace_id(&self) -> &crate::api::WorkspaceIdentifier {
+	pub fn workspace_id(&self) -> &crate::proto::session::WorkspaceIdentifier {
 		&self.0.workspace_id
 	}
 }
@@ -37,42 +33,26 @@ pub(crate) struct CursorControllerInner {
 	pub(crate) stream: mpsc::Sender<oneshot::Sender<Option<CursorEvent>>>,
 	pub(crate) poll: mpsc::UnboundedSender<oneshot::Sender<()>>,
 	pub(crate) callback: watch::Sender<Option<ControllerCallback<CursorController>>>,
-	pub(crate) workspace_id: crate::api::WorkspaceIdentifier,
+	pub(crate) workspace_id: crate::proto::session::WorkspaceIdentifier,
 	pub(crate) service: CursorClient<AuthedService>,
 }
 
 #[cfg_attr(feature = "async-trait", async_trait::async_trait)]
-impl Controller<Cursor, CursorEvent> for CursorController {}
+impl Controller<CursorUpdate, CursorEvent> for CursorController {}
 
 #[cfg_attr(feature = "async-trait", async_trait::async_trait)]
-impl AsyncSender<Cursor> for CursorController {
-	fn send(&self, mut cursor: Cursor) -> ControllerResult<()> {
-		for sel in cursor.sel.iter_mut() {
-			if sel.start_row > sel.end_row
-				|| (sel.start_row == sel.end_row && sel.start_col > sel.end_col)
+impl AsyncSender<CursorUpdate> for CursorController {
+	fn send(&self, mut cursor: CursorUpdate) -> ControllerResult<()> {
+		for sel in cursor.cursors.iter_mut() {
+			if sel.start.row > sel.end.row
+				|| (sel.start.row == sel.end.row && sel.start.col > sel.end.col)
 			{
-				std::mem::swap(&mut sel.start_row, &mut sel.end_row);
-				std::mem::swap(&mut sel.start_col, &mut sel.end_col);
+				std::mem::swap(&mut sel.start.row, &mut sel.end.row);
+				std::mem::swap(&mut sel.start.col, &mut sel.end.col);
 			}
 		}
 
-		Ok(self.0.op.send(CursorUpdate {
-			buffer: cursor.buffer,
-			cursors: cursor
-				.sel
-				.into_iter()
-				.map(|x| CursorPosition {
-					start: RowCol {
-						row: x.start_row,
-						col: x.start_col,
-					},
-					end: RowCol {
-						row: x.end_row,
-						col: x.end_col,
-					},
-				})
-				.collect(),
-		})?)
+		Ok(self.0.op.send(cursor)?)
 	}
 }
 

@@ -5,7 +5,6 @@
 
 use crate::{
 	api::{
-		Event, UserInfo,
 		controller::{AsyncReceiver, ControllerCallback},
 	},
 	buffer, cursor,
@@ -17,13 +16,7 @@ use crate::{
 use codemp_proto::{
 	common::Empty,
 	files::{BufferNode, BufferPath},
-	workspace::{
-		WorkspaceEvent,
-		workspace_event::{
-			Event as WorkspaceEventInner, FileCreate, FileDelete, FileRename, UserJoinBuffer,
-			UserJoinWorkspace, UserLeaveBuffer, UserLeaveWorkspace,
-		},
-	},
+	workspace::{WorkspaceEvent, WorkspaceEventKind},
 };
 
 use dashmap::DashMap;
@@ -50,21 +43,21 @@ pub struct Workspace(pub(crate) Arc<WorkspaceInner>);
 
 #[derive(Debug)]
 pub(crate) struct WorkspaceInner {
-	id: crate::api::WorkspaceIdentifier,
-	current_user: Arc<UserInfo>,
+	id: crate::proto::session::WorkspaceIdentifier,
+	current_user: Arc<codemp_proto::common::UserInfo>,
 	cursor: cursor::Controller,
 	buffers: DashMap<String, buffer::Controller>,
 	services: Services,
-	filetree: DashMap<String, crate::api::BufferNode>,
+	filetree: DashMap<String, crate::proto::files::BufferNode>,
 	buffer_users: DashMap<String, Vec<String>>,
-	users: Arc<DashMap<String, UserInfo>>,
-	events: tokio::sync::Mutex<mpsc::UnboundedReceiver<crate::api::Event>>,
+	users: Arc<DashMap<String, codemp_proto::common::UserInfo>>,
+	events: tokio::sync::Mutex<mpsc::UnboundedReceiver<WorkspaceEvent>>,
 	callback: watch::Sender<Option<ControllerCallback<Workspace>>>,
 	poll_tx: mpsc::UnboundedSender<oneshot::Sender<()>>,
 }
 
-impl AsyncReceiver<Event> for Workspace {
-	async fn try_recv(&self) -> ControllerResult<Option<Event>> {
+impl AsyncReceiver<WorkspaceEvent> for Workspace {
+	async fn try_recv(&self) -> ControllerResult<Option<WorkspaceEvent>> {
 		match self.0.events.lock().await.try_recv() {
 			Ok(x) => Ok(Some(x)),
 			Err(TryRecvError::Empty) => Ok(None),
@@ -88,10 +81,10 @@ impl AsyncReceiver<Event> for Workspace {
 }
 
 impl Workspace {
-	#[tracing::instrument(skip(id, user, workspace_claim, user_claim), fields(ws = %id))]
+	#[tracing::instrument(skip(id, user, workspace_claim, user_claim), fields(owner = id.user, ws = id.workspace))]
 	pub(crate) async fn connect(
-		id: crate::api::WorkspaceIdentifier,
-		user: Arc<UserInfo>,
+		id: crate::proto::session::WorkspaceIdentifier,
+		user: Arc<crate::proto::common::UserInfo>,
 		config: crate::api::Config,
 		workspace_claim: tokio::sync::watch::Receiver<codemp_proto::common::Token>,
 		user_claim: tokio::sync::watch::Receiver<codemp_proto::common::Token>,
@@ -167,18 +160,19 @@ impl Workspace {
 	/// Create a new buffer in the current workspace.
 	pub async fn create_buffer(&self, path: impl ToString, ephemeral: bool) -> RemoteResult<()> {
 		let mut workspace_client = self.0.services.ws();
+		let path = path.to_string();
 		workspace_client
 			.create_buffer(tonic::Request::new(BufferNode {
-				path: path.to_string().into(),
+				path: crate::proto::files::BufferPath::from(&path),
 				ephemeral,
 			}))
 			.await?;
 
 		// add to filetree, not really necessary as we will get an event for it
 		self.0.filetree.insert(
-			path.to_string(),
-			crate::api::BufferNode {
-				path: path.to_string(),
+			path,
+			crate::proto::files::BufferNode {
+				path: crate::proto::files::BufferPath::from(&path),
 				ephemeral,
 			},
 		);
@@ -294,7 +288,7 @@ impl Workspace {
 		for b in resp.buffers {
 			self.0
 				.filetree
-				.insert(b.path.clone().into(), crate::api::BufferNode::from(b));
+				.insert(b.path.clone().into(), b);
 		}
 
 		Ok(())
@@ -310,7 +304,7 @@ impl Workspace {
 			// TODO need to fetch whole user profiles here maybe?
 			self.0
 				.users
-				.insert(user_name.clone(), UserInfo::default_for(user_name));
+				.insert(user_name.clone(), codemp_proto::common::UserInfo { name: user_name, ..Default::default() });
 		}
 
 		Ok(())
@@ -347,7 +341,7 @@ impl Workspace {
 
 	/// Get the workspace unique id.
 	// #[cfg_attr(feature = "js", napi)] // https://github.com/napi-rs/napi-rs/issues/1120
-	pub fn id(&self) -> &crate::api::WorkspaceIdentifier {
+	pub fn id(&self) -> &crate::proto::session::WorkspaceIdentifier {
 		&self.0.id
 	}
 
@@ -374,7 +368,7 @@ impl Workspace {
 	}
 
 	/// Get all users currently in this workspace
-	pub fn user_list(&self) -> Vec<UserInfo> {
+	pub fn user_list(&self) -> Vec<codemp_proto::common::UserInfo> {
 		self.0
 			.users
 			.iter()
@@ -383,7 +377,7 @@ impl Workspace {
 	}
 
 	/// Get all users currently attached to specified buffer
-	pub fn buffer_user_list(&self, path: impl AsRef<str>) -> Vec<UserInfo> {
+	pub fn buffer_user_list(&self, path: impl AsRef<str>) -> Vec<codemp_proto::common::UserInfo> {
 		let mut out = Vec::new();
 		if let Some(buf_ref) = self.0.buffer_users.get(path.as_ref()) {
 			for uid in buf_ref.value() {
@@ -415,14 +409,14 @@ struct WorkspaceWorker {
 	callback: watch::Receiver<Option<ControllerCallback<Workspace>>>,
 	pollers: Vec<oneshot::Sender<()>>,
 	poll_rx: mpsc::UnboundedReceiver<oneshot::Sender<()>>,
-	events: mpsc::UnboundedSender<crate::api::Event>,
+	events: mpsc::UnboundedSender<crate::proto::workspace::WorkspaceEvent>,
 }
 
 impl WorkspaceWorker {
 	#[tracing::instrument(skip(self, stream, weak))]
 	pub(crate) async fn work(
 		mut self,
-		ws: crate::api::WorkspaceIdentifier,
+		ws: crate::proto::session::WorkspaceIdentifier,
 		mut stream: Streaming<WorkspaceEvent>,
 		weak: Weak<WorkspaceInner>,
 	) {
@@ -435,60 +429,74 @@ impl WorkspaceWorker {
 				},
 
 				res = stream.message() => match res {
-					Err(e) => break tracing::error!("workspace '{ws}' stream closed: {e}"),
-					Ok(None) => break tracing::info!("leaving workspace {ws}"),
-					Ok(Some(WorkspaceEvent { event: None })) => {
-						tracing::warn!("workspace {ws} received empty event")
-					}
-					Ok(Some(WorkspaceEvent { event: Some(ev) })) => {
+					Err(e) => break tracing::error!("workspace '{ws:?}' stream closed: {e}"),
+					Ok(None) => break tracing::info!("leaving workspace {ws:?}"),
+					Ok(Some(event)) => {
 						let Some(inner) = weak.upgrade() else {
 							break tracing::debug!("workspace worker clean exit");
 						};
-						tracing::debug!("received workspace event: {ev:?}");
-						let update = crate::api::Event::from(&ev);
-						match ev {
-							// user
-							WorkspaceEventInner::WorkspaceJoin(UserJoinWorkspace { user }) => {
-								inner.users.insert(user.clone(), UserInfo::default_for(user));
+						tracing::debug!("received workspace event: {event:?}");
+						match event.kind() {
+							// TODO we should never get wrong optionals set but should we log if we do?
+							WorkspaceEventKind::UserJoinWorkspace => {
+								if let Some(user) = event.user {
+									inner.users.insert(user.clone(), codemp_proto::common::UserInfo { name: user, ..Default::default() });
+								}
 							}
-							WorkspaceEventInner::WorkspaceLeave(UserLeaveWorkspace { user }) => {
-								inner.users.remove(&user);
+							WorkspaceEventKind::UserLeaveWorkspace => {
+								if let Some(user) = event.user {
+									inner.users.remove(&user);
+								}
 							}
-							WorkspaceEventInner::BufferJoin(UserJoinBuffer { user, buffer }) => {
-								match inner.buffer_users.get_mut(&buffer) {
-									Some(mut buf_users_ref) => buf_users_ref.push(user),
-									None => { inner.buffer_users.insert(buffer, vec![user]); },
+							WorkspaceEventKind::UserJoinBuffer => {
+								if let (Some(user), Some(buffer)) = (event.user, event.path) {
+									match inner.buffer_users.get_mut(&buffer) {
+										Some(mut buf_users_ref) => buf_users_ref.push(user),
+										None => { inner.buffer_users.insert(buffer, vec![user]); },
+									}
 								}
 							},
-							WorkspaceEventInner::BufferLeave(UserLeaveBuffer { user, buffer }) => {
-								match inner.buffer_users.get_mut(&buffer) {
-									Some(mut buf_users_ref) => buf_users_ref.retain(|x| *x != user),
-									None => tracing::warn!("received UserLeaveBuffer event for an unknown buffer"),
+							WorkspaceEventKind::UserLeaveBuffer => {
+								if let (Some(user), Some(buffer)) = (event.user, event.path) {
+									match inner.buffer_users.get_mut(&buffer) {
+										Some(mut buf_users_ref) => buf_users_ref.retain(|x| *x != user),
+										None => tracing::warn!("received UserLeaveBuffer event for an unknown buffer"),
+									}
 								}
 							},
-							// buffer
-							WorkspaceEventInner::Create(FileCreate { path, ephemeral }) => {
-								inner.buffer_users.insert(path.clone(), Vec::new());
-								inner.filetree.insert(path.clone(), crate::api::BufferNode { path, ephemeral });
-							}
-							WorkspaceEventInner::Rename(FileRename { before, after }) => {
-								if let Some((_path, controller)) = inner.buffers.remove(&before) {
-									inner.buffers.insert(after.clone(), controller);
-								}
-								if let Some((_path, node)) = inner.filetree.remove(&before) {
-									inner.filetree.insert(after.clone(), node);
-								}
-								if let Some((_path, users)) = inner.buffer_users.remove(&before) {
-									inner.buffer_users.insert(after, users);
+
+							WorkspaceEventKind::FileCreate => {
+								if let (Some(path), Some(ephemeral)) = (event.path, event.ephemeral) {
+									inner.buffer_users.insert(path.clone(), Vec::new());
+									inner.filetree.insert(path.clone(), crate::proto::files::BufferNode {
+										path: crate::proto::files::BufferPath::from(&path),
+										ephemeral
+									});
 								}
 							}
-							WorkspaceEventInner::Delete(FileDelete { path }) => {
-								inner.filetree.remove(&path);
-								inner.buffer_users.remove(&path);
-								let _ = inner.buffers.remove(&path);
+							WorkspaceEventKind::FileRename => {
+								if let (Some(before), Some(after)) = (event.path, event.after) {
+									if let Some((_path, controller)) = inner.buffers.remove(&before) {
+										inner.buffers.insert(after.clone(), controller);
+									}
+									if let Some((_path, node)) = inner.filetree.remove(&before) {
+										inner.filetree.insert(after.clone(), node);
+									}
+									if let Some((_path, users)) = inner.buffer_users.remove(&before) {
+										inner.buffer_users.insert(after, users);
+									}
+								}
+							}
+							WorkspaceEventKind::FileDelete => {
+								if let Some(path) = event.path {
+									inner.filetree.remove(&path);
+									inner.buffer_users.remove(&path);
+									let _ = inner.buffers.remove(&path);
+								}
 							}
 						}
-						if self.events.send(update).is_err() {
+
+						if self.events.send(event).is_err() {
 							tracing::warn!("no active controller to receive workspace event");
 						}
 						self.pollers.drain(..).for_each(|x| {

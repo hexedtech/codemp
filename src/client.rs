@@ -10,7 +10,7 @@ use tonic::{
 };
 
 use crate::{
-	api::{AsyncReceiver, UserInfo},
+	api::AsyncReceiver,
 	errors::{ConnectionResult, RemoteResult},
 	ext::{IgnorableError, InternallyMutable},
 	network,
@@ -18,10 +18,9 @@ use crate::{
 };
 use codemp_proto::{
 	auth::{LoginRequest, auth_client::AuthClient},
-	common::{Empty, Token},
+	common::{Empty, Token, UserInfo},
 	session::{
-		InviteRequest, OwnedWorkspaceIdentifier, UserId, WorkspaceIdentifier,
-		session_client::SessionClient,
+		InviteRequest, OwnedWorkspaceIdentifier, SessionEvent, SessionEventKind, UserId, WorkspaceIdentifier, session_client::SessionClient
 	},
 };
 
@@ -40,7 +39,7 @@ pub struct Client(Arc<ClientInner>);
 
 #[derive(Debug)]
 struct ClientInner {
-	user: Arc<UserInfo>,
+	user: Arc<codemp_proto::common::UserInfo>,
 	config: crate::api::Config,
 	workspaces: DashMap<String, DashMap<String, Workspace>>,
 	auth: AuthClient<Channel>,
@@ -50,7 +49,7 @@ struct ClientInner {
 	callback:
 		tokio::sync::watch::Sender<Option<crate::api::controller::ControllerCallback<Client>>>,
 	events: tokio::sync::Mutex<
-		tokio::sync::mpsc::UnboundedReceiver<codemp_proto::session::session_event::Event>,
+		tokio::sync::mpsc::UnboundedReceiver<crate::proto::session::SessionEvent>,
 	>,
 }
 
@@ -218,7 +217,7 @@ impl Client {
 	/// Fetch the names of all workspaces owned by the current user.
 	pub async fn fetch_owned_workspaces(
 		&self,
-	) -> RemoteResult<Vec<crate::api::WorkspaceIdentifier>> {
+	) -> RemoteResult<Vec<WorkspaceIdentifier>> {
 		Ok(self
 			.0
 			.session
@@ -227,15 +226,13 @@ impl Client {
 			.await?
 			.into_inner()
 			.workspaces
-			.into_iter()
-			.map(crate::api::WorkspaceIdentifier::from)
-			.collect())
+		)
 	}
 
 	/// Fetch the names of all workspaces the current user has joined.
 	pub async fn fetch_joined_workspaces(
 		&self,
-	) -> RemoteResult<Vec<crate::api::WorkspaceIdentifier>> {
+	) -> RemoteResult<Vec<WorkspaceIdentifier>> {
 		Ok(self
 			.0
 			.session
@@ -244,13 +241,11 @@ impl Client {
 			.await?
 			.into_inner()
 			.workspaces
-			.into_iter()
-			.map(crate::api::WorkspaceIdentifier::from)
-			.collect())
+		)
 	}
 
 	/// Get the meta information for a user
-	pub async fn get_user_info(&self, user: impl ToString) -> RemoteResult<crate::api::UserInfo> {
+	pub async fn get_user_info(&self, user: impl ToString) -> RemoteResult<UserInfo> {
 		Ok(self
 			.0
 			.session
@@ -270,7 +265,7 @@ impl Client {
 		user: impl ToString,
 		workspace: impl ToString,
 	) -> ConnectionResult<Workspace> {
-		let workspace_id = crate::api::WorkspaceIdentifier {
+		let workspace_id = WorkspaceIdentifier {
 			user: user.to_string(),
 			workspace: workspace.to_string(),
 		};
@@ -366,7 +361,7 @@ impl Client {
 
 	/// Get the names of all active [`Workspace`]s.
 	// TODO get rid of WorkspaceIdentifier
-	pub fn active_workspaces(&self) -> Vec<crate::api::WorkspaceIdentifier> {
+	pub fn active_workspaces(&self) -> Vec<WorkspaceIdentifier> {
 		let mut out = Vec::new();
 		for wss in self.0.workspaces.iter() {
 			for ws in wss.value().iter() {
@@ -382,10 +377,10 @@ impl Client {
 	}
 }
 
-impl AsyncReceiver<codemp_proto::session::session_event::Event> for Client {
+impl AsyncReceiver<SessionEvent> for Client {
 	async fn try_recv(
 		&self,
-	) -> crate::errors::ControllerResult<Option<codemp_proto::session::session_event::Event>> {
+	) -> crate::errors::ControllerResult<Option<SessionEvent>> {
 		match self.0.events.lock().await.try_recv() {
 			Ok(x) => Ok(Some(x)),
 			Err(tokio::sync::mpsc::error::TryRecvError::Empty) => Ok(None),
@@ -415,14 +410,14 @@ struct ClientWorker {
 		tokio::sync::watch::Receiver<Option<crate::api::controller::ControllerCallback<Client>>>,
 	pollers: Vec<tokio::sync::oneshot::Sender<()>>,
 	poll_rx: tokio::sync::mpsc::UnboundedReceiver<tokio::sync::oneshot::Sender<()>>,
-	events: tokio::sync::mpsc::UnboundedSender<codemp_proto::session::session_event::Event>,
+	events: tokio::sync::mpsc::UnboundedSender<SessionEvent>,
 }
 
 impl ClientWorker {
 	#[tracing::instrument(skip(self, stream, weak))]
 	pub(crate) async fn work(
 		mut self,
-		mut stream: tonic::Streaming<codemp_proto::session::SessionEvent>,
+		mut stream: tonic::Streaming<SessionEvent>,
 		weak: std::sync::Weak<ClientInner>,
 	) {
 		tracing::debug!("client worker starting");
@@ -436,30 +431,27 @@ impl ClientWorker {
 				res = stream.message() => match res {
 					Err(e) => break tracing::error!("client stream closed: {e}"),
 					Ok(None) => break tracing::info!("closing client"),
-					Ok(Some(codemp_proto::session::SessionEvent { event: None })) => {
-						tracing::warn!("client received empty event")
-					}
-					Ok(Some(codemp_proto::session::SessionEvent { event: Some(ev) })) => {
+					Ok(Some(event)) => {
 						let Some(_inner) = weak.upgrade() else {
 							break tracing::debug!("client worker clean exit");
 						};
-						tracing::debug!("received client event: {ev:?}");
-						match ev.clone() {
-							codemp_proto::session::session_event::Event::Invite(invitation_event) => {
-								tracing::info!("got invited to workspace: {invitation_event:?}");
+						tracing::debug!("received client event: {event:?}");
+						match event.kind() {
+							SessionEventKind::InvitationEvent => {
+								tracing::info!("got invited to workspace {}/{} by {}", event.workspace.user, event.workspace.workspace, event.user);
 							},
-							codemp_proto::session::session_event::Event::Leave(quit_event) => {
-								tracing::info!("user left workspace: {quit_event:?}");
+							SessionEventKind::QuitEvent => {
+								tracing::info!("user {} left workspace {}/{}", event.user, event.workspace.user, event.workspace.workspace);
 							},
-							codemp_proto::session::session_event::Event::Join(accept_event) => {
-								tracing::info!("user accepted invite: {accept_event:?}");
+							SessionEventKind::AcceptEvent => {
+								tracing::info!("user {} accepted invite to workspace {}/{}", event.user, event.workspace.user, event.workspace.workspace);
 							},
-							codemp_proto::session::session_event::Event::Reject(reject_event) => {
-								tracing::info!("user rejected invite: {reject_event:?}");
+							SessionEventKind::RejectEvent => {
+								tracing::info!("user {} rejected invite to workspace {}/{}", event.user, event.workspace.user, event.workspace.workspace);
 							},
 						}
 
-						if self.events.send(ev).is_err() {
+						if self.events.send(event).is_err() {
 							tracing::warn!("no active controller to receive client event");
 						}
 						self.pollers.drain(..).for_each(|x| {

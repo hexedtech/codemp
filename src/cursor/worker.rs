@@ -4,7 +4,7 @@ use tokio::sync::{mpsc, oneshot, watch};
 use tonic::Streaming;
 
 use crate::{
-	api::{Cursor, Selection, UserInfo, controller::ControllerCallback},
+	api::controller::ControllerCallback,
 	errors::RemoteResult,
 	ext::IgnorableError,
 	network::AuthedService,
@@ -17,10 +17,10 @@ use codemp_proto::{
 use super::controller::{CursorController, CursorControllerInner};
 
 struct CursorWorker {
-	workspace_id: crate::api::WorkspaceIdentifier,
+	workspace_id: crate::proto::session::WorkspaceIdentifier,
 	op: mpsc::UnboundedReceiver<CursorUpdate>,
-	map: Arc<dashmap::DashMap<String, UserInfo>>,
-	stream: mpsc::Receiver<oneshot::Sender<Option<crate::api::cursor::CursorEvent>>>,
+	map: Arc<dashmap::DashMap<String, crate::proto::common::UserInfo>>,
+	stream: mpsc::Receiver<oneshot::Sender<Option<crate::proto::cursor::CursorEvent>>>,
 	poll: mpsc::UnboundedReceiver<oneshot::Sender<()>>,
 	pollers: Vec<oneshot::Sender<()>>,
 	store: std::collections::VecDeque<codemp_proto::cursor::CursorEvent>,
@@ -30,41 +30,17 @@ struct CursorWorker {
 
 impl CursorWorker {
 	#[tracing::instrument(skip(self, tx))]
-	fn handle_recv(&mut self, tx: oneshot::Sender<Option<crate::api::cursor::CursorEvent>>) {
-		tx.send(self.store.pop_front().and_then(|event| {
-			if let Some(user_name) = self.map.get(&event.user).map(|u| u.name.clone()) {
-				Some(crate::api::cursor::CursorEvent {
-					user: user_name,
-					cursor: Cursor {
-						buffer: event.position.buffer,
-						sel: event
-							.position
-							.cursors
-							.into_iter()
-							.map(|x| Selection {
-								start_row: x.start.row,
-								start_col: x.start.col,
-								end_row: x.end.row,
-								end_col: x.end.col,
-							})
-							.collect(),
-					},
-				})
-			} else {
-				tracing::warn!("received cursor for unknown user {}", event.user);
-				None
-			}
-		}))
-		.unwrap_or_warn("client gave up receiving!");
+	fn handle_recv(&mut self, tx: oneshot::Sender<Option<crate::proto::cursor::CursorEvent>>) {
+		tx.send(self.store.pop_front()).unwrap_or_warn("client gave up receiving!");
 	}
 }
 
 impl CursorController {
 	pub(crate) fn spawn(
-		user_map: Arc<dashmap::DashMap<String, UserInfo>>,
+		user_map: Arc<dashmap::DashMap<String, codemp_proto::common::UserInfo>>,
 		tx: mpsc::Sender<CursorUpdate>,
 		rx: Streaming<CursorEvent>,
-		workspace_id: crate::api::WorkspaceIdentifier,
+		workspace_id: crate::proto::session::WorkspaceIdentifier,
 		cursor_service: CursorClient<AuthedService>, // TODO ughh passing these around
 	) -> Self {
 		// TODO we should tweak the channel buffer size to better propagate backpressure
@@ -112,7 +88,7 @@ impl CursorController {
 			.cursors)
 	}
 
-	#[tracing::instrument(skip(worker, tx, rx), fields(ws = %worker.workspace_id))]
+	#[tracing::instrument(skip(worker, tx, rx), fields(owner = worker.workspace_id.user, ws = worker.workspace_id.workspace))]
 	async fn work(
 		mut worker: CursorWorker,
 		tx: mpsc::Sender<CursorUpdate>,

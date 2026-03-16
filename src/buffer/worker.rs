@@ -18,7 +18,7 @@ use super::controller::{BufferController, BufferControllerInner};
 struct BufferWorker {
 	agent_id: u32,
 	path: String,
-	workspace_id: crate::api::WorkspaceIdentifier,
+	workspace_id: crate::proto::session::WorkspaceIdentifier,
 	latest_version: watch::Sender<diamond_types::LocalVersion>,
 	local_version: watch::Sender<diamond_types::LocalVersion>,
 	ack_rx: mpsc::UnboundedReceiver<LocalVersion>,
@@ -40,7 +40,7 @@ impl BufferController {
 		path: String,
 		tx: mpsc::Sender<Operation>,
 		rx: Streaming<BufferEvent>,
-		workspace_id: crate::api::WorkspaceIdentifier,
+		workspace_id: crate::proto::session::WorkspaceIdentifier,
 	) -> Self {
 		let init = diamond_types::LocalVersion::default();
 
@@ -96,7 +96,7 @@ impl BufferController {
 		BufferController(controller)
 	}
 
-	#[tracing::instrument(skip(worker, tx, rx), fields(ws = %worker.workspace_id, path = worker.path))]
+	#[tracing::instrument(skip(worker, tx, rx), fields(owner = worker.workspace_id.user, ws = worker.workspace_id.workspace, path = worker.path))]
 	async fn work(
 		mut worker: BufferWorker,
 		tx: mpsc::Sender<Operation>,
