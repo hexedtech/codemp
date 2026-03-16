@@ -145,6 +145,7 @@ into_java_ptr_class!(crate::Workspace, "mp/code/Workspace");
 into_java_ptr_class!(crate::cursor::Controller, "mp/code/CursorController");
 into_java_ptr_class!(crate::buffer::Controller, "mp/code/BufferController");
 
+/* TODO: reminder to come up with a way to make fancy enums in java
 // #[allow(unsafe_code)]
 impl<'j> jni_toolbox::IntoJavaObject<'j> for crate::proto::workspace::WorkspaceEventKind { // TODO
 	const CLASS: &'static str = "mp/code/Workspace$Event";
@@ -185,3 +186,4 @@ impl<'j> jni_toolbox::IntoJavaObject<'j> for crate::proto::workspace::WorkspaceE
 		)
 	}
 }
+*/

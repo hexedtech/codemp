@@ -9,10 +9,10 @@ import lombok.ToString;
 @RequiredArgsConstructor
 public class WorkspaceEvent {
 	/**
-	 * The underlying type of event, which will determine
-	 * which fields are available.
+	 * The underlying type of event, which will determine which fields are available.
+	 * Always one of the constants from {@link WorkspaceEventKind}.
 	 */
-	public final WorkspaceEventKind kind;
+	public final int kind;
 
 	/**
 	 * The user that joined or left, or null.

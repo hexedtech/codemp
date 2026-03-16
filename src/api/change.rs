@@ -55,7 +55,7 @@ pub struct BufferUpdate {
 #[cfg_attr(feature = "js", napi_derive::napi(object))]
 #[cfg_attr(feature = "py", pyo3::pyclass(get_all, from_py_object))]
 #[cfg_attr(feature = "serialize", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "java", jni_toolbox::jclass(package = "mp.code.data"))]
+#[cfg_attr(feature = "java", jni_toolbox::jclass(package = "mp.code.proto"))]
 pub struct TextChange {
 	/// Range start of text change, as char indexes in buffer previous state.
 	pub start_idx: u32,

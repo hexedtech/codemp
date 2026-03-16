@@ -3,33 +3,33 @@ package mp.code.proto;
 /**
  * Represents the kind of workspace event.
  */
-public enum WorkspaceEventKind {
+public class WorkspaceEventKind {
 	/**
 	 * Somebody joined a workspace.
 	 */
-	USER_JOIN_WORKSPACE,
+	public static final int USER_JOIN_WORKSPACE = 0;
 	/**
 	 * Somebody left a workspace.
 	 */
-	USER_LEAVE_WORKSPACE,
+	public static final int USER_LEAVE_WORKSPACE = 1;
 	/**
 	 * A file was created.
 	 */
-	FILE_CREATE,
+	public static final int FILE_CREATE = 2;
 	/**
 	 * A file was renamed.
 	 */
-	FILE_RENAME,
+	public static final int FILE_RENAME = 3;
 	/**
 	 * A file was deleted.
 	 */
-	FILE_DELETE,
+	public static final int FILE_DELETE = 4;
 	/**
 	 * Somebody joined a buffer.
 	 */
-	USER_JOIN_BUFFER,
+	public static final int USER_JOIN_BUFFER = 5;
 	/**
 	 * Somebody left a buffer.
 	 */
-	USER_LEAVE_BUFFER
+	public static final int USER_LEAVE_BUFFER = 6;
 }
