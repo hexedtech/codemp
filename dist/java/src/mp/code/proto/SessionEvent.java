@@ -4,6 +4,9 @@ import lombok.EqualsAndHashCode;
 import lombok.RequiredArgsConstructor;
 import lombok.ToString;
 
+/**
+ * An event concerning the user session.
+ */
 @ToString
 @EqualsAndHashCode
 @RequiredArgsConstructor

@@ -4,6 +4,9 @@ import lombok.EqualsAndHashCode;
 import lombok.RequiredArgsConstructor;
 import lombok.ToString;
 
+/**
+ * An event concerning workspaces.
+ */
 @ToString
 @EqualsAndHashCode
 @RequiredArgsConstructor

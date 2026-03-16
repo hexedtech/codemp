@@ -186,6 +186,7 @@ public final class Workspace {
 	 * The user must be attached to the buffer to perform this operation.
 	 * You can force-update the list with {@link #fetchBufferUsers(String)}.
 	 * @param path the path of the buffer to search
+	 * @return the local list of users attached to the given buffer
 	 */
 	public UserInfo[] bufferUserList(String path) {
 		return buffer_user_list(this.ptr, path);
