@@ -1,5 +1,6 @@
-use crate::prelude::*;
+use codemp_proto::{common::UserInfo, session::WorkspaceIdentifier};
 use napi_derive::napi;
+
 
 #[napi]
 /// connect to codemp servers and return a client session
@@ -7,8 +8,10 @@ pub async fn connect(config: crate::api::Config) -> napi::Result<crate::Client> 
 	Ok(crate::Client::connect(config).await?)
 }
 
+use crate::{Client, Workspace};
+
 #[napi]
-impl CodempClient {
+impl Client {
 	#[napi(js_name = "createWorkspace")]
 	/// create workspace with given id, if able to
 	pub async fn js_create_workspace(&self, workspace: String) -> napi::Result<()> {
@@ -23,13 +26,13 @@ impl CodempClient {
 
 	#[napi(js_name = "fetchOwnedWorkspaces")]
 	/// fetch owned workspaces
-	pub async fn js_fetch_owned_workspaces(&self) -> napi::Result<Vec<CodempWorkspaceIdentifier>> {
+	pub async fn js_fetch_owned_workspaces(&self) -> napi::Result<Vec<WorkspaceIdentifier>> {
 		Ok(self.fetch_owned_workspaces().await?)
 	}
 
 	#[napi(js_name = "fetchJoinedWorkspaces")]
 	/// fetch joined workspaces
-	pub async fn js_fetch_joined_workspaces(&self) -> napi::Result<Vec<CodempWorkspaceIdentifier>> {
+	pub async fn js_fetch_joined_workspaces(&self) -> napi::Result<Vec<WorkspaceIdentifier>> {
 		Ok(self.fetch_joined_workspaces().await?)
 	}
 
@@ -45,7 +48,7 @@ impl CodempClient {
 
 	#[napi(js_name = "attachWorkspace")]
 	/// join workspace with given id (will start its cursor controller)
-	pub async fn js_attach_workspace(&self, user: String, workspace: String) -> napi::Result<CodempWorkspace> {
+	pub async fn js_attach_workspace(&self, user: String, workspace: String) -> napi::Result<Workspace> {
 		Ok(self.attach_workspace(&user, &workspace).await?)
 	}
 
@@ -57,19 +60,19 @@ impl CodempClient {
 
 	#[napi(js_name = "getWorkspace")]
 	/// get workspace with given id, if it exists
-	pub fn js_get_workspace(&self, user: String, workspace: String) -> Option<CodempWorkspace> {
+	pub fn js_get_workspace(&self, user: String, workspace: String) -> Option<Workspace> {
 		self.get_workspace(&user, &workspace)
 	}
 
 	#[napi(js_name = "currentUser")]
 	/// return current sessions's user id
-	pub fn js_current_user(&self) -> CodempUserInfo {
-		self.current_user().clone().into()
+	pub fn js_current_user(&self) -> UserInfo {
+		self.current_user().clone()
 	}
 
 	#[napi(js_name = "activeWorkspaces")]
 	/// get list of all active workspaces
-	pub fn js_active_workspaces(&self) -> Vec<CodempWorkspaceIdentifier> {
+	pub fn js_active_workspaces(&self) -> Vec<WorkspaceIdentifier> {
 		self.active_workspaces()
 	}
 
@@ -87,8 +90,8 @@ impl CodempClient {
 
 	/// Get the meta information for a user
 	#[napi(js_name = "getUserInfo")]
-	pub async fn js_get_user_info(&self, user: String) -> napi::Result<CodempUserInfo> {
-		Ok(self.get_user_info(&user).await?.into())
+	pub async fn js_get_user_info(&self, user: String) -> napi::Result<UserInfo> {
+		Ok(self.get_user_info(&user).await?)
 	}
 
 	/// Quit a joined workspace. Cannot quit owned workspaces: must delete them
