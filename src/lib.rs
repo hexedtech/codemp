@@ -132,6 +132,9 @@ pub mod tests;
 /// internal network services and interceptors
 pub(crate) mod network;
 
+/// re-export codemp_proto as codemp::proto
+pub use codemp_proto as proto;
+
 /// Get the current version of the client
 pub fn version() -> &'static str {
 	env!("CARGO_PKG_VERSION")

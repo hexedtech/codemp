@@ -31,7 +31,7 @@ thiserror = "2.0"
 # crdt
 diamond-types = "1.0"
 # proto
-codemp-proto = { git = "https://github.com/hexedtech/codemp-proto", rev = "cba61da3ad6a852e368039e02281deb5a8d1b017", features = ["client"] }
+codemp-proto = { git = "https://github.com/hexedtech/codemp-proto", rev = "c0e2589cb0007412db1c005abbfd8fcf7b6b9151", features = ["client"] }
 uuid = { version = "1.17", features = ["v4"] }
 tonic = { version = "0.14", features = ["tls-native-roots"] }
 # api
@@ -80,10 +80,10 @@ serialize = ["dep:serde", "uuid/serde"]
 test-e2e = []
 test-coverage = ["dep:syn", "dep:regex"]
 # ffi
-java = ["dep:jni", "dep:tracing-subscriber", "dep:jni-toolbox"]
-js = ["dep:napi-build", "dep:tracing-subscriber", "dep:napi", "dep:napi-derive"]
-py = ["dep:pyo3", "dep:tracing-subscriber", "dep:pyo3-build-config"]
-lua = ["serialize", "dep:mlua", "dep:tracing-subscriber"]
+java = ["dep:jni", "dep:tracing-subscriber", "dep:jni-toolbox", "codemp-proto/java"]
+js = ["dep:napi-build", "dep:tracing-subscriber", "dep:napi", "dep:napi-derive", "codemp-proto/js"]
+py = ["dep:pyo3", "dep:tracing-subscriber", "dep:pyo3-build-config", "codemp-proto/py"]
+lua = ["serialize", "dep:mlua", "dep:tracing-subscriber", "codemp-proto/lua"]
 # ffi variants
 lua-jit = ["mlua?/luajit"]
 lua-54 = ["mlua?/lua54"]
