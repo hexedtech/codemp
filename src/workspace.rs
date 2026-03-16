@@ -457,7 +457,7 @@ impl WorkspaceWorker {
 							WorkspaceEventInner::BufferJoin(UserJoinBuffer { user, buffer }) => {
 								match inner.buffer_users.get_mut(&buffer) {
 									Some(mut buf_users_ref) => buf_users_ref.push(user),
-									None => tracing::warn!("received UserJoinBuffer event for an unknown buffer"),
+									None => { inner.buffer_users.insert(buffer, vec![user]); },
 								}
 							},
 							WorkspaceEventInner::BufferLeave(UserLeaveBuffer { user, buffer }) => {
