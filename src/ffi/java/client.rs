@@ -1,9 +1,9 @@
 use crate::{
 	Workspace,
-	api::Config,
+	api::{AsyncReceiver, Config},
 	client::Client,
-	errors::{ConnectionError, RemoteError},
-	proto::{common::UserInfo, session::WorkspaceIdentifier}
+	errors::{ConnectionError, ControllerError, RemoteError},
+	proto::{common::UserInfo, session::{SessionEvent, WorkspaceIdentifier}}
 };
 use jni_toolbox::jni;
 
@@ -95,6 +95,69 @@ fn get_workspace(client: &mut Client, user: String, workspace: String) -> Option
 #[jni(package = "mp.code", class = "Client")]
 fn get_user_info(client: &mut Client, user: String) -> Result<UserInfo, RemoteError> {
 	super::tokio().block_on(client.get_user_info(user))
+}
+
+/// Try to fetch a [TextChange], or return null if there's nothing.
+#[jni(package = "mp.code", class = "Client")]
+fn try_recv(client: &mut Client) -> Result<Option<SessionEvent>, ControllerError> {
+	super::tokio().block_on(client.try_recv())
+}
+
+/// Block until it receives a [TextChange].
+#[jni(package = "mp.code", class = "Client")]
+fn recv(client: &mut Client) -> Result<SessionEvent, ControllerError> {
+	super::tokio().block_on(client.recv())
+}
+
+/// Register a callback for client changes.
+#[jni(package = "mp.code", class = "Client")]
+fn callback<'local>(
+	env: &mut jni::Env<'local>,
+	client: &mut Client,
+	cb: jni::objects::JObject<'local>,
+) -> Result<(), jni::errors::Error> {
+	if cb.is_null() {
+		return Err(jni::errors::Error::NullPtr("null pointer to buffer callback"));
+	}
+
+	let cb_ref = env.new_global_ref(cb)?;
+	let jvm =	env.get_java_vm()?;
+
+	client.callback(move |controller: Client| {
+		let result: Result<(), jni::errors::Error> = jvm.attach_current_thread(|env| {
+			env.with_local_frame(5, |env| {
+				use jni_toolbox::IntoJavaObject;
+				let jclient = controller.into_java_object(env)?;
+				env.call_method(
+					&cb_ref,
+					jni::jni_str!("accept"),
+					jni::jni_sig!((event: java.lang.Object) -> ()),
+					&[jni::objects::JValue::Object(&jclient)],
+				)?;
+				Ok::<(), jni::errors::Error>(())
+			})?;
+
+			Ok(())
+		});
+
+		if let Err(e) = result {
+			tracing::error!("error invoking client callback: {e}");
+		}
+	});
+
+	Ok(())
+}
+
+/// Clear the callback for client changes.
+#[jni(package = "mp.code", class = "Client")]
+fn clear_callback(client: &mut Client) {
+	client.clear_callback()
+}
+
+/// Block until there is a new value available.
+#[jni(package = "mp.code", class = "Client")]
+fn poll(client: &mut Client) -> Result<(), ControllerError> {
+	super::tokio().block_on(client.poll())
 }
 
 /// Refresh the client's session token.

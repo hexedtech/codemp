@@ -1,11 +1,15 @@
 package mp.code;
 
 import lombok.Getter;
+import mp.code.exceptions.ControllerException;
 import mp.code.proto.Config;
+import mp.code.proto.SessionEvent;
 import mp.code.proto.UserInfo;
 import mp.code.proto.WorkspaceIdentifier;
 import mp.code.exceptions.ConnectionException;
 import mp.code.exceptions.ConnectionRemoteException;
+
+import java.util.function.Consumer;
 
 /**
  * The main entrypoint of the library.
@@ -194,6 +198,61 @@ public final class Client {
 	 */
 	public UserInfo getUserInfo(String user) throws ConnectionRemoteException {
 		return get_user_info(this.ptr, user);
+	}
+
+	private static native SessionEvent try_recv(long self) throws ControllerException;
+
+	/**
+	 * Tries to get a {@link SessionEvent} from the queue if any were present, null otherwise.
+	 * @return the first session event in queue, if any are present
+	 * @throws ControllerException if the controller was stopped
+	 */
+	public SessionEvent tryRecv() throws ControllerException {
+		return try_recv(this.ptr);
+	}
+
+	private static native SessionEvent recv(long self) throws ControllerException;
+
+	/**
+	 * Blocks until a {@link SessionEvent} is available and returns it.
+	 * @return the session event that occurred
+	 * @throws ControllerException if the controller was stopped
+	 */
+	public SessionEvent recv() throws ControllerException {
+		return recv(this.ptr);
+	}
+
+	private static native void callback(long self, Consumer<Client> cb);
+
+	/**
+	 * Registers a callback to be invoked whenever a {@link SessionEvent} occurs.
+	 * This will not work unless a Java thread has been dedicated to the event loop.
+	 * @param cb a {@link Consumer} that receives the controller when the change occurs;
+	 *           you should probably spawn a new thread in here, to avoid deadlocking
+	 * @see Extensions#drive(boolean)
+	 */
+	public void callback(Consumer<Client> cb) {
+		callback(this.ptr, cb);
+	}
+
+	private static native void clear_callback(long self);
+
+	/**
+	 * Clears the registered callback.
+	 * @see #callback(Consumer)
+	 */
+	public void clearCallback() {
+		clear_callback(this.ptr);
+	}
+
+	private static native void poll(long self) throws ControllerException;
+
+	/**
+	 * Blocks until a {@link SessionEvent} is available.
+	 * @throws ControllerException if the controller was stopped
+	 */
+	public void poll() throws ControllerException {
+		poll(this.ptr);
 	}
 
 	private static native void refresh(long self) throws ConnectionRemoteException;

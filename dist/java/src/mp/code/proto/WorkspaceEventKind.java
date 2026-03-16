@@ -1,35 +1,39 @@
 package mp.code.proto;
 
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
+
 /**
  * Represents the kind of workspace event.
  */
-public class WorkspaceEventKind {
+@RequiredArgsConstructor(access = AccessLevel.PRIVATE)
+public final class WorkspaceEventKind {
 	/**
-	 * Somebody joined a workspace.
+	 * Event that occurs when a user joins a workspace.
 	 */
 	public static final int USER_JOIN_WORKSPACE = 0;
 	/**
-	 * Somebody left a workspace.
+	 * Event that occurs when a user leaves a workspace.
 	 */
 	public static final int USER_LEAVE_WORKSPACE = 1;
 	/**
-	 * A file was created.
+	 * Event that occurs when a file is created in a workspace.
 	 */
 	public static final int FILE_CREATE = 2;
 	/**
-	 * A file was renamed.
+	 * Event that occurs when a file is renamed in a workspace.
 	 */
 	public static final int FILE_RENAME = 3;
 	/**
-	 * A file was deleted.
+	 * Event that occurs when a file is deleted in a workspace.
 	 */
 	public static final int FILE_DELETE = 4;
 	/**
-	 * Somebody joined a buffer.
+	 * Event that occurs when a user joins a buffer.
 	 */
 	public static final int USER_JOIN_BUFFER = 5;
 	/**
-	 * Somebody left a buffer.
+	 * Event that occurs when a user leaves a buffer.
 	 */
 	public static final int USER_LEAVE_BUFFER = 6;
 }

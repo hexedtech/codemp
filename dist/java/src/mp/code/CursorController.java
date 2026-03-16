@@ -10,7 +10,8 @@ import java.util.function.Consumer;
 /**
  * Allows interaction with the CodeMP cursor position tracking system.
  * <p>
- * It is generally safer to avoid storing this directly, see the api notes for {@link Workspace}.
+ *  It is generally safer to avoid storing this directly, see the api notes for {@link Workspace}.
+ * </p>
  */
 public final class CursorController {
 	private final long ptr;
@@ -34,7 +35,7 @@ public final class CursorController {
 
 	/**
 	 * Tries to get a {@link Cursor} update from the queue if any were present, null otherwise.
-	 * @return the first cursor event in queue, if any are present
+	 * @return the first cursor update in queue, if any are present
 	 * @throws ControllerException if the controller was stopped
 	 */
 	public Cursor tryRecv() throws ControllerException {

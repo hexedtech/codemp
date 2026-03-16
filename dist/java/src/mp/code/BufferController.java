@@ -11,7 +11,8 @@ import java.util.function.Consumer;
  * Allows interaction with a CodeMP buffer, which in simple terms is a document
  * that multiple people can edit concurrently.
  * <p>
- * It is generally safer to avoid storing this directly, see the api notes for {@link Workspace}.
+ *  It is generally safer to avoid storing this directly, see the api notes for {@link Workspace}.
+ * </p>
  */
 public final class BufferController {
 	private final long ptr;
