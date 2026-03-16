@@ -3,8 +3,6 @@ use mlua::prelude::*;
 
 use super::ext::a_sync::a_sync;
 
-super::ext::impl_lua_serde! { CodempConfig CodempUserInfo }
-
 impl LuaUserData for CodempClient {
 	fn add_methods<M: LuaUserDataMethods<Self>>(methods: &mut M) {
 		methods.add_meta_method(LuaMetaMethod::ToString, |_, this, ()| {
@@ -93,20 +91,20 @@ impl LuaUserData for CodempClient {
 
 		methods.add_method("get_user_info", |_, this, (user,): (String,)| {
 			a_sync! {
-				this => crate::api::UserInfo::from(this.get_user_info(user).await?)
+				this => this.get_user_info(user).await?
 			}
 		});
 
 		// TODO need to derive ser/de on Event, but this is in protobuf...
-		// methods.add_method(
-		//	"recv",
-		//	|_, this, ()| a_sync! { this => this.recv().await? }
-		// );
+		methods.add_method(
+		 "recv",
+		 |_, this, ()| a_sync! { this => this.recv().await? }
+		);
 
-		// methods.add_method(
-		// 	"try_recv",
-		// 	|_, this, ()| a_sync! { this => this.try_recv().await? },
-		// );
+		methods.add_method(
+			"try_recv",
+			|_, this, ()| a_sync! { this => this.try_recv().await? },
+		);
 
 		methods.add_method("poll", |_, this, ()| a_sync! { this => this.poll().await? });
 

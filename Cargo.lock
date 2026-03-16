@@ -166,6 +166,7 @@ dependencies = [
  "jni",
  "jni-toolbox",
  "mlua",
+ "mlua-serde-derive",
  "napi",
  "napi-build",
  "napi-derive",

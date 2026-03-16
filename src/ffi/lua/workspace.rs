@@ -3,8 +3,6 @@ use mlua::prelude::*;
 
 use super::ext::a_sync::a_sync;
 
-super::ext::impl_lua_serde! { CodempEvent CodempWorkspaceIdentifier }
-
 impl LuaUserData for CodempWorkspace {
 	fn add_methods<M: LuaUserDataMethods<Self>>(methods: &mut M) {
 		methods.add_meta_method(LuaMetaMethod::ToString, |_, this, ()| {
@@ -97,6 +95,6 @@ impl LuaUserData for CodempWorkspace {
 
 impl CodempWorkspace {
 	fn lua_callback_id(&self) -> String {
-		format!("codemp-workspace({})-callback-registry", self.id())
+		format!("codemp-workspace({}/{})-callback-registry", self.id().user, self.id().workspace)
 	}
 }

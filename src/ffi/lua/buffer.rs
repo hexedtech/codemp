@@ -3,8 +3,6 @@ use mlua::prelude::*;
 
 use super::ext::a_sync::a_sync;
 
-super::ext::impl_lua_serde! { CodempTextChange CodempBufferUpdate CodempBufferNode }
-
 impl LuaUserData for CodempBufferController {
 	fn add_methods<M: LuaUserDataMethods<Self>>(methods: &mut M) {
 		methods.add_meta_method(LuaMetaMethod::ToString, |_, this, ()| {
@@ -53,8 +51,9 @@ impl LuaUserData for CodempBufferController {
 impl CodempBufferController {
 	fn lua_callback_id(&self) -> String {
 		format!(
-			"codemp-buffercontroller({}:{})-callback-registry",
-			self.workspace_id(),
+			"codemp-buffercontroller({}/{}://{})-callback-registry",
+			self.workspace_id().user,
+			self.workspace_id().workspace,
 			self.path()
 		)
 	}

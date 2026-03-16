@@ -51,6 +51,7 @@ jni-toolbox = { git = "https://github.com/hexedtech/jni-toolbox", rev = "c40e925
 
 # glue (lua)
 mlua = { version = "0.11", features = ["module", "serialize", "error-send"], optional = true }
+mlua-serde-derive = { version = "0.1", optional = true }
 
 # glue (js)
 napi = { version = "3.1", features = ["full"], optional = true } 
@@ -83,7 +84,7 @@ test-coverage = ["dep:syn", "dep:regex"]
 java = ["dep:jni", "dep:tracing-subscriber", "dep:jni-toolbox", "codemp-proto/java"]
 js = ["dep:napi-build", "dep:tracing-subscriber", "dep:napi", "dep:napi-derive", "codemp-proto/js"]
 py = ["dep:pyo3", "dep:tracing-subscriber", "dep:pyo3-build-config", "codemp-proto/py"]
-lua = ["serialize", "dep:mlua", "dep:tracing-subscriber", "codemp-proto/lua"]
+lua = ["serialize", "dep:mlua", "dep:mlua-serde-derive", "dep:tracing-subscriber", "codemp-proto/lua"]
 # ffi variants
 lua-jit = ["mlua?/luajit"]
 lua-54 = ["mlua?/lua54"]
