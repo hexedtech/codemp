@@ -188,7 +188,7 @@ dependencies = [
 [[package]]
 name = "codemp-proto"
 version = "0.8.0"
-source = "git+https://github.com/hexedtech/codemp-proto?rev=a36cc56bd6aa675baa2f1ca26e0e00074bc6a389#a36cc56bd6aa675baa2f1ca26e0e00074bc6a389"
+source = "git+https://github.com/hexedtech/codemp-proto?rev=c36b3595164b5e8c341ac1141dee62b31628ffae#c36b3595164b5e8c341ac1141dee62b31628ffae"
 dependencies = [
  "jni",
  "jni-toolbox",

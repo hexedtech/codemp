@@ -44,11 +44,11 @@ impl Controller<CursorUpdate, CursorEvent> for CursorController {}
 impl AsyncSender<CursorUpdate> for CursorController {
 	fn send(&self, mut cursor: CursorUpdate) -> ControllerResult<()> {
 		for sel in cursor.cursors.iter_mut() {
-			if sel.start.row > sel.end.row
-				|| (sel.start.row == sel.end.row && sel.start.col > sel.end.col)
+			if sel.start.row > sel.finish.row
+				|| (sel.start.row == sel.finish.row && sel.start.col > sel.finish.col)
 			{
-				std::mem::swap(&mut sel.start.row, &mut sel.end.row);
-				std::mem::swap(&mut sel.start.col, &mut sel.end.col);
+				std::mem::swap(&mut sel.start.row, &mut sel.finish.row);
+				std::mem::swap(&mut sel.start.col, &mut sel.finish.col);
 			}
 		}
 
