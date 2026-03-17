@@ -31,7 +31,7 @@ thiserror = "2.0"
 # crdt
 diamond-types = "1.0"
 # proto
-codemp-proto = { git = "https://github.com/hexedtech/codemp-proto", rev = "c25c94bc71a3f32be203c40ca4c9dc03d2c0b9d7", features = ["client"] }
+codemp-proto = { git = "https://github.com/hexedtech/codemp-proto", rev = "29fb391b4857ac2e3bd2f60ddebcc79494c77953", features = ["client"] }
 uuid = { version = "1.17", features = ["v4"] }
 tonic = { version = "0.14", features = ["tls-native-roots"] }
 # api

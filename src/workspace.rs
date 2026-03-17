@@ -288,7 +288,7 @@ impl Workspace {
 		for b in resp.buffers {
 			self.0
 				.filetree
-				.insert(b.path.clone().into(), b);
+				.insert(b.path.to_string(), b);
 		}
 
 		Ok(())
