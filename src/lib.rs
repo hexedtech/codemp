@@ -42,8 +42,9 @@
 //! # };
 //! ```
 //!
-//! A [`Workspace`] handle can be used to acquire a [`cursor::Controller`] to track remote [`api::Cursor`]s
-//! and one or more [`buffer::Controller`] to send and receive [`api::TextChange`]s.
+//! A [`Workspace`] handle can be used to acquire a [`cursor::Controller`] to track remote
+//! [`proto::cursor::CursorEvent`]s and one or more [`buffer::Controller`] to send and receive
+//! [`api::TextChange`]s.
 //!
 //! ```no_run
 //! # async {

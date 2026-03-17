@@ -1,5 +1,5 @@
 //! ### Cursor Controller
-//! A [Controller] implementation for [crate::api::Cursor] actions in a [crate::Workspace]
+//! A [Controller] implementation for cursor actions in a [crate::Workspace].
 
 use std::sync::Arc;
 
@@ -12,7 +12,7 @@ use crate::{
 };
 use codemp_proto::cursor::{CursorEvent, CursorUpdate, cursor_client::CursorClient};
 
-/// A [Controller] for asynchronously sending and receiving [Cursor] event.
+/// A [Controller] for asynchronously sending and receiving [CursorEvent]s.
 ///
 /// An unique [CursorController] exists for each active [crate::Workspace].
 #[derive(Debug, Clone)]

@@ -310,7 +310,7 @@ impl Workspace {
 		Ok(())
 	}
 
-	/// Fetch a list of the [User]s attached to a specific buffer.
+	/// Re-fetch the list of users attached to the given buffer..
 	pub async fn fetch_buffer_users(&self, path: impl ToString) -> RemoteResult<()> {
 		let path = path.to_string();
 		let resp = self
