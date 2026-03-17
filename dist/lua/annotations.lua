@@ -362,6 +362,10 @@ function Client:callback(cb) end
 ---@field user string username of workspace owner
 ---@field workspace string workspace name
 
+---@class BufferNode
+---represents a buffer and holds wheter it is ephemeral
+---@field path string buffer path
+---@field ephemeral boolean wheter this buffer is ephemeral
 
 
 
@@ -428,7 +432,7 @@ function Workspace:attach_buffer(path) end
 function Workspace:detach_buffer(path) end
 
 ---@param filter? string apply a filter to the return elements
----@return string[]
+---@return BufferNode[]
 ---return the list of available buffers in this workspace, as relative paths from workspace root
 function Workspace:search_buffers(filter) end
 

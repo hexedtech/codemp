@@ -4,6 +4,7 @@ use crate::{
 	errors::{ConnectionError, ControllerError, RemoteError},
 	proto::{common::UserInfo, session::WorkspaceIdentifier, workspace::WorkspaceEvent}
 };
+use codemp_proto::files::BufferNode;
 use jni::{Env, objects::JObject};
 use jni_toolbox::jni;
 
@@ -27,7 +28,7 @@ fn get_buffer(workspace: &mut Workspace, path: String) -> Option<crate::buffer::
 
 /// Searches for buffers matching the filter.
 #[jni(package = "mp.code", class = "Workspace")]
-fn search_buffers(workspace: &mut Workspace, filter: Option<String>) -> Vec<String> {
+fn search_buffers(workspace: &mut Workspace, filter: Option<String>) -> Vec<BufferNode> {
 	workspace.search_buffers(filter.as_deref())
 }
 

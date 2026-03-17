@@ -83,7 +83,7 @@ impl CodempWorkspace {
 
 	#[pyo3(name = "search_buffers")]
 	#[pyo3(signature = (filter=None))]
-	fn pysearch_buffers(&self, filter: Option<&str>) -> Vec<String> {
+	fn pysearch_buffers(&self, filter: Option<&str>) -> Vec<CodempBufferNode> {
 		self.search_buffers(filter)
 	}
 

@@ -3,6 +3,7 @@ package mp.code;
 import java.util.function.Consumer;
 
 import mp.code.proto.UserInfo;
+import mp.code.proto.BufferNode;
 import mp.code.exceptions.ConnectionException;
 import mp.code.exceptions.ConnectionRemoteException;
 import mp.code.exceptions.ControllerException;
@@ -57,14 +58,14 @@ public final class Workspace {
 		return get_buffer(this.ptr, path);
 	}
 
-	private static native String[] search_buffers(long self, String filter);
+	private static native BufferNode[] search_buffers(long self, String filter);
 
 	/**
 	 * Searches for buffers matching the filter in this workspace.
 	 * @param filter the filter to apply (may be null)
-	 * @return an array containing file tree as flat paths
+	 * @return an array containing file tree as {@link BufferNode}s
 	 */
-	public String[] searchBuffers(String filter) {
+	public BufferNode[] searchBuffers(String filter) {
 		return search_buffers(this.ptr, filter);
 	}
 

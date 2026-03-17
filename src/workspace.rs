@@ -392,15 +392,15 @@ impl Workspace {
 	/// Get the filetree as it is currently cached.
 	/// A filter may be applied, and it works as a "starts_with" check.
 	// #[cfg_attr(feature = "js", napi)] // https://github.com/napi-rs/napi-rs/issues/1120
-	pub fn search_buffers(&self, filter: Option<&str>) -> Vec<String> {
+	pub fn search_buffers(&self, filter: Option<&str>) -> Vec<BufferNode> {
 		let mut tree = self
 			.0
 			.filetree
 			.iter()
 			.filter(|f| filter.is_none_or(|flt| f.key().starts_with(flt)))
-			.map(|f| f.key().clone())
-			.collect::<Vec<String>>();
-		tree.sort();
+			.map(|x| x.value().clone())
+			.collect::<Vec<BufferNode>>();
+		tree.sort_by(|a, b| a.path.path.cmp(&b.path.path));
 		tree
 	}
 }

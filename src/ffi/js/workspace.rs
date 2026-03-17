@@ -1,4 +1,4 @@
-use codemp_proto::{common::UserInfo, session::WorkspaceIdentifier, workspace::WorkspaceEvent};
+use codemp_proto::{common::UserInfo, files::BufferNode, session::WorkspaceIdentifier, workspace::WorkspaceEvent};
 use crate::{api::AsyncReceiver, buffer::controller::BufferController, cursor::controller::CursorController};
 use napi::threadsafe_function::{ThreadsafeFunction, ThreadsafeFunctionCallMode};
 use napi_derive::napi;
@@ -15,7 +15,7 @@ impl Workspace {
 
 	/// List all available buffers in this workspace
 	#[napi(js_name = "searchBuffers")]
-	pub fn js_search_buffers(&self, filter: Option<String>) -> Vec<String> {
+	pub fn js_search_buffers(&self, filter: Option<String>) -> Vec<BufferNode> {
 		self.search_buffers(filter.as_deref())
 	}
 
