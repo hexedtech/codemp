@@ -67,7 +67,7 @@ async fn test_workspace_interactions() {
 		let client_alice = ClientFixture::of("alice").setup().await?;
 		let client_bob = ClientFixture::of("bob").setup().await?;
 		let workspace_name = format!("test-workspace-interactions-{}", uuid::Uuid::new_v4());
-		let wsid = crate::api::WorkspaceIdentifier {
+		let wsid = crate::proto::session::WorkspaceIdentifier {
 			user: client_alice.current_user().name.clone(),
 			workspace: workspace_name.clone(),
 		};

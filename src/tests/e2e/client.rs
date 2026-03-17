@@ -12,7 +12,10 @@ async fn test_workspace_creation_and_deletion() {
 
 			client.create_workspace(workspace_name.clone()).await?;
 
-			let wsid = crate::api::WorkspaceIdentifier { user: client.current_user().name.clone(), workspace: workspace_name.clone() };
+			let wsid = crate::proto::session::WorkspaceIdentifier {
+				user: client.current_user().name.clone(),
+				workspace: workspace_name.clone()
+			};
 
 			// we can't error, so we return empty vec which will be interpreted as err
 			let workspace_list_before = client.fetch_owned_workspaces().await.unwrap_or_default();
@@ -77,7 +80,7 @@ async fn test_invite_user_to_workspace() {
 		.expect("failed setting up bob's client");
 	let ws_name = uuid::Uuid::new_v4().to_string();
 
-	let wsid = crate::api::WorkspaceIdentifier {
+	let wsid = crate::proto::session::WorkspaceIdentifier {
 		user: client_alice.current_user().name.clone(),
 		workspace: ws_name.clone(),
 	};
