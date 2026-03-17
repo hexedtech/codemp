@@ -1,6 +1,5 @@
 package mp.code;
 
-import java.util.Optional;
 import java.util.function.Consumer;
 
 import mp.code.proto.UserInfo;
@@ -8,6 +7,7 @@ import mp.code.exceptions.ConnectionException;
 import mp.code.exceptions.ConnectionRemoteException;
 import mp.code.exceptions.ControllerException;
 import mp.code.proto.WorkspaceEvent;
+import mp.code.proto.WorkspaceIdentifier;
 
 /**
  * Represents a CodeMP workspace, which broadly speaking is a collection
@@ -25,13 +25,13 @@ public final class Workspace {
 		Extensions.CLEANER.register(this, () -> free(ptr));
 	}
 
-	private static native String id(long self);
+	private static native WorkspaceIdentifier id(long self);
 
 	/**
 	 * Gets the unique identifier of the current workspace.
-	 * @return the identifier
+	 * @return the {@link WorkspaceIdentifier} for this workspace
 	 */
-	public String id() {
+	public WorkspaceIdentifier id() {
 		return id(this.ptr);
 	}
 
@@ -51,10 +51,10 @@ public final class Workspace {
 	 * Looks for a {@link BufferController} with the given path within the
 	 * current workspace and returns it if it exists.
 	 * @param path the current path
-	 * @return the {@link BufferController} with the given path, if it exists
+	 * @return the {@link BufferController} with the given path, if it exists, null otherwise
 	 */
-	public Optional<BufferController> getBuffer(String path) {
-		return Optional.ofNullable(get_buffer(this.ptr, path));
+	public BufferController getBuffer(String path) {
+		return get_buffer(this.ptr, path);
 	}
 
 	private static native String[] search_buffers(long self, String filter);

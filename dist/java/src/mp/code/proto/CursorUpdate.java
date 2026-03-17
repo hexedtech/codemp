@@ -10,7 +10,7 @@ import lombok.ToString;
 @ToString
 @EqualsAndHashCode
 @RequiredArgsConstructor
-public class Cursor {
+public class CursorUpdate {
 	/**
 	 * The buffer the cursor is on.
 	 */
@@ -19,5 +19,5 @@ public class Cursor {
 	/**
 	 * The associated selection updates.
 	 */
-	public final Selection[] selection;
+	public final CursorPosition[] cursors;
 }

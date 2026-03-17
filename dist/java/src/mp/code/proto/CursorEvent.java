@@ -19,5 +19,5 @@ public class CursorEvent {
 	/**
 	 * The cursor position data.
 	 */
-	public final Cursor cursor;
+	public final CursorUpdate position;
 }

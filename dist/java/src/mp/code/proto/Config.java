@@ -1,6 +1,5 @@
 package mp.code.proto;
 
-import lombok.AccessLevel;
 import lombok.EqualsAndHashCode;
 import lombok.RequiredArgsConstructor;
 import lombok.ToString;
@@ -10,7 +9,7 @@ import lombok.ToString;
  */
 @ToString
 @EqualsAndHashCode
-@RequiredArgsConstructor(access = AccessLevel.PRIVATE)
+@RequiredArgsConstructor
 public class Config {
 	/** The username to connect with. */
 	public final String username;
