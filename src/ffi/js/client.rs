@@ -1,9 +1,12 @@
+use napi::threadsafe_function::{ThreadsafeFunction, ThreadsafeFunctionCallMode};
 use napi_derive::napi;
 
 use crate::prelude::{
+	CodempAsyncReceiver as AsyncReceiver,
 	CodempConfig as Config,
 	CodempClient as Client,
 	CodempUserInfo as UserInfo,
+	CodempSessionEvent as SessionEvent,
 	CodempWorkspace as Workspace,
 	CodempWorkspaceIdentifier as WorkspaceIdentifier,
 };
@@ -111,5 +114,46 @@ impl Client {
 		Ok(self.reject_invite(&user, &workspace).await?)
 	}
 
+	/// Register a callback to be called on receive.
+	/// There can only be one callback registered at any given time.
+	#[napi(
+		js_name = "callback",
+		ts_args_type = "fun: (err: Error|null, event: Client) => void"
+	)]
+	pub fn js_callback(
+		&self,
+		fun: ThreadsafeFunction<Client>,
+	) -> napi::Result<()> {
+		self.callback(move |controller: Client| {
+			fun.call(Ok(controller.clone()), ThreadsafeFunctionCallMode::Blocking);
+			//check this with tracing also we could use Ok(event) to get the error
+			// If it blocks the main thread too many time we have to change this
+		});
 
+		Ok(())
+	}
+
+	/// Clear the registered callback
+	#[napi(js_name = "clearCallback")]
+	pub fn js_clear_callback(&self) {
+		self.clear_callback();
+	}
+
+	/// Get next session event if available without blocking
+	#[napi(js_name = "tryRecv")]
+	pub async fn js_try_recv(&self) -> napi::Result<Option<SessionEvent>> {
+		Ok(self.try_recv().await?)
+	}
+
+	/// Block until next session event
+	#[napi(js_name = "recv")]
+	pub async fn js_recv(&self) -> napi::Result<SessionEvent> {
+		Ok(self.recv().await?)
+	}
+
+	/// Block until next session event without returning it
+	#[napi(js_name = "poll")]
+	pub async fn js_poll(&self) -> napi::Result<()> {
+		Ok(self.poll().await?)
+	}
 }
