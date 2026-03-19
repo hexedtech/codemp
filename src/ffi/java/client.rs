@@ -1,11 +1,13 @@
-use crate::{
-	Workspace,
-	api::{AsyncReceiver, Config},
-	client::Client,
-	errors::{ConnectionError, ControllerError, RemoteError},
-	proto::{common::UserInfo, session::{SessionEvent, WorkspaceIdentifier}}
-};
 use jni_toolbox::jni;
+
+use crate::{
+	errors::{ConnectionError, ControllerError, RemoteError},
+	prelude::{
+		CodempAsyncReceiver as AsyncReceiver, CodempClient as Client, CodempConfig as Config,
+		CodempSessionEvent as SessionEvent, CodempUserInfo as UserInfo,
+		CodempWorkspace as Workspace, CodempWorkspaceIdentifier as WorkspaceIdentifier,
+	},
+};
 
 /// Connect using the given credentials to the default server, and return a [Client] to interact with it.
 #[jni(package = "mp.code", class = "Client")]
@@ -21,7 +23,11 @@ fn current_user(client: &mut Client) -> UserInfo {
 
 /// Join a [Workspace] and return a pointer to it.
 #[jni(package = "mp.code", class = "Client")]
-fn attach_workspace(client: &mut Client, user: String, workspace: String) -> Result<Workspace, ConnectionError> {
+fn attach_workspace(
+	client: &mut Client,
+	user: String,
+	workspace: String,
+) -> Result<Workspace, ConnectionError> {
 	super::tokio().block_on(client.attach_workspace(user, workspace))
 }
 
@@ -57,7 +63,11 @@ fn delete_workspace(client: &mut Client, workspace: String) -> Result<(), Remote
 
 /// Invite another user to an owned workspace.
 #[jni(package = "mp.code", class = "Client")]
-fn invite_to_workspace(client: &mut Client, workspace: String, user: String) -> Result<(), RemoteError> {
+fn invite_to_workspace(
+	client: &mut Client,
+	workspace: String,
+	user: String,
+) -> Result<(), RemoteError> {
 	super::tokio().block_on(client.invite_to_workspace(workspace, user))
 }
 
@@ -117,11 +127,13 @@ fn callback<'local>(
 	cb: jni::objects::JObject<'local>,
 ) -> Result<(), jni::errors::Error> {
 	if cb.is_null() {
-		return Err(jni::errors::Error::NullPtr("null pointer to buffer callback"));
+		return Err(jni::errors::Error::NullPtr(
+			"null pointer to buffer callback",
+		));
 	}
 
 	let cb_ref = env.new_global_ref(cb)?;
-	let jvm =	env.get_java_vm()?;
+	let jvm = env.get_java_vm()?;
 
 	client.callback(move |controller: Client| {
 		let result: Result<(), jni::errors::Error> = jvm.attach_current_thread(|env| {

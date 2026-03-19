@@ -1,10 +1,13 @@
-use crate::{
-	api::{AsyncReceiver, AsyncSender},
-	errors::ControllerError,
-	proto::{cursor::{CursorEvent, CursorUpdate}, session::WorkspaceIdentifier}
-};
-use jni::{Env, objects::JObject};
 use jni_toolbox::jni;
+
+use crate::{
+	errors::ControllerError,
+	prelude::{
+		CodempAsyncReceiver as AsyncReceiver, CodempAsyncSender as AsyncSender,
+		CodempCursorEvent as CursorEvent, CodempCursorUpdate as CursorUpdate,
+		CodempWorkspaceIdentifier as WorkspaceIdentifier,
+	},
+};
 
 /// Get the [WorkspaceIdentifier] of the workspace that contains this buffer.
 #[jni(package = "mp.code", class = "CursorController")]
@@ -14,7 +17,9 @@ fn workspace_id(controller: &mut crate::cursor::Controller) -> WorkspaceIdentifi
 
 /// Try to fetch a [Cursor], or returns null if there's nothing.
 #[jni(package = "mp.code", class = "CursorController")]
-fn try_recv(controller: &mut crate::cursor::Controller) -> Result<Option<CursorEvent>, ControllerError> {
+fn try_recv(
+	controller: &mut crate::cursor::Controller,
+) -> Result<Option<CursorEvent>, ControllerError> {
 	super::tokio().block_on(controller.try_recv())
 }
 
@@ -26,23 +31,26 @@ fn recv(controller: &mut crate::cursor::Controller) -> Result<CursorEvent, Contr
 
 /// Receive from Java, converts and sends a [Cursor].
 #[jni(package = "mp.code", class = "CursorController")]
-fn send(controller: &mut crate::cursor::Controller, sel: CursorUpdate) -> Result<(), ControllerError> {
+fn send(
+	controller: &mut crate::cursor::Controller,
+	sel: CursorUpdate,
+) -> Result<(), ControllerError> {
 	controller.send(sel)
 }
 
 /// Register a callback for cursor changes.
 #[jni(package = "mp.code", class = "CursorController")]
 fn callback<'local>(
-	env: &mut Env<'local>,
+	env: &mut jni::Env<'local>,
 	controller: &mut crate::cursor::Controller,
-	cb: JObject<'local>,
+	cb: jni::objects::JObject<'local>,
 ) -> Result<(), jni::errors::Error> {
 	if cb.is_null() {
 		return Err(jni::errors::Error::NullPtr("cursor callback is null"));
 	}
 
 	let cb_ref = env.new_global_ref(cb)?;
-	let jvm =	env.get_java_vm()?;
+	let jvm = env.get_java_vm()?;
 
 	controller.callback(move |controller: crate::cursor::Controller| {
 		let res: Result<(), jni::errors::Error> = jvm.attach_current_thread(|env| {

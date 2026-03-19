@@ -1,12 +1,13 @@
-use crate::{
-	Workspace,
-	api::controller::AsyncReceiver,
-	errors::{ConnectionError, ControllerError, RemoteError},
-	proto::{common::UserInfo, session::WorkspaceIdentifier, workspace::WorkspaceEvent}
-};
-use codemp_proto::files::{BufferAttributes, BufferNode};
-use jni::{Env, objects::JObject};
 use jni_toolbox::jni;
+
+use crate::{
+	errors::{ConnectionError, ControllerError, RemoteError},
+	prelude::{
+		CodempAsyncReceiver as AsyncReceiver, CodempBufferAttributes as BufferAttributes,
+		CodempBufferNode as BufferNode, CodempUserInfo as UserInfo, CodempWorkspace as Workspace,
+		CodempWorkspaceEvent as WorkspaceEvent, CodempWorkspaceIdentifier as WorkspaceIdentifier,
+	},
+};
 
 /// Get the workspace id.
 #[jni(package = "mp.code", class = "Workspace")]
@@ -46,7 +47,11 @@ fn user_list(workspace: &mut Workspace) -> Vec<UserInfo> {
 
 /// Create a new buffer.
 #[jni(package = "mp.code", class = "Workspace")]
-fn create_buffer(workspace: &mut Workspace, path: String, attributes: Option<BufferAttributes>) -> Result<(), RemoteError> {
+fn create_buffer(
+	workspace: &mut Workspace,
+	path: String,
+	attributes: Option<BufferAttributes>,
+) -> Result<(), RemoteError> {
 	super::tokio().block_on(workspace.create_buffer(path, attributes))
 }
 
@@ -64,7 +69,10 @@ fn un_pin_buffer(workspace: &mut Workspace, path: String) -> Result<(), RemoteEr
 
 /// Attach to a buffer and return a pointer to its [`crate::buffer::Controller`].
 #[jni(package = "mp.code", class = "Workspace")]
-fn attach_buffer(workspace: &mut Workspace, path: String) -> Result<crate::buffer::Controller, ConnectionError> {
+fn attach_buffer(
+	workspace: &mut Workspace,
+	path: String,
+) -> Result<crate::buffer::Controller, ConnectionError> {
 	super::tokio().block_on(workspace.attach_buffer(&path))
 }
 
@@ -131,12 +139,14 @@ fn clear_callback(workspace: &mut Workspace) {
 /// Register a callback for workspace events.
 #[jni(package = "mp.code", class = "Workspace")]
 fn callback<'local>(
-	env: &mut Env<'local>,
+	env: &mut jni::Env<'local>,
 	controller: &mut crate::Workspace,
-	cb: JObject<'local>,
+	cb: jni::objects::JObject<'local>,
 ) -> Result<(), jni::errors::Error> {
 	if cb.is_null() {
-		return Err(jni::errors::Error::NullPtr("null pointer to workspace callback"));
+		return Err(jni::errors::Error::NullPtr(
+			"null pointer to workspace callback",
+		));
 	}
 
 	let cb_ref = env.new_global_ref(cb)?;

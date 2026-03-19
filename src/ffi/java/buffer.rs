@@ -1,10 +1,12 @@
-use jni::{Env, objects::JObject};
 use jni_toolbox::jni;
 
 use crate::{
-	api::{AsyncReceiver, AsyncSender, BufferUpdate, TextChange},
 	errors::ControllerError,
-	proto::session::WorkspaceIdentifier
+	prelude::{
+		CodempAsyncReceiver as AsyncReceiver, CodempAsyncSender as AsyncSender,
+		CodempBufferUpdate as BufferUpdate, CodempTextChange as TextChange,
+		CodempWorkspaceIdentifier as WorkspaceIdentifier,
+	},
 };
 
 /// Get the name of the buffer.
@@ -51,16 +53,18 @@ fn send(
 /// Register a callback for buffer changes.
 #[jni(package = "mp.code", class = "BufferController")]
 fn callback<'local>(
-	env: &mut Env<'local>,
+	env: &mut jni::Env<'local>,
 	controller: &mut crate::buffer::Controller,
-	cb: JObject<'local>,
+	cb: jni::objects::JObject<'local>,
 ) -> Result<(), jni::errors::Error> {
 	if cb.is_null() {
-		return Err(jni::errors::Error::NullPtr("null pointer to buffer callback"));
+		return Err(jni::errors::Error::NullPtr(
+			"null pointer to buffer callback",
+		));
 	}
 
 	let cb_ref = env.new_global_ref(cb)?;
-	let jvm =	env.get_java_vm()?;
+	let jvm = env.get_java_vm()?;
 
 	controller.callback(move |controller: crate::buffer::Controller| {
 		let result: Result<(), jni::errors::Error> = jvm.attach_current_thread(|env| {

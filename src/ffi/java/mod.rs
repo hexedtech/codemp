@@ -90,9 +90,10 @@ impl jni_toolbox::IntoException for crate::errors::ControllerError {
 	}
 }
 
-
-macro_rules! from_java_ptr {
-	($type: ty) => {
+/// Generates a [jni_toolbox::IntoJava] and [jni_toolbox::FromJava] implementations
+/// for a class that is just a holder for a pointer.
+macro_rules! java_ptr_class {
+	($type: ty, $jclass: literal) => {
 		impl<'j> jni_toolbox::FromJava<'j> for &mut $type {
 			type From = jni::sys::jobject;
 			#[allow(unsafe_code)]
@@ -110,17 +111,7 @@ macro_rules! from_java_ptr {
 				Self::from_java(env, value.l()?.into_raw())
 			}
 		}
-	};
-}
 
-from_java_ptr!(crate::Client);
-from_java_ptr!(crate::Workspace);
-from_java_ptr!(crate::cursor::Controller);
-from_java_ptr!(crate::buffer::Controller);
-
-/// Generates a [JObjectify] implementation for a class that is just a holder for a pointer.
-macro_rules! into_java_ptr_class {
-	($type: ty, $jclass: literal) => {
 		impl<'j> jni_toolbox::IntoJavaObject<'j> for $type {
 			const CLASS: &'static str = $jclass;
 			fn into_java_object(
@@ -140,7 +131,13 @@ macro_rules! into_java_ptr_class {
 	};
 }
 
-into_java_ptr_class!(crate::Client, "mp/code/Client");
-into_java_ptr_class!(crate::Workspace, "mp/code/Workspace");
-into_java_ptr_class!(crate::cursor::Controller, "mp/code/CursorController");
-into_java_ptr_class!(crate::buffer::Controller, "mp/code/BufferController");
+java_ptr_class!(crate::prelude::CodempClient, "mp/code/Client");
+java_ptr_class!(crate::prelude::CodempWorkspace, "mp/code/Workspace");
+java_ptr_class!(
+	crate::prelude::CodempBufferController,
+	"mp/code/BufferController"
+);
+java_ptr_class!(
+	crate::prelude::CodempCursorController,
+	"mp/code/CursorController"
+);
