@@ -17,7 +17,7 @@ public class BufferNode {
 	public final String path;
 
 	/**
-	 * Whether this buffer gets auto-deleted once all users leave.
+	 * The attributes of this buffer.
 	 */
-	public final boolean ephemeral;
+	public final BufferAttributes attributes;
 }

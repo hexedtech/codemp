@@ -36,4 +36,9 @@ public final class WorkspaceEventKind {
 	 * Event that occurs when a user leaves a buffer.
 	 */
 	public static final int USER_LEAVE_BUFFER = 7;
+
+	/**
+	 * Event that occurs when a buffer has one of its attributes changed.
+	 */
+	public static final int FILE_ATTRS_UPDATED = 8;
 }

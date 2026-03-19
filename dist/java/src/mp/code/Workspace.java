@@ -2,13 +2,10 @@ package mp.code;
 
 import java.util.function.Consumer;
 
-import mp.code.proto.UserInfo;
-import mp.code.proto.BufferNode;
+import mp.code.proto.*;
 import mp.code.exceptions.ConnectionException;
 import mp.code.exceptions.ConnectionRemoteException;
 import mp.code.exceptions.ControllerException;
-import mp.code.proto.WorkspaceEvent;
-import mp.code.proto.WorkspaceIdentifier;
 
 /**
  * Represents a CodeMP workspace, which broadly speaking is a collection
@@ -90,16 +87,16 @@ public final class Workspace {
 		return user_list(this.ptr);
 	}
 
-	private static native void create_buffer(long self, String path, boolean ephemeral) throws ConnectionRemoteException;
+	private static native void create_buffer(long self, String path, BufferAttributes attributes) throws ConnectionRemoteException;
 
 	/**
 	 * Creates a buffer with the given path.
 	 * @param path the new buffer's path
-	 * @param ephemeral whether the buffer should be ephemeral
+	 * @param attributes the buffer's attributes (will use defaults if null)
 	 * @throws ConnectionRemoteException if an error occurs in communicating with the server
 	 */
-	public void createBuffer(String path, boolean ephemeral) throws ConnectionRemoteException {
-		create_buffer(this.ptr, path, ephemeral);
+	public void createBuffer(String path, BufferAttributes attributes) throws ConnectionRemoteException {
+		create_buffer(this.ptr, path, attributes);
 	}
 
 	private static native void pin_buffer(long self, String path) throws ConnectionRemoteException;

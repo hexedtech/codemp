@@ -28,9 +28,9 @@ public class WorkspaceEvent {
 	public final String path;
 
 	/**
-	 * Whether the buffer is ephemeral, or null.
+	 * The attributes of the buffer, or null.
 	 */
-	public final Boolean ephemeral;
+	public final BufferAttributes attributes;
 
 	/**
 	 * The new path of the buffer after the rename, or null.
