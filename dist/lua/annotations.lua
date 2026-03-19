@@ -390,12 +390,12 @@ function Workspace:active_buffers() end
 function Workspace:cursor() end
 
 ---@param path string relative path ("name") of new buffer
----@param ephemeral boolean wether this buffer is ephemeral (auto deletes)
+---@param attributes BufferAttributes? buffer attributes for this new buffer
 ---@return NilPromise
 ---@async
 ---@nodiscard
 ---create a new empty buffer
-function Workspace:create_buffer(path, ephemeral) end
+function Workspace:create_buffer(path, attributes) end
 
 ---@param path string relative path ("name") of buffer to delete
 ---@return NilPromise
