@@ -163,19 +163,19 @@ fn init() -> PyResult<Driver> {
 // 	fn get_name(&self) -> pyo3::PyResult<String> {
 // 		Ok(self.name.clone())
 // 	}
-// 
+//
 // 	#[getter]
 // 	fn get_display_name(&self) -> pyo3::PyResult<String> {
 // 		Ok(self.display_name.clone().unwrap_or(self.name.clone()))
 // 	}
-// 
+//
 // 	#[setter]
 // 	fn set_display_name(&mut self, value: String) -> pyo3::PyResult<()> {
 // 		self.display_name.replace(value);
-// 
+//
 // 		Ok(())
 // 	}
-// 
+//
 // 	#[getter]
 // 	fn get_description(&self) -> pyo3::PyResult<String> {
 // 		Ok(self
@@ -183,13 +183,13 @@ fn init() -> PyResult<Driver> {
 // 			.clone()
 // 			.unwrap_or("No description.".to_string()))
 // 	}
-// 
+//
 // 	#[setter]
 // 	fn set_description(&mut self, value: String) -> pyo3::PyResult<()> {
 // 		self.description.replace(value);
 // 		Ok(())
 // 	}
-// 
+//
 // 	fn __str__(&self) -> String {
 // 		format!("{self:?}")
 // 	}
@@ -261,7 +261,7 @@ impl CodempConfig {
 // 			})
 // 		}
 // 	}
-// 
+//
 // 	fn __str__(&self) -> String {
 // 		format!("{self:?}")
 // 	}
@@ -298,7 +298,7 @@ impl CodempConfig {
 // 			})
 // 		}
 // 	}
-// 
+//
 // 	fn __str__(&self) -> String {
 // 		format!("{self:?}")
 // 	}
@@ -375,29 +375,89 @@ impl From<crate::errors::ControllerError> for PyErr {
 	}
 }
 
-#[pymodule]
-fn codemp(m: &Bound<'_, PyModule>) -> PyResult<()> {
-	m.add_function(wrap_pyfunction!(version, m)?)?;
-	m.add_function(wrap_pyfunction!(init, m)?)?;
-	m.add_function(wrap_pyfunction!(connect, m)?)?;
-	m.add_function(wrap_pyfunction!(set_logger, m)?)?;
-	m.add_class::<Driver>()?;
+// #[pymodule]
+// fn codemp(m: &Bound<'_, PyModule>) -> PyResult<()> {
+// 	m.add_function(wrap_pyfunction!(version, m)?)?;
+// 	m.add_function(wrap_pyfunction!(init, m)?)?;
+// 	m.add_function(wrap_pyfunction!(connect, m)?)?;
+// 	m.add_function(wrap_pyfunction!(set_logger, m)?)?;
+// 	m.add_class::<Driver>()?;
 
-	m.add_class::<CodempBufferUpdate>()?;
-	m.add_class::<CodempTextChange>()?;
-	m.add_class::<CodempBufferController>()?;
+// 	m.add_class::<CodempBufferUpdate>()?;
+// 	m.add_class::<CodempTextChange>()?;
+// 	m.add_class::<CodempBufferController>()?;
 
-	m.add_class::<CodempCursorUpdate>()?;
-	m.add_class::<CodempCursorPosition>()?;
-	m.add_class::<CodempCursorController>()?;
+// 	m.add_class::<CodempCursorUpdate>()?;
+// 	m.add_class::<CodempCursorPosition>()?;
+// 	m.add_class::<CodempCursorController>()?;
 
-	m.add_class::<CodempUserInfo>()?;
+// 	m.add_class::<CodempUserInfo>()?;
 
-	m.add_class::<CodempWorkspace>()?;
-	m.add_class::<CodempWorkspaceEvent>()?;
-	m.add_class::<CodempSessionEvent>()?;
-	m.add_class::<CodempClient>()?;
-	m.add_class::<CodempConfig>()?;
+// 	m.add_class::<CodempWorkspace>()?;
+// 	m.add_class::<CodempWorkspaceEvent>()?;
+// 	m.add_class::<CodempSessionEvent>()?;
+// 	m.add_class::<CodempClient>()?;
+// 	m.add_class::<CodempConfig>()?;
 
-	Ok(())
+// 	Ok(())
+// }
+
+#[pymodule(name = "codemplib")]
+mod pycodemp {
+	#[pymodule_export]
+	use super::version;
+
+	#[pymodule_export]
+	use super::init;
+
+	#[pymodule_export]
+	use super::connect;
+
+	#[pymodule_export]
+	use super::set_logger;
+
+	#[pymodule_export]
+	use super::Driver;
+
+	#[pymodule_export]
+	use super::Promise;
+
+	#[pymodule_export]
+	use super::CodempBufferController;
+
+	#[pymodule_export]
+	use super::CodempBufferUpdate;
+
+	#[pymodule_export]
+	use super::CodempTextChange;
+
+	#[pymodule_export]
+	use super::CodempCursorPosition;
+
+	#[pymodule_export]
+	use super::CodempCursorUpdate;
+
+	#[pymodule_export]
+	use super::CodempCursorController;
+
+	#[pymodule_export]
+	use super::CodempUserInfo;
+
+	#[pymodule_export]
+	use super::CodempWorkspace;
+
+	#[pymodule_export]
+	use super::WorkspaceIdentifier;
+
+	#[pymodule_export]
+	use super::CodempWorkspaceEvent;
+
+	#[pymodule_export]
+	use super::CodempSessionEvent;
+
+	#[pymodule_export]
+	use super::CodempClient;
+
+	#[pymodule_export]
+	use super::CodempConfig;
 }
