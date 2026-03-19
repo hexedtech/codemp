@@ -45,7 +45,7 @@ pub fn tokio() -> &'static tokio::runtime::Runtime {
 
 /// Implements a simple future like object between python and rust to allow for async operations
 /// between the two runtimes.
-#[pyclass]
+#[pyclass] // once we go past pytho 3.8 we can use pyclass(generic)
 pub struct Promise(Option<tokio::task::JoinHandle<PyResult<Py<PyAny>>>>);
 
 #[pymethods]
@@ -447,7 +447,7 @@ mod pycodemp {
 	use super::CodempWorkspace;
 
 	#[pymodule_export]
-	use super::WorkspaceIdentifier;
+	use super::CodempWorkspaceIdentifier;
 
 	#[pymodule_export]
 	use super::CodempWorkspaceEvent;

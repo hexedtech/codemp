@@ -65,26 +65,20 @@ fn main() {
 			.join("src")
 			.join("autocodemp");
 
-		let _: Vec<_> = output
-			.into_iter()
-			.map(|(p, content)| {
-				let outpath = pydist.join(p);
-				if let Some(parent) = outpath.parent() {
-					std::fs::create_dir_all(parent).unwrap_or_else(|_| {
-						panic!(
-							"failed to create dir {:?}",
-							parent.to_str().expect("invalid path.")
-						)
-					});
-				}
-				std::fs::write(&outpath, content).unwrap_or_else(|_| {
-					panic!(
-						"failed to create file {:?}",
-						outpath.to_str().expect("invalid path.")
-					)
-				});
-			})
-			.collect();
+		let pyicontent = output
+			.get_key_value(std::path::Path::new("__init__.pyi"))
+			.unwrap()
+			.1;
+
+		let pyinit = "\
+from .codemplib import *
+
+__doc__ = codemplib.__doc__
+if hasattr(codemplib, '__all__'):
+__all__ = codemplib.__all__";
+
+		let _ = std::fs::write(pydist.join("__init__.py"), pyinit);
+		let _ = std::fs::write(pydist.join("codemplib.pyi"), pyicontent);
 	}
 
 	#[cfg(feature = "lua")]

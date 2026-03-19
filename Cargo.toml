@@ -86,7 +86,7 @@ test-coverage = ["dep:syn", "dep:regex"]
 # ffi
 java = ["dep:jni", "dep:tracing-subscriber", "dep:jni-toolbox", "codemp-proto/java"]
 js = ["dep:napi-build", "dep:tracing-subscriber", "dep:napi", "dep:napi-derive", "codemp-proto/js"]
-py = ["dep:pyo3", "dep:tracing-subscriber", "dep:pyo3-build-config", "codemp-proto/py"]
+py = ["dep:pyo3", "dep:tracing-subscriber", "dep:pyo3-build-config", "dep:pyo3-introspection", "codemp-proto/py"]
 lua = ["serialize", "dep:mlua", "dep:mlua-serde-derive", "dep:tracing-subscriber", "codemp-proto/lua"]
 # ffi variants
 lua-jit = ["mlua?/luajit"]
