@@ -197,6 +197,7 @@ fn init() -> PyResult<Driver> {
 
 #[pymethods]
 impl CodempConfig {
+	/// Creates a new config, handling defaulted values.
 	#[new]
 	#[pyo3(signature = (*, username, password, **kwds))]
 	pub fn pynew(
