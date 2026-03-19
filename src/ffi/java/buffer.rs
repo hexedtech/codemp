@@ -4,49 +4,44 @@ use crate::{
 	errors::ControllerError,
 	prelude::{
 		CodempAsyncReceiver as AsyncReceiver, CodempAsyncSender as AsyncSender,
-		CodempBufferUpdate as BufferUpdate, CodempTextChange as TextChange,
-		CodempWorkspaceIdentifier as WorkspaceIdentifier,
+		CodempBufferController as BufferController, CodempBufferUpdate as BufferUpdate,
+		CodempTextChange as TextChange, CodempWorkspaceIdentifier as WorkspaceIdentifier,
 	},
 };
 
 /// Get the name of the buffer.
 #[jni(package = "mp.code", class = "BufferController")]
-fn path(controller: &mut crate::buffer::Controller) -> String {
+fn path(controller: &mut BufferController) -> String {
 	controller.path().to_string()
 }
 
 /// Get the [WorkspaceIdentifier] of the workspace that contains this buffer.
 #[jni(package = "mp.code", class = "BufferController")]
-fn workspace_id(controller: &mut crate::buffer::Controller) -> WorkspaceIdentifier {
+fn workspace_id(controller: &mut BufferController) -> WorkspaceIdentifier {
 	controller.workspace_id().clone()
 }
 
 /// Get the contents of the buffers.
 #[jni(package = "mp.code", class = "BufferController")]
-fn content(controller: &mut crate::buffer::Controller) -> Result<String, ControllerError> {
+fn content(controller: &mut BufferController) -> Result<String, ControllerError> {
 	super::tokio().block_on(controller.content())
 }
 
 /// Try to fetch a [TextChange], or return null if there's nothing.
 #[jni(package = "mp.code", class = "BufferController")]
-fn try_recv(
-	controller: &mut crate::buffer::Controller,
-) -> Result<Option<BufferUpdate>, ControllerError> {
+fn try_recv(controller: &mut BufferController) -> Result<Option<BufferUpdate>, ControllerError> {
 	super::tokio().block_on(controller.try_recv())
 }
 
 /// Block until it receives a [TextChange].
 #[jni(package = "mp.code", class = "BufferController")]
-fn recv(controller: &mut crate::buffer::Controller) -> Result<BufferUpdate, ControllerError> {
+fn recv(controller: &mut BufferController) -> Result<BufferUpdate, ControllerError> {
 	super::tokio().block_on(controller.recv())
 }
 
 /// Send a [TextChange] to the server.
 #[jni(package = "mp.code", class = "BufferController")]
-fn send(
-	controller: &mut crate::buffer::Controller,
-	change: TextChange,
-) -> Result<(), ControllerError> {
+fn send(controller: &mut BufferController, change: TextChange) -> Result<(), ControllerError> {
 	controller.send(change)
 }
 
@@ -54,7 +49,7 @@ fn send(
 #[jni(package = "mp.code", class = "BufferController")]
 fn callback<'local>(
 	env: &mut jni::Env<'local>,
-	controller: &mut crate::buffer::Controller,
+	controller: &mut BufferController,
 	cb: jni::objects::JObject<'local>,
 ) -> Result<(), jni::errors::Error> {
 	if cb.is_null() {
@@ -66,7 +61,7 @@ fn callback<'local>(
 	let cb_ref = env.new_global_ref(cb)?;
 	let jvm = env.get_java_vm()?;
 
-	controller.callback(move |controller: crate::buffer::Controller| {
+	controller.callback(move |controller: BufferController| {
 		let result: Result<(), jni::errors::Error> = jvm.attach_current_thread(|env| {
 			env.with_local_frame(5, |env| {
 				use jni_toolbox::IntoJavaObject;
@@ -93,19 +88,19 @@ fn callback<'local>(
 
 /// Clear the callback for buffer changes.
 #[jni(package = "mp.code", class = "BufferController")]
-fn clear_callback(controller: &mut crate::buffer::Controller) {
+fn clear_callback(controller: &mut BufferController) {
 	controller.clear_callback()
 }
 
 /// Block until there is a new value available.
 #[jni(package = "mp.code", class = "BufferController")]
-fn poll(controller: &mut crate::buffer::Controller) -> Result<(), ControllerError> {
+fn poll(controller: &mut BufferController) -> Result<(), ControllerError> {
 	super::tokio().block_on(controller.poll())
 }
 
 /// Acknowledge that a change has been correctly applied.
 #[jni(package = "mp.code", class = "BufferController")]
-fn ack(controller: &mut crate::buffer::Controller, version: Vec<i64>) {
+fn ack(controller: &mut BufferController, version: Vec<i64>) {
 	controller.ack(version)
 }
 
@@ -113,5 +108,5 @@ fn ack(controller: &mut crate::buffer::Controller, version: Vec<i64>) {
 #[allow(unsafe_code)]
 #[jni(package = "mp.code", class = "BufferController")]
 fn free(input: jni::sys::jlong) {
-	let _ = unsafe { Box::from_raw(input as *mut crate::buffer::Controller) };
+	let _ = unsafe { Box::from_raw(input as *mut BufferController) };
 }

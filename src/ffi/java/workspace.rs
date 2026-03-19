@@ -4,8 +4,10 @@ use crate::{
 	errors::{ConnectionError, ControllerError, RemoteError},
 	prelude::{
 		CodempAsyncReceiver as AsyncReceiver, CodempBufferAttributes as BufferAttributes,
-		CodempBufferNode as BufferNode, CodempUserInfo as UserInfo, CodempWorkspace as Workspace,
-		CodempWorkspaceEvent as WorkspaceEvent, CodempWorkspaceIdentifier as WorkspaceIdentifier,
+		CodempBufferController as BufferController, CodempBufferNode as BufferNode,
+		CodempCursorController as CursorController, CodempUserInfo as UserInfo,
+		CodempWorkspace as Workspace, CodempWorkspaceEvent as WorkspaceEvent,
+		CodempWorkspaceIdentifier as WorkspaceIdentifier,
 	},
 };
 
@@ -17,13 +19,13 @@ fn id(workspace: &mut Workspace) -> WorkspaceIdentifier {
 
 /// Get a cursor controller by name and returns a pointer to it.
 #[jni(package = "mp.code", class = "Workspace")]
-fn cursor(workspace: &mut Workspace) -> crate::cursor::Controller {
+fn cursor(workspace: &mut Workspace) -> CursorController {
 	workspace.cursor()
 }
 
 /// Get a buffer controller by name and returns a pointer to it.
 #[jni(package = "mp.code", class = "Workspace")]
-fn get_buffer(workspace: &mut Workspace, path: String) -> Option<crate::buffer::Controller> {
+fn get_buffer(workspace: &mut Workspace, path: String) -> Option<BufferController> {
 	workspace.get_buffer(&path)
 }
 
@@ -67,12 +69,12 @@ fn un_pin_buffer(workspace: &mut Workspace, path: String) -> Result<(), RemoteEr
 	super::tokio().block_on(workspace.un_pin_buffer(path))
 }
 
-/// Attach to a buffer and return a pointer to its [`crate::buffer::Controller`].
+/// Attach to a buffer and return a pointer to its [`BufferController`].
 #[jni(package = "mp.code", class = "Workspace")]
 fn attach_buffer(
 	workspace: &mut Workspace,
 	path: String,
-) -> Result<crate::buffer::Controller, ConnectionError> {
+) -> Result<BufferController, ConnectionError> {
 	super::tokio().block_on(workspace.attach_buffer(&path))
 }
 
@@ -140,7 +142,7 @@ fn clear_callback(workspace: &mut Workspace) {
 #[jni(package = "mp.code", class = "Workspace")]
 fn callback<'local>(
 	env: &mut jni::Env<'local>,
-	controller: &mut crate::Workspace,
+	controller: &mut Workspace,
 	cb: jni::objects::JObject<'local>,
 ) -> Result<(), jni::errors::Error> {
 	if cb.is_null() {
@@ -152,7 +154,7 @@ fn callback<'local>(
 	let cb_ref = env.new_global_ref(cb)?;
 	let jvm = env.get_java_vm()?;
 
-	controller.callback(move |workspace: crate::Workspace| {
+	controller.callback(move |workspace: Workspace| {
 		let out: Result<(), jni::errors::Error> = jvm.attach_current_thread(|env| {
 			env.with_local_frame(5, |env| {
 				use jni_toolbox::IntoJavaObject;
@@ -180,5 +182,5 @@ fn callback<'local>(
 #[allow(unsafe_code)]
 #[jni(package = "mp.code", class = "Workspace")]
 fn free(input: jni::sys::jlong) {
-	let _ = unsafe { Box::from_raw(input as *mut crate::Workspace) };
+	let _ = unsafe { Box::from_raw(input as *mut Workspace) };
 }
