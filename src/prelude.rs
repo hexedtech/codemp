@@ -9,11 +9,13 @@ pub use crate::api::{
 };
 
 pub use crate::proto::{
-	files::BufferNode as CodempBufferNode, buffer::BufferEvent as CodempBufferEvent,
+	common::UserInfo as CodempUserInfo,
+	files::BufferNode as CodempBufferNode, files::BufferAttributes as CodempBufferAttributes,
+	buffer::BufferEvent as CodempBufferEvent,
 	cursor::CursorEvent as CodempCursorEvent, cursor::CursorUpdate as CodempCursorUpdate,
 	cursor::CursorPosition as CodempCursorPosition, cursor::RowCol as CodempRowCol,
-	session::SessionEvent as CodempSessionEvent, workspace::WorkspaceEvent as CodempWorkspaceEvent,
-	session::WorkspaceIdentifier as CodempWorkspaceIdentifier, common::UserInfo as CodempUserInfo,
+	session::SessionEvent as CodempSessionEvent, session::WorkspaceIdentifier as CodempWorkspaceIdentifier,
+	workspace::WorkspaceEvent as CodempWorkspaceEvent,
 };
 
 pub use crate::{

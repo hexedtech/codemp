@@ -16,6 +16,7 @@ local WorkspaceEventKind = {
 	FileDelete = 5,
 	UserJoinBuffer = 6,
 	UserLeaveBuffer = 7,
+	FileAttrsUpdated = 8,
 }
 
 return {

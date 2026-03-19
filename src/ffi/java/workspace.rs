@@ -4,7 +4,7 @@ use crate::{
 	errors::{ConnectionError, ControllerError, RemoteError},
 	proto::{common::UserInfo, session::WorkspaceIdentifier, workspace::WorkspaceEvent}
 };
-use codemp_proto::files::BufferNode;
+use codemp_proto::files::{BufferAttributes, BufferNode};
 use jni::{Env, objects::JObject};
 use jni_toolbox::jni;
 
@@ -46,8 +46,8 @@ fn user_list(workspace: &mut Workspace) -> Vec<UserInfo> {
 
 /// Create a new buffer.
 #[jni(package = "mp.code", class = "Workspace")]
-fn create_buffer(workspace: &mut Workspace, path: String, ephemeral: bool) -> Result<(), RemoteError> {
-	super::tokio().block_on(workspace.create_buffer(path, ephemeral))
+fn create_buffer(workspace: &mut Workspace, path: String, attributes: Option<BufferAttributes>) -> Result<(), RemoteError> {
+	super::tokio().block_on(workspace.create_buffer(path, attributes))
 }
 
 /// Pins an ephemeral buffer.

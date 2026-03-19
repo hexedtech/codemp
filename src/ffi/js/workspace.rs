@@ -1,4 +1,4 @@
-use codemp_proto::{common::UserInfo, files::BufferNode, session::WorkspaceIdentifier, workspace::WorkspaceEvent};
+use codemp_proto::{common::UserInfo, files::{BufferAttributes, BufferNode}, session::WorkspaceIdentifier, workspace::WorkspaceEvent};
 use crate::{api::AsyncReceiver, buffer::controller::BufferController, cursor::controller::CursorController};
 use napi::threadsafe_function::{ThreadsafeFunction, ThreadsafeFunctionCallMode};
 use napi_derive::napi;
@@ -45,8 +45,8 @@ impl Workspace {
 
 	/// Create a new buffer in the current workspace
 	#[napi(js_name = "createBuffer")]
-	pub async fn js_create_buffer(&self, path: String, ephemeral: bool) -> napi::Result<()> {
-		Ok(self.create_buffer(&path, ephemeral).await?)
+	pub async fn js_create_buffer(&self, path: String, attributes: Option<BufferAttributes>) -> napi::Result<()> {
+		Ok(self.create_buffer(&path, attributes).await?)
 	}
 
 	/// Attach to a workspace buffer, starting a BufferController

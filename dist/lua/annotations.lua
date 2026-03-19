@@ -362,10 +362,14 @@ function Client:callback(cb) end
 ---@field user string username of workspace owner
 ---@field workspace string workspace name
 
+---@class BufferAttributes
+---attributes and properties of a buffer
+---@field ephemeral boolean wheter this buffer is ephemeral
+
 ---@class BufferNode
 ---represents a buffer and holds wheter it is ephemeral
 ---@field path string buffer path
----@field ephemeral boolean wheter this buffer is ephemeral
+---@field attributes BufferAttributes attributes of this buffer
 
 
 

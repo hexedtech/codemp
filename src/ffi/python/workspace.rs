@@ -9,9 +9,9 @@ use super::a_sync_detach;
 impl CodempWorkspace {
 	// join a workspace
 	#[pyo3(name = "create_buffer")]
-	fn pycreate_buffer(&self, py: Python, path: String, ephemeral: bool) -> PyResult<Promise> {
+	fn pycreate_buffer(&self, py: Python, path: String, attrs: Option<CodempBufferAttributes>) -> PyResult<Promise> {
 		let this = self.clone();
-		a_sync_detach!(py, this.create_buffer(path.as_str(), ephemeral).await)
+		a_sync_detach!(py, this.create_buffer(path.as_str(), attrs).await)
 	}
 
 	#[pyo3(name = "pin_buffer")]

@@ -10,7 +10,7 @@ impl LuaUserData for CodempWorkspace {
 		});
 		methods.add_method(
 			"create_buffer",
-			|_, this, (name, ephemeral): (String, bool)| a_sync! { this => this.create_buffer(name, ephemeral).await? },
+			|_, this, (name, attrs): (String, Option<CodempBufferAttributes>)| a_sync! { this => this.create_buffer(name, attrs).await? },
 		);
 
 		methods.add_method("pin_buffer", |_, this, (path,): (String,)| {

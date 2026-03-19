@@ -15,7 +15,7 @@ use crate::{
 
 use codemp_proto::{
 	common::Empty,
-	files::{BufferNode, BufferPath},
+	files::{BufferAttributes, BufferNode, BufferPath},
 	workspace::{WorkspaceEvent, WorkspaceEventKind},
 };
 
@@ -48,7 +48,7 @@ pub(crate) struct WorkspaceInner {
 	cursor: cursor::Controller,
 	buffers: DashMap<String, buffer::Controller>,
 	services: Services,
-	filetree: DashMap<String, crate::proto::files::BufferNode>,
+	filetree: DashMap<String, BufferNode>,
 	buffer_users: DashMap<String, Vec<String>>,
 	users: Arc<DashMap<String, codemp_proto::common::UserInfo>>,
 	events: tokio::sync::Mutex<mpsc::UnboundedReceiver<WorkspaceEvent>>,
@@ -158,22 +158,23 @@ impl Workspace {
 	}
 
 	/// Create a new buffer in the current workspace.
-	pub async fn create_buffer(&self, path: impl ToString, ephemeral: bool) -> RemoteResult<()> {
+	pub async fn create_buffer(&self, path: impl ToString, attributes: Option<BufferAttributes>) -> RemoteResult<()> {
 		let mut workspace_client = self.0.services.ws();
 		let path = path.to_string();
+		let attributes = attributes.unwrap_or_default();
 		workspace_client
 			.create_buffer(tonic::Request::new(BufferNode {
-				path: crate::proto::files::BufferPath::from(&path),
-				ephemeral,
+				path: BufferPath::from(&path),
+				attributes,
 			}))
 			.await?;
 
 		// add to filetree, not really necessary as we will get an event for it
 		self.0.filetree.insert(
 			path.clone(),
-			crate::proto::files::BufferNode {
-				path: crate::proto::files::BufferPath::from(&path),
-				ephemeral,
+			BufferNode {
+				path: BufferPath::from(&path),
+				attributes,
 			},
 		);
 
@@ -467,11 +468,11 @@ impl WorkspaceWorker {
 							},
 
 							WorkspaceEventKind::FileCreate => {
-								if let (Some(path), Some(ephemeral)) = (event.path, event.ephemeral) {
+								if let (Some(path), Some(attributes)) = (event.path, event.attributes) {
 									inner.buffer_users.insert(path.clone(), Vec::new());
-									inner.filetree.insert(path.clone(), crate::proto::files::BufferNode {
-										path: crate::proto::files::BufferPath::from(&path),
-										ephemeral
+									inner.filetree.insert(path.clone(), BufferNode {
+										path: BufferPath::from(&path),
+										attributes
 									});
 								}
 							}
@@ -495,6 +496,14 @@ impl WorkspaceWorker {
 									let _ = inner.buffers.remove(&path);
 								}
 							}
+							WorkspaceEventKind::FileAttrsUpdated => {
+								if let (Some(path), Some(attributes)) = (event.path, event.attributes) {
+									if let Some(mut r) = inner.filetree.get_mut(&path) {
+										r.attributes = attributes;
+									}
+								}
+							}
+
 						}
 
 						if self.events.send(_event).is_err() {
