@@ -1,4 +1,4 @@
-use codemp_proto::{common::UserInfo, files::{BufferAttributes, BufferNode}, session::WorkspaceIdentifier, workspace::WorkspaceEvent};
+use codemp_proto::{common::UserInfo, buffer::{BufferAttributes, BufferNode}, session::WorkspaceIdentifier, workspace::WorkspaceEvent};
 use crate::{api::AsyncReceiver, buffer::controller::BufferController, cursor::controller::CursorController};
 use napi::threadsafe_function::{ThreadsafeFunction, ThreadsafeFunctionCallMode};
 use napi_derive::napi;

@@ -14,8 +14,8 @@ use crate::{
 };
 
 use codemp_proto::{
+	buffer::{BufferAttributes, BufferNode, BufferPath},
 	common::Empty,
-	files::{BufferAttributes, BufferNode, BufferPath},
 	workspace::{WorkspaceEvent, WorkspaceEventKind},
 };
 
@@ -467,7 +467,7 @@ impl WorkspaceWorker {
 								}
 							},
 
-							WorkspaceEventKind::FileCreate => {
+							WorkspaceEventKind::BufferCreate => {
 								if let (Some(path), Some(attributes)) = (event.path, event.attributes) {
 									inner.buffer_users.insert(path.clone(), Vec::new());
 									inner.filetree.insert(path.clone(), BufferNode {
@@ -476,7 +476,7 @@ impl WorkspaceWorker {
 									});
 								}
 							}
-							WorkspaceEventKind::FileRename => {
+							WorkspaceEventKind::BufferRename => {
 								if let (Some(before), Some(after)) = (event.path, event.after) {
 									if let Some((_path, controller)) = inner.buffers.remove(&before) {
 										inner.buffers.insert(after.clone(), controller);
@@ -489,14 +489,14 @@ impl WorkspaceWorker {
 									}
 								}
 							}
-							WorkspaceEventKind::FileDelete => {
+							WorkspaceEventKind::BufferDelete => {
 								if let Some(path) = event.path {
 									inner.filetree.remove(&path);
 									inner.buffer_users.remove(&path);
 									let _ = inner.buffers.remove(&path);
 								}
 							}
-							WorkspaceEventKind::FileAttrsUpdated => {
+							WorkspaceEventKind::BufferAttrsUpdated => {
 								if let (Some(path), Some(attributes)) = (event.path, event.attributes) {
 									if let Some(mut r) = inner.filetree.get_mut(&path) {
 										r.attributes = attributes;

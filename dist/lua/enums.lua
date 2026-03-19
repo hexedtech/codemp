@@ -11,12 +11,12 @@ local SessionEventKind = {
 local WorkspaceEventKind = {
 	UserJoinWorkspace = 1,
 	UserLeaveWorkspace = 2,
-	FileCreate = 3,
-	FileRename = 4,
-	FileDelete = 5,
-	UserJoinBuffer = 6,
-	UserLeaveBuffer = 7,
-	FileAttrsUpdated = 8,
+	UserJoinBuffer = 3,
+	UserLeaveBuffer = 4,
+	BufferCreate = 5,
+	BufferRename = 6,
+	BufferDelete = 7,
+	BufferAttrsUpdated = 8,
 }
 
 return {

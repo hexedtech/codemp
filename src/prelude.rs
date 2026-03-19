@@ -10,7 +10,7 @@ pub use crate::api::{
 
 pub use crate::proto::{
 	common::UserInfo as CodempUserInfo,
-	files::BufferNode as CodempBufferNode, files::BufferAttributes as CodempBufferAttributes,
+	buffer::BufferNode as CodempBufferNode, buffer::BufferAttributes as CodempBufferAttributes,
 	buffer::BufferEvent as CodempBufferEvent,
 	cursor::CursorEvent as CodempCursorEvent, cursor::CursorUpdate as CodempCursorUpdate,
 	cursor::CursorPosition as CodempCursorPosition, cursor::RowCol as CodempRowCol,
