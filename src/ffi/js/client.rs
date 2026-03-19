@@ -1,15 +1,19 @@
-use codemp_proto::{common::UserInfo, session::WorkspaceIdentifier};
 use napi_derive::napi;
 
+use crate::prelude::{
+	CodempConfig as Config,
+	CodempClient as Client,
+	CodempUserInfo as UserInfo,
+	CodempWorkspace as Workspace,
+	CodempWorkspaceIdentifier as WorkspaceIdentifier,
+};
 
 /// connect to codemp servers and return a client session
 #[allow(dead_code)]
 #[napi]
-pub async fn connect(config: crate::api::Config) -> napi::Result<crate::Client> {
-	Ok(crate::Client::connect(config).await?)
+pub async fn connect(config: Config) -> napi::Result<Client> {
+	Ok(Client::connect(config).await?)
 }
-
-use crate::{Client, Workspace};
 
 #[napi]
 impl Client {

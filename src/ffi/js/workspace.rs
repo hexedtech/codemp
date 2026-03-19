@@ -1,9 +1,17 @@
-use codemp_proto::{common::UserInfo, buffer::{BufferAttributes, BufferNode}, session::WorkspaceIdentifier, workspace::WorkspaceEvent};
-use crate::{api::AsyncReceiver, buffer::controller::BufferController, cursor::controller::CursorController};
 use napi::threadsafe_function::{ThreadsafeFunction, ThreadsafeFunctionCallMode};
 use napi_derive::napi;
 
-use crate::Workspace;
+use crate::prelude::{
+	CodempAsyncReceiver as AsyncReceiver,
+	CodempBufferAttributes as BufferAttributes,
+	CodempBufferNode as BufferNode,
+	CodempBufferController as BufferController,
+	CodempCursorController as CursorController,
+	CodempUserInfo as UserInfo,
+	CodempWorkspace as Workspace,
+	CodempWorkspaceEvent as WorkspaceEvent,
+	CodempWorkspaceIdentifier as WorkspaceIdentifier,
+};
 
 #[napi]
 impl Workspace {

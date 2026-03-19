@@ -1,8 +1,14 @@
-use codemp_proto::{cursor::{CursorEvent, CursorUpdate}, session::WorkspaceIdentifier};
 use napi::threadsafe_function::{ThreadsafeFunction, ThreadsafeFunctionCallMode};
 use napi_derive::napi;
 
-use crate::{api::{AsyncReceiver, AsyncSender}, cursor::controller::CursorController};
+use crate::prelude::{
+	CodempAsyncReceiver as AsyncReceiver,
+	CodempAsyncSender as AsyncSender,
+	CodempCursorController as CursorController,
+	CodempCursorEvent as CursorEvent,
+	CodempCursorUpdate as CursorUpdate,
+	CodempWorkspaceIdentifier as WorkspaceIdentifier,
+};
 
 #[napi]
 impl CursorController {

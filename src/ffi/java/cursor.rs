@@ -2,34 +2,30 @@ use jni_toolbox::jni;
 
 use crate::{
 	errors::ControllerError,
-	prelude::{
-		CodempAsyncReceiver as AsyncReceiver, CodempAsyncSender as AsyncSender,
-		CodempCursorController as CursorController, CodempCursorEvent as CursorEvent,
-		CodempCursorUpdate as CursorUpdate, CodempWorkspaceIdentifier as WorkspaceIdentifier,
-	},
+	prelude::*,
 };
 
 /// Get the [WorkspaceIdentifier] of the workspace that contains this buffer.
 #[jni(package = "mp.code", class = "CursorController")]
-fn workspace_id(controller: &mut CursorController) -> WorkspaceIdentifier {
+fn workspace_id(controller: &mut CodempCursorController) -> CodempWorkspaceIdentifier {
 	controller.workspace_id().clone()
 }
 
 /// Try to fetch a [Cursor], or returns null if there's nothing.
 #[jni(package = "mp.code", class = "CursorController")]
-fn try_recv(controller: &mut CursorController) -> Result<Option<CursorEvent>, ControllerError> {
+fn try_recv(controller: &mut CodempCursorController) -> Result<Option<CodempCursorEvent>, ControllerError> {
 	super::tokio().block_on(controller.try_recv())
 }
 
 /// Block until it receives a [Cursor].
 #[jni(package = "mp.code", class = "CursorController")]
-fn recv(controller: &mut CursorController) -> Result<CursorEvent, ControllerError> {
+fn recv(controller: &mut CodempCursorController) -> Result<CodempCursorEvent, ControllerError> {
 	super::tokio().block_on(controller.recv())
 }
 
 /// Receive from Java, converts and sends a [Cursor].
 #[jni(package = "mp.code", class = "CursorController")]
-fn send(controller: &mut CursorController, sel: CursorUpdate) -> Result<(), ControllerError> {
+fn send(controller: &mut CodempCursorController, sel: CodempCursorUpdate) -> Result<(), ControllerError> {
 	controller.send(sel)
 }
 
@@ -37,7 +33,7 @@ fn send(controller: &mut CursorController, sel: CursorUpdate) -> Result<(), Cont
 #[jni(package = "mp.code", class = "CursorController")]
 fn callback<'local>(
 	env: &mut jni::Env<'local>,
-	controller: &mut CursorController,
+	controller: &mut CodempCursorController,
 	cb: jni::objects::JObject<'local>,
 ) -> Result<(), jni::errors::Error> {
 	if cb.is_null() {
@@ -47,7 +43,7 @@ fn callback<'local>(
 	let cb_ref = env.new_global_ref(cb)?;
 	let jvm = env.get_java_vm()?;
 
-	controller.callback(move |controller: CursorController| {
+	controller.callback(move |controller: CodempCursorController| {
 		let res: Result<(), jni::errors::Error> = jvm.attach_current_thread(|env| {
 			env.with_local_frame(5, |env| {
 				use jni_toolbox::IntoJavaObject;
@@ -74,13 +70,13 @@ fn callback<'local>(
 
 /// Clear the callback for cursor changes.
 #[jni(package = "mp.code", class = "CursorController")]
-fn clear_callback(controller: &mut CursorController) {
+fn clear_callback(controller: &mut CodempCursorController) {
 	controller.clear_callback()
 }
 
 /// Block until there is a new value available.
 #[jni(package = "mp.code", class = "CursorController")]
-fn poll(controller: &mut CursorController) -> Result<(), ControllerError> {
+fn poll(controller: &mut CodempCursorController) -> Result<(), ControllerError> {
 	super::tokio().block_on(controller.poll())
 }
 
@@ -88,5 +84,5 @@ fn poll(controller: &mut CursorController) -> Result<(), ControllerError> {
 #[allow(unsafe_code)]
 #[jni(package = "mp.code", class = "CursorController")]
 fn free(input: jni::sys::jlong) {
-	let _ = unsafe { Box::from_raw(input as *mut CursorController) };
+	let _ = unsafe { Box::from_raw(input as *mut CodempCursorController) };
 }

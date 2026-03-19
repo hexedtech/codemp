@@ -1,9 +1,14 @@
-use crate::api::{BufferUpdate, TextChange, controller::{AsyncReceiver, AsyncSender}};
-use codemp_proto::session::WorkspaceIdentifier;
 use napi::threadsafe_function::{ThreadsafeFunction, ThreadsafeFunctionCallMode};
 use napi_derive::napi;
 
-use crate::buffer::controller::BufferController;
+use crate::prelude::{
+	CodempAsyncReceiver as AsyncReceiver,
+	CodempAsyncSender as AsyncSender,
+	CodempBufferController as BufferController,
+	CodempBufferUpdate as BufferUpdate,
+	CodempTextChange as TextChange,
+	CodempWorkspaceIdentifier as WorkspaceIdentifier,
+};
 
 #[napi]
 impl BufferController {
@@ -19,7 +24,7 @@ impl BufferController {
 	) -> napi::Result<()> {
 		self.callback(move |controller: BufferController| {
 			fun.call(Ok(controller.clone()), ThreadsafeFunctionCallMode::Blocking);
-			//check this with tracing also we could use Ok(event) to get the error
+			// check this with tracing also we could use Ok(event) to get the error
 			// If it blocks the main thread too many time we have to change this
 		});
 
