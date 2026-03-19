@@ -106,7 +106,7 @@ impl BufferController {
 		loop {
 			if worker.controller.upgrade().is_none() {
 				break tracing::debug!("buffer worker clean exit");
-			};
+			}
 
 			// block until one of these is ready
 			tokio::select! {
@@ -159,7 +159,9 @@ impl BufferController {
 						tx.send(content)
 							.unwrap_or_warn("checkout request dropped");
 					},
-				}
+				},
+
+				_ = tokio::time::sleep(std::time::Duration::from_secs(5)) => {},
 			}
 		}
 

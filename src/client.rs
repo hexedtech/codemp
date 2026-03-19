@@ -332,9 +332,13 @@ impl Client {
 
 	/// Leave the [`Workspace`] with the given name.
 	pub fn leave_workspace(&self, user: impl AsRef<str>, workspace: impl AsRef<str>) -> bool {
-		if let Some(wss) = self.0.workspaces.get_mut(user.as_ref()) {
-			if wss.remove(workspace.as_ref()).is_some() {
-				return true;
+		if let Some(intermediate) = self.0.workspaces.get_mut(user.as_ref()) {
+			if let Some((_name, ws)) = intermediate.remove(workspace.as_ref()) {
+				let count = Arc::strong_count(&ws.0);
+				tracing::debug!("there are {} more references to this workspace", count - 1);
+				if Arc::into_inner(ws.0).is_some() {
+					return true;
+				}
 			}
 		}
 
@@ -417,7 +421,13 @@ impl ClientWorker {
 	) {
 		tracing::debug!("client worker starting");
 		loop {
+			if weak.upgrade().is_none() {
+				break tracing::debug!("client worker clean exit");
+			}
+
 			tokio::select! {
+				_ = tokio::time::sleep(std::time::Duration::from_secs(30)) => {},
+
 				res = self.poll_rx.recv() => match res {
 				None => break tracing::debug!("pollers channel closed: client has been dropped"),
 					Some(x) => self.pollers.push(x),

@@ -273,9 +273,13 @@ impl Workspace {
 	pub fn detach_buffer(&self, path: impl AsRef<str>) -> bool {
 		match self.0.buffers.remove(path.as_ref()) {
 			None => true, // noop: we werent attached in the first place
-			Some((_name, controller)) => match Arc::into_inner(controller.0) {
-				None => false,   // dangling ref! we can't drop this
-				Some(_) => true, // dropping it now
+			Some((_name, controller)) => {
+				let count = Arc::strong_count(&controller.0);
+				tracing::debug!("there are {} more references to this buffer controller", count - 1);
+				match Arc::into_inner(controller.0) {
+					Some(_) => true, // dropping it now
+					None => false, // dangling ref! we can't drop this
+				}
 			},
 		}
 	}
@@ -423,7 +427,14 @@ impl WorkspaceWorker {
 	) {
 		tracing::debug!("workspace worker starting");
 		loop {
+			if weak.upgrade().is_none() {
+				break tracing::debug!("workspace worker clean exit");
+			}
+
 			tokio::select! {
+				// re-poll every 10s
+				_ = tokio::time::sleep(std::time::Duration::from_secs(10)) => {},
+
 				res = self.poll_rx.recv() => match res {
 				None => break tracing::debug!("pollers channel closed: workspace has been dropped"),
 					Some(x) => self.pollers.push(x),
