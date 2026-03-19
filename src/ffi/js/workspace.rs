@@ -61,28 +61,34 @@ impl Workspace {
 		Ok(self.delete_buffer(&path).await?)
 	}
 
+	/// Wait for next workspace event and return it
 	#[napi(js_name = "recv")]
 	pub async fn js_recv(&self) -> napi::Result<WorkspaceEvent> {
 		Ok(self.recv().await?)
 	}
 
+	/// Return next workspace event if present
 	#[napi(js_name = "tryRecv")]
 	pub async fn js_try_recv(&self) -> napi::Result<Option<WorkspaceEvent>> {
 		Ok(self.try_recv().await?)
 	}
 
+	/// Block until next workspace event without returning it
 	#[napi(js_name = "poll")]
 	pub async fn js_poll(&self) -> napi::Result<()> {
 		self.poll().await?;
 		Ok(())
 	}
 
+	/// Remove registered workspace callback
 	#[napi(js_name = "clearCallback")]
 	pub fn js_clear_callback(&self) -> napi::Result<()> {
 		self.clear_callback();
 		Ok(())
 	}
 
+	/// Register a callback to be invoked every time a new event is available to consume
+	/// There can only be one callback registered at any given time.
 	#[napi(js_name = "callback", ts_args_type = "fun: (err: Error|null, event: Workspace) => void")]
 	pub fn js_callback(&self, fun: ThreadsafeFunction<Workspace>) -> napi::Result<()> {
 		let tsfn: ThreadsafeFunction<Workspace> = fun;

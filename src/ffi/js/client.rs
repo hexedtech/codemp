@@ -2,8 +2,9 @@ use codemp_proto::{common::UserInfo, session::WorkspaceIdentifier};
 use napi_derive::napi;
 
 
-#[napi]
 /// connect to codemp servers and return a client session
+#[allow(dead_code)]
+#[napi]
 pub async fn connect(config: crate::api::Config) -> napi::Result<crate::Client> {
 	Ok(crate::Client::connect(config).await?)
 }

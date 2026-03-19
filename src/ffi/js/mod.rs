@@ -24,11 +24,13 @@ impl From<crate::errors::ControllerError> for napi::Error {
 
 use napi_derive::napi;
 
+/// A napi-friendly representation of a logger.
 #[napi]
 pub struct JsLogger(std::sync::Arc<tokio::sync::Mutex<tokio::sync::mpsc::Receiver<String>>>);
 
 #[napi]
 impl JsLogger {
+	/// Creates a new [JsLogger].
 	#[napi(constructor)]
 	pub fn new(debug: Option<bool>) -> JsLogger {
 		let (tx, rx) = tokio::sync::mpsc::channel(256);
@@ -56,6 +58,7 @@ impl JsLogger {
 		JsLogger(std::sync::Arc::new(tokio::sync::Mutex::new(rx)))
 	}
 
+	/// Gets a message from the logger.
 	#[napi]
 	pub async fn message(&self) -> Option<String> {
 		self.0.lock().await.recv().await
