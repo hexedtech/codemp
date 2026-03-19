@@ -211,7 +211,7 @@ impl BufferWorker {
 		}
 	}
 
-	#[tracing::instrument(skip(self))]
+	#[tracing::instrument(skip(self, change), fields(user = change.user))]
 	async fn handle_server_change(&mut self, change: BufferEvent) -> bool {
 		match self.controller.upgrade() {
 			None => {
