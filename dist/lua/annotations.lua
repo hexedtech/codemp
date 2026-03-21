@@ -355,7 +355,7 @@ function Client:callback(cb) end
 ---@field name string user unique, immutable name
 ---@field display_name string? display name, mutable and not guaranteed to be unique
 ---@field description string? user description, maybe containing contact info
----@field avatar data? user avatar image, as bytes 
+---@field avatar integer[]? user avatar image, as bytes 
 
 ---@class WorkspaceIdentifier
 ---uniquely identifies a workspace, by its owner and workspace name
@@ -366,9 +366,14 @@ function Client:callback(cb) end
 ---attributes and properties of a buffer
 ---@field ephemeral boolean wheter this buffer is ephemeral
 
+---@class BufferPath
+---a wrapper around a buffer path string
+---@field path string the underlying path
+--TODO this should go
+
 ---@class BufferNode
 ---represents a buffer and holds wheter it is ephemeral
----@field path string buffer path
+---@field path BufferPath buffer path
 ---@field attributes BufferAttributes attributes of this buffer
 
 
