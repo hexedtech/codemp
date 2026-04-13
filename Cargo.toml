@@ -31,15 +31,14 @@ thiserror = "2.0"
 # crdt
 diamond-types = "1.0"
 # proto
-codemp-proto = { git = "https://github.com/hexedtech/codemp-proto", rev = "6b45fd7bd7c03ef60234880c59157481def4ca71", features = ["client"] }
-uuid = { version = "1.17", features = ["v4"] }
-tonic = { version = "0.14", features = ["tls-native-roots"] }
+codemp-proto = { git = "https://github.com/hexedtech/codemp-proto", rev = "6b45fd7bd7c03ef60234880c59157481def4ca71", optional = true }
 # api
-tokio = { version = "1.47", features = ["macros", "rt-multi-thread", "sync"] }
 xxhash-rust = { version = "0.8", features = ["xxh3"] }
 # client
-tokio-stream = "0.1"
-dashmap = "6.1"
+tokio = { version = "1.47", features = ["macros", "rt-multi-thread", "sync"], optional = true }
+tonic = { version = "0.14", features = ["tls-native-roots"], optional = true }
+tokio-stream = { version = "0.1", optional = true }
+dashmap = { version = "6.1", optional = true }
 
 # glue (multiple)
 tracing-subscriber = { version = "0.3", optional = true }
@@ -66,6 +65,7 @@ async-trait = { version = "0.1", optional = true }
 serde = { version = "1.0", features = ["derive"], optional = true }
 syn = { version = "2.0", features = ["full"], optional = true }
 regex = { version = "1.12", optional = true }
+uuid = { version = "1.17", features = ["v4"], optional = true }
 
 
 [build-dependencies]
@@ -76,18 +76,21 @@ pyo3-build-config = { version = "0.28", optional = true }
 pyo3-introspection = { version = "0.28", optional = true }
 
 [features]
-default = ["lua-jit", "py-abi3", "py-extmod"]
+default = ["lua-jit", "py-abi3", "py-extmod", "test-coverage"]
+proto = ["dep:codemp-proto"]
+client = ["proto", "dep:tonic", "dep:tokio", "dep:tokio-stream", "dep:dashmap", "codemp-proto?/client"]
+server = ["proto", "codemp-proto?/server"]
 # extra
 async-trait = ["dep:async-trait"]
-serialize = ["dep:serde", "uuid/serde"]
+serialize = ["dep:serde", "uuid?/serde"]
 # special tests which require more setup
-test-e2e = []
+test-e2e = ["dep:uuid"]
 test-coverage = ["dep:syn", "dep:regex"]
 # ffi
-java = ["dep:jni", "dep:tracing-subscriber", "dep:jni-toolbox", "codemp-proto/java"]
-js = ["dep:napi-build", "dep:tracing-subscriber", "dep:napi", "dep:napi-derive", "codemp-proto/js"]
-py = ["dep:pyo3", "dep:tracing-subscriber", "dep:pyo3-build-config", "dep:pyo3-introspection", "codemp-proto/py"]
-lua = ["serialize", "dep:mlua", "dep:mlua-serde-derive", "dep:tracing-subscriber", "codemp-proto/lua"]
+java = ["client", "dep:jni", "dep:tracing-subscriber", "dep:jni-toolbox", "codemp-proto/java"]
+js = ["client", "dep:napi-build", "dep:tracing-subscriber", "dep:napi", "dep:napi-derive", "codemp-proto/js"]
+py = ["client", "dep:pyo3", "dep:tracing-subscriber", "dep:pyo3-build-config", "dep:pyo3-introspection", "codemp-proto/py"]
+lua = ["client", "serialize", "dep:mlua", "dep:mlua-serde-derive", "dep:tracing-subscriber", "dep:uuid", "codemp-proto/lua"]
 # ffi variants
 lua-jit = ["mlua?/luajit"]
 lua-54 = ["mlua?/lua54"]
@@ -98,7 +101,7 @@ ci = []
 
 
 [package.metadata.docs.rs] # enabled features when building on docs.rs
-features = ["serialize"]
+features = ["client", "serialize"]
 
 [profile.release]
 opt-level = 'z'

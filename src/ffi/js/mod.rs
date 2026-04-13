@@ -1,5 +1,5 @@
 mod buffer;
-mod client;
+mod session;
 mod cursor;
 mod ext;
 mod workspace;

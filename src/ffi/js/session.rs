@@ -4,22 +4,22 @@ use napi_derive::napi;
 use crate::prelude::{
 	CodempAsyncReceiver as AsyncReceiver,
 	CodempConfig as Config,
-	CodempClient as Client,
+	CodempSession as Session,
 	CodempUserInfo as UserInfo,
 	CodempSessionEvent as SessionEvent,
 	CodempWorkspace as Workspace,
 	CodempWorkspaceIdentifier as WorkspaceIdentifier,
 };
 
-/// connect to codemp servers and return a client session
+/// connect to codemp servers and return a session
 #[allow(dead_code)]
 #[napi]
-pub async fn connect(config: Config) -> napi::Result<Client> {
-	Ok(Client::connect(config).await?)
+pub async fn connect(config: Config) -> napi::Result<Session> {
+	Ok(Session::connect(config).await?)
 }
 
 #[napi]
-impl Client {
+impl Session {
 	#[napi(js_name = "createWorkspace")]
 	/// create workspace with given id, if able to
 	pub async fn js_create_workspace(&self, workspace: String) -> napi::Result<()> {
@@ -85,7 +85,7 @@ impl Client {
 	}
 
 	#[napi(js_name = "refresh")]
-	/// refresh client session token
+	/// refresh session token
 	pub async fn js_refresh(&self) -> napi::Result<()> {
 		Ok(self.refresh().await?)
 	}
@@ -118,13 +118,13 @@ impl Client {
 	/// There can only be one callback registered at any given time.
 	#[napi(
 		js_name = "callback",
-		ts_args_type = "fun: (err: Error|null, event: Client) => void"
+		ts_args_type = "fun: (err: Error|null, event: Session) => void"
 	)]
 	pub fn js_callback(
 		&self,
-		fun: ThreadsafeFunction<Client>,
+		fun: ThreadsafeFunction<Session>,
 	) -> napi::Result<()> {
-		self.callback(move |controller: Client| {
+		self.callback(move |controller: Session| {
 			fun.call(Ok(controller.clone()), ThreadsafeFunctionCallMode::Blocking);
 			//check this with tracing also we could use Ok(event) to get the error
 			// If it blocks the main thread too many time we have to change this

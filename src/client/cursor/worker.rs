@@ -7,7 +7,7 @@ use crate::{
 	api::controller::ControllerCallback,
 	errors::RemoteResult,
 	ext::IgnorableError,
-	network::AuthedService,
+	client::network::AuthedService,
 };
 use codemp_proto::{
 	common::Empty,

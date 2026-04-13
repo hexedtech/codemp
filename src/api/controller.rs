@@ -78,7 +78,8 @@ pub trait AsyncReceiver<T: Sized + Send + Sync>: Sized + Send + Sync {
 pub struct ControllerCallback<T>(pub Box<dyn Sync + Send + Fn(T)>);
 
 impl<T> ControllerCallback<T> {
-	pub(crate) fn call(&self, x: T) {
+	/// Invoke the callback blockingly, passing its associated controller
+	pub fn call(&self, x: T) {
 		self.0(x)
 	}
 }

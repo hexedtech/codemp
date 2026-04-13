@@ -1,5 +1,5 @@
 mod buffer;
-mod client;
+mod session;
 mod cursor;
 mod ext;
 mod workspace;
@@ -32,7 +32,7 @@ fn entrypoint(lua: &Lua) -> LuaResult<LuaTable> {
 	exports.set(
 		"connect",
 		lua.create_function(
-			|_, (config,): (CodempConfig,)| ext::a_sync::a_sync! { => CodempClient::connect(config).await? },
+			|_, (config,): (CodempConfig,)| ext::a_sync::a_sync! { => CodempSession::connect(config).await? },
 		)?,
 	)?;
 

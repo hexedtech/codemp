@@ -1,4 +1,4 @@
-mod client;
+mod session;
 mod controllers;
 mod workspace;
 
@@ -309,11 +309,11 @@ fn connect(py: Python, config: Py<CodempConfig>) -> PyResult<Promise> {
 	let conf: CodempConfig = config.extract(py)?;
 	Ok(Promise(Some(crate::ffi::python::tokio().spawn(
 		async move {
-			let client = CodempClient::connect(conf).await?;
-			Python::attach(|py| Ok(client.into_pyobject(py)?.into_any().unbind()))
+			let session = CodempSession::connect(conf).await?;
+			Python::attach(|py| Ok(session.into_pyobject(py)?.into_any().unbind()))
 		},
 	))))
-	// a_sync!(Client::connect(conf).await)
+	// a_sync!(Session::connect(conf).await)
 }
 
 #[pyfunction]
@@ -456,7 +456,7 @@ mod pycodemp {
 	use super::CodempSessionEvent;
 
 	#[pymodule_export]
-	use super::CodempClient;
+	use super::CodempSession;
 
 	#[pymodule_export]
 	use super::CodempConfig;

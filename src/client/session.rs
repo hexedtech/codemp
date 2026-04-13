@@ -1,5 +1,5 @@
-//! ### Client
-//! Main `codemp` client, containing and managing all underlying services.
+//! ### Session
+//! Main `codemp` session client, containing and managing all underlying services.
 
 use std::sync::Arc;
 
@@ -13,8 +13,7 @@ use crate::{
 	api::AsyncReceiver,
 	errors::{ConnectionResult, RemoteResult},
 	ext::{IgnorableError, InternallyMutable},
-	network,
-	workspace::Workspace,
+	client::{network, workspace::Workspace},
 };
 use codemp_proto::{
 	auth::{LoginRequest, auth_client::AuthClient},
@@ -31,14 +30,14 @@ use pyo3::prelude::*;
 ///
 /// It generates a new UUID and stores user credentials upon connecting.
 ///
-/// A new [`Client`] can be obtained with [`Client::connect`].
+/// A new [`Session`] can be obtained with [`Session::connect`].
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "js", napi_derive::napi)]
 #[cfg_attr(feature = "py", pyclass(from_py_object))]
-pub struct Client(Arc<ClientInner>);
+pub struct Session(Arc<SessionInner>);
 
 #[derive(Debug)]
-struct ClientInner {
+struct SessionInner {
 	user: Arc<codemp_proto::common::UserInfo>,
 	config: crate::api::Config,
 	workspaces: DashMap<String, DashMap<String, Workspace>>,
@@ -47,14 +46,14 @@ struct ClientInner {
 	claims: InternallyMutable<Token>,
 	poll_tx: tokio::sync::mpsc::UnboundedSender<tokio::sync::oneshot::Sender<()>>,
 	callback:
-		tokio::sync::watch::Sender<Option<crate::api::controller::ControllerCallback<Client>>>,
+		tokio::sync::watch::Sender<Option<crate::api::controller::ControllerCallback<Session>>>,
 	events: tokio::sync::Mutex<
 		tokio::sync::mpsc::UnboundedReceiver<crate::proto::session::SessionEvent>,
 	>,
 }
 
-impl Client {
-	/// Connect to the server, authenticate and instantiate a new [`Client`].
+impl Session {
+	/// Connect to the server, authenticate and instantiate a new [`Session`].
 	#[tracing::instrument]
 	pub async fn connect(config: crate::api::Config) -> ConnectionResult<Self> {
 		// TODO move these two into network.rs
@@ -81,14 +80,14 @@ impl Client {
 
 		let stream = session.attach(Empty {}).await?.into_inner();
 
-		let worker = ClientWorker {
+		let worker = SessionWorker {
 			callback: cb_rx,
 			pollers: Vec::new(),
 			poll_rx,
 			events: ev_tx,
 		};
 
-		let inner = Arc::new(ClientInner {
+		let inner = Arc::new(SessionInner {
 			user: Arc::new(resp.user),
 			workspaces: DashMap::default(),
 			poll_tx,
@@ -105,7 +104,7 @@ impl Client {
 			worker.work(stream, weak).await;
 		});
 
-		Ok(Client(inner))
+		Ok(Session(inner))
 	}
 
 	/// Refresh session token.
@@ -376,7 +375,7 @@ impl Client {
 	}
 }
 
-impl AsyncReceiver<SessionEvent> for Client {
+impl AsyncReceiver<SessionEvent> for Session {
 	async fn try_recv(
 		&self,
 	) -> crate::errors::ControllerResult<Option<SessionEvent>> {
@@ -404,20 +403,20 @@ impl AsyncReceiver<SessionEvent> for Client {
 	}
 }
 
-struct ClientWorker {
+struct SessionWorker {
 	callback:
-		tokio::sync::watch::Receiver<Option<crate::api::controller::ControllerCallback<Client>>>,
+		tokio::sync::watch::Receiver<Option<crate::api::controller::ControllerCallback<Session>>>,
 	pollers: Vec<tokio::sync::oneshot::Sender<()>>,
 	poll_rx: tokio::sync::mpsc::UnboundedReceiver<tokio::sync::oneshot::Sender<()>>,
 	events: tokio::sync::mpsc::UnboundedSender<SessionEvent>,
 }
 
-impl ClientWorker {
+impl SessionWorker {
 	#[tracing::instrument(skip(self, stream, weak))]
 	pub(crate) async fn work(
 		mut self,
 		mut stream: tonic::Streaming<SessionEvent>,
-		weak: std::sync::Weak<ClientInner>,
+		weak: std::sync::Weak<SessionInner>,
 	) {
 		tracing::debug!("client worker starting");
 		loop {
@@ -464,7 +463,7 @@ impl ClientWorker {
 						});
 						if let Some(cb) = self.callback.borrow().as_ref() {
 							if let Some(ws) = weak.upgrade() {
-								cb.call(Client(ws));
+								cb.call(Session(ws));
 							} else {
 								break tracing::debug!("client worker clean (late) exit");
 							}

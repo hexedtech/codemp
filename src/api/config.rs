@@ -42,22 +42,26 @@ impl Config {
 		}
 	}
 
+	/// get server host address
 	#[inline]
-	pub(crate) fn host(&self) -> &str {
+	pub fn host(&self) -> &str {
 		self.host.as_deref().unwrap_or("api.code.mp")
 	}
 
+	/// get server port number
 	#[inline]
-	pub(crate) fn port(&self) -> u16 {
+	pub fn port(&self) -> u16 {
 		self.port.unwrap_or(50053)
 	}
 
+	/// get whether TLS should be used
 	#[inline]
-	pub(crate) fn tls(&self) -> bool {
+	pub fn tls(&self) -> bool {
 		self.tls.unwrap_or(true)
 	}
 
-	pub(crate) fn endpoint(&self) -> String {
+	/// get the actual server uri, combining its parts (tls,host,port)
+	pub fn endpoint(&self) -> String {
 		format!(
 			"{}://{}:{}",
 			if self.tls() { "https" } else { "http" },

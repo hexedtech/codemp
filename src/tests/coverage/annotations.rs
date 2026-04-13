@@ -1,10 +1,10 @@
 #[test]
-#[cfg(all(test, feature = "lua"))]
+#[cfg(test)]
 fn lua_annotations_should_cover_ffi_api_surface() {
 	let annotations = include_str!("../../../dist/lua/annotations.lua");
 
 	let source_maps = [
-		("Client", include_str!("../../ffi/lua/client.rs"), false),
+		("Session", include_str!("../../ffi/lua/session.rs"), false),
 		("Workspace", include_str!("../../ffi/lua/workspace.rs"), false),
 		("BufferController", include_str!("../../ffi/lua/buffer.rs"), false),
 		("CursorController", include_str!("../../ffi/lua/cursor.rs"), false),
@@ -36,12 +36,12 @@ fn lua_annotations_should_cover_ffi_api_surface() {
 }
 
 #[test]
-#[cfg(all(test, feature = "java"))]
+#[cfg(test)]
 fn java_annotations_should_cover_ffi_api_surface() {
 
 	let mut annotations_map = std::collections::HashMap::new();
 	for (clazz, content) in [
-		("Client", include_str!("../../../dist/java/src/mp/code/Client.java")),
+		("Session", include_str!("../../../dist/java/src/mp/code/Session.java")),
 		("Workspace", include_str!("../../../dist/java/src/mp/code/Workspace.java")),
 		("Extensions", include_str!("../../../dist/java/src/mp/code/Extensions.java")),
 		("BufferController", include_str!("../../../dist/java/src/mp/code/BufferController.java")),
@@ -51,7 +51,7 @@ fn java_annotations_should_cover_ffi_api_surface() {
 	}
 
 	let source = concat!(
-		include_str!("../../ffi/java/client.rs"),
+		include_str!("../../ffi/java/session.rs"),
 		include_str!("../../ffi/java/workspace.rs"),
 		include_str!("../../ffi/java/buffer.rs"),
 		include_str!("../../ffi/java/cursor.rs"),
