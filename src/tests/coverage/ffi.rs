@@ -1,11 +1,14 @@
 #![allow(missing_docs)] // internal test helper
 
 use std::collections::{BTreeMap, BTreeSet};
-use std::fs;
 
-fn parse(path: &str) -> syn::File {
-	syn::parse_file(&fs::read_to_string(path).expect("Could not parse file")).unwrap()
-}
+const SOURCE_FILES: &[&str] = &[
+	include_str!("../../../src/client/session.rs"),
+	include_str!("../../../src/client/workspace.rs"),
+	include_str!("../../../src/client/buffer/controller.rs"),
+	include_str!("../../../src/client/cursor/controller.rs"),
+	include_str!("../../../src/api/controller.rs"),
+];
 
 // 1) Discover core API from target objects
 fn discover_core_surface(files: &[&str], targets: &[&str]) -> BTreeMap<String, BTreeSet<String>> {
@@ -17,7 +20,7 @@ fn discover_core_surface(files: &[&str], targets: &[&str]) -> BTreeMap<String, B
 	let mut supertraits_to_check: BTreeMap<String, String> = BTreeMap::new();
 
 	for file in files {
-		let ast = parse(file);
+		let ast = syn::parse_file(file).unwrap();
 
 		for item in ast.items {
 			match item {
@@ -85,7 +88,7 @@ fn discover_core_surface(files: &[&str], targets: &[&str]) -> BTreeMap<String, B
 
 	// second pass to explore also all supertraits
 	for file in files {
-		let ast = parse(file);
+		let ast = syn::parse_file(file).unwrap();
 
 		for item in ast.items {
 			match item {
@@ -161,33 +164,24 @@ fn missing_lang_coverage(
 }
 
 #[test]
-#[cfg(all(test, feature = "py"))]
 fn python_ffi_should_cover_rust_api_surface() {
 	let targets = &[
-		"Client",
+		"Session",
 		"Workspace",
 		"BufferController",
 		"CursorController",
 		"Controller",
 	];
 
-	let files = &[
-		"src/client.rs",
-		"src/workspace.rs",
-		"src/buffer/controller.rs",
-		"src/cursor/controller.rs",
-		"src/api/controller.rs",
-	];
-
-	let required = discover_core_surface(files, targets);
+	let required = discover_core_surface(SOURCE_FILES, targets);
 
 	let python_src = concat!(
-		include_str!("../../ffi/python/client.rs"),
+		include_str!("../../ffi/python/session.rs"),
 		include_str!("../../ffi/python/workspace.rs"),
 		include_str!("../../ffi/python/controllers.rs"),
 	);
 
-	let python_ignore = ["Client.connect"];
+	let python_ignore = ["Session.connect"];
 
 	let missings = missing_lang_coverage("python", python_src, required, &python_ignore);
 
@@ -204,28 +198,19 @@ fn python_ffi_should_cover_rust_api_surface() {
 }
 
 #[test]
-#[cfg(all(test, feature = "js"))]
 fn javascript_ffi_should_cover_rust_api_surface() {
 	let targets = &[
-		"Client",
+		"Session",
 		"Workspace",
 		"BufferController",
 		"CursorController",
 		"Controller",
 	];
 
-	let files = &[
-		"src/client.rs",
-		"src/workspace.rs",
-		"src/buffer/controller.rs",
-		"src/cursor/controller.rs",
-		"src/api/controller.rs",
-	];
-
-	let required = discover_core_surface(files, targets);
+	let required = discover_core_surface(SOURCE_FILES, targets);
 
 	let js_src = concat!(
-		include_str!("../../ffi/js/client.rs"),
+		include_str!("../../ffi/js/session.rs"),
 		include_str!("../../ffi/js/workspace.rs"),
 		include_str!("../../ffi/js/buffer.rs"),
 		include_str!("../../ffi/js/cursor.rs"),
@@ -248,34 +233,25 @@ fn javascript_ffi_should_cover_rust_api_surface() {
 }
 
 #[test]
-#[cfg(all(test, feature = "lua"))]
 fn lua_ffi_should_cover_rust_api_surface() {
 	let targets = &[
-		"Client",
+		"Session",
 		"Workspace",
 		"BufferController",
 		"CursorController",
 		"Controller",
 	];
 
-	let files = &[
-		"src/client.rs",
-		"src/workspace.rs",
-		"src/buffer/controller.rs",
-		"src/cursor/controller.rs",
-		"src/api/controller.rs",
-	];
-
-	let required = discover_core_surface(files, targets);
+	let required = discover_core_surface(SOURCE_FILES, targets);
 
 	let lua_src = concat!(
-		include_str!("../../ffi/lua/client.rs"),
+		include_str!("../../ffi/lua/session.rs"),
 		include_str!("../../ffi/lua/workspace.rs"),
 		include_str!("../../ffi/lua/buffer.rs"),
 		include_str!("../../ffi/lua/cursor.rs"),
 	);
 
-	let lua_ignore = ["Client.connect"];
+	let lua_ignore = ["Session.connect"];
 
 	let missings = missing_lang_coverage("lua", lua_src, required, &lua_ignore);
 
@@ -292,28 +268,19 @@ fn lua_ffi_should_cover_rust_api_surface() {
 }
 
 #[test]
-#[cfg(all(test, feature = "java"))]
 fn java_ffi_should_cover_rust_api_surface() {
 	let targets = &[
-		"Client",
+		"Session",
 		"Workspace",
 		"BufferController",
 		"CursorController",
 		"Controller",
 	];
 
-	let files = &[
-		"src/client.rs",
-		"src/workspace.rs",
-		"src/buffer/controller.rs",
-		"src/cursor/controller.rs",
-		"src/api/controller.rs",
-	];
-
-	let required = discover_core_surface(files, targets);
+	let required = discover_core_surface(SOURCE_FILES, targets);
 
 	let java_src = concat!(
-		include_str!("../../ffi/java/client.rs"),
+		include_str!("../../ffi/java/session.rs"),
 		include_str!("../../ffi/java/workspace.rs"),
 		include_str!("../../ffi/java/buffer.rs"),
 		include_str!("../../ffi/java/cursor.rs"),

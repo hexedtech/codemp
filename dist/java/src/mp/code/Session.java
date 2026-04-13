@@ -16,26 +16,26 @@ import java.util.function.Consumer;
  * This is the only object you are expected to hold yourself; unlike all the others,
  * there are no copies of it managed exclusively by the library. When this is garbage
  * collected, it will free the underlying memory.
- * A Client is used to join and manage workspaces, and to obtain information about
+ * A Session is used to join and manage workspaces, and to obtain information about
  * the current session.
  */
 @Getter
-public final class Client {
+public final class Session {
 	private final long ptr;
 
-	Client(long ptr) {
+	Session(long ptr) {
 		this.ptr = ptr;
 		Extensions.CLEANER.register(this, () -> free(ptr));
 	}
 
 	/**
-	 * Connects to a remote CodeMP server and creates a {@link Client} instance
+	 * Connects to a remote CodeMP server and creates a {@link Session} instance
 	 * for interacting with it.
 	 * @param config a {@link Config} object containing the connection settings
-	 * @return a holder for the Client's pointer
+	 * @return a holder for the Session's pointer
 	 * @throws ConnectionException if an error occurs in communicating with the server
 	 */
-	public static native Client connect(Config config) throws ConnectionException;
+	public static native Session connect(Config config) throws ConnectionException;
 
 	private static native UserInfo current_user(long self);
 
@@ -222,7 +222,7 @@ public final class Client {
 		return recv(this.ptr);
 	}
 
-	private static native void callback(long self, Consumer<Client> cb);
+	private static native void callback(long self, Consumer<Session> cb);
 
 	/**
 	 * Registers a callback to be invoked whenever a {@link SessionEvent} occurs.
@@ -231,7 +231,7 @@ public final class Client {
 	 *           you should probably spawn a new thread in here, to avoid deadlocking
 	 * @see Extensions#drive(boolean)
 	 */
-	public void callback(Consumer<Client> cb) {
+	public void callback(Consumer<Session> cb) {
 		callback(this.ptr, cb);
 	}
 

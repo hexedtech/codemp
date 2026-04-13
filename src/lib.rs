@@ -5,7 +5,7 @@
 //! It is built as a batteries-included client library managing an authenticated user, multiple
 //! workspaces each containing any number of buffers.
 //!
-//! The [`Client`] is completely managed by the library itself, making its use simple across async
+//! The [`Session`] is completely managed by the library itself, making its use simple across async
 //! contexts and FFI boundaries. All memory is managed by the library itself, which gives out always
 //! atomic reference-counted pointers to internally mutable objects. Asynchronous actions are
 //! abstracted away by the [`api::Controller`], providing an unopinionated approach with both
@@ -15,12 +15,12 @@
 //! to support a potentially infinite number of editors.
 //!
 //! # Overview
-//! The main entrypoint is [`Client::connect`], which establishes an authenticated connection with
-//! a supported remote server and returns a [`Client`] handle to interact with it.
+//! The main entrypoint is [`Session::connect`], which establishes an authenticated connection with
+//! a supported remote server and returns a [`Session`] handle to interact with it.
 //!
 //! ```no_run
 //! # async {
-//! let client = codemp::Client::connect(
+//! let client = codemp::Session::connect(
 //!   codemp::api::Config::new(
 //!     "mail@example.net",
 //!     "dont-use-this-password"
@@ -31,12 +31,12 @@
 //! # };
 //! ```
 //!
-//! A [`Client`] can acquire a [`Workspace`] handle by joining an existing one it can access with
-//! [`Client::attach_workspace`] or create a new one with [`Client::create_workspace`].
+//! A [`Session`] can acquire a [`Workspace`] handle by joining an existing one it can access with
+//! [`Session::attach_workspace`] or create a new one with [`Session::create_workspace`].
 //!
 //! ```no_run
 //! # async {
-//! #  let client = codemp::Client::connect(codemp::api::Config::new("", "")).await.unwrap();
+//! #  let client = codemp::Session::connect(codemp::api::Config::new("", "")).await.unwrap();
 //! client.create_workspace("my-workspace").await.expect("failed to create workspace!");
 //! let workspace = client.attach_workspace("my-user", "my-workspace").await.expect("failed to attach!");
 //! # };
@@ -48,7 +48,7 @@
 //!
 //! ```no_run
 //! # async {
-//! #  let client = codemp::Client::connect(codemp::api::Config::new("", "")).await.unwrap();
+//! #  let client = codemp::Session::connect(codemp::api::Config::new("", "")).await.unwrap();
 //! # client.create_workspace("").await.unwrap();
 //! # let workspace = client.attach_workspace("", "").await.unwrap();
 //! use codemp::api::controller::{AsyncSender, AsyncReceiver}; // needed to access trait methods
@@ -64,7 +64,7 @@
 //!
 //! ```no_run
 //! # async {
-//! #  let client = codemp::Client::connect(codemp::api::Config::new("", "")).await.unwrap();
+//! #  let client = codemp::Session::connect(codemp::api::Config::new("", "")).await.unwrap();
 //! # client.create_workspace("").await.unwrap();
 //! # let workspace = client.attach_workspace("", "").await.unwrap();
 //! # use codemp::api::controller::{AsyncSender, AsyncReceiver};
@@ -100,19 +100,17 @@
 /// core structs and traits
 pub mod api;
 
-/// cursor related types and controller
-pub mod cursor;
-
-/// buffer related types and controller
-pub mod buffer;
-
-/// workspace handle and operations
-pub mod workspace;
-pub use workspace::Workspace;
-
-/// client handle, containing all of the above
+/// client handle, containing all needed components
+#[cfg(feature = "client")]
 pub mod client;
-pub use client::Client;
+#[cfg(feature = "client")]
+pub use client::workspace::Workspace;
+#[cfg(feature = "client")]
+pub use client::session::Session;
+
+/// language-specific ffi "glue"
+#[cfg(feature = "client")]
+pub mod ffi;
 
 /// crate error types
 pub mod errors;
@@ -123,17 +121,12 @@ pub mod prelude;
 /// common utils used in this library and re-exposed
 pub mod ext;
 
-/// language-specific ffi "glue"
-pub mod ffi;
-
 /// end-to-end tests, useful to assert server compliance
-#[cfg(any(feature = "test-e2e", test))]
+#[cfg(any(test, feature = "test-e2e", feature = "test-coverage"))]
 pub mod tests;
 
-/// internal network services and interceptors
-pub(crate) mod network;
-
 /// re-export codemp_proto as codemp::proto
+#[cfg(feature = "proto")]
 pub use codemp_proto as proto;
 
 /// Get the current version of the client

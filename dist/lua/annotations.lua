@@ -53,16 +53,16 @@ function StringArrayPromise:cancel() end
 function StringArrayPromise:and_then(cb) end
 
 
----@class (exact) ClientPromise : Promise
-local ClientPromise = {}
+---@class (exact) SessionPromise : Promise
+local SessionPromise = {}
 --- block until promise is ready and return value
---- @return Client
-function ClientPromise:await() end
+--- @return Session
+function SessionPromise:await() end
 --- cancel promise execution
-function ClientPromise:cancel() end
----@param cb fun(x: Client) callback to invoke
+function SessionPromise:cancel() end
+---@param cb fun(x: Session) callback to invoke
 ---invoke callback asynchronously as soon as promise is ready
-function ClientPromise:and_then(cb) end
+function SessionPromise:and_then(cb) end
 
 
 ---@class (exact) WorkspacePromise : Promise
@@ -216,23 +216,23 @@ function WorkspaceIdentifierListPromise:and_then(cb) end
 -- [[ END ASYNC STUFF ]]
 
 
----@class (exact) Client
+---@class (exact) Session
 ---the effective local client, handling connecting to codemp server
-local Client = {}
+local Session = {}
 
 ---@return UserInfo
 ---current logged in user for this client
-function Client:current_user() end
+function Session:current_user() end
 
 ---@return string[]
 ---array of all currently active workspace names
-function Client:active_workspaces() end
+function Session:active_workspaces() end
 
 ---@return NilPromise
 ---@async
 ---@nodiscard
 ---refresh current user token if possible
-function Client:refresh() end
+function Session:refresh() end
 
 ---@param user string workspace owning user
 ---@param ws string workspace id to connect to
@@ -240,26 +240,26 @@ function Client:refresh() end
 ---@async
 ---@nodiscard
 ---join requested workspace if possible and subscribe to event bus
-function Client:attach_workspace(user, ws) end
+function Session:attach_workspace(user, ws) end
 
 ---@param ws string workspace id to create
 ---@return NilPromise
 ---@async
 ---@nodiscard
 ---create a new workspace with given id
-function Client:create_workspace(ws) end
+function Session:create_workspace(ws) end
 
 ---@param user string workspace owning user
 ---@param ws string workspace id to leave
 ---leave workspace with given id, detaching and disconnecting
-function Client:leave_workspace(user, ws) end
+function Session:leave_workspace(user, ws) end
 
 ---@param ws string workspace id to delete
 ---@return NilPromise
 ---@async
 ---@nodiscard
 ---delete workspace with given id
-function Client:delete_workspace(ws) end
+function Session:delete_workspace(ws) end
 
 ---@param user string user owning the workspace to quit
 ---@param workspace string workspace to quit
@@ -267,7 +267,7 @@ function Client:delete_workspace(ws) end
 ---@async
 ---@nodiscard
 ---quit a joined workspace, by user + workspace name
-function Client:quit_workspace(user, workspace) end
+function Session:quit_workspace(user, workspace) end
 
 ---@param user string user inviting us
 ---@param workspace string workspace being invited to
@@ -275,7 +275,7 @@ function Client:quit_workspace(user, workspace) end
 ---@async
 ---@nodiscard
 ---accept an invite to a new workspace
-function Client:accept_invite(user, workspace) end
+function Session:accept_invite(user, workspace) end
 
 ---@param user string user inviting us
 ---@param workspace string workspace being invited to
@@ -283,7 +283,7 @@ function Client:accept_invite(user, workspace) end
 ---@async
 ---@nodiscard
 ---reject an invite to a new workspace
-function Client:reject_invite(user, workspace) end
+function Session:reject_invite(user, workspace) end
 
 ---@param ws string workspace id to delete
 ---@param user string user name to invite to given workspace
@@ -291,32 +291,32 @@ function Client:reject_invite(user, workspace) end
 ---@async
 ---@nodiscard
 ---grant user acccess to workspace
-function Client:invite_to_workspace(ws, user) end
+function Session:invite_to_workspace(ws, user) end
 
 ---@return WorkspaceIdentifierListPromise
 ---@async
 ---@nodiscard
 ---fetch and list owned workspaces
-function Client:fetch_owned_workspaces() end
+function Session:fetch_owned_workspaces() end
 
 ---@return WorkspaceIdentifierListPromise
 ---@async
 ---@nodiscard
 ---fetch and list joined workspaces
-function Client:fetch_joined_workspaces() end
+function Session:fetch_joined_workspaces() end
 
 ---@param user string user owning this workspace
 ---@param ws string workspace id to get
 ---@return Workspace?
 ---get an active workspace by name
-function Client:get_workspace(user, ws) end
+function Session:get_workspace(user, ws) end
 
 ---@param user string username to lookup
 ---@return UserInfoPromise
 ---@async
 ---@nodiscard
 ---get full user info for given username from server
-function Client:get_user_info(user) end
+function Session:get_user_info(user) end
 
 ---@class (exact) SessionEvent
 ---@field kind integer (SessionEventKind) event kind
@@ -327,26 +327,26 @@ function Client:get_user_info(user) end
 ---@async
 ---@nodiscard
 ---try to receive session events, returning nil if none is available
-function Client:try_recv() end
+function Session:try_recv() end
 
 ---@return SessionEventPromise
 ---@async
 ---@nodiscard
 ---block until next client event and return it
-function Client:recv() end
+function Session:recv() end
 
 ---@return NilPromise
 ---@async
 ---@nodiscard
 ---block until next session event without returning it
-function Client:poll() end
+function Session:poll() end
 
 ---clears any previously registered session callback
-function Client:clear_callback() end
+function Session:clear_callback() end
 
----@param cb fun(w: Client) callback to invoke on each workspace event received
+---@param cb fun(w: Session) callback to invoke on each workspace event received
 ---register a new callback to be called on session events (replaces any previously registered one)
-function Client:callback(cb) end
+function Session:callback(cb) end
 
 
 
@@ -657,7 +657,7 @@ function CursorController:callback(cb) end
 local Codemp = {}
 
 ---@param config Config configuration for
----@return ClientPromise
+---@return SessionPromise
 ---@async
 ---@nodiscard
 ---connect to codemp server, authenticate and return client

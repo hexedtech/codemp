@@ -1,8 +1,8 @@
 /// FFI methods relating to buffers.
 pub mod buffer;
 
-/// FFI methods relating to clients.
-pub mod client;
+/// FFI methods relating to sessions.
+pub mod session;
 
 /// FFI methods relating to cursors.
 pub mod cursor;
@@ -131,7 +131,7 @@ macro_rules! java_ptr_class {
 	};
 }
 
-java_ptr_class!(crate::prelude::CodempClient, "mp/code/Client");
+java_ptr_class!(crate::prelude::CodempSession, "mp/code/Session");
 java_ptr_class!(crate::prelude::CodempWorkspace, "mp/code/Workspace");
 java_ptr_class!(
 	crate::prelude::CodempBufferController,

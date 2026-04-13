@@ -120,7 +120,7 @@ callback_args! {
 	VecStr: Vec<String>,
 	UserInfo: CodempUserInfo,
 	VecUserInfo: Vec<CodempUserInfo>,
-	Client: CodempClient,
+	Session: CodempSession,
 	CursorController: CodempCursorController,
 	BufferController: CodempBufferController,
 	Workspace: CodempWorkspace,

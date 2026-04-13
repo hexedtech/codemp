@@ -8,6 +8,7 @@ pub use crate::api::{
 	BufferUpdate as CodempBufferUpdate,
 };
 
+#[cfg(feature = "proto")]
 pub use crate::proto::{
 	common::UserInfo as CodempUserInfo,
 	buffer::BufferNode as CodempBufferNode, buffer::BufferAttributes as CodempBufferAttributes,
@@ -18,7 +19,8 @@ pub use crate::proto::{
 	workspace::WorkspaceEvent as CodempWorkspaceEvent,
 };
 
+#[cfg(feature = "client")]
 pub use crate::{
-	buffer::Controller as CodempBufferController, client::Client as CodempClient,
-	cursor::Controller as CodempCursorController, workspace::Workspace as CodempWorkspace,
+	client::buffer::Controller as CodempBufferController, client::session::Session as CodempSession,
+	client::cursor::Controller as CodempCursorController, client::workspace::Workspace as CodempWorkspace,
 };

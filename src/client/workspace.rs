@@ -7,10 +7,9 @@ use crate::{
 	api::{
 		controller::{AsyncReceiver, ControllerCallback},
 	},
-	buffer, cursor,
+	client::{buffer, cursor, network::Services},
 	errors::{ConnectionResult, ControllerResult, RemoteResult},
 	ext::IgnorableError,
-	network::Services,
 };
 
 use codemp_proto::{

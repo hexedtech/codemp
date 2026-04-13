@@ -3,14 +3,14 @@ use crate::prelude::*;
 use pyo3::prelude::*;
 
 #[pymethods]
-impl CodempClient {
+impl CodempSession {
 	// #[new]
 	// fn __new__(
 	// 	host: String,
 	// 	username: String,
 	// 	password: String,
 	// ) -> crate::errors::ConnectionResult<Self> {
-	// 	super::tokio().block_on(Client::connect(host, username, password))
+	// 	super::tokio().block_on(Session::connect(host, username, password))
 	// }
 
 	#[pyo3(name = "refresh")]

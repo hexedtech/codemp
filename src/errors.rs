@@ -5,14 +5,17 @@
 ///
 /// This currently wraps an [http code](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status),
 /// returned as procedure status.
+#[cfg(feature = "client")]
 #[derive(Debug, thiserror::Error)]
 #[error("server rejected procedure with error code: {0:?}")]
 pub struct RemoteError(#[from] tonic::Status);
 
 /// Wraps [std::result::Result] with a [RemoteError].
+#[cfg(feature = "client")]
 pub type RemoteResult<T> = std::result::Result<T, RemoteError>;
 
 /// An error that may occur when processing requests that require new connections.
+#[cfg(feature = "client")]
 #[derive(Debug, thiserror::Error)]
 pub enum ConnectionError {
 	/// Underlying [`tonic::transport::Error`].
@@ -24,6 +27,7 @@ pub enum ConnectionError {
 	Remote(#[from] RemoteError),
 }
 
+#[cfg(feature = "client")]
 impl From<tonic::Status> for ConnectionError {
 	fn from(value: tonic::Status) -> Self {
 		Self::Remote(RemoteError(value))
@@ -31,6 +35,7 @@ impl From<tonic::Status> for ConnectionError {
 }
 
 /// Wraps [std::result::Result] with a [ConnectionError].
+#[cfg(feature = "client")]
 pub type ConnectionResult<T> = std::result::Result<T, ConnectionError>;
 
 /// An error that may occur when an [`crate::api::Controller`] attempts to
@@ -47,12 +52,14 @@ pub enum ControllerError {
 	Unfulfilled,
 }
 
+#[cfg(feature = "client")]
 impl<T> From<tokio::sync::mpsc::error::SendError<T>> for ControllerError {
 	fn from(_: tokio::sync::mpsc::error::SendError<T>) -> Self {
 		Self::Stopped
 	}
 }
 
+#[cfg(feature = "client")]
 impl From<tokio::sync::oneshot::error::RecvError> for ControllerError {
 	fn from(_: tokio::sync::oneshot::error::RecvError) -> Self {
 		Self::Unfulfilled

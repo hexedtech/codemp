@@ -18,7 +18,7 @@ jobs:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - run: cargo test --verbose
+      - run: cargo test --verbose --features=client
 
   test-doc:
     runs-on: ubuntu-latest
@@ -28,7 +28,7 @@ jobs:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - run: cargo doc --features=serialize
+      - run: cargo doc --features=client,serialize
 
   test-beta:
     runs-on: ubuntu-latest
@@ -47,7 +47,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ matrix.toolchain }}
-      - run: cargo test --verbose
+      - run: cargo test --verbose --features=client
 
   test-build:
     needs: [test-unit]
@@ -100,7 +100,7 @@ jobs:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - run: cargo test --verbose --features=test-e2e tests::e2e
+      - run: cargo test --verbose --features=ci,test-e2e tests::e2e
         env:
           CODEMP_TEST_USERNAME_ALICE: ${{ secrets.CODEMP_TEST_USERNAME_ALICE }}
           CODEMP_TEST_PASSWORD_ALICE: ${{ secrets.CODEMP_TEST_PASSWORD_ALICE }}

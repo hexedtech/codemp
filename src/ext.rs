@@ -1,8 +1,6 @@
 //! ### Extensions
 //! Contains a number of utils used internally or that may be of general interest.
 
-use crate::{api::controller::AsyncReceiver, errors::ControllerResult};
-use tokio::sync::mpsc;
 
 /// Poll all given buffer controllers and wait, returning the first one ready.
 ///
@@ -13,12 +11,14 @@ use tokio::sync::mpsc;
 /// complete.
 ///
 /// It may return an error if all buffers returned errors while polling.
+#[cfg(feature = "client")]
 pub async fn select_buffer(
-	buffers: &[crate::buffer::Controller],
+	buffers: &[crate::client::buffer::Controller],
 	timeout: Option<std::time::Duration>,
 	runtime: &tokio::runtime::Runtime,
-) -> ControllerResult<Option<crate::buffer::Controller>> {
-	let (tx, mut rx) = mpsc::unbounded_channel();
+) -> crate::errors::ControllerResult<Option<crate::client::buffer::Controller>> {
+	use crate::api::controller::AsyncReceiver;
+	let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
 	let mut tasks = Vec::new();
 	for buffer in buffers {
 		let _tx = tx.clone();
@@ -62,18 +62,21 @@ pub fn hash(data: impl AsRef<[u8]>) -> i64 {
 /// A field that can be *internally mutated* regardless of its external mutability.
 ///
 /// Currently, it wraps the [`tokio::sync::watch`] channel couple to achieve this.
+#[cfg(feature = "client")]
 #[derive(Debug)]
 pub struct InternallyMutable<T> {
 	getter: tokio::sync::watch::Receiver<T>,
 	setter: tokio::sync::watch::Sender<T>,
 }
 
+#[cfg(feature = "client")]
 impl<T: Default> Default for InternallyMutable<T> {
 	fn default() -> Self {
 		Self::new(T::default())
 	}
 }
 
+#[cfg(feature = "client")]
 impl<T> InternallyMutable<T> {
 	/// Creates a new internally mutable type with the given value.
 	pub fn new(init: T) -> Self {
@@ -95,6 +98,7 @@ impl<T> InternallyMutable<T> {
 	}
 }
 
+#[cfg(feature = "client")]
 impl<T: Clone> InternallyMutable<T> {
 	/// Gets and clones the internal value.
 	pub fn get(&self) -> T {
@@ -121,6 +125,7 @@ where
 	}
 }
 
+#[cfg(feature = "client")]
 pub(crate) fn token_to_metadata(
 	tok: codemp_proto::common::Token,
 ) -> tonic::Result<tonic::metadata::MetadataValue<tonic::metadata::Ascii>> {

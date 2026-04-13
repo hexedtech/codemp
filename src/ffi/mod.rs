@@ -7,14 +7,14 @@
 //! use codemp::api::controller::{AsyncReceiver, AsyncSender}; // needed for send/recv trait methods
 //!
 //! // connect first, api.code.mp is managed by hexed.technology
-//! let client = codemp::Client::connect(codemp::api::Config {
+//! let session = codemp::Session::connect(codemp::api::Config {
 //!   username: "mail@example.net".into(), password: "dont-use-this-password".into(),
 //!   ..Default::default()
 //! }).await?;
 //!
 //! // create and join a workspace
-//! client.create_workspace("some-workspace").await?;
-//! let workspace = client.attach_workspace("my-username", "some-workspace").await?;
+//! session.create_workspace("some-workspace").await?;
+//! let workspace = session.attach_workspace("my-username", "some-workspace").await?;
 //!
 //! // create a new buffer in this workspace and attach to it
 //! workspace.create_buffer("/my/file.txt", None).await?;

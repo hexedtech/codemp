@@ -3,7 +3,7 @@ use mlua::prelude::*;
 
 use super::ext::a_sync::a_sync;
 
-impl LuaUserData for CodempClient {
+impl LuaUserData for CodempSession {
 	fn add_methods<M: LuaUserDataMethods<Self>>(methods: &mut M) {
 		methods.add_meta_method(LuaMetaMethod::ToString, |_, this, ()| {
 			Ok(format!("{:?}", this))
@@ -111,7 +111,7 @@ impl LuaUserData for CodempClient {
 		methods.add_method("callback", |lua, this, (cb,): (LuaFunction,)| {
 			let key = this.lua_callback_id();
 			lua.set_named_registry_value(&key, cb)?;
-			Ok(this.callback(move |controller: CodempClient| {
+			Ok(this.callback(move |controller: CodempSession| {
 				super::ext::callback().invoke(key.clone(), controller, false)
 			}))
 		});
@@ -123,10 +123,10 @@ impl LuaUserData for CodempClient {
 	}
 }
 
-impl CodempClient {
+impl CodempSession {
 	fn lua_callback_id(&self) -> String {
 		format!(
-			"codemp-client({})-callback-registry",
+			"codemp-session({})-callback-registry",
 			self.current_user().name
 		)
 	}
