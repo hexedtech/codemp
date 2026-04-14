@@ -266,7 +266,7 @@ impl
 
 		let workspace = client.attach_workspace(&self.user, &self.workspace).await?;
 		workspace
-			.create_buffer(self.buffer.to_string(), false)
+			.create_buffer(self.buffer.to_string(), None)
 			.await?;
 		let buffer = workspace.attach_buffer(self.buffer.clone()).await?;
 

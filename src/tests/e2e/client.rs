@@ -256,7 +256,7 @@ async fn test_buffer_search() {
 
 			async move {
 				workspace_alice
-					.create_buffer(buffer_name.clone(), false)
+					.create_buffer(buffer_name.clone(), None)
 					.await?;
 				assert_or_err!(
 					!workspace_alice
@@ -281,7 +281,7 @@ async fn test_send_operation() {
 
 			async move {
 				workspace_alice
-					.create_buffer(buffer_name.clone(), false)
+					.create_buffer(buffer_name.clone(), None)
 					.await?;
 				let alice = workspace_alice.attach_buffer(buffer_name.clone()).await?;
 				let bob = workspace_bob.attach_buffer(buffer_name.clone()).await?;
@@ -313,7 +313,7 @@ async fn test_content_converges() {
 
 			async move {
 				workspace_alice
-					.create_buffer(buffer_name.clone(), false)
+					.create_buffer(buffer_name.clone(), None)
 					.await?;
 				let alice = workspace_alice.attach_buffer(buffer_name.clone()).await?;
 				let bob = workspace_bob.attach_buffer(buffer_name.clone()).await?;

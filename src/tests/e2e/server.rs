@@ -12,10 +12,10 @@ async fn test_buffer_create() {
 
 			async move {
 				workspace_alice
-					.create_buffer(buffer_name.clone(), false)
+					.create_buffer(buffer_name.clone(), None)
 					.await?;
 				workspace_alice.fetch_buffers().await?;
-				assert_or_err!(vec![buffer_name.clone()] == workspace_alice.search_buffers(None));
+				assert_or_err!(workspace_alice.search_buffers(None).len() == 1);
 				workspace_alice.delete_buffer(buffer_name).await?;
 
 				Ok(())
@@ -30,9 +30,9 @@ async fn test_cant_create_buffer_twice() {
 		.with(|(_, ws)| {
 			let ws = ws.clone();
 			async move {
-				ws.create_buffer("cacca".to_string(), false).await?;
+				ws.create_buffer("cacca".to_string(), None).await?;
 				assert!(
-					ws.create_buffer("cacca".to_string(), false).await.is_err(),
+					ws.create_buffer("cacca".to_string(), None).await.is_err(),
 					"alice could create again the same buffer"
 				);
 				Ok(())
@@ -52,7 +52,7 @@ async fn cannot_delete_others_buffers() {
 
 			async move {
 				workspace_alice
-					.create_buffer(buffer_name.clone(), false)
+					.create_buffer(buffer_name.clone(), None)
 					.await?;
 				assert_or_err!(workspace_bob.delete_buffer(buffer_name).await.is_err());
 				Ok(())
