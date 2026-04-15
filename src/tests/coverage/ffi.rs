@@ -1,4 +1,4 @@
-#![allow(missing_docs)] // internal test helper
+#![allow(missing_docs, clippy::unwrap_used)] // internal test helper
 
 use std::collections::{BTreeMap, BTreeSet};
 

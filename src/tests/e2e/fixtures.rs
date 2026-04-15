@@ -57,8 +57,8 @@ impl ClientFixture {
 	}
 }
 
-impl ScopedFixture<crate::Client> for ClientFixture {
-	async fn setup(&mut self) -> Result<crate::Client, Box<dyn Error>> {
+impl ScopedFixture<crate::Session> for ClientFixture {
+	async fn setup(&mut self) -> Result<crate::Session, Box<dyn Error>> {
 		let upper = self.name.to_uppercase();
 		let username = self.username.clone().unwrap_or_else(|| {
 			std::env::var(format!("CODEMP_TEST_USERNAME_{upper}")).unwrap_or_default()
@@ -66,7 +66,7 @@ impl ScopedFixture<crate::Client> for ClientFixture {
 		let password = self.password.clone().unwrap_or_else(|| {
 			std::env::var(format!("CODEMP_TEST_PASSWORD_{upper}")).unwrap_or_default()
 		});
-		let client = crate::Client::connect(crate::api::Config {
+		let client = crate::Session::connect(crate::api::Config {
 			username,
 			password,
 			tls: Some(false),
@@ -110,15 +110,15 @@ impl WorkspaceFixture {
 	}
 }
 
-impl ScopedFixture<(crate::Client, crate::Workspace)> for WorkspaceFixture {
-	async fn setup(&mut self) -> Result<(crate::Client, crate::Workspace), Box<dyn Error>> {
+impl ScopedFixture<(crate::Session, crate::Workspace)> for WorkspaceFixture {
+	async fn setup(&mut self) -> Result<(crate::Session, crate::Workspace), Box<dyn Error>> {
 		let client = ClientFixture::of(&self.user).setup().await?;
 		client.create_workspace(self.workspace.to_string()).await?;
 		let workspace = client.attach_workspace(&self.user, &self.workspace).await?;
 		Ok((client, workspace))
 	}
 
-	async fn cleanup(&mut self, resource: Option<(crate::Client, crate::Workspace)>) {
+	async fn cleanup(&mut self, resource: Option<(crate::Session, crate::Workspace)>) {
 		if let Some((client, workspace)) = resource {
 			client.leave_workspace(&client.current_user().name, &workspace.id().workspace);
 			if let Err(e) = client.delete_workspace(self.workspace.clone()).await {
@@ -130,9 +130,9 @@ impl ScopedFixture<(crate::Client, crate::Workspace)> for WorkspaceFixture {
 
 impl
 	ScopedFixture<(
-		crate::Client,
+		crate::Session,
 		crate::Workspace,
-		crate::Client,
+		crate::Session,
 		crate::Workspace,
 	)> for WorkspaceFixture
 {
@@ -140,9 +140,9 @@ impl
 		&mut self,
 	) -> Result<
 		(
-			crate::Client,
+			crate::Session,
 			crate::Workspace,
-			crate::Client,
+			crate::Session,
 			crate::Workspace,
 		),
 		Box<dyn Error>,
@@ -173,9 +173,9 @@ impl
 	async fn cleanup(
 		&mut self,
 		resource: Option<(
-			crate::Client,
+			crate::Session,
 			crate::Workspace,
-			crate::Client,
+			crate::Session,
 			crate::Workspace,
 		)>,
 	) {
@@ -226,24 +226,24 @@ impl BufferFixture {
 
 impl
 	ScopedFixture<(
-		crate::Client,
+		crate::Session,
 		crate::Workspace,
-		crate::buffer::Controller,
-		crate::Client,
+		crate::client::buffer::Controller,
+		crate::Session,
 		crate::Workspace,
-		crate::buffer::Controller,
+		crate::client::buffer::Controller,
 	)> for BufferFixture
 {
 	async fn setup(
 		&mut self,
 	) -> Result<
 		(
-			crate::Client,
+			crate::Session,
 			crate::Workspace,
-			crate::buffer::Controller,
-			crate::Client,
+			crate::client::buffer::Controller,
+			crate::Session,
 			crate::Workspace,
-			crate::buffer::Controller,
+			crate::client::buffer::Controller,
 		),
 		Box<dyn Error>,
 	> {
@@ -288,12 +288,12 @@ impl
 	async fn cleanup(
 		&mut self,
 		resource: Option<(
-			crate::Client,
+			crate::Session,
 			crate::Workspace,
-			crate::buffer::Controller,
-			crate::Client,
+			crate::client::buffer::Controller,
+			crate::Session,
 			crate::Workspace,
-			crate::buffer::Controller,
+			crate::client::buffer::Controller,
 		)>,
 	) {
 		if let Some((client, ws, _, _, _, _)) = resource {

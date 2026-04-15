@@ -76,7 +76,7 @@ pyo3-build-config = { version = "0.28", optional = true }
 pyo3-introspection = { version = "0.28", optional = true }
 
 [features]
-default = ["lua-jit", "py-abi3", "py-extmod", "test-coverage"]
+default = ["lua-jit", "py-abi3", "py-extmod"]
 proto = ["dep:codemp-proto"]
 client = ["proto", "dep:tonic", "dep:tokio", "dep:tokio-stream", "dep:dashmap", "codemp-proto?/client"]
 server = ["proto", "codemp-proto?/server"]
@@ -84,7 +84,7 @@ server = ["proto", "codemp-proto?/server"]
 async-trait = ["dep:async-trait"]
 serialize = ["dep:serde", "uuid?/serde"]
 # special tests which require more setup
-test-e2e = ["dep:uuid"]
+test-e2e = ["client", "dep:uuid"]
 test-coverage = ["dep:syn", "dep:regex"]
 # ffi
 java = ["client", "dep:jni", "dep:tracing-subscriber", "dep:jni-toolbox", "codemp-proto/java"]
