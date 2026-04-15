@@ -75,21 +75,13 @@ jobs:
   test-coverage:
     needs: [test-unit]
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        features:
-          - java
-          - js
-          - py
-          - lua
     steps:
       - uses: arduino/setup-protoc@v3
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - run: cargo test --no-default-features --features=ci,${{ matrix.features }},test-coverage,py-abi3,lua-jit tests::coverage
+      - run: cargo test --no-default-features --features=ci,test-coverage,py-abi3,lua-jit tests::coverage
 
   test-functional:
     needs: [test-build]
