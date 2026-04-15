@@ -1,5 +1,9 @@
 use std::{error::Error, future::Future};
 
+fn new_ws_id() -> String {
+	format!("ws-test-{}", uuid::Uuid::new_v4())
+}
+
 #[allow(async_fn_in_trait)]
 pub trait ScopedFixture<T: Sized> {
 	async fn setup(&mut self) -> Result<T, Box<dyn Error>>;
@@ -89,19 +93,19 @@ impl WorkspaceFixture {
 		}
 	}
 
-	pub fn one(user: &str, ws: &str) -> Self {
+	pub fn one(user: &str) -> Self {
 		Self {
 			user: user.to_string(),
 			invitee: None,
-			workspace: format!("{ws}-{}", uuid::Uuid::new_v4()),
+			workspace: new_ws_id(),
 		}
 	}
 
-	pub fn two(user: &str, invite: &str, ws: &str) -> Self {
+	pub fn two(user: &str, invite: &str) -> Self {
 		Self {
 			user: user.to_string(),
 			invitee: Some(invite.to_string()),
-			workspace: format!("{ws}-{}", uuid::Uuid::new_v4()),
+			workspace: new_ws_id(),
 		}
 	}
 }
@@ -109,15 +113,15 @@ impl WorkspaceFixture {
 impl ScopedFixture<(crate::Client, crate::Workspace)> for WorkspaceFixture {
 	async fn setup(&mut self) -> Result<(crate::Client, crate::Workspace), Box<dyn Error>> {
 		let client = ClientFixture::of(&self.user).setup().await?;
-		client.create_workspace(&self.workspace).await?;
-		let workspace = client.attach_workspace(&self.workspace).await?;
+		client.create_workspace(self.workspace.to_string()).await?;
+		let workspace = client.attach_workspace(&self.user, &self.workspace).await?;
 		Ok((client, workspace))
 	}
 
 	async fn cleanup(&mut self, resource: Option<(crate::Client, crate::Workspace)>) {
-		if let Some((client, _workspace)) = resource {
-			client.leave_workspace(&self.workspace);
-			if let Err(e) = client.delete_workspace(&self.workspace).await {
+		if let Some((client, workspace)) = resource {
+			client.leave_workspace(&client.current_user().name, &workspace.id().workspace);
+			if let Err(e) = client.delete_workspace(self.workspace.clone()).await {
 				eprintln!("could not delete workspace: {e}");
 			}
 		}
@@ -152,12 +156,17 @@ impl
 		)
 		.setup()
 		.await?;
-		client.create_workspace(&self.workspace).await?;
+		client.create_workspace(self.workspace.to_string()).await?;
 		client
-			.invite_to_workspace(&self.workspace, invitee_client.current_user().name.clone())
+			.invite_to_workspace(
+				self.workspace.clone(),
+				invitee_client.current_user().name.clone(),
+			)
 			.await?;
-		let workspace = client.attach_workspace(&self.workspace).await?;
-		let invitee_workspace = invitee_client.attach_workspace(&self.workspace).await?;
+		let workspace = client.attach_workspace(&self.user, &self.workspace).await?;
+		let invitee_workspace = invitee_client
+			.attach_workspace(&self.user, &self.workspace)
+			.await?;
 		Ok((client, workspace, invitee_client, invitee_workspace))
 	}
 
@@ -170,9 +179,9 @@ impl
 			crate::Workspace,
 		)>,
 	) {
-		if let Some((client, _, _, _)) = resource {
-			client.leave_workspace(&self.workspace);
-			if let Err(e) = client.delete_workspace(&self.workspace).await {
+		if let Some((client, ws, _, _)) = resource {
+			client.leave_workspace(&client.current_user().name, &ws.id().workspace);
+			if let Err(e) = client.delete_workspace(self.workspace.clone()).await {
 				eprintln!("could not delete workspace: {e}");
 			}
 		}
@@ -196,20 +205,20 @@ impl BufferFixture {
 		}
 	}
 
-	pub fn one(user: &str, ws: &str, buf: &str) -> Self {
+	pub fn one(user: &str, buf: &str) -> Self {
 		Self {
 			user: user.to_string(),
 			invitee: None,
-			workspace: format!("{ws}-{}", uuid::Uuid::new_v4()),
+			workspace: new_ws_id(),
 			buffer: buf.to_string(),
 		}
 	}
 
-	pub fn two(user: &str, invite: &str, ws: &str, buf: &str) -> Self {
+	pub fn two(user: &str, invite: &str, buf: &str) -> Self {
 		Self {
 			user: user.to_string(),
 			invitee: Some(invite.to_string()),
-			workspace: format!("{ws}-{}", uuid::Uuid::new_v4()),
+			workspace: new_ws_id(),
 			buffer: buf.to_string(),
 		}
 	}
@@ -247,17 +256,24 @@ impl
 		)
 		.setup()
 		.await?;
-		client.create_workspace(&self.workspace).await?;
+		client.create_workspace(self.workspace.to_string()).await?;
 		client
-			.invite_to_workspace(&self.workspace, invitee_client.current_user().name.clone())
+			.invite_to_workspace(
+				self.workspace.clone(),
+				invitee_client.current_user().name.clone(),
+			)
 			.await?;
 
-		let workspace = client.attach_workspace(&self.workspace).await?;
-		workspace.create_buffer(&self.buffer).await?;
-		let buffer = workspace.attach_buffer(&self.buffer).await?;
+		let workspace = client.attach_workspace(&self.user, &self.workspace).await?;
+		workspace
+			.create_buffer(self.buffer.to_string(), None)
+			.await?;
+		let buffer = workspace.attach_buffer(self.buffer.clone()).await?;
 
-		let invitee_workspace = invitee_client.attach_workspace(&self.workspace).await?;
-		let invitee_buffer = invitee_workspace.attach_buffer(&self.buffer).await?;
+		let invitee_workspace = invitee_client
+			.attach_workspace(&self.user, &self.workspace)
+			.await?;
+		let invitee_buffer = invitee_workspace.attach_buffer(self.buffer.clone()).await?;
 
 		Ok((
 			client,
@@ -280,10 +296,10 @@ impl
 			crate::buffer::Controller,
 		)>,
 	) {
-		if let Some((client, _, _, _, _, _)) = resource {
+		if let Some((client, ws, _, _, _, _)) = resource {
 			// buffer deletion is implied in workspace deletion
-			client.leave_workspace(&self.workspace);
-			if let Err(e) = client.delete_workspace(&self.workspace).await {
+			client.leave_workspace(&client.current_user().name, &ws.id().workspace);
+			if let Err(e) = client.delete_workspace(self.workspace.clone()).await {
 				eprintln!("could not delete workspace: {e}");
 			}
 		}

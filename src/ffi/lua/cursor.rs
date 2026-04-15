@@ -3,15 +3,21 @@ use mlua::prelude::*;
 
 use super::ext::a_sync::a_sync;
 
-super::ext::impl_lua_serde! { CodempCursor CodempSelection }
-
 impl LuaUserData for CodempCursorController {
 	fn add_methods<M: LuaUserDataMethods<Self>>(methods: &mut M) {
 		methods.add_meta_method(LuaMetaMethod::ToString, |_, this, ()| {
 			Ok(format!("{:?}", this))
 		});
 
-		methods.add_method("send", |_, this, (cursor,): (CodempSelection,)| {
+		methods.add_method("workspace_id", |_, this, ()| {
+			Ok(this.workspace_id().clone())
+		});
+
+		methods.add_method("list", |_, this, ()| a_sync! {
+			this => this.list().await?
+		});
+
+		methods.add_method("send", |_, this, (cursor,): (CodempCursorUpdate,)| {
 			Ok(this.send(cursor)?)
 		});
 		methods.add_method(
@@ -37,6 +43,10 @@ impl LuaUserData for CodempCursorController {
 
 impl CodempCursorController {
 	fn lua_callback_id(&self) -> String {
-		format!("codemp-cursorcontroller({})-callback-registry", self.workspace_id())
+		format!(
+			"codemp-cursorcontroller({}/{})-callback-registry",
+			self.workspace_id().user,
+			self.workspace_id().workspace,
+		)
 	}
 }

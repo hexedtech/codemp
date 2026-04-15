@@ -1,77 +1,64 @@
 //! ### Cursor Controller
-//! A [Controller] implementation for [crate::api::Cursor] actions in a [crate::Workspace]
+//! A [Controller] implementation for cursor actions in a [crate::Workspace].
 
 use std::sync::Arc;
 
 use tokio::sync::{mpsc, oneshot, watch};
 
 use crate::{
-	api::{
-		controller::{AsyncReceiver, AsyncSender, ControllerCallback},
-		Controller, Cursor, Selection,
-	},
+	api::{Controller, controller::{AsyncReceiver, AsyncSender, ControllerCallback}},
 	errors::ControllerResult,
+	network::AuthedService,
 };
-use codemp_proto::{
-	cursor::{CursorPosition, RowCol},
-	files::BufferNode,
-};
+use codemp_proto::cursor::{CursorEvent, CursorUpdate, cursor_client::CursorClient};
 
-/// A [Controller] for asynchronously sending and receiving [Cursor] event.
+/// A [Controller] for asynchronously sending and receiving [CursorEvent]s.
 ///
 /// An unique [CursorController] exists for each active [crate::Workspace].
 #[derive(Debug, Clone)]
-#[cfg_attr(feature = "py", pyo3::pyclass)]
+#[cfg_attr(feature = "py", pyo3::pyclass(from_py_object))]
 #[cfg_attr(feature = "js", napi_derive::napi)]
 pub struct CursorController(pub(crate) Arc<CursorControllerInner>);
 
 impl CursorController {
-	pub fn workspace_id(&self) -> &str {
+	/// Get id of workspace containing this controller.
+	pub fn workspace_id(&self) -> &crate::proto::session::WorkspaceIdentifier {
 		&self.0.workspace_id
 	}
 }
 
 #[derive(Debug)]
 pub(crate) struct CursorControllerInner {
-	pub(crate) op: mpsc::UnboundedSender<CursorPosition>,
-	pub(crate) stream: mpsc::Sender<oneshot::Sender<Option<Cursor>>>,
+	pub(crate) op: mpsc::UnboundedSender<CursorUpdate>,
+	pub(crate) stream: mpsc::Sender<oneshot::Sender<Option<CursorEvent>>>,
 	pub(crate) poll: mpsc::UnboundedSender<oneshot::Sender<()>>,
 	pub(crate) callback: watch::Sender<Option<ControllerCallback<CursorController>>>,
-	pub(crate) workspace_id: String,
+	pub(crate) workspace_id: crate::proto::session::WorkspaceIdentifier,
+	pub(crate) service: CursorClient<AuthedService>,
 }
 
 #[cfg_attr(feature = "async-trait", async_trait::async_trait)]
-impl Controller<Selection, Cursor> for CursorController {}
+impl Controller<CursorUpdate, CursorEvent> for CursorController {}
 
 #[cfg_attr(feature = "async-trait", async_trait::async_trait)]
-impl AsyncSender<Selection> for CursorController {
-	fn send(&self, mut cursor: Selection) -> ControllerResult<()> {
-		if cursor.start_row > cursor.end_row
-			|| (cursor.start_row == cursor.end_row && cursor.start_col > cursor.end_col)
-		{
-			std::mem::swap(&mut cursor.start_row, &mut cursor.end_row);
-			std::mem::swap(&mut cursor.start_col, &mut cursor.end_col);
+impl AsyncSender<CursorUpdate> for CursorController {
+	fn send(&self, mut cursor: CursorUpdate) -> ControllerResult<()> {
+		for sel in cursor.cursors.iter_mut() {
+			if sel.start.row > sel.finish.row
+				|| (sel.start.row == sel.finish.row && sel.start.col > sel.finish.col)
+			{
+				std::mem::swap(&mut sel.start.row, &mut sel.finish.row);
+				std::mem::swap(&mut sel.start.col, &mut sel.finish.col);
+			}
 		}
 
-		Ok(self.0.op.send(CursorPosition {
-			buffer: BufferNode {
-				path: cursor.buffer,
-			},
-			start: RowCol {
-				row: cursor.start_row,
-				col: cursor.start_col,
-			},
-			end: RowCol {
-				row: cursor.end_row,
-				col: cursor.end_col,
-			},
-		})?)
+		Ok(self.0.op.send(cursor)?)
 	}
 }
 
 #[cfg_attr(feature = "async-trait", async_trait::async_trait)]
-impl AsyncReceiver<Cursor> for CursorController {
-	async fn try_recv(&self) -> ControllerResult<Option<Cursor>> {
+impl AsyncReceiver<CursorEvent> for CursorController {
+	async fn try_recv(&self) -> ControllerResult<Option<CursorEvent>> {
 		let (tx, rx) = oneshot::channel();
 		self.0.stream.send(tx).await?;
 		Ok(rx.await?)

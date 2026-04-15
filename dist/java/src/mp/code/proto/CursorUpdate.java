@@ -1,4 +1,4 @@
-package mp.code.data;
+package mp.code.proto;
 
 import lombok.EqualsAndHashCode;
 import lombok.RequiredArgsConstructor;
@@ -10,14 +10,14 @@ import lombok.ToString;
 @ToString
 @EqualsAndHashCode
 @RequiredArgsConstructor
-public class Cursor {
+public class CursorUpdate {
 	/**
-	 * The user who controls the cursor.
+	 * The buffer the cursor is on.
 	 */
-	public final String user;
+	public final String buffer;
 
 	/**
-	 * The associated selection update.
+	 * The associated selection updates.
 	 */
-	public final Selection selection;
+	public final CursorPosition[] cursors;
 }

@@ -72,7 +72,7 @@ pub(crate) fn setup_tracing(
 				});
 			}
 			res
-		},
+		}
 		_ => return Err(LuaError::BindError), // TODO full BadArgument type??
 	};
 

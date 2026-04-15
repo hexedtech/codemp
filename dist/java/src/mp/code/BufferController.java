@@ -1,17 +1,18 @@
 package mp.code;
 
-import mp.code.data.BufferUpdate;
-import mp.code.data.TextChange;
+import mp.code.proto.BufferUpdate;
+import mp.code.proto.TextChange;
+import mp.code.proto.WorkspaceIdentifier;
 import mp.code.exceptions.ControllerException;
 
-import java.util.Optional;
 import java.util.function.Consumer;
 
 /**
  * Allows interaction with a CodeMP buffer, which in simple terms is a document
  * that multiple people can edit concurrently.
  * <p>
- * It is generally safer to avoid storing this directly, see the api notes for {@link Workspace}.
+ *  It is generally safer to avoid storing this directly, see the api notes for {@link Workspace}.
+ * </p>
  */
 public final class BufferController {
 	private final long ptr;
@@ -21,17 +22,27 @@ public final class BufferController {
 		Extensions.CLEANER.register(this, () -> free(ptr));
 	}
 
-	private static native String get_name(long self);
+	private static native String path(long self);
 
 	/**
-	 * Gets the name (path) of the buffer.
+	 * Gets the path (used as an identifier) of the buffer.
 	 * @return the path of the buffer
 	 */
-	public String getName() {
-		return get_name(this.ptr);
+	public String path() {
+		return path(this.ptr);
 	}
 
-	private static native String get_content(long self) throws ControllerException;
+	private static native WorkspaceIdentifier workspace_id(long self);
+
+	/**
+	 * Gets the identifier for the one that contains this buffer.
+	 * @return a {@link WorkspaceIdentifier} for the owner
+	 */
+	public WorkspaceIdentifier workspaceId() {
+		return workspace_id(this.ptr);
+	}
+
+	private static native String content(long self) throws ControllerException;
 
 	/**
 	 * Gets the contents of the buffer as a flat string.
@@ -39,20 +50,19 @@ public final class BufferController {
 	 * @return the contents fo the buffer as a flat string
 	 * @throws ControllerException if the controller was stopped
 	 */
-	public String getContent() throws ControllerException {
-		return get_content(this.ptr);
+	public String content() throws ControllerException {
+		return content(this.ptr);
 	}
 
 	private static native BufferUpdate try_recv(long self) throws ControllerException;
 
 	/**
-	 * Tries to get a {@link BufferUpdate} from the queue if any were present, and returns
-	 * an empty optional otherwise.
+	 * Tries to get a {@link BufferUpdate} from the queue if any were present, null otherwise.
 	 * @return the first text change in queue, if any are present
 	 * @throws ControllerException if the controller was stopped
 	 */
-	public Optional<BufferUpdate> tryRecv() throws ControllerException {
-		return Optional.ofNullable(try_recv(this.ptr));
+	public BufferUpdate tryRecv() throws ControllerException {
+		return try_recv(this.ptr);
 	}
 
 	private static native BufferUpdate recv(long self) throws ControllerException;

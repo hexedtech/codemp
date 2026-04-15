@@ -2,21 +2,24 @@ use std::sync::Arc;
 
 use tokio::sync::{mpsc, oneshot, watch};
 use tonic::Streaming;
-use uuid::Uuid;
 
 use crate::{
-	api::{controller::ControllerCallback, Cursor, Selection, User},
+	api::controller::ControllerCallback,
+	errors::RemoteResult,
 	ext::IgnorableError,
+	network::AuthedService,
 };
-use codemp_proto::cursor::{CursorEvent, CursorPosition};
+use codemp_proto::{
+	common::Empty,
+	cursor::{CursorEvent, CursorUpdate, cursor_client::CursorClient},
+};
 
 use super::controller::{CursorController, CursorControllerInner};
 
 struct CursorWorker {
-	workspace_id: String,
-	op: mpsc::UnboundedReceiver<CursorPosition>,
-	map: Arc<dashmap::DashMap<Uuid, User>>,
-	stream: mpsc::Receiver<oneshot::Sender<Option<Cursor>>>,
+	workspace_id: crate::proto::session::WorkspaceIdentifier,
+	op: mpsc::UnboundedReceiver<CursorUpdate>,
+	stream: mpsc::Receiver<oneshot::Sender<Option<crate::proto::cursor::CursorEvent>>>,
 	poll: mpsc::UnboundedReceiver<oneshot::Sender<()>>,
 	pollers: Vec<oneshot::Sender<()>>,
 	store: std::collections::VecDeque<codemp_proto::cursor::CursorEvent>,
@@ -26,36 +29,17 @@ struct CursorWorker {
 
 impl CursorWorker {
 	#[tracing::instrument(skip(self, tx))]
-	fn handle_recv(&mut self, tx: oneshot::Sender<Option<Cursor>>) {
-		tx.send(
-			self.store.pop_front().and_then(|event| {
-				let user_id = Uuid::from(event.user);
-				if let Some(user_name) = self.map.get(&user_id).map(|u| u.name.clone()) {
-					Some(Cursor {
-						user: user_name,
-						sel: Selection {
-							buffer: event.position.buffer.path,
-							start_row: event.position.start.row,
-							start_col: event.position.start.col,
-							end_row: event.position.end.row,
-							end_col: event.position.end.col
-						}
-					})
-				} else {
-					tracing::warn!("received cursor for unknown user {user_id}");
-					None
-				}
-			})
-		).unwrap_or_warn("client gave up receiving!");
+	fn handle_recv(&mut self, tx: oneshot::Sender<Option<crate::proto::cursor::CursorEvent>>) {
+		tx.send(self.store.pop_front()).unwrap_or_warn("client gave up receiving!");
 	}
 }
 
 impl CursorController {
 	pub(crate) fn spawn(
-		user_map: Arc<dashmap::DashMap<Uuid, User>>,
-		tx: mpsc::Sender<CursorPosition>,
+		tx: mpsc::Sender<CursorUpdate>,
 		rx: Streaming<CursorEvent>,
-		workspace_id: &str,
+		workspace_id: crate::proto::session::WorkspaceIdentifier,
+		cursor_service: CursorClient<AuthedService>, // TODO ughh passing these around
 	) -> Self {
 		// TODO we should tweak the channel buffer size to better propagate backpressure
 		let (op_tx, op_rx) = mpsc::unbounded_channel();
@@ -67,15 +51,15 @@ impl CursorController {
 			stream: stream_tx,
 			callback: cb_tx,
 			poll: poll_tx,
-			workspace_id: workspace_id.to_string(),
+			workspace_id: workspace_id.clone(),
+			service: cursor_service,
 		});
 
 		let weak = Arc::downgrade(&controller);
 
 		let worker = CursorWorker {
-			workspace_id: workspace_id.to_string(),
+			workspace_id,
 			op: op_rx,
-			map: user_map,
 			stream: stream_rx,
 			store: std::collections::VecDeque::default(),
 			controller: weak,
@@ -89,10 +73,22 @@ impl CursorController {
 		CursorController(controller)
 	}
 
-	#[tracing::instrument(skip(worker, tx, rx), fields(ws = worker.workspace_id))]
+	/// Retrieves all current cursor positions.
+	pub async fn list(&self) -> RemoteResult<Vec<CursorEvent>> {
+		Ok(self
+			.0
+			.service
+			.clone()
+			.list(Empty {})
+			.await?
+			.into_inner()
+			.cursors)
+	}
+
+	#[tracing::instrument(skip(worker, tx, rx), fields(owner = worker.workspace_id.user, ws = worker.workspace_id.workspace))]
 	async fn work(
 		mut worker: CursorWorker,
-		tx: mpsc::Sender<CursorPosition>,
+		tx: mpsc::Sender<CursorUpdate>,
 		mut rx: Streaming<CursorEvent>,
 	) {
 		tracing::debug!("starting cursor worker");

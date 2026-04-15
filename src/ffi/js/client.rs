@@ -1,35 +1,21 @@
-use crate::{Client, Workspace};
+use napi::threadsafe_function::{ThreadsafeFunction, ThreadsafeFunctionCallMode};
 use napi_derive::napi;
 
-#[napi(object, js_name = "User")]
-pub struct JsUser {
-	pub uuid: String,
-	pub name: String,
-}
+use crate::prelude::{
+	CodempAsyncReceiver as AsyncReceiver,
+	CodempConfig as Config,
+	CodempClient as Client,
+	CodempUserInfo as UserInfo,
+	CodempSessionEvent as SessionEvent,
+	CodempWorkspace as Workspace,
+	CodempWorkspaceIdentifier as WorkspaceIdentifier,
+};
 
-impl TryFrom<JsUser> for crate::api::User {
-	type Error = <uuid::Uuid as std::str::FromStr>::Err;
-	fn try_from(value: JsUser) -> Result<Self, Self::Error> {
-		Ok(Self {
-			id: value.uuid.parse()?,
-			name: value.name,
-		})
-	}
-}
-
-impl From<crate::api::User> for JsUser {
-	fn from(value: crate::api::User) -> Self {
-		Self {
-			uuid: value.id.to_string(),
-			name: value.name,
-		}
-	}
-}
-
-#[napi]
 /// connect to codemp servers and return a client session
-pub async fn connect(config: crate::api::Config) -> napi::Result<crate::Client> {
-	Ok(crate::Client::connect(config).await?)
+#[allow(dead_code)]
+#[napi]
+pub async fn connect(config: Config) -> napi::Result<Client> {
+	Ok(Client::connect(config).await?)
 }
 
 #[napi]
@@ -48,13 +34,13 @@ impl Client {
 
 	#[napi(js_name = "fetchOwnedWorkspaces")]
 	/// fetch owned workspaces
-	pub async fn js_fetch_owned_workspaces(&self) -> napi::Result<Vec<String>> {
+	pub async fn js_fetch_owned_workspaces(&self) -> napi::Result<Vec<WorkspaceIdentifier>> {
 		Ok(self.fetch_owned_workspaces().await?)
 	}
 
 	#[napi(js_name = "fetchJoinedWorkspaces")]
 	/// fetch joined workspaces
-	pub async fn js_fetch_joined_workspaces(&self) -> napi::Result<Vec<String>> {
+	pub async fn js_fetch_joined_workspaces(&self) -> napi::Result<Vec<WorkspaceIdentifier>> {
 		Ok(self.fetch_joined_workspaces().await?)
 	}
 
@@ -70,31 +56,31 @@ impl Client {
 
 	#[napi(js_name = "attachWorkspace")]
 	/// join workspace with given id (will start its cursor controller)
-	pub async fn js_attach_workspace(&self, workspace: String) -> napi::Result<Workspace> {
-		Ok(self.attach_workspace(workspace).await?)
+	pub async fn js_attach_workspace(&self, user: String, workspace: String) -> napi::Result<Workspace> {
+		Ok(self.attach_workspace(&user, &workspace).await?)
 	}
 
 	#[napi(js_name = "leaveWorkspace")]
 	/// leave workspace and disconnect, returns true if workspace was active
-	pub async fn js_leave_workspace(&self, workspace: String) -> bool {
-		self.leave_workspace(&workspace)
+	pub fn js_leave_workspace(&self, user: String, workspace: String) -> bool {
+		self.leave_workspace(&user, workspace)
 	}
 
 	#[napi(js_name = "getWorkspace")]
 	/// get workspace with given id, if it exists
-	pub fn js_get_workspace(&self, workspace: String) -> Option<Workspace> {
-		self.get_workspace(&workspace)
+	pub fn js_get_workspace(&self, user: String, workspace: String) -> Option<Workspace> {
+		self.get_workspace(&user, &workspace)
 	}
 
 	#[napi(js_name = "currentUser")]
 	/// return current sessions's user id
-	pub fn js_current_user(&self) -> JsUser {
-		self.current_user().clone().into()
+	pub fn js_current_user(&self) -> UserInfo {
+		self.current_user().clone()
 	}
 
 	#[napi(js_name = "activeWorkspaces")]
 	/// get list of all active workspaces
-	pub fn js_active_workspaces(&self) -> Vec<String> {
+	pub fn js_active_workspaces(&self) -> Vec<WorkspaceIdentifier> {
 		self.active_workspaces()
 	}
 
@@ -102,5 +88,72 @@ impl Client {
 	/// refresh client session token
 	pub async fn js_refresh(&self) -> napi::Result<()> {
 		Ok(self.refresh().await?)
+	}
+
+	/// Accept an invitation to a workspace, making it accessible
+	#[napi(js_name = "acceptInvite")]
+	pub async fn js_accept_invite(&self, user: String, workspace: String) -> napi::Result<()> {
+		Ok(self.accept_invite(&user, &workspace).await?)
+	}
+
+	/// Get the meta information for a user
+	#[napi(js_name = "getUserInfo")]
+	pub async fn js_get_user_info(&self, user: String) -> napi::Result<UserInfo> {
+		Ok(self.get_user_info(&user).await?)
+	}
+
+	/// Quit a joined workspace. Cannot quit owned workspaces: must delete them
+	#[napi(js_name = "quitWorkspace")]
+	pub async fn js_quit_workspace(&self, user: String, workspace: String) -> napi::Result<()> {
+		Ok(self.quit_workspace(&user, &workspace).await?)
+	}
+
+	/// Reject an invitation to a workspace
+	#[napi(js_name = "rejectInvite")]
+	pub async fn js_reject_invite(&self, user: String, workspace: String) -> napi::Result<()> {
+		Ok(self.reject_invite(&user, &workspace).await?)
+	}
+
+	/// Register a callback to be called on receive.
+	/// There can only be one callback registered at any given time.
+	#[napi(
+		js_name = "callback",
+		ts_args_type = "fun: (err: Error|null, event: Client) => void"
+	)]
+	pub fn js_callback(
+		&self,
+		fun: ThreadsafeFunction<Client>,
+	) -> napi::Result<()> {
+		self.callback(move |controller: Client| {
+			fun.call(Ok(controller.clone()), ThreadsafeFunctionCallMode::Blocking);
+			//check this with tracing also we could use Ok(event) to get the error
+			// If it blocks the main thread too many time we have to change this
+		});
+
+		Ok(())
+	}
+
+	/// Clear the registered callback
+	#[napi(js_name = "clearCallback")]
+	pub fn js_clear_callback(&self) {
+		self.clear_callback();
+	}
+
+	/// Get next session event if available without blocking
+	#[napi(js_name = "tryRecv")]
+	pub async fn js_try_recv(&self) -> napi::Result<Option<SessionEvent>> {
+		Ok(self.try_recv().await?)
+	}
+
+	/// Block until next session event
+	#[napi(js_name = "recv")]
+	pub async fn js_recv(&self) -> napi::Result<SessionEvent> {
+		Ok(self.recv().await?)
+	}
+
+	/// Block until next session event without returning it
+	#[napi(js_name = "poll")]
+	pub async fn js_poll(&self) -> napi::Result<()> {
+		Ok(self.poll().await?)
 	}
 }

@@ -125,7 +125,8 @@ fn discover_core_surface(files: &[&str], targets: &[&str]) -> BTreeMap<String, B
 fn missing_methods(ffi_src: &str, required: BTreeSet<String>) -> Vec<String> {
 	required
 		.iter()
-		.filter(|method| !ffi_src.contains(&format!(".{}(", method)))
+		// TODO: way to tighten it down, maybe by only checking :: for statics and vice versa
+		.filter(|method| !ffi_src.contains(&format!(".{}(", method)) && !ffi_src.contains(&format!("::{}(", method)))
 		.map(|method| (*method).to_string())
 		.collect()
 }
@@ -181,9 +182,9 @@ fn python_ffi_should_cover_rust_api_surface() {
 	let required = discover_core_surface(files, targets);
 
 	let python_src = concat!(
-		include_str!("../ffi/python/client.rs"),
-		include_str!("../ffi/python/workspace.rs"),
-		include_str!("../ffi/python/controllers.rs"),
+		include_str!("../../ffi/python/client.rs"),
+		include_str!("../../ffi/python/workspace.rs"),
+		include_str!("../../ffi/python/controllers.rs"),
 	);
 
 	let python_ignore = ["Client.connect"];
@@ -224,10 +225,10 @@ fn javascript_ffi_should_cover_rust_api_surface() {
 	let required = discover_core_surface(files, targets);
 
 	let js_src = concat!(
-		include_str!("../ffi/js/client.rs"),
-		include_str!("../ffi/js/workspace.rs"),
-		include_str!("../ffi/js/buffer.rs"),
-		include_str!("../ffi/js/cursor.rs"),
+		include_str!("../../ffi/js/client.rs"),
+		include_str!("../../ffi/js/workspace.rs"),
+		include_str!("../../ffi/js/buffer.rs"),
+		include_str!("../../ffi/js/cursor.rs"),
 	);
 
 	let js_ignore = [];
@@ -268,10 +269,10 @@ fn lua_ffi_should_cover_rust_api_surface() {
 	let required = discover_core_surface(files, targets);
 
 	let lua_src = concat!(
-		include_str!("../ffi/lua/client.rs"),
-		include_str!("../ffi/lua/workspace.rs"),
-		include_str!("../ffi/lua/buffer.rs"),
-		include_str!("../ffi/lua/cursor.rs"),
+		include_str!("../../ffi/lua/client.rs"),
+		include_str!("../../ffi/lua/workspace.rs"),
+		include_str!("../../ffi/lua/buffer.rs"),
+		include_str!("../../ffi/lua/cursor.rs"),
 	);
 
 	let lua_ignore = ["Client.connect"];
@@ -312,10 +313,10 @@ fn java_ffi_should_cover_rust_api_surface() {
 	let required = discover_core_surface(files, targets);
 
 	let java_src = concat!(
-		include_str!("../ffi/java/client.rs"),
-		include_str!("../ffi/java/workspace.rs"),
-		include_str!("../ffi/java/buffer.rs"),
-		include_str!("../ffi/java/cursor.rs"),
+		include_str!("../../ffi/java/client.rs"),
+		include_str!("../../ffi/java/workspace.rs"),
+		include_str!("../../ffi/java/buffer.rs"),
+		include_str!("../../ffi/java/cursor.rs"),
 	);
 
 	let java_ignore = [];

@@ -21,11 +21,11 @@
 	],
 	"repository": "https://github.com/hexedtech/codemp",
 	"devDependencies": {
-		"@napi-rs/cli": "^2.18.4"
+		"@napi-rs/cli": "^3.5.1"
 	},
 	"napi": {
-		"name": "codemp",
-		"triples": {
+		"binaryName": "codemp",
+		"triplets": {
 			"defaults": false,
 			"additional": [
 				"x86_64-unknown-linux-gnu",

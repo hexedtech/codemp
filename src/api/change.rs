@@ -8,9 +8,11 @@
 /// content **after** applying this change. Note that the `hash` field will not necessarily
 /// be provided every time.
 #[derive(Clone, Debug, Default)]
-#[cfg_attr(feature = "js", napi_derive::napi(object))]
-#[cfg_attr(feature = "py", pyo3::pyclass(get_all))]
 #[cfg_attr(feature = "serialize", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "lua", derive(mlua_serde_derive::LuaSerde))]
+#[cfg_attr(feature = "js", napi_derive::napi(object))]
+#[cfg_attr(feature = "py", pyo3::pyclass(get_all, from_py_object))]
+#[cfg_attr(feature = "java", jni_toolbox::jclass(package = "mp.code.proto"))]
 pub struct BufferUpdate {
 	/// Optional content hash after applying this change.
 	#[cfg_attr(feature = "serialize", serde(skip_serializing_if = "Option::is_none"))]
@@ -51,9 +53,11 @@ pub struct BufferUpdate {
 /// assert_eq!(after, "hello mom!");
 /// ```
 #[derive(Clone, Debug, Default)]
-#[cfg_attr(feature = "js", napi_derive::napi(object))]
-#[cfg_attr(feature = "py", pyo3::pyclass(get_all))]
 #[cfg_attr(feature = "serialize", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "lua", derive(mlua_serde_derive::LuaSerde))]
+#[cfg_attr(feature = "js", napi_derive::napi(object))]
+#[cfg_attr(feature = "py", pyo3::pyclass(get_all, from_py_object))]
+#[cfg_attr(feature = "java", jni_toolbox::jclass(package = "mp.code.proto"))]
 pub struct TextChange {
 	/// Range start of text change, as char indexes in buffer previous state.
 	pub start_idx: u32,

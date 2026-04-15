@@ -3,13 +3,13 @@ use codemp_proto::{
 	workspace::workspace_client::WorkspaceClient,
 };
 use tonic::{
-	service::{interceptor::InterceptedService, Interceptor},
+	service::{Interceptor, interceptor::InterceptedService},
 	transport::{Channel, Endpoint},
 };
 
 use crate::errors::ConnectionResult;
 
-type AuthedService = InterceptedService<Channel, WorkspaceInterceptor>;
+pub(crate) type AuthedService = InterceptedService<Channel, WorkspaceInterceptor>;
 
 #[derive(Debug, Clone)]
 pub struct SessionInterceptor(pub tokio::sync::watch::Receiver<codemp_proto::common::Token>);
@@ -40,10 +40,10 @@ impl Services {
 		let channel = Endpoint::from_shared(dest.to_string())?.connect().await?;
 		let inter = WorkspaceInterceptor { session, workspace };
 		Ok(Self {
-			cursor: CursorClient::with_interceptor(channel.clone(), inter.clone()),
 			workspace: WorkspaceClient::with_interceptor(channel.clone(), inter.clone()),
-			// TODO technically we could keep buffers on separate servers, and thus manage buffer
-			// connections separately, but for now it's more convenient to bundle them with workspace
+			// TODO technically we could keep buffers and cursors on separate servers, and thus manage
+			// their connections separately, but for now it's more convenient to bundle them with workspace
+			cursor: CursorClient::with_interceptor(channel.clone(), inter.clone()),
 			buffer: BufferClient::with_interceptor(channel.clone(), inter.clone()),
 		})
 	}

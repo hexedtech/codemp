@@ -75,6 +75,7 @@ impl<T: Default> Default for InternallyMutable<T> {
 }
 
 impl<T> InternallyMutable<T> {
+	/// Creates a new internally mutable type with the given value.
 	pub fn new(init: T) -> Self {
 		let (tx, rx) = tokio::sync::watch::channel(init);
 		Self {
@@ -83,16 +84,19 @@ impl<T> InternallyMutable<T> {
 		}
 	}
 
+	/// Updates the internal value.
 	pub fn set(&self, state: T) -> T {
 		self.setter.send_replace(state)
 	}
 
+	/// Gets the [tokio::sync::watch::Receiver] that can get the internal value.
 	pub fn channel(&self) -> tokio::sync::watch::Receiver<T> {
 		self.getter.clone()
 	}
 }
 
 impl<T: Clone> InternallyMutable<T> {
+	/// Gets and clones the internal value.
 	pub fn get(&self) -> T {
 		self.getter.borrow().clone()
 	}
@@ -100,6 +104,7 @@ impl<T: Clone> InternallyMutable<T> {
 
 /// An error that can be ignored with just a warning.
 pub trait IgnorableError {
+	/// Unwraps the error and prints a warning with the contents.
 	fn unwrap_or_warn(self, msg: &str);
 }
 
@@ -114,4 +119,11 @@ where
 			Err(e) => tracing::warn!("{}: {:?}", msg, e),
 		}
 	}
+}
+
+pub(crate) fn token_to_metadata(
+	tok: codemp_proto::common::Token,
+) -> tonic::Result<tonic::metadata::MetadataValue<tonic::metadata::Ascii>> {
+	tonic::metadata::MetadataValue::try_from(tok.token)
+		.map_err(|e| tonic::Status::internal(format!("failed representing token to string: {e}")))
 }

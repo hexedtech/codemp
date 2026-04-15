@@ -1,10 +1,14 @@
-use crate::api::controller::{AsyncReceiver, AsyncSender};
-use crate::cursor::controller::CursorController;
-use napi::threadsafe_function::ErrorStrategy::Fatal;
-use napi::threadsafe_function::{
-	ThreadSafeCallContext, ThreadsafeFunction, ThreadsafeFunctionCallMode,
-};
+use napi::threadsafe_function::{ThreadsafeFunction, ThreadsafeFunctionCallMode};
 use napi_derive::napi;
+
+use crate::prelude::{
+	CodempAsyncReceiver as AsyncReceiver,
+	CodempAsyncSender as AsyncSender,
+	CodempCursorController as CursorController,
+	CodempCursorEvent as CursorEvent,
+	CodempCursorUpdate as CursorUpdate,
+	CodempWorkspaceIdentifier as WorkspaceIdentifier,
+};
 
 #[napi]
 impl CursorController {
@@ -12,18 +16,14 @@ impl CursorController {
 	/// There can only be one callback registered at any given time.
 	#[napi(
 		js_name = "callback",
-		ts_args_type = "fun: (event: CursorController) => void"
+		ts_args_type = "fun: (err: Error|null, event: CursorController) => void"
 	)]
-	pub fn js_callback(&self, fun: napi::JsFunction) -> napi::Result<()> {
-		let tsfn: ThreadsafeFunction<crate::cursor::controller::CursorController, Fatal> = fun
-			.create_threadsafe_function(
-				0,
-				|ctx: ThreadSafeCallContext<crate::cursor::controller::CursorController>| {
-					Ok(vec![ctx.value])
-				},
-			)?;
+	pub fn js_callback(
+		&self,
+		fun: ThreadsafeFunction<CursorController>,
+	) -> napi::Result<()> {
 		self.callback(move |controller: CursorController| {
-			tsfn.call(controller.clone(), ThreadsafeFunctionCallMode::Blocking);
+			fun.call(Ok(controller.clone()), ThreadsafeFunctionCallMode::Blocking);
 			//check this with tracing also we could use Ok(event) to get the error
 			// If it blocks the main thread too many time we have to change this
 		});
@@ -39,19 +39,25 @@ impl CursorController {
 
 	/// Send a new cursor event to remote
 	#[napi(js_name = "send")]
-	pub fn js_send(&self, sel: crate::api::Selection) -> napi::Result<()> {
-		Ok(self.send(sel)?)
-	}
+	pub fn js_send(&self, sel: CursorUpdate) -> napi::Result<()> {
+    Ok(self.send(sel)?)
+}
 
 	/// Get next cursor event if available without blocking
 	#[napi(js_name = "tryRecv")]
-	pub async fn js_try_recv(&self) -> napi::Result<Option<crate::api::Cursor>> {
-		Ok(self.try_recv().await?.map(crate::api::Cursor::from))
+	pub async fn js_try_recv(&self) -> napi::Result<Option<CursorEvent>> {
+		Ok(self.try_recv().await?)
 	}
 
 	/// Block until next
 	#[napi(js_name = "recv")]
-	pub async fn js_recv(&self) -> napi::Result<crate::api::Cursor> {
+	pub async fn js_recv(&self) -> napi::Result<CursorEvent> {
 		Ok(self.recv().await?)
+	}
+
+	/// Get id of workspace containing this controller.
+	#[napi(js_name = "workspaceId")]
+	pub fn js_workspace_id(&self) -> WorkspaceIdentifier {
+		self.workspace_id().clone()
 	}
 }

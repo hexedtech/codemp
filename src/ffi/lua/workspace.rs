@@ -3,8 +3,6 @@ use mlua::prelude::*;
 
 use super::ext::a_sync::a_sync;
 
-super::ext::impl_lua_serde! { CodempEvent }
-
 impl LuaUserData for CodempWorkspace {
 	fn add_methods<M: LuaUserDataMethods<Self>>(methods: &mut M) {
 		methods.add_meta_method(LuaMetaMethod::ToString, |_, this, ()| {
@@ -12,12 +10,24 @@ impl LuaUserData for CodempWorkspace {
 		});
 		methods.add_method(
 			"create_buffer",
-			|_, this, (name,): (String,)| a_sync! { this => this.create_buffer(&name).await? },
+			|_, this, (name, attrs): (String, Option<CodempBufferAttributes>)| a_sync! { this => this.create_buffer(name, attrs).await? },
 		);
+
+		methods.add_method("pin_buffer", |_, this, (path,): (String,)| {
+			a_sync! {
+				this => this.pin_buffer(path).await?
+			}
+		});
+
+		methods.add_method("un_pin_buffer", |_, this, (path,): (String,)| {
+			a_sync! {
+				this => this.un_pin_buffer(path).await?
+			}
+		});
 
 		methods.add_method(
 			"attach_buffer",
-			|_, this, (name,): (String,)| a_sync! { this => this.attach_buffer(&name).await? },
+			|_, this, (name,): (String,)| a_sync! { this => this.attach_buffer(name).await? },
 		);
 
 		methods.add_method("detach_buffer", |_, this, (name,): (String,)| {
@@ -26,7 +36,7 @@ impl LuaUserData for CodempWorkspace {
 
 		methods.add_method(
 			"delete_buffer",
-			|_, this, (name,): (String,)| a_sync! { this => this.delete_buffer(&name).await? },
+			|_, this, (name,): (String,)| a_sync! { this => this.delete_buffer(name).await? },
 		);
 
 		methods.add_method("get_buffer", |_, this, (name,): (String,)| {
@@ -41,18 +51,20 @@ impl LuaUserData for CodempWorkspace {
 			"fetch_users",
 			|_, this, ()| a_sync! { this => this.fetch_users().await? },
 		);
+		methods.add_method(
+			"fetch_buffer_users",
+			|_, this, (buffer,): (String,)| a_sync! { this => this.fetch_buffer_users(buffer).await? },
+		);
 
 		methods.add_method("search_buffers", |_, this, (filter,): (Option<String>,)| {
 			Ok(this.search_buffers(filter.as_deref()))
 		});
 
-		methods.add_method("fetch_buffer_users", |_, this, (path,): (String,)| {
-			a_sync! {
-				this => this.fetch_buffer_users(&path).await?
-			}
+		methods.add_method("buffer_user_list", |_, this, (path,): (String,)| {
+			Ok(this.buffer_user_list(&path))
 		});
 
-		methods.add_method("id", |_, this, ()| Ok(this.id()));
+		methods.add_method("id", |_, this, ()| Ok(this.id().clone()));
 		methods.add_method("cursor", |_, this, ()| Ok(this.cursor()));
 		methods.add_method("active_buffers", |_, this, ()| Ok(this.active_buffers()));
 		methods.add_method("user_list", |_, this, ()| Ok(this.user_list()));
@@ -83,6 +95,6 @@ impl LuaUserData for CodempWorkspace {
 
 impl CodempWorkspace {
 	fn lua_callback_id(&self) -> String {
-		format!("codemp-workspace({})-callback-registry", self.id())
+		format!("codemp-workspace({}/{})-callback-registry", self.id().user, self.id().workspace)
 	}
 }

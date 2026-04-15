@@ -1,58 +1,36 @@
-use crate::api::controller::AsyncReceiver;
-use crate::buffer::controller::BufferController;
-use crate::cursor::controller::CursorController;
-use crate::Workspace;
-use napi::threadsafe_function::ErrorStrategy::Fatal;
-use napi::threadsafe_function::{
-	ThreadSafeCallContext, ThreadsafeFunction, ThreadsafeFunctionCallMode,
-};
+use napi::threadsafe_function::{ThreadsafeFunction, ThreadsafeFunctionCallMode};
 use napi_derive::napi;
 
-use super::client::JsUser;
-
-#[napi(object, js_name = "Event")]
-pub struct JsEvent {
-	pub r#type: String,
-	pub value: String,
-}
-
-impl From<crate::api::Event> for JsEvent {
-	fn from(value: crate::api::Event) -> Self {
-		match value {
-			crate::api::Event::FileTreeUpdated { path: value } => Self {
-				r#type: "filetree".into(),
-				value,
-			},
-			crate::api::Event::UserJoin { name: value } => Self {
-				r#type: "join".into(),
-				value,
-			},
-			crate::api::Event::UserLeave { name: value } => Self {
-				r#type: "leave".into(),
-				value,
-			},
-		}
-	}
-}
+use crate::prelude::{
+	CodempAsyncReceiver as AsyncReceiver,
+	CodempBufferAttributes as BufferAttributes,
+	CodempBufferNode as BufferNode,
+	CodempBufferController as BufferController,
+	CodempCursorController as CursorController,
+	CodempUserInfo as UserInfo,
+	CodempWorkspace as Workspace,
+	CodempWorkspaceEvent as WorkspaceEvent,
+	CodempWorkspaceIdentifier as WorkspaceIdentifier,
+};
 
 #[napi]
 impl Workspace {
 	/// Get the unique workspace id
 	#[napi(js_name = "id")]
-	pub fn js_id(&self) -> String {
-		self.id()
+	pub fn js_id(&self) -> WorkspaceIdentifier {
+		self.id().clone()
 	}
 
 	/// List all available buffers in this workspace
 	#[napi(js_name = "searchBuffers")]
-	pub fn js_search_buffers(&self, filter: Option<&str>) -> Vec<String> {
-		self.search_buffers(filter)
+	pub fn js_search_buffers(&self, filter: Option<String>) -> Vec<BufferNode> {
+		self.search_buffers(filter.as_deref())
 	}
 
 	/// List all user names currently in this workspace
 	#[napi(js_name = "userList")]
-	pub fn js_user_list(&self) -> Vec<JsUser> {
-		self.user_list().into_iter().map(JsUser::from).collect()
+	pub fn js_user_list(&self) -> Vec<UserInfo> {
+		self.user_list()
 	}
 
 	/// List all currently active buffers
@@ -75,8 +53,8 @@ impl Workspace {
 
 	/// Create a new buffer in the current workspace
 	#[napi(js_name = "createBuffer")]
-	pub async fn js_create_buffer(&self, path: String) -> napi::Result<()> {
-		Ok(self.create_buffer(&path).await?)
+	pub async fn js_create_buffer(&self, path: String, attributes: Option<BufferAttributes>) -> napi::Result<()> {
+		Ok(self.create_buffer(&path, attributes).await?)
 	}
 
 	/// Attach to a workspace buffer, starting a BufferController
@@ -91,37 +69,40 @@ impl Workspace {
 		Ok(self.delete_buffer(&path).await?)
 	}
 
+	/// Wait for next workspace event and return it
 	#[napi(js_name = "recv")]
-	pub async fn js_recv(&self) -> napi::Result<JsEvent> {
-		Ok(JsEvent::from(self.recv().await?))
+	pub async fn js_recv(&self) -> napi::Result<WorkspaceEvent> {
+		Ok(self.recv().await?)
 	}
 
+	/// Return next workspace event if present
 	#[napi(js_name = "tryRecv")]
-	pub async fn js_try_recv(&self) -> napi::Result<Option<JsEvent>> {
-		Ok(self.try_recv().await?.map(JsEvent::from))
+	pub async fn js_try_recv(&self) -> napi::Result<Option<WorkspaceEvent>> {
+		Ok(self.try_recv().await?)
 	}
 
+	/// Block until next workspace event without returning it
 	#[napi(js_name = "poll")]
 	pub async fn js_poll(&self) -> napi::Result<()> {
 		self.poll().await?;
 		Ok(())
 	}
 
+	/// Remove registered workspace callback
 	#[napi(js_name = "clearCallback")]
 	pub fn js_clear_callback(&self) -> napi::Result<()> {
 		self.clear_callback();
 		Ok(())
 	}
 
-	#[napi(js_name = "callback", ts_args_type = "fun: (event: Workspace) => void")]
-	pub fn js_callback(&self, fun: napi::JsFunction) -> napi::Result<()> {
-		let tsfn: ThreadsafeFunction<crate::Workspace, Fatal> = fun
-			.create_threadsafe_function(0, |ctx: ThreadSafeCallContext<crate::Workspace>| {
-				Ok(vec![ctx.value])
-			})?;
+	/// Register a callback to be invoked every time a new event is available to consume
+	/// There can only be one callback registered at any given time.
+	#[napi(js_name = "callback", ts_args_type = "fun: (err: Error|null, event: Workspace) => void")]
+	pub fn js_callback(&self, fun: ThreadsafeFunction<Workspace>) -> napi::Result<()> {
+		let tsfn: ThreadsafeFunction<Workspace> = fun;
 		self.callback(move |controller: Workspace| {
-			tsfn.call(controller.clone(), ThreadsafeFunctionCallMode::Blocking); //check this with tracing also we could use Ok(event) to get the error
-			                                                            // If it blocks the main thread too many time we have to change this
+			tsfn.call(Ok(controller.clone()), ThreadsafeFunctionCallMode::Blocking); //check this with tracing also we could use Ok(event) to get the error
+			// If it blocks the main thread too many time we have to change this
 		});
 
 		Ok(())
@@ -137,18 +118,13 @@ impl Workspace {
 
 	/// Re-fetch remote buffer list
 	#[napi(js_name = "fetchBuffers")]
-	pub async fn js_fetch_buffers(&self) -> napi::Result<Vec<String>> {
+	pub async fn js_fetch_buffers(&self) -> napi::Result<()> {
 		Ok(self.fetch_buffers().await?)
 	}
 	/// Re-fetch the list of all users in the workspace.
 	#[napi(js_name = "fetchUsers")]
-	pub async fn js_fetch_users(&self) -> napi::Result<Vec<JsUser>> {
-		Ok(self
-			.fetch_users()
-			.await?
-			.into_iter()
-			.map(JsUser::from)
-			.collect())
+	pub async fn js_fetch_users(&self) -> napi::Result<()> {
+		Ok(self.fetch_users().await?)
 	}
 
 	/// List users attached to a specific buffer
@@ -156,12 +132,25 @@ impl Workspace {
 	pub async fn js_fetch_buffer_users(
 		&self,
 		path: String,
-	) -> napi::Result<Vec<crate::ffi::js::client::JsUser>> {
-		Ok(self
-			.fetch_buffer_users(&path)
-			.await?
-			.into_iter()
-			.map(super::client::JsUser::from)
-			.collect())
+	) -> napi::Result<()> {
+		Ok(self.fetch_buffer_users(&path).await?)
+	}
+
+	/// Get all users currently attached to specified buffer
+	#[napi(js_name = "bufferUserList")]
+	pub fn js_buffer_user_list(&self, path: String) -> Vec<UserInfo> {
+		self.buffer_user_list(&path)
+	}
+
+	/// Pin an ephemeral buffer, making it permanent.
+	#[napi(js_name = "pinBuffer")]
+	pub async fn js_pin_buffer(&self, path: String) -> napi::Result<()> {
+		Ok(self.pin_buffer(&path).await?)
+	}
+
+	/// Unpins a permanent buffer, making it ephemeral.
+	#[napi(js_name = "unpinBuffer")]
+	pub async fn js_un_pin_buffer(&self, path: String) -> napi::Result<()> {
+		Ok(self.un_pin_buffer(&path).await?)
 	}
 }

@@ -1,27 +1,35 @@
-use crate::api::controller::AsyncReceiver;
-use crate::api::User;
-use crate::buffer::Controller as BufferController;
-use crate::cursor::Controller as CursorController;
-use crate::workspace::Workspace;
+use crate::prelude::*;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 
-use super::a_sync_allow_threads;
 use super::Promise;
+use super::a_sync_detach;
 
 #[pymethods]
-impl Workspace {
+impl CodempWorkspace {
 	// join a workspace
 	#[pyo3(name = "create_buffer")]
-	fn pycreate_buffer(&self, py: Python, path: String) -> PyResult<Promise> {
+	fn pycreate_buffer(&self, py: Python, path: String, attrs: Option<CodempBufferAttributes>) -> PyResult<Promise> {
 		let this = self.clone();
-		a_sync_allow_threads!(py, this.create_buffer(path.as_str()).await)
+		a_sync_detach!(py, this.create_buffer(path.as_str(), attrs).await)
+	}
+
+	#[pyo3(name = "pin_buffer")]
+	fn pypin_buffer(&self, py: Python, path: String) -> PyResult<Promise> {
+		let this = self.clone();
+		a_sync_detach!(py, this.pin_buffer(path.as_str()).await)
+	}
+
+	#[pyo3(name = "un_pin_buffer")]
+	fn pyun_pin_buffer(&self, py: Python, path: String) -> PyResult<Promise> {
+		let this = self.clone();
+		a_sync_detach!(py, this.un_pin_buffer(path.as_str()).await)
 	}
 
 	#[pyo3(name = "attach_buffer")]
 	fn pyattach_buffer(&self, py: Python, path: String) -> PyResult<Promise> {
 		let this = self.clone();
-		a_sync_allow_threads!(py, this.attach_buffer(path.as_str()).await)
+		a_sync_detach!(py, this.attach_buffer(path).await)
 	}
 
 	#[pyo3(name = "detach_buffer")]
@@ -32,40 +40,39 @@ impl Workspace {
 	#[pyo3(name = "fetch_buffers")]
 	fn pyfetch_buffers(&self, py: Python) -> PyResult<Promise> {
 		let this = self.clone();
-		a_sync_allow_threads!(py, this.fetch_buffers().await)
+		a_sync_detach!(py, this.fetch_buffers().await)
 	}
 
 	#[pyo3(name = "fetch_users")]
 	fn pyfetch_users(&self, py: Python) -> PyResult<Promise> {
 		let this = self.clone();
-		a_sync_allow_threads!(py, this.fetch_users().await)
+		a_sync_detach!(py, this.fetch_users().await)
 	}
 
 	#[pyo3(name = "fetch_buffer_users")]
 	fn pyfetch_buffer_users(&self, py: Python, path: String) -> PyResult<Promise> {
 		// crate::Result<Vec<crate::api::User>>
 		let this = self.clone();
-		a_sync_allow_threads!(py, this.fetch_buffer_users(path.as_str()).await)
+		a_sync_detach!(py, this.fetch_buffer_users(path).await)
 	}
 
 	#[pyo3(name = "delete_buffer")]
 	fn pydelete_buffer(&self, py: Python, path: String) -> PyResult<Promise> {
 		let this = self.clone();
-		a_sync_allow_threads!(py, this.delete_buffer(path.as_str()).await)
+		a_sync_detach!(py, this.delete_buffer(path.as_str()).await)
 	}
 
 	#[pyo3(name = "id")]
-	fn pyid(&self) -> String {
-		self.id()
+	fn pyid(&self) -> CodempWorkspaceIdentifier {
+		self.id().clone()
 	}
 
 	#[pyo3(name = "cursor")]
-	fn pycursor(&self) -> CursorController {
+	fn pycursor(&self) -> CodempCursorController {
 		self.cursor()
 	}
-
 	#[pyo3(name = "get_buffer")]
-	fn pyget_buffer(&self, path: String) -> Option<BufferController> {
+	fn pyget_buffer(&self, path: String) -> Option<CodempBufferController> {
 		self.get_buffer(path.as_str())
 	}
 
@@ -76,31 +83,36 @@ impl Workspace {
 
 	#[pyo3(name = "search_buffers")]
 	#[pyo3(signature = (filter=None))]
-	fn pysearch_buffers(&self, filter: Option<&str>) -> Vec<String> {
+	fn pysearch_buffers(&self, filter: Option<&str>) -> Vec<CodempBufferNode> {
 		self.search_buffers(filter)
 	}
 
 	#[pyo3(name = "user_list")]
-	fn pyuser_list(&self) -> Vec<User> {
+	fn pyuser_list(&self) -> Vec<CodempUserInfo> {
 		self.user_list()
+	}
+
+	#[pyo3(name = "buffer_user_list")]
+	fn pybuffer_user_list(&self, path: String) -> Vec<CodempUserInfo> {
+		self.buffer_user_list(path)
 	}
 
 	#[pyo3(name = "recv")]
 	fn pyrecv(&self, py: Python) -> PyResult<Promise> {
 		let this = self.clone();
-		a_sync_allow_threads!(py, this.recv().await)
+		a_sync_detach!(py, this.recv().await)
 	}
 
 	#[pyo3(name = "try_recv")]
 	fn pytry_recv(&self, py: Python) -> PyResult<Promise> {
 		let this = self.clone();
-		a_sync_allow_threads!(py, this.try_recv().await)
+		a_sync_detach!(py, this.try_recv().await)
 	}
 
 	#[pyo3(name = "poll")]
 	fn pypoll(&self, py: Python) -> PyResult<Promise> {
 		let this = self.clone();
-		a_sync_allow_threads!(py, this.poll().await)
+		a_sync_detach!(py, this.poll().await)
 	}
 
 	#[pyo3(name = "clear_callback")]
@@ -109,13 +121,13 @@ impl Workspace {
 	}
 
 	#[pyo3(name = "callback")]
-	fn pycallback(&self, py: Python, cb: PyObject) -> PyResult<()> {
+	fn pycallback(&self, py: Python, cb: Py<PyAny>) -> PyResult<()> {
 		if !cb.bind_borrowed(py).is_callable() {
 			return Err(PyValueError::new_err("The object passed must be callable."));
 		}
 
 		self.callback(move |ws| {
-			Python::with_gil(|py| {
+			Python::attach(|py| {
 				// TODO what to do with this error?
 				let _ = cb.call1(py, (ws,));
 			})

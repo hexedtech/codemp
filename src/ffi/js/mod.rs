@@ -1,8 +1,8 @@
-pub mod buffer;
-pub mod client;
-pub mod cursor;
-pub mod ext;
-pub mod workspace;
+mod buffer;
+mod client;
+mod cursor;
+mod ext;
+mod workspace;
 
 impl From<crate::errors::ConnectionError> for napi::Error {
 	fn from(value: crate::errors::ConnectionError) -> Self {
@@ -24,11 +24,13 @@ impl From<crate::errors::ControllerError> for napi::Error {
 
 use napi_derive::napi;
 
+/// A napi-friendly representation of a logger.
 #[napi]
 pub struct JsLogger(std::sync::Arc<tokio::sync::Mutex<tokio::sync::mpsc::Receiver<String>>>);
 
 #[napi]
 impl JsLogger {
+	/// Creates a new [JsLogger].
 	#[napi(constructor)]
 	pub fn new(debug: Option<bool>) -> JsLogger {
 		let (tx, rx) = tokio::sync::mpsc::channel(256);
@@ -56,6 +58,7 @@ impl JsLogger {
 		JsLogger(std::sync::Arc::new(tokio::sync::Mutex::new(rx)))
 	}
 
+	/// Gets a message from the logger.
 	#[napi]
 	pub async fn message(&self) -> Option<String> {
 		self.0.lock().await.recv().await

@@ -10,9 +10,15 @@ authors = [
 	"cschen <dev@cschen.cc>"
 ]
 license = "GPL-3.0-only"
-edition = "2021"
+edition = "2024"
 version = "0.8.5"
 exclude = ["dist/*"]
+
+[lints]
+rust.unsafe_code = "warn"
+rust.missing_docs = "warn"
+clippy.unwrap_used = "warn"
+clippy.collapsible_if = "allow"
 
 [lib]
 name = "codemp"
@@ -25,11 +31,11 @@ thiserror = "2.0"
 # crdt
 diamond-types = "1.0"
 # proto
-codemp-proto = "0.7"
-uuid = { version = "1.13", features = ["v4"] }
-tonic = { version = "0.12", features = ["tls", "tls-roots"] }
+codemp-proto = { git = "https://github.com/hexedtech/codemp-proto", rev = "6b45fd7bd7c03ef60234880c59157481def4ca71", features = ["client"] }
+uuid = { version = "1.17", features = ["v4"] }
+tonic = { version = "0.14", features = ["tls-native-roots"] }
 # api
-tokio = { version = "1.43", features = ["macros", "rt-multi-thread", "sync"] }
+tokio = { version = "1.47", features = ["macros", "rt-multi-thread", "sync"] }
 xxhash-rust = { version = "0.8", features = ["xxh3"] }
 # client
 tokio-stream = "0.1"
@@ -39,29 +45,35 @@ dashmap = "6.1"
 tracing-subscriber = { version = "0.3", optional = true }
 
 # glue (java)
-jni = { version = "0.21", features = ["invocation"], optional = true }
-jni-toolbox = { version = "0.2", optional = true, features = ["uuid"] }
+jni = { version = "0.22", features = ["invocation"], optional = true }
+#jni-toolbox = { version = "0.2", optional = true, features = ["uuid"] }
+jni-toolbox = { git = "https://github.com/hexedtech/jni-toolbox", rev = "9b54289d562f3ba0dfc59ab38342e7502aeb529c", optional = true, features = ["uuid", "unsigned"] }
 
 # glue (lua)
-mlua = { version = "0.10", features = ["module", "serialize", "error-send"], optional = true }
+mlua = { version = "0.11", features = ["module", "serialize", "error-send"], optional = true }
+mlua-serde-derive = { version = "0.1.1", optional = true }
 
 # glue (js)
-napi = { version = "2.16", features = ["full"], optional = true } 
-napi-derive = { version="2.16",  optional = true}
+napi = { version = "3.1", features = ["full"], optional = true } 
+napi-derive = { version="3.1",  optional = true}
 
 # glue (python)
-pyo3 = { version = "0.23", features = ["multiple-pymethods"], optional = true}
+pyo3 = { version = "0.28", features = ["multiple-pymethods", "experimental-inspect"], optional = true}
+
 
 # extra
 async-trait = { version = "0.1", optional = true }
 serde = { version = "1.0", features = ["derive"], optional = true }
-syn = { version = "2.0.117", features = ["full", "visit"] }
+syn = { version = "2.0", features = ["full"], optional = true }
+regex = { version = "1.12", optional = true }
+
 
 [build-dependencies]
 # glue (js)
-napi-build = { version = "2.1", optional = true }
+napi-build = { version = "2.2", optional = true }
 # glue (python)
-pyo3-build-config = { version = "0.23", optional = true }
+pyo3-build-config = { version = "0.28", optional = true }
+pyo3-introspection = { version = "0.28", optional = true }
 
 [features]
 default = ["lua-jit", "py-abi3", "py-extmod"]
@@ -70,12 +82,12 @@ async-trait = ["dep:async-trait"]
 serialize = ["dep:serde", "uuid/serde"]
 # special tests which require more setup
 test-e2e = []
-test-coverage = []
+test-coverage = ["dep:syn", "dep:regex"]
 # ffi
-java = ["dep:jni", "dep:tracing-subscriber", "dep:jni-toolbox"]
-js = ["dep:napi-build", "dep:tracing-subscriber", "dep:napi", "dep:napi-derive"]
-py = ["dep:pyo3", "dep:tracing-subscriber", "dep:pyo3-build-config"]
-lua = ["serialize", "dep:mlua", "dep:tracing-subscriber"]
+java = ["dep:jni", "dep:tracing-subscriber", "dep:jni-toolbox", "codemp-proto/java"]
+js = ["dep:napi-build", "dep:tracing-subscriber", "dep:napi", "dep:napi-derive", "codemp-proto/js"]
+py = ["dep:pyo3", "dep:tracing-subscriber", "dep:pyo3-build-config", "dep:pyo3-introspection", "codemp-proto/py"]
+lua = ["serialize", "dep:mlua", "dep:mlua-serde-derive", "dep:tracing-subscriber", "codemp-proto/lua"]
 # ffi variants
 lua-jit = ["mlua?/luajit"]
 lua-54 = ["mlua?/lua54"]

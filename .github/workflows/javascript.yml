@@ -32,7 +32,7 @@ jobs:
           node-version: '20'
       - run: npm install
         working-directory: dist/js
-      - run: npx napi build --cargo-cwd=../.. --platform --release --features=js --strip
+      - run: npx napi build --manifest-path=../../Cargo.toml --output-dir=. --platform --release --features=js --strip
         working-directory: dist/js
       - uses: actions/upload-artifact@v4
         with:
@@ -57,7 +57,7 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
       - run: npm install
         working-directory: dist/js
-      - run: npx napi build --cargo-cwd=../.. --platform --features=js
+      - run: npx napi build --manifest-path=../../Cargo.toml --output-dir=. --platform --release --features=js --strip
         working-directory: dist/js
       - run: rm *.node
         working-directory: dist/js

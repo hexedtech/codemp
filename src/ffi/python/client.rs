@@ -1,11 +1,9 @@
-use super::a_sync_allow_threads;
-use super::Client;
-use crate::api::User;
-use crate::workspace::Workspace;
+use super::a_sync_detach;
+use crate::prelude::*;
 use pyo3::prelude::*;
 
 #[pymethods]
-impl Client {
+impl CodempClient {
 	// #[new]
 	// fn __new__(
 	// 	host: String,
@@ -15,32 +13,37 @@ impl Client {
 	// 	super::tokio().block_on(Client::connect(host, username, password))
 	// }
 
-	#[pyo3(name = "attach_workspace")]
-	fn pyattach_workspace(&self, py: Python<'_>, workspace: String) -> PyResult<super::Promise> {
-		tracing::info!("attempting to join the workspace {}", workspace);
+	#[pyo3(name = "refresh")]
+	fn pyrefresh(&self, py: Python<'_>) -> PyResult<super::Promise> {
+		tracing::info!("attempting to refresh token");
 		let this = self.clone();
-		a_sync_allow_threads!(py, this.attach_workspace(workspace).await)
-		// let this = self.clone();
-		// Ok(super::Promise(Some(tokio().spawn(async move {
-		// 	Ok(this
-		// 		.join_workspace(workspace)
-		// 		.await
-		// 		.map(|f| Python::with_gil(|py| f.into_py(py)))?)
-		// }))))
+		a_sync_detach!(py, this.refresh().await)
 	}
 
 	#[pyo3(name = "create_workspace")]
 	fn pycreate_workspace(&self, py: Python<'_>, workspace: String) -> PyResult<super::Promise> {
 		tracing::info!("creating workspace {}", workspace);
 		let this = self.clone();
-		a_sync_allow_threads!(py, this.create_workspace(workspace).await)
+		a_sync_detach!(py, this.create_workspace(workspace).await)
 	}
 
 	#[pyo3(name = "delete_workspace")]
 	fn pydelete_workspace(&self, py: Python<'_>, workspace: String) -> PyResult<super::Promise> {
 		tracing::info!("deleting workspace {}", workspace);
 		let this = self.clone();
-		a_sync_allow_threads!(py, this.delete_workspace(workspace).await)
+		a_sync_detach!(py, this.delete_workspace(workspace).await)
+	}
+
+	#[pyo3(name = "quit_workspace")]
+	fn pyquit_workspace(
+		&self,
+		py: Python<'_>,
+		user: String,
+		workspace: String,
+	) -> PyResult<super::Promise> {
+		tracing::info!("quitting workspace {}", workspace);
+		let this = self.clone();
+		a_sync_detach!(py, this.quit_workspace(user, workspace).await)
 	}
 
 	#[pyo3(name = "invite_to_workspace")]
@@ -52,48 +55,91 @@ impl Client {
 	) -> PyResult<super::Promise> {
 		tracing::info!("inviting {user} to workspace {workspace}");
 		let this = self.clone();
-		a_sync_allow_threads!(py, this.invite_to_workspace(workspace, user).await)
+		a_sync_detach!(py, this.invite_to_workspace(workspace, user).await)
+	}
+
+	#[pyo3(name = "accept_invite")]
+	fn pyaccept_invite(
+		&self,
+		py: Python<'_>,
+		user: String,
+		workspace: String,
+	) -> PyResult<super::Promise> {
+		tracing::info!("Invite to workspace {user}::{workspace} accepted.");
+		let this = self.clone();
+		a_sync_detach!(py, this.accept_invite(user, workspace).await)
+	}
+
+	#[pyo3(name = "reject_invite")]
+	fn pyreject_invite(
+		&self,
+		py: Python<'_>,
+		user: String,
+		workspace: String,
+	) -> PyResult<super::Promise> {
+		tracing::info!("Invite to workspace {user}::{workspace} rejected.");
+		let this = self.clone();
+		a_sync_detach!(py, this.reject_invite(user, workspace).await)
 	}
 
 	#[pyo3(name = "fetch_owned_workspaces")]
 	fn pyfetch_owned_workspaces(&self, py: Python<'_>) -> PyResult<super::Promise> {
 		tracing::info!("fetching owned workspaces");
 		let this = self.clone();
-		a_sync_allow_threads!(py, this.fetch_owned_workspaces().await)
+		a_sync_detach!(py, this.fetch_owned_workspaces().await)
 	}
 
 	#[pyo3(name = "fetch_joined_workspaces")]
 	fn pyfetch_joined_workspaces(&self, py: Python<'_>) -> PyResult<super::Promise> {
 		tracing::info!("fetching joined workspaces");
 		let this = self.clone();
-		a_sync_allow_threads!(py, this.fetch_joined_workspaces().await)
-	}
-
-	#[pyo3(name = "leave_workspace")]
-	fn pyleave_workspace(&self, id: String) -> bool {
-		self.leave_workspace(id.as_str())
+		a_sync_detach!(py, this.fetch_joined_workspaces().await)
 	}
 
 	// join a workspace
 	#[pyo3(name = "get_workspace")]
-	fn pyget_workspace(&self, id: String) -> Option<Workspace> {
-		self.get_workspace(id.as_str())
+	fn pyget_workspace(&self, user: String, workspace: String) -> Option<CodempWorkspace> {
+		self.get_workspace(user, workspace)
 	}
 
 	#[pyo3(name = "active_workspaces")]
-	fn pyactive_workspaces(&self) -> Vec<String> {
+	fn pyactive_workspaces(&self) -> Vec<CodempWorkspaceIdentifier> {
 		self.active_workspaces()
 	}
 
+	#[pyo3(name = "get_user_info")]
+	fn pyget_user_info(&self, py: Python<'_>, user: String) -> PyResult<super::Promise> {
+		tracing::info!("fetching joined workspaces");
+		let this = self.clone();
+		a_sync_detach!(py, this.get_user_info(user).await)
+	}
+
 	#[pyo3(name = "current_user")]
-	fn pycurrent_user(&self) -> User {
+	fn pycurrent_user(&self) -> CodempUserInfo {
 		self.current_user().clone()
 	}
 
-	#[pyo3(name = "refresh")]
-	fn pyrefresh(&self, py: Python<'_>) -> PyResult<super::Promise> {
-		tracing::info!("attempting to refresh token");
+	#[pyo3(name = "attach_workspace")]
+	fn pyattach_workspace(
+		&self,
+		py: Python<'_>,
+		user: String,
+		workspace: String,
+	) -> PyResult<super::Promise> {
+		tracing::info!("attempting to join the workspace {}", workspace);
 		let this = self.clone();
-		a_sync_allow_threads!(py, this.refresh().await)
+		a_sync_detach!(py, this.attach_workspace(user, workspace).await)
+		// let this = self.clone();
+		// Ok(super::Promise(Some(tokio().spawn(async move {
+		// 	Ok(this
+		// 		.join_workspace(workspace)
+		// 		.await
+		// 		.map(|f| Python::attach(|py| f.into_py(py)))?)
+		// }))))
+	}
+
+	#[pyo3(name = "leave_workspace")]
+	fn pyleave_workspace(&self, user: String, workspace: String) -> bool {
+		self.leave_workspace(user, workspace)
 	}
 }

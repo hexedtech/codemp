@@ -2,10 +2,20 @@
 //! All-in-one renamed imports with `use codemp::prelude::*`.
 
 pub use crate::api::{
+	TextChange as CodempTextChange, Config as CodempConfig,
 	AsyncReceiver as CodempAsyncReceiver, AsyncSender as CodempAsyncSender,
-	BufferUpdate as CodempBufferUpdate, Config as CodempConfig, Controller as CodempController,
-	Cursor as CodempCursor, Event as CodempEvent, Selection as CodempSelection,
-	TextChange as CodempTextChange, User as CodempUser,
+	Controller as CodempController,
+	BufferUpdate as CodempBufferUpdate,
+};
+
+pub use crate::proto::{
+	common::UserInfo as CodempUserInfo,
+	buffer::BufferNode as CodempBufferNode, buffer::BufferAttributes as CodempBufferAttributes,
+	buffer::BufferEvent as CodempBufferEvent,
+	cursor::CursorEvent as CodempCursorEvent, cursor::CursorUpdate as CodempCursorUpdate,
+	cursor::CursorPosition as CodempCursorPosition, cursor::RowCol as CodempRowCol,
+	session::SessionEvent as CodempSessionEvent, session::WorkspaceIdentifier as CodempWorkspaceIdentifier,
+	workspace::WorkspaceEvent as CodempWorkspaceEvent,
 };
 
 pub use crate::{

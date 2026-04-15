@@ -6,30 +6,26 @@
 use crate::{
 	api::{
 		controller::{AsyncReceiver, ControllerCallback},
-		Event, User,
 	},
 	buffer, cursor,
 	errors::{ConnectionResult, ControllerResult, RemoteResult},
-	ext::{IgnorableError, InternallyMutable},
+	ext::IgnorableError,
 	network::Services,
 };
 
 use codemp_proto::{
-	common::{Empty, Token},
-	files::BufferNode,
-	workspace::{
-		workspace_event::{
-			Event as WorkspaceEventInner, FileCreate, FileDelete, FileRename, UserJoin, UserLeave,
-		},
-		WorkspaceEvent,
-	},
+	buffer::{BufferAttributes, BufferNode, BufferPath},
+	common::Empty,
+	workspace::{WorkspaceEvent, WorkspaceEventKind},
 };
 
-use dashmap::{DashMap, DashSet};
+use dashmap::DashMap;
 use std::sync::{Arc, Weak};
-use tokio::sync::{mpsc::{self, error::TryRecvError}, oneshot, watch};
+use tokio::sync::{
+	mpsc::{self, error::TryRecvError},
+	oneshot, watch,
+};
 use tonic::Streaming;
-use uuid::Uuid;
 
 #[cfg(feature = "js")]
 use napi_derive::napi;
@@ -41,26 +37,27 @@ use napi_derive::napi;
 /// Using a workspace handle, it's possible to receive events (user join/leave, filetree updates)
 /// and create/delete/attach to new buffers.
 #[derive(Debug, Clone)]
-#[cfg_attr(feature = "py", pyo3::pyclass)]
+#[cfg_attr(feature = "py", pyo3::pyclass(from_py_object))]
 #[cfg_attr(feature = "js", napi)]
-pub struct Workspace(Arc<WorkspaceInner>);
+pub struct Workspace(pub(crate) Arc<WorkspaceInner>);
 
 #[derive(Debug)]
-struct WorkspaceInner {
-	name: String,
-	current_user: Arc<User>,
+pub(crate) struct WorkspaceInner {
+	id: crate::proto::session::WorkspaceIdentifier,
+	current_user: Arc<codemp_proto::common::UserInfo>,
 	cursor: cursor::Controller,
 	buffers: DashMap<String, buffer::Controller>,
 	services: Services,
-	filetree: DashSet<String>,
-	users: Arc<DashMap<Uuid, User>>,
-	events: tokio::sync::Mutex<mpsc::UnboundedReceiver<crate::api::Event>>,
+	filetree: DashMap<String, BufferNode>,
+	buffer_users: DashMap<String, Vec<String>>,
+	users: Arc<DashMap<String, codemp_proto::common::UserInfo>>,
+	events: tokio::sync::Mutex<mpsc::UnboundedReceiver<WorkspaceEvent>>,
 	callback: watch::Sender<Option<ControllerCallback<Workspace>>>,
 	poll_tx: mpsc::UnboundedSender<oneshot::Sender<()>>,
 }
 
-impl AsyncReceiver<Event> for Workspace {
-	async fn try_recv(&self) -> ControllerResult<Option<Event>> {
+impl AsyncReceiver<WorkspaceEvent> for Workspace {
+	async fn try_recv(&self) -> ControllerResult<Option<WorkspaceEvent>> {
 		match self.0.events.lock().await.try_recv() {
 			Ok(x) => Ok(Some(x)),
 			Err(TryRecvError::Empty) => Ok(None),
@@ -84,17 +81,15 @@ impl AsyncReceiver<Event> for Workspace {
 }
 
 impl Workspace {
-	#[tracing::instrument(skip(name, user, token, claims), fields(ws = name))]
+	#[tracing::instrument(skip(id, user, workspace_claim, user_claim), fields(owner = id.user, ws = id.workspace))]
 	pub(crate) async fn connect(
-		name: String,
-		user: Arc<User>,
+		id: crate::proto::session::WorkspaceIdentifier,
+		user: Arc<crate::proto::common::UserInfo>,
 		config: crate::api::Config,
-		token: Token,
-		claims: tokio::sync::watch::Receiver<codemp_proto::common::Token>,
+		workspace_claim: tokio::sync::watch::Receiver<codemp_proto::common::Token>,
+		user_claim: tokio::sync::watch::Receiver<codemp_proto::common::Token>,
 	) -> ConnectionResult<Self> {
-		let workspace_claim = InternallyMutable::new(token);
-		let services =
-			Services::try_new(&config.endpoint(), claims, workspace_claim.channel()).await?;
+		let services = Services::try_new(&config.endpoint(), user_claim, workspace_claim).await?;
 		let ws_stream = services.ws().attach(Empty {}).await?.into_inner();
 
 		let (tx, rx) = mpsc::channel(128);
@@ -108,14 +103,20 @@ impl Workspace {
 			.into_inner();
 
 		let users = Arc::new(DashMap::default());
-		let controller = cursor::Controller::spawn(users.clone(), tx, cur_stream, &name);
+		let controller = cursor::Controller::spawn(
+			tx,
+			cur_stream,
+			id.clone(),
+			services.cur().clone(),
+		);
 
 		let ws = Self(Arc::new(WorkspaceInner {
-			name: name.clone(),
+			id: id.clone(),
 			current_user: user,
 			cursor: controller,
 			buffers: DashMap::default(),
-			filetree: DashSet::default(),
+			filetree: DashMap::default(),
+			buffer_users: DashMap::default(),
 			users,
 			events: tokio::sync::Mutex::new(ev_rx),
 			services,
@@ -133,59 +134,129 @@ impl Workspace {
 		};
 
 		let _t = tokio::spawn(async move {
-			worker.work(name, ws_stream, weak).await;
+			worker.work(id, ws_stream, weak).await;
 		});
 
 		ws.fetch_users().await?;
 		ws.fetch_buffers().await?;
 
+		for buffer_ref in ws.0.buffers.iter() {
+			ws.fetch_buffer_users(buffer_ref.key().clone()).await?;
+		}
+
 		Ok(ws)
 	}
 
+	pub(crate) fn services(&self) -> &Services {
+		&self.0.services
+	}
+
 	/// drop arc, return true if was last
+	#[allow(unused)] // for now, until we solve the drop-behavior issue
 	pub(crate) fn consume(self) -> bool {
 		Arc::into_inner(self.0).is_some()
 	}
 
 	/// Create a new buffer in the current workspace.
-	pub async fn create_buffer(&self, path: &str) -> RemoteResult<()> {
+	pub async fn create_buffer(&self, path: impl ToString, attributes: Option<BufferAttributes>) -> RemoteResult<()> {
 		let mut workspace_client = self.0.services.ws();
+		let path = path.to_string();
+		let attributes = attributes.unwrap_or_default();
 		workspace_client
 			.create_buffer(tonic::Request::new(BufferNode {
-				path: path.to_string(),
+				path: BufferPath::from(&path),
+				attributes,
 			}))
 			.await?;
 
-		// add to filetree
-		self.0.filetree.insert(path.to_string());
-
-		// fetch buffers
-		self.fetch_buffers().await?;
+		// add to filetree, not really necessary as we will get an event for it
+		self.0.filetree.insert(
+			path.clone(),
+			BufferNode {
+				path: BufferPath::from(&path),
+				attributes,
+			},
+		);
 
 		Ok(())
 	}
 
+	/// Pin an ephemeral buffer, making it permanent.
+	pub async fn pin_buffer(&self, path: impl AsRef<str>) -> RemoteResult<()> {
+		self.0
+			.services
+			.ws()
+			.clone()
+			.pin_buffer(BufferPath::from(path.as_ref()))
+			.await?;
+		Ok(())
+	}
+
+	/// Unpins a permanen buffer, making it ephemeral.
+	pub async fn un_pin_buffer(&self, path: impl AsRef<str>) -> RemoteResult<()> {
+		self.0
+			.services
+			.ws()
+			.clone()
+			.un_pin_buffer(BufferPath::from(path.as_ref()))
+			.await?;
+		Ok(())
+	}
+
 	/// Attach to a buffer and return a handle to it.
-	#[tracing::instrument(skip(self))]
-	pub async fn attach_buffer(&self, path: &str) -> ConnectionResult<buffer::Controller> {
-		let mut worskspace_client = self.0.services.ws();
-		let request = tonic::Request::new(BufferNode {
-			path: path.to_string(),
-		});
-		let credentials = worskspace_client.access_buffer(request).await?.into_inner();
+	#[tracing::instrument(skip(self, path), fields(path = path.to_string()))]
+	pub async fn attach_buffer(&self, path: impl ToString) -> ConnectionResult<buffer::Controller> {
+		let path = path.to_string();
+		let mut workspace_client = self.0.services.ws();
+		let mut buffer_client = self.0.services.buf();
+		let credentials = workspace_client
+			.get_buffer_token(BufferPath::from(&path))
+			.await?
+			.into_inner();
 
 		let (tx, rx) = mpsc::channel(256);
 		let mut req = tonic::Request::new(tokio_stream::wrappers::ReceiverStream::new(rx));
-		req.metadata_mut().insert(
-			"buffer",
-			tonic::metadata::MetadataValue::try_from(credentials.token).map_err(|e| {
-				tonic::Status::internal(format!("failed representing token to string: {e}"))
-			})?,
-		);
-		let stream = self.0.services.buf().attach(req).await?.into_inner();
+		req.metadata_mut()
+			.insert("buffer", crate::ext::token_to_metadata(credentials)?);
+		let stream = buffer_client.attach(req).await?.into_inner();
 
-		let controller = buffer::Controller::spawn(self.0.current_user.id, path, tx, stream, &self.0.name);
-		self.0.buffers.insert(path.to_string(), controller.clone());
+		let controller = buffer::Controller::spawn(
+			self.0.current_user.name.clone(),
+			path.clone(),
+			tx,
+			stream,
+			self.0.id.clone(),
+		);
+
+		self.0.buffers.insert(path.clone(), controller.clone());
+
+		let _path = path.clone();
+		let weak = Arc::downgrade(&controller.0);
+		tokio::spawn(async move {
+			let fut = async move {
+				loop {
+					// TODO either configurable token refresh time or calculate depending on token lifetime
+					tokio::time::sleep(std::time::Duration::from_secs(20)).await;
+					if weak.upgrade().is_none() {
+						break;
+					};
+					let new_credentials = workspace_client
+						.get_buffer_token(BufferPath::from(&_path))
+						.await?
+						.into_inner();
+					let mut request = tonic::Request::new(Empty {});
+					request
+						.metadata_mut()
+						.insert("buffer", crate::ext::token_to_metadata(new_credentials)?);
+					buffer_client.keep_alive(request).await?;
+				}
+				Ok::<(), tonic::Status>(())
+			};
+
+			if let Err(e) = fut.await {
+				tracing::error!("error in keepalive task for buffer {path}: {e}");
+			}
+		});
 
 		Ok(controller)
 	}
@@ -199,94 +270,84 @@ impl Workspace {
 	/// a dangling reference somewhere. It may just be waiting for garbage collection, but as long
 	/// as it exists, it will prevent the controller from being completely dropped.
 	#[allow(clippy::redundant_pattern_matching)] // all cases are clearer this way
-	pub fn detach_buffer(&self, path: &str) -> bool {
-		match self.0.buffers.remove(path) {
+	pub fn detach_buffer(&self, path: impl AsRef<str>) -> bool {
+		match self.0.buffers.remove(path.as_ref()) {
 			None => true, // noop: we werent attached in the first place
-			Some((_name, controller)) => match Arc::into_inner(controller.0) {
-				None => false,   // dangling ref! we can't drop this
-				Some(_) => true, // dropping it now
+			Some((_name, controller)) => {
+				let count = Arc::strong_count(&controller.0);
+				tracing::debug!("there are {} more references to this buffer controller", count - 1);
+				match Arc::into_inner(controller.0) {
+					Some(_) => true, // dropping it now
+					None => false, // dangling ref! we can't drop this
+				}
 			},
 		}
 	}
 
 	/// Re-fetch the list of available buffers in the workspace.
-	pub async fn fetch_buffers(&self) -> RemoteResult<Vec<String>> {
+	pub async fn fetch_buffers(&self) -> RemoteResult<()> {
 		let mut workspace_client = self.0.services.ws();
-		let resp = workspace_client
-			.list_buffers(tonic::Request::new(Empty {}))
-			.await?
-			.into_inner();
-
-		let mut out = Vec::new();
+		let resp = workspace_client.fetch_buffers(Empty {}).await?.into_inner();
 
 		self.0.filetree.clear();
 		for b in resp.buffers {
-			self.0.filetree.insert(b.path.clone());
-			out.push(b.path);
+			self.0
+				.filetree
+				.insert(b.path.to_string(), b);
 		}
 
-		Ok(out)
+		Ok(())
 	}
 
 	/// Re-fetch the list of all users in the workspace.
-	pub async fn fetch_users(&self) -> RemoteResult<Vec<User>> {
-		let mut workspace_client = self.0.services.ws();
-		let users = workspace_client
-			.list_users(tonic::Request::new(Empty {}))
-			.await?
-			.into_inner()
-			.users
-			.into_iter()
-			.map(User::from);
-
-		let mut result = Vec::new();
+	pub async fn fetch_users(&self) -> RemoteResult<()> {
+		let mut workspace_client = self.services().ws();
+		let resp = workspace_client.fetch_users(Empty {}).await?.into_inner();
 
 		self.0.users.clear();
-		for u in users {
-			self.0.users.insert(u.id, u.clone());
-			result.push(u);
+		for user_name in resp.users {
+			// TODO need to fetch whole user profiles here maybe?
+			self.0
+				.users
+				.insert(user_name.clone(), codemp_proto::common::UserInfo { name: user_name, ..Default::default() });
 		}
 
-		Ok(result)
+		Ok(())
 	}
 
-	/// Fetch a list of the [User]s attached to a specific buffer.
-	pub async fn fetch_buffer_users(&self, path: &str) -> RemoteResult<Vec<User>> {
-		let mut workspace_client = self.0.services.ws();
-		let buffer_users = workspace_client
-			.list_buffer_users(tonic::Request::new(BufferNode {
-				path: path.to_string(),
-			}))
+	/// Re-fetch the list of users attached to the given buffer..
+	pub async fn fetch_buffer_users(&self, path: impl ToString) -> RemoteResult<()> {
+		let path = path.to_string();
+		let resp = self
+			.services()
+			.ws()
+			.fetch_buffer_users(BufferPath::from(&path))
 			.await?
-			.into_inner()
-			.users
-			.into_iter()
-			.map(|id| id.into())
-			.collect();
+			.into_inner();
 
-		Ok(buffer_users)
+		self.0.buffer_users.insert(path, resp.users);
+
+		Ok(())
 	}
 
 	/// Delete a buffer.
-	pub async fn delete_buffer(&self, path: &str) -> RemoteResult<()> {
-		self.detach_buffer(path); // just in case
+	pub async fn delete_buffer(&self, path: impl AsRef<str>) -> RemoteResult<()> {
+		self.detach_buffer(path.as_ref()); // just in case
 
 		let mut workspace_client = self.0.services.ws();
 		workspace_client
-			.delete_buffer(tonic::Request::new(BufferNode {
-				path: path.to_string(),
-			}))
+			.delete_buffer(BufferPath::from(path.as_ref()))
 			.await?;
 
-		self.0.filetree.remove(path);
+		self.0.filetree.remove(path.as_ref());
 
 		Ok(())
 	}
 
 	/// Get the workspace unique id.
 	// #[cfg_attr(feature = "js", napi)] // https://github.com/napi-rs/napi-rs/issues/1120
-	pub fn id(&self) -> String {
-		self.0.name.clone()
+	pub fn id(&self) -> &crate::proto::session::WorkspaceIdentifier {
+		&self.0.id
 	}
 
 	/// Return a handle to the [`cursor::Controller`].
@@ -297,8 +358,8 @@ impl Workspace {
 
 	/// Return a handle to the [buffer::Controller] with the given path, if present.
 	// #[cfg_attr(feature = "js", napi)] // https://github.com/napi-rs/napi-rs/issues/1120
-	pub fn get_buffer(&self, path: &str) -> Option<buffer::Controller> {
-		self.0.buffers.get(path).map(|x| x.clone())
+	pub fn get_buffer(&self, path: impl AsRef<str>) -> Option<buffer::Controller> {
+		self.0.buffers.get(path.as_ref()).map(|x| x.clone())
 	}
 
 	/// Get a list of all the currently attached buffers.
@@ -311,8 +372,8 @@ impl Workspace {
 			.collect()
 	}
 
-	/// Get all names of users currently in this workspace
-	pub fn user_list(&self) -> Vec<User> {
+	/// Get all users currently in this workspace
+	pub fn user_list(&self) -> Vec<codemp_proto::common::UserInfo> {
 		self.0
 			.users
 			.iter()
@@ -320,18 +381,31 @@ impl Workspace {
 			.collect()
 	}
 
+	/// Get all users currently attached to specified buffer
+	pub fn buffer_user_list(&self, path: impl AsRef<str>) -> Vec<codemp_proto::common::UserInfo> {
+		let mut out = Vec::new();
+		if let Some(buf_ref) = self.0.buffer_users.get(path.as_ref()) {
+			for uid in buf_ref.value() {
+				if let Some(user_ref) = self.0.users.get(uid) {
+					out.push(user_ref.value().clone());
+				}
+			}
+		}
+		out
+	}
+
 	/// Get the filetree as it is currently cached.
-	/// A filter may be applied, and it may be strict (equality check) or not (starts_with check).
+	/// A filter may be applied, and it works as a "starts_with" check.
 	// #[cfg_attr(feature = "js", napi)] // https://github.com/napi-rs/napi-rs/issues/1120
-	pub fn search_buffers(&self, filter: Option<&str>) -> Vec<String> {
+	pub fn search_buffers(&self, filter: Option<&str>) -> Vec<BufferNode> {
 		let mut tree = self
 			.0
 			.filetree
 			.iter()
-			.filter(|f| filter.is_none_or(|flt| f.starts_with(flt)))
-			.map(|f| f.clone())
-			.collect::<Vec<String>>();
-		tree.sort();
+			.filter(|f| filter.is_none_or(|flt| f.key().starts_with(flt)))
+			.map(|x| x.value().clone())
+			.collect::<Vec<BufferNode>>();
+		tree.sort_by(|a, b| a.path.path.cmp(&b.path.path));
 		tree
 	}
 }
@@ -340,54 +414,110 @@ struct WorkspaceWorker {
 	callback: watch::Receiver<Option<ControllerCallback<Workspace>>>,
 	pollers: Vec<oneshot::Sender<()>>,
 	poll_rx: mpsc::UnboundedReceiver<oneshot::Sender<()>>,
-	events: mpsc::UnboundedSender<crate::api::Event>,
+	events: mpsc::UnboundedSender<crate::proto::workspace::WorkspaceEvent>,
 }
 
 impl WorkspaceWorker {
 	#[tracing::instrument(skip(self, stream, weak))]
-	pub(crate) async fn work(mut self, ws: String, mut stream: Streaming<WorkspaceEvent>, weak: Weak<WorkspaceInner>) {
+	pub(crate) async fn work(
+		mut self,
+		ws: crate::proto::session::WorkspaceIdentifier,
+		mut stream: Streaming<WorkspaceEvent>,
+		weak: Weak<WorkspaceInner>,
+	) {
 		tracing::debug!("workspace worker starting");
 		loop {
+			if weak.upgrade().is_none() {
+				break tracing::debug!("workspace worker clean exit");
+			}
+
 			tokio::select! {
+				// re-poll every 10s
+				_ = tokio::time::sleep(std::time::Duration::from_secs(10)) => {},
+
 				res = self.poll_rx.recv() => match res {
 				None => break tracing::debug!("pollers channel closed: workspace has been dropped"),
 					Some(x) => self.pollers.push(x),
 				},
 
 				res = stream.message() => match res {
-					Err(e) => break tracing::error!("workspace '{ws}' stream closed: {e}"),
-					Ok(None) => break tracing::info!("leaving workspace {ws}"),
-					Ok(Some(WorkspaceEvent { event: None })) => {
-						tracing::warn!("workspace {ws} received empty event")
-					}
-					Ok(Some(WorkspaceEvent { event: Some(ev) })) => {
+					Err(e) => break tracing::error!("workspace '{ws:?}' stream closed: {e}"),
+					Ok(None) => break tracing::info!("leaving workspace {ws:?}"),
+					Ok(Some(event)) => {
 						let Some(inner) = weak.upgrade() else {
 							break tracing::debug!("workspace worker clean exit");
 						};
-						tracing::debug!("received workspace event: {ev:?}");
-						let update = crate::api::Event::from(&ev);
-						match ev {
-							// user
-							WorkspaceEventInner::Join(UserJoin { user }) => {
-								inner.users.insert(user.id.uuid(), user.into());
+						tracing::debug!("received workspace event: {event:?}");
+						let _event = event.clone();
+						match event.kind() {
+							// TODO we should never get wrong optionals set but should we log if we do?
+							WorkspaceEventKind::UserJoinWorkspace => {
+								if let Some(user) = event.user {
+									inner.users.insert(user.clone(), codemp_proto::common::UserInfo { name: user, ..Default::default() });
+								}
 							}
-							WorkspaceEventInner::Leave(UserLeave { user }) => {
-								inner.users.remove(&user.id.uuid());
+							WorkspaceEventKind::UserLeaveWorkspace => {
+								if let Some(user) = event.user {
+									inner.users.remove(&user);
+								}
 							}
-							// buffer
-							WorkspaceEventInner::Create(FileCreate { path }) => {
-								inner.filetree.insert(path);
+							WorkspaceEventKind::UserJoinBuffer => {
+								if let (Some(user), Some(buffer)) = (event.user, event.path) {
+									match inner.buffer_users.get_mut(&buffer) {
+										Some(mut buf_users_ref) => buf_users_ref.push(user),
+										None => { inner.buffer_users.insert(buffer, vec![user]); },
+									}
+								}
+							},
+							WorkspaceEventKind::UserLeaveBuffer => {
+								if let (Some(user), Some(buffer)) = (event.user, event.path) {
+									match inner.buffer_users.get_mut(&buffer) {
+										Some(mut buf_users_ref) => buf_users_ref.retain(|x| *x != user),
+										None => tracing::warn!("received UserLeaveBuffer event for an unknown buffer"),
+									}
+								}
+							},
+
+							WorkspaceEventKind::BufferCreate => {
+								if let (Some(path), Some(attributes)) = (event.path, event.attributes) {
+									inner.buffer_users.insert(path.clone(), Vec::new());
+									inner.filetree.insert(path.clone(), BufferNode {
+										path: BufferPath::from(&path),
+										attributes
+									});
+								}
 							}
-							WorkspaceEventInner::Rename(FileRename { before, after }) => {
-								inner.filetree.remove(&before);
-								inner.filetree.insert(after);
+							WorkspaceEventKind::BufferRename => {
+								if let (Some(before), Some(after)) = (event.path, event.after) {
+									if let Some((_path, controller)) = inner.buffers.remove(&before) {
+										inner.buffers.insert(after.clone(), controller);
+									}
+									if let Some((_path, node)) = inner.filetree.remove(&before) {
+										inner.filetree.insert(after.clone(), node);
+									}
+									if let Some((_path, users)) = inner.buffer_users.remove(&before) {
+										inner.buffer_users.insert(after, users);
+									}
+								}
 							}
-							WorkspaceEventInner::Delete(FileDelete { path }) => {
-								inner.filetree.remove(&path);
-								let _ = inner.buffers.remove(&path);
+							WorkspaceEventKind::BufferDelete => {
+								if let Some(path) = event.path {
+									inner.filetree.remove(&path);
+									inner.buffer_users.remove(&path);
+									let _ = inner.buffers.remove(&path);
+								}
 							}
+							WorkspaceEventKind::BufferAttrsUpdated => {
+								if let (Some(path), Some(attributes)) = (event.path, event.attributes) {
+									if let Some(mut r) = inner.filetree.get_mut(&path) {
+										r.attributes = attributes;
+									}
+								}
+							}
+
 						}
-						if self.events.send(update).is_err() {
+
+						if self.events.send(_event).is_err() {
 							tracing::warn!("no active controller to receive workspace event");
 						}
 						self.pollers.drain(..).for_each(|x| {

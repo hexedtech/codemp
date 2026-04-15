@@ -99,6 +99,28 @@ function MaybeWorkspaceEventPromise:await() end
 function MaybeWorkspaceEventPromise:and_then(cb) end
 
 
+---@class (exact) SessionEventPromise : Promise
+local SessionEventPromise = {}
+--- block until promise is ready and return value
+--- @return SessionEvent
+function SessionEventPromise:await() end
+--- cancel promise execution
+function SessionEventPromise:cancel() end
+---@param cb fun(x: SessionEvent) callback to invoke
+---invoke callback asynchronously as soon as promise is ready
+function SessionEventPromise:and_then(cb) end
+
+
+---@class (exact) MaybeSessionEventPromise : Promise
+local MaybeSessionEventPromise = {}
+--- block until promise is ready and return value
+--- @return SessionEvent | nil
+function MaybeSessionEventPromise:await() end
+---@param cb fun(x: SessionEvent | nil) callback to invoke
+---invoke callback asynchronously as soon as promise is ready
+function MaybeSessionEventPromise:and_then(cb) end
+
+
 ---@class (exact) BufferControllerPromise : Promise
 local BufferControllerPromise = {}
 --- block until promise is ready and return value
@@ -111,28 +133,28 @@ function BufferControllerPromise:cancel() end
 function BufferControllerPromise:and_then(cb) end
 
 
----@class (exact) CursorPromise : Promise
-local CursorPromise = {}
+---@class (exact) CursorEventPromise : Promise
+local CursorEventPromise = {}
 --- block until promise is ready and return value
---- @return Cursor
-function CursorPromise:await() end
+--- @return CursorEvent
+function CursorEventPromise:await() end
 --- cancel promise execution
-function CursorPromise:cancel() end
----@param cb fun(x: Cursor) callback to invoke
+function CursorEventPromise:cancel() end
+---@param cb fun(x: CursorEvent) callback to invoke
 ---invoke callback asynchronously as soon as promise is ready
-function CursorPromise:and_then(cb) end
+function CursorEventPromise:and_then(cb) end
 
 
----@class (exact) MaybeCursorPromise : Promise
-local MaybeCursorPromise = {}
+---@class (exact) MaybeCursorEventPromise : Promise
+local MaybeCursorEventPromise = {}
 --- block until promise is ready and return value
---- @return Cursor | nil
-function MaybeCursorPromise:await() end
+--- @return CursorEvent | nil
+function MaybeCursorEventPromise:await() end
 --- cancel promise execution
-function MaybeCursorPromise:cancel() end
----@param cb fun(x: Cursor | nil) callback to invoke
+function MaybeCursorEventPromise:cancel() end
+---@param cb fun(x: CursorEvent | nil) callback to invoke
 ---invoke callback asynchronously as soon as promise is ready
-function MaybeCursorPromise:and_then(cb) end
+function MaybeCursorEventPromise:and_then(cb) end
 
 
 ---@class (exact) BufferUpdatePromise : Promise
@@ -158,16 +180,38 @@ function MaybeBufferUpdatePromise:cancel() end
 ---invoke callback asynchronously as soon as promise is ready
 function MaybeBufferUpdatePromise:and_then(cb) end
 
----@class (exact) UserListPromise : Promise
-local UserListPromise = {}
+---@class (exact) UserInfoListPromise : Promise
+local UserInfoListPromise = {}
 --- block until promise is ready and return value
---- @return User[]
-function UserListPromise:await() end
+--- @return UserInfo[]
+function UserInfoListPromise:await() end
 --- cancel promise execution
-function UserListPromise:cancel() end
----@param cb fun(x: User[]) callback to invoke
+function UserInfoListPromise:cancel() end
+---@param cb fun(x: UserInfo[]) callback to invoke
 ---invoke callback asynchronously as soon as promise is ready
-function UserListPromise:and_then(cb) end
+function UserInfoListPromise:and_then(cb) end
+
+---@class (exact) UserInfoPromise : Promise
+local UserInfoPromise = {}
+--- block until promise is ready and return value
+--- @return UserInfo
+function UserInfoPromise:await() end
+--- cancel promise execution
+function UserInfoPromise:cancel() end
+---@param cb fun(x: UserInfo) callback to invoke
+---invoke callback asynchronously as soon as promise is ready
+function UserInfoPromise:and_then(cb) end
+
+---@class (exact) WorkspaceIdentifierListPromise : Promise
+local WorkspaceIdentifierListPromise = {}
+--- block until promise is ready and return value
+--- @return WorkspaceIdentifier[]
+function WorkspaceIdentifierListPromise:await() end
+--- cancel promise execution
+function WorkspaceIdentifierListPromise:cancel() end
+---@param cb fun(x: WorkspaceIdentifier[]) callback to invoke
+---invoke callback asynchronously as soon as promise is ready
+function WorkspaceIdentifierListPromise:and_then(cb) end
 
 -- [[ END ASYNC STUFF ]]
 
@@ -176,7 +220,7 @@ function UserListPromise:and_then(cb) end
 ---the effective local client, handling connecting to codemp server
 local Client = {}
 
----@return User
+---@return UserInfo
 ---current logged in user for this client
 function Client:current_user() end
 
@@ -190,12 +234,13 @@ function Client:active_workspaces() end
 ---refresh current user token if possible
 function Client:refresh() end
 
+---@param user string workspace owning user
 ---@param ws string workspace id to connect to
 ---@return WorkspacePromise
 ---@async
 ---@nodiscard
 ---join requested workspace if possible and subscribe to event bus
-function Client:attach_workspace(ws) end
+function Client:attach_workspace(user, ws) end
 
 ---@param ws string workspace id to create
 ---@return NilPromise
@@ -204,9 +249,10 @@ function Client:attach_workspace(ws) end
 ---create a new workspace with given id
 function Client:create_workspace(ws) end
 
+---@param user string workspace owning user
 ---@param ws string workspace id to leave
 ---leave workspace with given id, detaching and disconnecting
-function Client:leave_workspace(ws) end
+function Client:leave_workspace(user, ws) end
 
 ---@param ws string workspace id to delete
 ---@return NilPromise
@@ -214,6 +260,30 @@ function Client:leave_workspace(ws) end
 ---@nodiscard
 ---delete workspace with given id
 function Client:delete_workspace(ws) end
+
+---@param user string user owning the workspace to quit
+---@param workspace string workspace to quit
+---@return NilPromise
+---@async
+---@nodiscard
+---quit a joined workspace, by user + workspace name
+function Client:quit_workspace(user, workspace) end
+
+---@param user string user inviting us
+---@param workspace string workspace being invited to
+---@return NilPromise
+---@async
+---@nodiscard
+---accept an invite to a new workspace
+function Client:accept_invite(user, workspace) end
+
+---@param user string user inviting us
+---@param workspace string workspace being invited to
+---@return NilPromise
+---@async
+---@nodiscard
+---reject an invite to a new workspace
+function Client:reject_invite(user, workspace) end
 
 ---@param ws string workspace id to delete
 ---@param user string user name to invite to given workspace
@@ -223,28 +293,88 @@ function Client:delete_workspace(ws) end
 ---grant user acccess to workspace
 function Client:invite_to_workspace(ws, user) end
 
----@return StringArrayPromise
+---@return WorkspaceIdentifierListPromise
 ---@async
 ---@nodiscard
 ---fetch and list owned workspaces
 function Client:fetch_owned_workspaces() end
 
----@return StringArrayPromise
+---@return WorkspaceIdentifierListPromise
 ---@async
 ---@nodiscard
 ---fetch and list joined workspaces
 function Client:fetch_joined_workspaces() end
 
+---@param user string user owning this workspace
 ---@param ws string workspace id to get
 ---@return Workspace?
 ---get an active workspace by name
-function Client:get_workspace(ws) end
+function Client:get_workspace(user, ws) end
+
+---@param user string username to lookup
+---@return UserInfoPromise
+---@async
+---@nodiscard
+---get full user info for given username from server
+function Client:get_user_info(user) end
+
+---@class (exact) SessionEvent
+---@field kind integer (SessionEventKind) event kind
+---@field user string the user that created this event (sent invitation, rejected invite...)
+---@field workspace WorkspaceIdentifier the workspace this event is related to
+
+---@return MaybeSessionEventPromise
+---@async
+---@nodiscard
+---try to receive session events, returning nil if none is available
+function Client:try_recv() end
+
+---@return SessionEventPromise
+---@async
+---@nodiscard
+---block until next client event and return it
+function Client:recv() end
+
+---@return NilPromise
+---@async
+---@nodiscard
+---block until next session event without returning it
+function Client:poll() end
+
+---clears any previously registered session callback
+function Client:clear_callback() end
+
+---@param cb fun(w: Client) callback to invoke on each workspace event received
+---register a new callback to be called on session events (replaces any previously registered one)
+function Client:callback(cb) end
 
 
 
----@class User
----@field id string user uuid
----@field name string user display name
+---@class UserInfo
+---represents a service user and contains all its relevant info
+---@field name string user unique, immutable name
+---@field display_name string? display name, mutable and not guaranteed to be unique
+---@field description string? user description, maybe containing contact info
+---@field avatar integer[]? user avatar image, as bytes 
+
+---@class WorkspaceIdentifier
+---uniquely identifies a workspace, by its owner and workspace name
+---@field user string username of workspace owner
+---@field workspace string workspace name
+
+---@class BufferAttributes
+---attributes and properties of a buffer
+---@field ephemeral boolean wheter this buffer is ephemeral
+
+---@class BufferPath
+---a wrapper around a buffer path string
+---@field path string the underlying path
+--TODO this should go
+
+---@class BufferNode
+---represents a buffer and holds wheter it is ephemeral
+---@field path BufferPath buffer path
+---@field attributes BufferAttributes attributes of this buffer
 
 
 
@@ -252,7 +382,7 @@ function Client:get_workspace(ws) end
 ---a joined codemp workspace
 local Workspace = {}
 
----@return string
+---@return WorkspaceIdentifier
 ---workspace id
 function Workspace:id() end
 
@@ -265,11 +395,12 @@ function Workspace:active_buffers() end
 function Workspace:cursor() end
 
 ---@param path string relative path ("name") of new buffer
+---@param attributes BufferAttributes? buffer attributes for this new buffer
 ---@return NilPromise
 ---@async
 ---@nodiscard
 ---create a new empty buffer
-function Workspace:create_buffer(path) end
+function Workspace:create_buffer(path, attributes) end
 
 ---@param path string relative path ("name") of buffer to delete
 ---@return NilPromise
@@ -277,6 +408,20 @@ function Workspace:create_buffer(path) end
 ---@nodiscard
 ---delete buffer from workspace
 function Workspace:delete_buffer(path) end
+
+---@param path string relative path ("name") of buffer to pin
+---@return NilPromise
+---@async
+---@nodiscard
+---pin a buffer, meaning it will persist even if no users are attached
+function Workspace:pin_buffer(path) end
+
+---@param path string relative path ("name") of buffer to un-pin
+---@return NilPromise
+---@async
+---@nodiscard
+---un-pin a buffer, meaning it will get deleted once all users leave
+function Workspace:un_pin_buffer(path) end
 
 ---@param path string relative path ("name") of buffer to get
 ---@return BufferController?
@@ -296,19 +441,24 @@ function Workspace:attach_buffer(path) end
 function Workspace:detach_buffer(path) end
 
 ---@param filter? string apply a filter to the return elements
----@return string[]
+---@return BufferNode[]
 ---return the list of available buffers in this workspace, as relative paths from workspace root
 function Workspace:search_buffers(filter) end
 
----@return User[]
+---@return UserInfo[]
 ---return all names of users currently in this workspace
 function Workspace:user_list() end
+
+---@param path string path of buffer queried for attached users
+---@return UserInfo[]
+---return all names of users currently attached to given buffer (by path)
+function Workspace:buffer_user_list(path) end
 
 ---@return NilPromise
 ---@async
 ---@nodiscard
 ---force refresh buffer list from workspace
-function Workspace:fetch_buffers(path) end
+function Workspace:fetch_buffers() end
 
 ---@return NilPromise
 ---@async
@@ -317,16 +467,18 @@ function Workspace:fetch_buffers(path) end
 function Workspace:fetch_users(path) end
 
 ---@param path string the buffer to look in
----@return UserListPromise
+---@return NilPromise
 ---@async
 ---@nodiscard
 ---fetch the list of users in the given buffer
 function Workspace:fetch_buffer_users(path) end
 
 ---@class (exact) WorkspaceEvent
----@field type string can be "UserJoin", "UserLeave" or "FileTreeUpdated"
----@field name? string present for "UserJoin" and "UserLeave"
----@field path? string present for "FileTreeUpdated"
+---@field kind integer (WorkspaceEventKind) event kind
+---@field user string? the user that joined/left (possibly a buffer)
+---@field path string? path to relevant buffer (deleted/created/left by user...)
+---@field ephemeral boolean? wheter relevant buffer is ephemeral
+---@field after string? if this is a FileRename, new path will be here
 
 ---@return MaybeWorkspaceEventPromise
 ---@async
@@ -356,6 +508,7 @@ function Workspace:callback(cb) end
 
 
 
+
 ---@class (exact) BufferController
 ---handle to a remote buffer, for async send/recv operations
 local BufferController = {}
@@ -375,6 +528,14 @@ local BufferUpdate = {}
 ---@param other string text to apply change to
 ---apply this text change to a string, returning the result
 function TextChange:apply(other) end
+
+---@return WorkspaceIdentifier
+---returns the workspace id this buffer belongs to
+function BufferController:workspace_id() end
+
+---@return string
+---returns the path this buffer belongs to
+function BufferController:path() end
 
 ---@param change TextChange text change to broadcast
 ---update buffer with a text change; note that to delete content should be empty but not span, while to insert span should be empty but not content (can insert and delete at the same time)
@@ -422,30 +583,47 @@ function BufferController:ack(version) end
 ---handle to a workspace's cursor channel, allowing send/recv operations
 local CursorController = {}
 
----@class Selection
----@field buffer string relative path ("name") of buffer on which this cursor is
----@field start_row integer
----@field start_col integer
----@field end_row integer
----@field end_col integer
----a cursor selected region, as row-col indices
+---a row+col tuple
+---@class RowCol
+---@field row integer current row
+---@field col integer current column
 
----@class Cursor
----@field user string id of user owning this cursor
----@field sel Selection selected region for this user
+---an instant cursor position span
+---@class CursorPosition
+---@field start RowCol cursor position start in buffer
+---@field finish RowCol cursor position end in buffer
 
----@param cursor Selection cursor position to broadcast
+---a cursor instantaneous state
+---@class CursorUpdate
+---@field buffer string path of buffer this cursor is on
+---@field cursors CursorPosition[] the updated cursor position(s)
+
+---an event that occurred about a user's cursor
+---@class CursorEvent
+---@field user string user who sent this cursor
+---@field position CursorUpdate cursor position data
+
+---@return WorkspaceIdentifier
+---returns the workspace id this cursor controller belongs to
+function CursorController:workspace_id() end
+
+---@return CursorEvent[]
+---@async
+---@nodiscard
+---gets the current state of all user cursors
+function CursorController:list() end
+
+---@param cursor CursorUpdate cursor position to broadcast
 ---update cursor position by sending a cursor event to server
 function CursorController:send(cursor) end
 
-
----@return MaybeCursorPromise
+---@return MaybeCursorEventPromise
 ---@async
 ---@nodiscard
 ---try to receive cursor events, returning nil if none is available
 function CursorController:try_recv() end
 
----@return CursorPromise
+---@return CursorEventPromise
 ---@async
 ---@nodiscard
 ---block until next cursor event and return it
@@ -517,3 +695,4 @@ function Codemp.setup_driver(block) end
 ---@return boolean success if logger was setup correctly, false otherwise
 ---setup a global logger for codemp, note that can only be done once
 function Codemp.setup_tracing(printer, debug) end
+

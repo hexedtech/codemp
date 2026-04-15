@@ -14,10 +14,10 @@
 //!
 //! // create and join a workspace
 //! client.create_workspace("some-workspace").await?;
-//! let workspace = client.attach_workspace("some-workspace").await?;
+//! let workspace = client.attach_workspace("my-username", "some-workspace").await?;
 //!
 //! // create a new buffer in this workspace and attach to it
-//! workspace.create_buffer("/my/file.txt").await?;
+//! workspace.create_buffer("/my/file.txt", None).await?;
 //! let buffer = workspace.attach_buffer("/my/file.txt").await?;
 //!
 //! // write `hello!` at the beginning of this buffer
@@ -29,7 +29,7 @@
 //! // wait for cursor movements
 //! loop {
 //!   let event = workspace.cursor().recv().await?;
-//!   println!("user {} moved on buffer {}", event.user, event.sel.buffer);
+//!   println!("user {} moved on buffer {}", event.user, event.position.buffer);
 //! }
 //! # Ok::<(),Box<dyn std::error::Error>>(())
 //! # };

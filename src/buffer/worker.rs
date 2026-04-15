@@ -1,15 +1,14 @@
 use std::sync::Arc;
 
+use diamond_types::LocalVersion;
 use diamond_types::list::encoding::ENCODE_PATCH;
 use diamond_types::list::{Branch, OpLog};
-use diamond_types::LocalVersion;
 use tokio::sync::{mpsc, oneshot, watch};
 use tonic::Streaming;
-use uuid::Uuid;
 
-use crate::api::controller::ControllerCallback;
 use crate::api::BufferUpdate;
 use crate::api::TextChange;
+use crate::api::controller::ControllerCallback;
 use crate::ext::IgnorableError;
 
 use codemp_proto::buffer::{BufferEvent, Operation};
@@ -19,7 +18,7 @@ use super::controller::{BufferController, BufferControllerInner};
 struct BufferWorker {
 	agent_id: u32,
 	path: String,
-	workspace_id: String,
+	workspace_id: crate::proto::session::WorkspaceIdentifier,
 	latest_version: watch::Sender<diamond_types::LocalVersion>,
 	local_version: watch::Sender<diamond_types::LocalVersion>,
 	ack_rx: mpsc::UnboundedReceiver<LocalVersion>,
@@ -37,11 +36,11 @@ struct BufferWorker {
 
 impl BufferController {
 	pub(crate) fn spawn(
-		user_id: Uuid,
-		path: &str,
+		user_name: String,
+		path: String,
 		tx: mpsc::Sender<Operation>,
 		rx: Streaming<BufferEvent>,
-		workspace_id: &str,
+		workspace_id: crate::proto::session::WorkspaceIdentifier,
 	) -> Self {
 		let init = diamond_types::LocalVersion::default();
 
@@ -56,10 +55,10 @@ impl BufferController {
 
 		let (poller_tx, poller_rx) = mpsc::unbounded_channel();
 		let mut oplog = OpLog::new();
-		let agent_id = oplog.get_or_create_agent_id(&user_id.to_string());
+		let agent_id = oplog.get_or_create_agent_id(&user_name);
 
 		let controller = Arc::new(BufferControllerInner {
-			path: path.to_string(),
+			path: path.clone(),
 			latest_version: latest_version_rx,
 			local_version: my_version_rx,
 			ops_in: opin_tx,
@@ -68,15 +67,15 @@ impl BufferController {
 			delta_request: recv_tx,
 			callback: cb_tx,
 			ack_tx,
-			workspace_id: workspace_id.to_string(),
+			workspace_id: workspace_id.clone(),
 		});
 
 		let weak = Arc::downgrade(&controller);
 
 		let worker = BufferWorker {
 			agent_id,
-			path: path.to_string(),
-			workspace_id: workspace_id.to_string(),
+			path,
+			workspace_id,
 			latest_version: latest_version_tx,
 			local_version: my_version_tx,
 			ack_rx,
@@ -97,7 +96,7 @@ impl BufferController {
 		BufferController(controller)
 	}
 
-	#[tracing::instrument(skip(worker, tx, rx), fields(ws = worker.workspace_id, path = worker.path))]
+	#[tracing::instrument(skip(worker, tx, rx), fields(owner = worker.workspace_id.user, ws = worker.workspace_id.workspace, path = worker.path))]
 	async fn work(
 		mut worker: BufferWorker,
 		tx: mpsc::Sender<Operation>,
@@ -107,7 +106,7 @@ impl BufferController {
 		loop {
 			if worker.controller.upgrade().is_none() {
 				break tracing::debug!("buffer worker clean exit");
-			};
+			}
 
 			// block until one of these is ready
 			tokio::select! {
@@ -160,7 +159,9 @@ impl BufferController {
 						tx.send(content)
 							.unwrap_or_warn("checkout request dropped");
 					},
-				}
+				},
+
+				_ = tokio::time::sleep(std::time::Duration::from_secs(5)) => {},
 			}
 		}
 
@@ -210,7 +211,7 @@ impl BufferWorker {
 		}
 	}
 
-	#[tracing::instrument(skip(self))]
+	#[tracing::instrument(skip(self, change), fields(user = change.user))]
 	async fn handle_server_change(&mut self, change: BufferEvent) -> bool {
 		match self.controller.upgrade() {
 			None => {

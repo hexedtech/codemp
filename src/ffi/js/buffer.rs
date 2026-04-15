@@ -1,10 +1,14 @@
-use crate::api::controller::{AsyncReceiver, AsyncSender};
-use crate::api::{BufferUpdate, TextChange};
-use crate::buffer::controller::BufferController;
-use napi::threadsafe_function::{
-	ErrorStrategy::Fatal, ThreadSafeCallContext, ThreadsafeFunction, ThreadsafeFunctionCallMode,
-};
+use napi::threadsafe_function::{ThreadsafeFunction, ThreadsafeFunctionCallMode};
 use napi_derive::napi;
+
+use crate::prelude::{
+	CodempAsyncReceiver as AsyncReceiver,
+	CodempAsyncSender as AsyncSender,
+	CodempBufferController as BufferController,
+	CodempBufferUpdate as BufferUpdate,
+	CodempTextChange as TextChange,
+	CodempWorkspaceIdentifier as WorkspaceIdentifier,
+};
 
 #[napi]
 impl BufferController {
@@ -12,19 +16,15 @@ impl BufferController {
 	/// There can only be one callback registered at any given time.
 	#[napi(
 		js_name = "callback",
-		ts_args_type = "fun: (event: BufferController) => void"
+		ts_args_type = "fun: (err: Error|null, event: BufferController) => void"
 	)]
-	pub fn js_callback(&self, fun: napi::JsFunction) -> napi::Result<()> {
-		let tsfn: ThreadsafeFunction<crate::buffer::controller::BufferController, Fatal> = fun
-			.create_threadsafe_function(
-				0,
-				|ctx: ThreadSafeCallContext<crate::buffer::controller::BufferController>| {
-					Ok(vec![ctx.value])
-				},
-			)?;
+	pub fn js_callback(
+		&self,
+		fun: ThreadsafeFunction<BufferController>,
+	) -> napi::Result<()> {
 		self.callback(move |controller: BufferController| {
-			tsfn.call(controller.clone(), ThreadsafeFunctionCallMode::Blocking);
-			//check this with tracing also we could use Ok(event) to get the error
+			fun.call(Ok(controller.clone()), ThreadsafeFunctionCallMode::Blocking);
+			// check this with tracing also we could use Ok(event) to get the error
 			// If it blocks the main thread too many time we have to change this
 		});
 
@@ -77,5 +77,11 @@ impl BufferController {
 	#[napi(js_name = "content")]
 	pub async fn js_content(&self) -> napi::Result<String> {
 		Ok(self.content().await?)
+	}
+
+	/// Get id of workspace containing this controller.
+	#[napi(js_name = "workspaceId")]
+	pub fn js_workspace_id(&self) -> WorkspaceIdentifier {
+		self.workspace_id().clone()
 	}
 }

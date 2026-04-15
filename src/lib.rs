@@ -38,22 +38,23 @@
 //! # async {
 //! #  let client = codemp::Client::connect(codemp::api::Config::new("", "")).await.unwrap();
 //! client.create_workspace("my-workspace").await.expect("failed to create workspace!");
-//! let workspace = client.attach_workspace("my-workspace").await.expect("failed to attach!");
+//! let workspace = client.attach_workspace("my-user", "my-workspace").await.expect("failed to attach!");
 //! # };
 //! ```
 //!
-//! A [`Workspace`] handle can be used to acquire a [`cursor::Controller`] to track remote [`api::Cursor`]s
-//! and one or more [`buffer::Controller`] to send and receive [`api::TextChange`]s.
+//! A [`Workspace`] handle can be used to acquire a [`cursor::Controller`] to track remote
+//! [`proto::cursor::CursorEvent`]s and one or more [`buffer::Controller`] to send and receive
+//! [`api::TextChange`]s.
 //!
 //! ```no_run
 //! # async {
 //! #  let client = codemp::Client::connect(codemp::api::Config::new("", "")).await.unwrap();
 //! # client.create_workspace("").await.unwrap();
-//! # let workspace = client.attach_workspace("").await.unwrap();
+//! # let workspace = client.attach_workspace("", "").await.unwrap();
 //! use codemp::api::controller::{AsyncSender, AsyncReceiver}; // needed to access trait methods
 //! let cursor = workspace.cursor();
 //! let event = cursor.recv().await.expect("disconnected while waiting for event!");
-//! println!("user {} moved on buffer {}", event.user, event.sel.buffer);
+//! println!("user {} moved on buffer {}", event.user, event.position.buffer);
 //! # };
 //! ```
 //!
@@ -65,7 +66,7 @@
 //! # async {
 //! #  let client = codemp::Client::connect(codemp::api::Config::new("", "")).await.unwrap();
 //! # client.create_workspace("").await.unwrap();
-//! # let workspace = client.attach_workspace("").await.unwrap();
+//! # let workspace = client.attach_workspace("", "").await.unwrap();
 //! # use codemp::api::controller::{AsyncSender, AsyncReceiver};
 //! let buffer = workspace.attach_buffer("/some/file.txt").await.expect("failed to attach");
 //! buffer.content(); // force-sync
@@ -125,11 +126,15 @@ pub mod ext;
 /// language-specific ffi "glue"
 pub mod ffi;
 
+/// end-to-end tests, useful to assert server compliance
 #[cfg(any(feature = "test-e2e", test))]
 pub mod tests;
 
 /// internal network services and interceptors
 pub(crate) mod network;
+
+/// re-export codemp_proto as codemp::proto
+pub use codemp_proto as proto;
 
 /// Get the current version of the client
 pub fn version() -> &'static str {

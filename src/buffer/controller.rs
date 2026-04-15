@@ -6,9 +6,9 @@ use std::sync::Arc;
 use diamond_types::LocalVersion;
 use tokio::sync::{mpsc, oneshot, watch};
 
-use crate::api::controller::{AsyncReceiver, AsyncSender, Controller, ControllerCallback};
 use crate::api::BufferUpdate;
 use crate::api::TextChange;
+use crate::api::controller::{AsyncReceiver, AsyncSender, Controller, ControllerCallback};
 use crate::errors::ControllerResult;
 use crate::ext::IgnorableError;
 
@@ -17,13 +17,13 @@ use crate::ext::IgnorableError;
 /// Each buffer controller internally tracks the last acknowledged state, remaining always in sync
 /// with the server while allowing to procedurally receive changes while still sending new ones.
 #[derive(Debug, Clone)]
-#[cfg_attr(feature = "py", pyo3::pyclass)]
+#[cfg_attr(feature = "py", pyo3::pyclass(from_py_object))]
 #[cfg_attr(feature = "js", napi_derive::napi)]
 pub struct BufferController(pub(crate) Arc<BufferControllerInner>);
 
 impl BufferController {
-	/// Get id of workspace containing this controller
-	pub fn workspace_id(&self) -> &str {
+	/// Get id of workspace containing this controller.
+	pub fn workspace_id(&self) -> &crate::proto::session::WorkspaceIdentifier {
 		&self.0.workspace_id
 	}
 
@@ -64,7 +64,7 @@ pub(crate) struct BufferControllerInner {
 	pub(crate) delta_request: mpsc::Sender<oneshot::Sender<Option<BufferUpdate>>>,
 	pub(crate) callback: watch::Sender<Option<ControllerCallback<BufferController>>>,
 	pub(crate) ack_tx: mpsc::UnboundedSender<LocalVersion>,
-	pub(crate) workspace_id: String,
+	pub(crate) workspace_id: crate::proto::session::WorkspaceIdentifier,
 }
 
 #[cfg_attr(feature = "async-trait", async_trait::async_trait)]

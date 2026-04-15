@@ -39,7 +39,7 @@ pub(crate) struct Promise(
 impl LuaUserData for Promise {
 	fn add_fields<F: LuaUserDataFields<Self>>(fields: &mut F) {
 		fields.add_field_method_get("ready", |_, this| {
-			Ok(this.0.as_ref().map_or(true, |x| x.is_finished()))
+			Ok(this.0.as_ref().is_none_or(|x| x.is_finished()))
 		});
 	}
 
@@ -47,12 +47,10 @@ impl LuaUserData for Promise {
 		// TODO: await MUST NOT be used in callbacks!!
 		methods.add_method_mut("await", |_, this, ()| match this.0.take() {
 			None => Err(LuaError::runtime("Promise already awaited")),
-			Some(x) => Ok(
-				tokio()
-					.block_on(x)
-					.map_err(LuaError::runtime)?
-					.map_err(LuaError::runtime)?
-			),
+			Some(x) => Ok(tokio()
+				.block_on(x)
+				.map_err(LuaError::runtime)?
+				.map_err(LuaError::runtime)?),
 		});
 		methods.add_method_mut("cancel", |_, this, ()| match this.0.take() {
 			None => Err(LuaError::runtime("Promise already awaited")),
@@ -85,7 +83,7 @@ impl LuaUserData for Promise {
 pub(crate) fn setup_driver(_: &Lua, (block,): (Option<bool>,)) -> LuaResult<Option<Driver>> {
 	let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
 	let future = async move {
-		tracing::info!(" :: driving runtime...");
+		tracing::debug!(" :: driving runtime...");
 		tokio::select! {
 			() = std::future::pending::<()>() => {},
 			_ = rx.recv() => {},
