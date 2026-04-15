@@ -342,7 +342,7 @@ impl Client {
 			}
 		}
 
-		false
+		true // leaving a workspace we aren't attached to is a no-op: return true because no more refs
 	}
 
 	/// Gets a [`Workspace`] handle by name.
