@@ -61,7 +61,7 @@ async fn test_attach_and_leave_workspace() {
 
 			let _ = client.delete_workspace(workspace_name).await;
 
-			assert_or_err!(leave_workspace_before, "leaving a workspace you are not attached to returned false, should return true.");
+			assert_or_err!(leave_workspace_before == false, "leaving a workspace you are not attached to returned true, should return false.");
 			assert_or_err!(attach_workspace_that_exists, "attaching a workspace that exists failed with error");
 			assert_or_err!(leave_workspace_after, "leaving a workspace with a single reference returned false.");
 
