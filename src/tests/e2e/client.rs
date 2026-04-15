@@ -53,6 +53,8 @@ async fn test_attach_and_leave_workspace() {
 				},
 			};
 
+			tokio::time::sleep(std::time::Duration::from_secs(10)).await; // give time to drop and stop everything
+
 			// leaving a workspace you are attached to, returns true
 			// when there is only one reference to it.
 			let leave_workspace_after = client.leave_workspace(&client.current_user().name, &workspace_name);
@@ -91,7 +93,10 @@ async fn test_invite_user_to_workspace() {
 		.await
 		.expect("failed creating workspace");
 	let could_invite = client_alice
-		.invite_to_workspace(ws_name.clone(), client_bob.current_user().name.clone())
+		.invite_to_workspace(&ws_name, &client_bob.current_user().name)
+		.await;
+	let could_accept = client_bob
+		.accept_invite(&wsid.user, &wsid.workspace)
 		.await;
 	let ws_list = client_bob
 		.fetch_joined_workspaces()
@@ -100,6 +105,7 @@ async fn test_invite_user_to_workspace() {
 	let could_delete = client_alice.delete_workspace(ws_name.clone()).await;
 
 	could_invite.expect("could not invite bob");
+	could_accept.expect("could not accept invite from alice");
 	assert!(ws_list.contains(&wsid));
 	could_delete.expect("could not delete workspace");
 }

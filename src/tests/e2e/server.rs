@@ -89,6 +89,9 @@ async fn test_workspace_interactions() {
 			)
 			.await?;
 		client_bob
+			.accept_invite(&client_alice.current_user().name, &workspace_name)
+			.await?;
+		client_bob
 			.attach_workspace(&client_alice.current_user().name, &workspace_name)
 			.await?;
 		assert_or_err!(client_bob.fetch_joined_workspaces().await?.contains(&wsid));
