@@ -58,7 +58,7 @@
 //! # };
 //! ```
 //!
-//! Internally, [`buffer::Controller`]s store the buffer state as a [diamond_types] CRDT, guaranteeing
+//! Internally, [`buffer::Controller`]s store the buffer state as a [`api::CRDT`], guaranteeing
 //! eventual consistency. Each [`api::TextChange`] is translated in a network counterpart that is
 //! guaranteed to converge.
 //!

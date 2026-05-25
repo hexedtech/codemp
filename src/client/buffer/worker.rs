@@ -1,8 +1,6 @@
 use std::sync::Arc;
 
-use diamond_types::LocalVersion;
-use diamond_types::list::encoding::ENCODE_PATCH;
-use diamond_types::list::{Branch, OpLog};
+use codemp_proto::buffer::Operation;
 use tokio::sync::{mpsc, oneshot, watch};
 use tonic::Streaming;
 
@@ -11,38 +9,38 @@ use crate::api::TextChange;
 use crate::api::controller::ControllerCallback;
 use crate::ext::IgnorableError;
 
-use codemp_proto::buffer::{BufferEvent, Operation};
+use codemp_proto::buffer::BufferEvent;
 
 use super::controller::{BufferController, BufferControllerInner};
 
-struct BufferWorker {
-	agent_id: u32,
+struct BufferWorker<T: crate::api::CRDT> {
+	agent_id: T::AgentID,
 	path: String,
 	workspace_id: crate::proto::session::WorkspaceIdentifier,
-	latest_version: watch::Sender<diamond_types::LocalVersion>,
-	local_version: watch::Sender<diamond_types::LocalVersion>,
-	ack_rx: mpsc::UnboundedReceiver<LocalVersion>,
+	latest_version: watch::Sender<T::Version>,
+	local_version: watch::Sender<T::Version>,
+	ack_rx: mpsc::UnboundedReceiver<T::Version>,
 	ops_in: mpsc::UnboundedReceiver<TextChange>,
 	poller: mpsc::UnboundedReceiver<oneshot::Sender<()>>,
 	pollers: Vec<oneshot::Sender<()>>,
 	content_checkout: mpsc::Receiver<oneshot::Sender<String>>,
 	delta_req: mpsc::Receiver<oneshot::Sender<Option<BufferUpdate>>>,
-	controller: std::sync::Weak<BufferControllerInner>,
-	callback: watch::Receiver<Option<ControllerCallback<BufferController>>>,
-	oplog: OpLog,
-	branch: Branch,
+	controller: std::sync::Weak<BufferControllerInner<T>>,
+	callback: watch::Receiver<Option<ControllerCallback<BufferController<T>>>>,
+	oplog: T,
+	branch: T::Version,
 	timer: Timer,
 }
 
-impl BufferController {
+impl<T: crate::api::CRDT<Location = usize> + Send + 'static> BufferController<T> {
 	pub(crate) fn spawn(
 		user_name: String,
 		path: String,
-		tx: mpsc::Sender<Operation>,
+		tx: mpsc::Sender<crate::proto::buffer::Operation>,
 		rx: Streaming<BufferEvent>,
 		workspace_id: crate::proto::session::WorkspaceIdentifier,
 	) -> Self {
-		let init = diamond_types::LocalVersion::default();
+		let init = T::Version::default();
 
 		let (latest_version_tx, latest_version_rx) = watch::channel(init.clone());
 		let (my_version_tx, my_version_rx) = watch::channel(init.clone());
@@ -54,8 +52,8 @@ impl BufferController {
 		let (cb_tx, cb_rx) = watch::channel(None);
 
 		let (poller_tx, poller_rx) = mpsc::unbounded_channel();
-		let mut oplog = OpLog::new();
-		let agent_id = oplog.get_or_create_agent_id(&user_name);
+		let mut oplog = T::default();
+		let agent_id = oplog.agent(&user_name);
 
 		let controller = Arc::new(BufferControllerInner {
 			path: path.clone(),
@@ -87,7 +85,7 @@ impl BufferController {
 			delta_req: recv_rx,
 			callback: cb_rx,
 			oplog,
-			branch: Branch::new(),
+			branch: T::Version::default(),
 			timer: Timer::new(10), // TODO configurable!
 		};
 
@@ -98,8 +96,8 @@ impl BufferController {
 
 	#[tracing::instrument(skip(worker, tx, rx), fields(owner = worker.workspace_id.user, ws = worker.workspace_id.workspace, path = worker.path))]
 	async fn work(
-		mut worker: BufferWorker,
-		tx: mpsc::Sender<Operation>,
+		mut worker: BufferWorker<T>,
+		tx: mpsc::Sender<crate::proto::buffer::Operation>,
 		mut rx: Streaming<BufferEvent>,
 	) {
 		tracing::debug!("buffer worker started");
@@ -117,9 +115,9 @@ impl BufferController {
 					None => break tracing::debug!("stopping: ack channel closed"),
 					Some(v) => {
 						tracing::debug!("client acked change");
-						worker.branch.merge(&worker.oplog, &v);
-						worker.local_version.send(worker.branch.local_version())
-							.unwrap_or_warn("could not ack local version");
+						worker.branch = v;
+						worker.local_version.send(worker.branch.clone())
+							.unwrap_or_warn("could not checkout local version");
 					},
 				},
 
@@ -152,11 +150,10 @@ impl BufferController {
 				res = worker.content_checkout.recv() => match res {
 					None => break tracing::error!("no more active controllers: can't update content"),
 					Some(tx) => {
-						worker.branch.merge(&worker.oplog, worker.oplog.local_version_ref());
-						worker.local_version.send(worker.branch.local_version())
+						worker.branch = worker.oplog.version(); // consider everything checked-out from now
+						worker.local_version.send(worker.branch.clone())
 							.unwrap_or_warn("could not checkout local version");
-						let content = worker.branch.content().to_string();
-						tx.send(content)
+						tx.send(worker.oplog.view())
 							.unwrap_or_warn("checkout request dropped");
 					},
 				},
@@ -169,44 +166,41 @@ impl BufferController {
 	}
 }
 
-impl BufferWorker {
+impl<T: crate::api::CRDT<Location = usize>> BufferWorker<T> {
 	#[tracing::instrument(skip(self, tx))]
-	async fn handle_editor_change(&mut self, change: TextChange, tx: &mpsc::Sender<Operation>) {
-		let last_ver = self.oplog.local_version();
+	async fn handle_editor_change(&mut self, change: TextChange, tx: &mpsc::Sender<crate::proto::buffer::Operation>) {
+		let current_version = self.branch.clone();
 		// clip to buffer extents
 		let clip_start = change.start_idx as usize;
-		let mut clip_end = change.end_idx as usize;
-		let b_len = self.branch.len();
-		if clip_end > b_len {
-			tracing::warn!("clipping TextChange end span from {clip_end} to {b_len}");
-			clip_end = b_len;
-		};
+		let clip_end = change.end_idx as usize;
+
+		//let b_len = self.branch.len();
+		//if clip_end > b_len {
+			//tracing::warn!("clipping TextChange end span from {clip_end} to {b_len}");
+			//clip_end = b_len;
+		//};
 
 		// in case we have a "replace" span
 		if change.is_delete() {
-			self.branch.delete_without_content(
-				&mut self.oplog,
-				self.agent_id,
-				clip_start..clip_end,
-			);
+			let _ = self.oplog.delete_at(self.agent_id.clone(), clip_start, current_version.clone(), clip_end);
 		}
 
 		if change.is_insert() {
-			self.branch
-				.insert(&mut self.oplog, self.agent_id, clip_start, &change.content);
+			let _ = self.oplog.insert_at(self.agent_id.clone(), clip_start, current_version.clone(), &change.content);
 		}
 
+		let last_ver = self.oplog.version();
+
 		if change.is_delete() || change.is_insert() {
-			tx.send(Operation {
-				data: self.oplog.encode_from(ENCODE_PATCH, &last_ver),
-			})
+			let diff = self.oplog.diff(current_version.clone(), last_ver.clone());
+			tx.send(crate::api::crdt::diff_to_op::<T>(diff))
 			.await
 			.unwrap_or_warn("failed to send change!");
 			self.latest_version
-				.send(self.oplog.local_version())
+				.send(last_ver)
 				.unwrap_or_warn("failed to update latest version!");
 			self.local_version
-				.send(self.branch.local_version())
+				.send(current_version)
 				.unwrap_or_warn("failed to update local version!");
 		}
 	}
@@ -219,11 +213,11 @@ impl BufferWorker {
 				tracing::debug!("clean exit while handling server change");
 				true
 			}
-			Some(controller) => match self.oplog.decode_and_add(&change.op.data) {
-				Ok(local_version) => {
-					tracing::debug!("updating local version: {local_version:?}");
+			Some(controller) => match self.oplog.integrate(crate::api::crdt::op_to_diff::<T>(change.op)) {
+				Ok(()) => {
+					tracing::debug!("updating local version: {:?}", self.oplog.version());
 					self.latest_version
-						.send(local_version)
+						.send(self.oplog.version())
 						.unwrap_or_warn("failed to update latest version!");
 					for tx in self.pollers.drain(..) {
 						tx.send(()).unwrap_or_warn("could not wake up poller");
@@ -243,69 +237,49 @@ impl BufferWorker {
 
 	#[tracing::instrument(skip(self, tx))]
 	async fn handle_delta_request(&mut self, tx: oneshot::Sender<Option<BufferUpdate>>) {
-		let last_ver = self.branch.local_version();
-		if let Some((lv, Some(dtop))) = self
+		let starting_ver = self.branch.clone();
+		let last_ver = self.oplog.version();
+
+		let mut ops = Vec::new();
+		
+		for (span, content) in self
 			.oplog
-			.iter_xf_operations_from(&last_ver, self.oplog.local_version_ref())
-			.next()
+			.diff(starting_ver.clone(), last_ver.clone())
 		{
 			// x.0.start should always be after lastver!
 			// this step_ver will be the version after we apply the operation
 			// we give it to the controller so that he knows where it's at.
-			let step_ver = self.oplog.version_union(&[lv.end - 1], &last_ver);
+			// TODO do we still need this?
+			//let step_ver = self.oplog.version_union(&[lv.end - 1], &last_ver);
 
-			let hash = if self.timer.step() {
-				Some(crate::ext::hash(self.branch.content().to_string()))
-			} else {
-				None
-			};
+			ops.push(crate::api::TextChange {
+				start_idx: span.start as u32,
+				end_idx: span.end as u32,
+				content,
+			});
+		}
 
-			let tc = match dtop.kind {
-				diamond_types::list::operation::OpKind::Ins => {
-					if dtop.end() - dtop.start() != dtop.content_as_str().unwrap_or_default().len()
-					{
-						tracing::warn!(
-							"Insert span ({}, {}) differs from effective content len ({})",
-							dtop.start(),
-							dtop.end(),
-							dtop.content_as_str().unwrap_or_default().len()
-						);
-					}
-					crate::api::BufferUpdate {
-						hash,
-						version: step_ver
-							.into_iter()
-							.map(|x| i64::from_ne_bytes(x.to_ne_bytes()))
-							.collect(), // TODO this is wasteful
-						change: crate::api::TextChange {
-							start_idx: dtop.start() as u32,
-							end_idx: dtop.start() as u32,
-							content: dtop.content_as_str().unwrap_or_default().to_string(),
-						},
-					}
-				}
-
-				diamond_types::list::operation::OpKind::Del => crate::api::BufferUpdate {
-					hash,
-					version: step_ver
-						.into_iter()
-						.map(|x| i64::from_ne_bytes(x.to_ne_bytes()))
-						.collect(), // TODO this is wasteful
-					change: crate::api::TextChange {
-						start_idx: dtop.start() as u32,
-						end_idx: dtop.end() as u32,
-						content: dtop.content_as_str().unwrap_or_default().to_string(),
-					},
-				},
-			};
-			tracing::debug!("sending update {tc:?}");
-			tx.send(Some(tc))
-				.unwrap_or_warn("could not update ops channel -- is controller dead?");
-		} else {
-			tracing::debug!("no enqueued changes");
+		if ops.is_empty() {
 			tx.send(None)
 				.unwrap_or_warn("could not update ops channel -- is controller dead?");
+			return;
 		}
+
+		let hash = if self.timer.step() {
+			Some(crate::ext::hash(self.oplog.view_at(starting_ver.clone())))
+		} else {
+			None
+		};
+	
+		let tc = crate::api::BufferUpdate {
+			hash,
+			version: vec![], // TODO!!! //last_ver.clone(),
+			changes: ops,
+		};
+
+		tracing::debug!("sending update {:?}", tc.clone());
+		tx.send(Some(tc))
+			.unwrap_or_warn("could not update ops channel -- is controller dead?");
 	}
 }
 

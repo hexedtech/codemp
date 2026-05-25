@@ -5,7 +5,7 @@
 
 use crate::{
 	api::{
-		controller::{AsyncReceiver, ControllerCallback},
+		controller::{AsyncReceiver, ControllerCallback}, crdt::DiamondTypesCRDT,
 	},
 	client::{buffer, cursor, network::Services},
 	errors::{ConnectionResult, ControllerResult, RemoteResult},
@@ -45,7 +45,7 @@ pub(crate) struct WorkspaceInner {
 	id: crate::proto::session::WorkspaceIdentifier,
 	current_user: Arc<codemp_proto::common::UserInfo>,
 	cursor: cursor::Controller,
-	buffers: DashMap<String, buffer::Controller>,
+	buffers: DashMap<String, buffer::Controller<DiamondTypesCRDT>>,
 	services: Services,
 	filetree: DashMap<String, BufferNode>,
 	buffer_users: DashMap<String, Vec<String>>,
@@ -204,7 +204,7 @@ impl Workspace {
 
 	/// Attach to a buffer and return a handle to it.
 	#[tracing::instrument(skip(self, path), fields(path = path.to_string()))]
-	pub async fn attach_buffer(&self, path: impl ToString) -> ConnectionResult<buffer::Controller> {
+	pub async fn attach_buffer(&self, path: impl ToString) -> ConnectionResult<buffer::Controller<DiamondTypesCRDT>> {
 		let path = path.to_string();
 		let mut workspace_client = self.0.services.ws();
 		let mut buffer_client = self.0.services.buf();
@@ -357,7 +357,7 @@ impl Workspace {
 
 	/// Return a handle to the [buffer::Controller] with the given path, if present.
 	// #[cfg_attr(feature = "js", napi)] // https://github.com/napi-rs/napi-rs/issues/1120
-	pub fn get_buffer(&self, path: impl AsRef<str>) -> Option<buffer::Controller> {
+	pub fn get_buffer(&self, path: impl AsRef<str>) -> Option<buffer::Controller<DiamondTypesCRDT>> {
 		self.0.buffers.get(path.as_ref()).map(|x| x.clone())
 	}
 

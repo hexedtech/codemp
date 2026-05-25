@@ -19,8 +19,8 @@ pub struct BufferUpdate {
 	pub hash: Option<i64>,
 	/// CRDT version after this change has been applied.
 	pub version: Vec<i64>,
-	/// The change that has occurred.
-	pub change: TextChange,
+	/// The changes that has occurred.
+	pub changes: Vec<TextChange>,
 }
 
 /// An editor-friendly representation of a text change in a given buffer.

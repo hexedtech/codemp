@@ -12,11 +12,11 @@
 ///
 /// It may return an error if all buffers returned errors while polling.
 #[cfg(feature = "client")]
-pub async fn select_buffer(
-	buffers: &[crate::client::buffer::Controller],
+pub async fn select_buffer<T: crate::api::CRDT + 'static>(
+	buffers: &[crate::client::buffer::Controller<T>],
 	timeout: Option<std::time::Duration>,
 	runtime: &tokio::runtime::Runtime,
-) -> crate::errors::ControllerResult<Option<crate::client::buffer::Controller>> {
+) -> crate::errors::ControllerResult<Option<crate::client::buffer::Controller<T>>> {
 	use crate::api::controller::AsyncReceiver;
 	let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
 	let mut tasks = Vec::new();
