@@ -47,14 +47,10 @@ impl<T: crate::api::CRDT> BufferController<T> {
 	}
 
 	/// Notify CRDT that changes up to the given version have been merged succesfully.
-	pub fn ack(&self, version: Vec<i64>) {
-		//let version = version
-			//.into_iter()
-			//.map(|x| usize::from_ne_bytes(x.to_ne_bytes()))
-			//.collect();
+	pub fn ack(&self, version: T::Version) {
 		self.0
 			.ack_tx
-			.send(todo!())
+			.send(version)
 			.unwrap_or_warn("no worker to receive sent ack");
 	}
 }

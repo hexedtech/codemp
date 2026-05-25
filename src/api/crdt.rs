@@ -1,10 +1,13 @@
 #![allow(missing_docs)]
+
+use diamond_types::list::encoding::ENCODE_PATCH;
+
 pub trait CRDT: Default {
 	type Version: Send + Sync + Clone + std::fmt::Debug + Eq + Ord + Default;
 	type AgentID: Send + Sync + Clone + std::fmt::Debug + Eq;
 	type Location;
 
-	type Diff : Send + Sync + Iterator<Item = (std::ops::Range<usize>, String)>; // TODO this should be serializable so it can travel over wire easily
+	type Diff : Send + Sync + std::fmt::Debug + AsRef<[u8]> + TryFrom<Vec<u8>, Error: std::fmt::Debug> + Iterator<Item = (std::ops::Range<usize>, String)>; // TODO this should be serializable so it can travel over wire easily
 	type Err: std::error::Error;
 
 	fn version(&self) -> Self::Version;
@@ -66,8 +69,11 @@ pub struct DiamondTypesCRDT {
 	log: diamond_types::list::OpLog,
 }
 
-#[derive(Default)]
+// TODO fat struct... should split ops (for editor) and data (for server)
+#[derive(Debug, Default)]
 pub struct DiamondTypesCRDTDiff {
+	pub version: diamond_types::LocalVersion,
+	data: Vec<u8>,
 	ops: Vec<diamond_types::list::operation::Operation>,
 	idx: usize,
 }
@@ -76,7 +82,7 @@ impl CRDT for DiamondTypesCRDT {
 	type Version = diamond_types::LocalVersion;
 	type AgentID = diamond_types::AgentId;
 	type Location = usize;
-	type Err = std::convert::Infallible;
+	type Err = diamond_types::list::encoding::encode_tools::ParseError;
 	type Diff = DiamondTypesCRDTDiff;
 
 	fn version(&self) -> Self::Version {
@@ -96,15 +102,15 @@ impl CRDT for DiamondTypesCRDT {
 			}			
 		}
 		DiamondTypesCRDTDiff {
+			version: from.clone(),
+			data: self.log.encode_from(ENCODE_PATCH, &from),
 			ops: out,
 			idx: 0,
 		}
 	}
 
 	fn integrate(&mut self, diff: Self::Diff) -> Result<(), Self::Err> {
-		// TODO we don't know agent of each op here
-		let agent = self.agent("[codemp]");
-		let _t = self.log.add_operations(agent, &diff.ops);
+		self.log.decode_and_add(&diff.data)?;
 		Ok(())
 	}
 
@@ -141,15 +147,6 @@ impl CRDT for DiamondTypesCRDT {
 			.encode_simple(diamond_types::list::encoding::EncodeOptions::default())	}
 }
 
-#[deprecated = "do this with serde"]
-pub fn op_to_diff<T: CRDT>(op: crate::proto::buffer::Operation) -> T::Diff {
-	todo!()
-}
-#[deprecated = "do this with serde"]
-pub fn diff_to_op<T: CRDT>(diff: T::Diff) -> crate::proto::buffer::Operation {
-	todo!()
-}
-
 impl Iterator for DiamondTypesCRDTDiff {
 	type Item = (std::ops::Range<usize>, String);
 
@@ -163,6 +160,25 @@ impl Iterator for DiamondTypesCRDTDiff {
     	diamond_types::list::operation::OpKind::Del => {
     		(o.loc.span.start..o.loc.span.end, "".to_string())
     	},
+		})
+	}
+}
+
+
+impl AsRef<[u8]> for DiamondTypesCRDTDiff {
+	fn as_ref(&self) -> &[u8] {
+		&self.data
+	}
+}
+
+impl TryFrom<Vec<u8>> for DiamondTypesCRDTDiff {
+	type Error = std::convert::Infallible;
+	fn try_from(value: Vec<u8>) -> Result<Self, Self::Error> {
+		Ok(DiamondTypesCRDTDiff {
+			data: value,
+			ops: vec![],
+			version: diamond_types::LocalVersion::default(),
+			idx: 0,
 		})
 	}
 }

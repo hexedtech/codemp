@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use codemp_proto::buffer::Operation;
 use tokio::sync::{mpsc, oneshot, watch};
 use tonic::Streaming;
 
@@ -193,7 +192,8 @@ impl<T: crate::api::CRDT<Location = usize>> BufferWorker<T> {
 
 		if change.is_delete() || change.is_insert() {
 			let diff = self.oplog.diff(current_version.clone(), last_ver.clone());
-			tx.send(crate::api::crdt::diff_to_op::<T>(diff))
+			let op = crate::proto::buffer::Operation { data: diff.as_ref().to_vec() };
+			tx.send(op)
 			.await
 			.unwrap_or_warn("failed to send change!");
 			self.latest_version
@@ -213,7 +213,7 @@ impl<T: crate::api::CRDT<Location = usize>> BufferWorker<T> {
 				tracing::debug!("clean exit while handling server change");
 				true
 			}
-			Some(controller) => match self.oplog.integrate(crate::api::crdt::op_to_diff::<T>(change.op)) {
+			Some(controller) => match self.oplog.integrate(T::Diff::try_from(change.op.data).unwrap()) {
 				Ok(()) => {
 					tracing::debug!("updating local version: {:?}", self.oplog.version());
 					self.latest_version
