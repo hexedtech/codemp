@@ -164,6 +164,13 @@ impl Iterator for DiamondTypesCRDTDiff {
 	}
 }
 
+// TODO it seems the Version type needs to pass FFI boundaries
+//      so it cannot be a vague generic. this is an ugly temp fix
+#[deprecated = "solve the version problem......"]
+pub fn translate_version<T: CRDT>(v: T::Version) -> Vec<i64> {
+	vec![crate::ext::hash(format!("{v:?}").as_bytes())]
+}
+
 
 impl AsRef<[u8]> for DiamondTypesCRDTDiff {
 	fn as_ref(&self) -> &[u8] {

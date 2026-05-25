@@ -273,7 +273,7 @@ impl<T: crate::api::CRDT<Location = usize>> BufferWorker<T> {
 	
 		let tc = crate::api::BufferUpdate {
 			hash,
-			version: vec![], // TODO!!! //last_ver.clone(),
+			version: crate::api::crdt::translate_version::<T>(last_ver.clone()),
 			changes: ops,
 		};
 

@@ -71,10 +71,12 @@
 //! let buffer = workspace.attach_buffer("/some/file.txt").await.expect("failed to attach");
 //! buffer.content(); // force-sync
 //! if let Some(mut update) = buffer.try_recv().await.unwrap() {
-//!   println!(
-//!     "content: {}, span: {}-{}",
-//!     update.change.content, update.change.start_idx, update.change.end_idx
-//!   );
+//!   for c in update.changes {
+//!     println!(
+//!       "content: {}, span: {}-{}",
+//!       c.content, c.start_idx, c.end_idx
+//!     );
+//!   }
 //!   buffer.ack(update.version);
 //! } // if None, no changes are currently available
 //! # };
