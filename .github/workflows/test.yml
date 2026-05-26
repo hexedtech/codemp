@@ -32,7 +32,6 @@ jobs:
 
   test-beta:
     runs-on: ubuntu-latest
-    needs: [test-unit]
     strategy:
       fail-fast: false
       matrix:
@@ -84,7 +83,7 @@ jobs:
       - run: cargo test --no-default-features --features=ci,test-coverage,py-abi3,lua-jit tests::coverage
 
   test-functional:
-    needs: [test-build]
+    needs: [test-unit]
     runs-on: ubuntu-latest
     steps:
       - uses: arduino/setup-protoc@v3
