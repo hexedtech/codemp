@@ -47,10 +47,11 @@ impl<T: crate::api::CRDT> BufferController<T> {
 	}
 
 	/// Notify CRDT that changes up to the given version have been merged succesfully.
-	pub fn ack(&self, version: T::Version) {
+	// TODO version should be T::Version!!!
+	pub fn ack(&self, version: Vec<i64>) {
 		self.0
 			.ack_tx
-			.send(version)
+			.send(crate::api::crdt::restore_version::<T>(version))
 			.unwrap_or_warn("no worker to receive sent ack");
 	}
 }

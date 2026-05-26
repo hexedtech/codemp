@@ -171,6 +171,10 @@ pub fn translate_version<T: CRDT>(v: T::Version) -> Vec<i64> {
 	vec![crate::ext::hash(format!("{v:?}").as_bytes())]
 }
 
+#[deprecated = "solve the version problem......"]
+pub fn restore_version<T: CRDT>(v: Vec<i64>) -> T::Version {
+	todo!()
+}
 
 impl AsRef<[u8]> for DiamondTypesCRDTDiff {
 	fn as_ref(&self) -> &[u8] {
