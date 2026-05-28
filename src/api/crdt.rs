@@ -3,9 +3,9 @@
 use diamond_types::list::encoding::ENCODE_PATCH;
 
 pub trait CRDT: Default {
-	type Version: Send + Sync + Clone + std::fmt::Debug + Eq + Ord + Default;
-	type AgentID: Send + Sync + Clone + std::fmt::Debug + Eq;
-	type Location;
+	type Version : Send + Sync + Clone + std::fmt::Debug + Eq + Default + Ord;
+	type Location: Send + Sync + Clone + std::fmt::Debug + Eq + Default;
+	type AgentID : Send + Sync + Clone + std::fmt::Debug + Eq;
 
 	type Diff : Send + Sync + std::fmt::Debug + AsRef<[u8]> + TryFrom<Vec<u8>, Error: std::fmt::Debug> + Iterator<Item = (std::ops::Range<usize>, String)>; // TODO this should be serializable so it can travel over wire easily
 	type Err: std::error::Error;
@@ -70,7 +70,7 @@ pub struct DiamondTypesCRDT {
 }
 
 // TODO fat struct... should split ops (for editor) and data (for server)
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct DiamondTypesCRDTDiff {
 	pub version: diamond_types::LocalVersion,
 	data: Vec<u8>,
@@ -99,7 +99,7 @@ impl CRDT for DiamondTypesCRDT {
 			// TODO we don't get op agents, which means we lose them here...
 			if let Some(op) = op {
 				out.push(op);
-			}			
+			}
 		}
 		DiamondTypesCRDTDiff {
 			version: from.clone(),
@@ -172,7 +172,7 @@ pub fn translate_version<T: CRDT>(v: T::Version) -> Vec<i64> {
 }
 
 #[deprecated = "solve the version problem......"]
-pub fn restore_version<T: CRDT>(v: Vec<i64>) -> T::Version {
+pub fn restore_version<T: CRDT>(_v: Vec<i64>) -> T::Version {
 	todo!()
 }
 
