@@ -110,6 +110,9 @@ pub use client::workspace::Workspace;
 #[cfg(feature = "client")]
 pub use client::session::Session;
 
+/// the actual CRDT engine implementations
+pub mod crdt;
+
 /// language-specific ffi "glue"
 #[cfg(feature = "client")]
 pub mod ffi;

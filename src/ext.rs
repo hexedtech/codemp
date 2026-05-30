@@ -59,6 +59,20 @@ pub fn hash(data: impl AsRef<[u8]>) -> i64 {
 	i64::from_ne_bytes(hash.to_ne_bytes())
 }
 
+/// Transmute an unsigned long into a signed long
+///
+/// keeps byte order, but not "number meaning"
+pub fn to_signed(u: u64) -> i64 {
+	i64::from_ne_bytes(u.to_ne_bytes())
+}
+
+/// Transmute a signed long into an unsigned long
+///
+/// keeps byte order, but not "number meaning"
+pub fn to_unsigned(i: i64) -> u64 {
+	u64::from_ne_bytes(i.to_ne_bytes())
+}
+
 /// A field that can be *internally mutated* regardless of its external mutability.
 ///
 /// Currently, it wraps the [`tokio::sync::watch`] channel couple to achieve this.

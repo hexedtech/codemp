@@ -29,7 +29,8 @@ crate-type = ["cdylib", "rlib"]
 tracing = "0.1"
 thiserror = "2.0"
 # crdt
-diamond-types = "1.0"
+diamond-types = { version = "1.0", optional = true }
+yrs = { version = "0.26", optional = true }
 # proto
 codemp-proto = { git = "https://github.com/hexedtech/codemp-proto", rev = "6b45fd7bd7c03ef60234880c59157481def4ca71", optional = true }
 # api
@@ -80,6 +81,9 @@ default = ["lua-jit", "py-abi3", "py-extmod"]
 proto = ["dep:codemp-proto"]
 client = ["proto", "dep:tonic", "dep:tokio", "dep:tokio-stream", "dep:dashmap", "codemp-proto?/client"]
 server = ["proto", "codemp-proto?/server"]
+# crdt engine
+dt-crdt = ["dep:diamond-types"]
+y-crdt = ["dep:yrs"]
 # extra
 async-trait = ["dep:async-trait"]
 serialize = ["dep:serde", "uuid?/serde"]

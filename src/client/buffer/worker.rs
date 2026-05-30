@@ -241,7 +241,7 @@ impl<T: crate::api::CRDT<Location = usize>> BufferWorker<T> {
 		let last_ver = self.oplog.version();
 
 		let mut ops = Vec::new();
-		
+
 		for (span, content) in self
 			.oplog
 			.diff(starting_ver.clone(), last_ver.clone())
@@ -270,7 +270,7 @@ impl<T: crate::api::CRDT<Location = usize>> BufferWorker<T> {
 		} else {
 			None
 		};
-	
+
 		let tc = crate::api::BufferUpdate {
 			hash,
 			version: crate::api::crdt::translate_version::<T>(last_ver.clone()),
